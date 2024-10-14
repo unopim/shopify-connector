@@ -3,7 +3,7 @@
     "description": "A Shopify integration package for Unopim, enabling seamless product data synchronization between Unopim and Shopify.",
     "type": "library",
     "require": {
-        "unopim/unopim": "0.1.3"
+        "unopim/unopim": "^0.1.3"
     },
     "license": "MIT",
     "autoload": {
