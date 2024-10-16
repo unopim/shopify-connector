@@ -18,8 +18,11 @@ class ShopifyServiceProvider extends ServiceProvider
      */
     public function boot(Router $router)
     {
+        $this->publishes([
+            __DIR__.'/../config/unopim-vite.php' => config_path('unopim-vite.php'),
+        ], 'config');
+        
         Route::middleware('web')->group(__DIR__.'/../Routes/shopify-routes.php');
-
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migration');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'shopify');
         $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'shopify');
