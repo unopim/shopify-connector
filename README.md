@@ -9,9 +9,15 @@ Easily integrate your Shopify store with UnoPim to manage and sync product data 
 composer require unopim/shopify-connector
 ```
 
-- Run these commands below to complete the setup
-```
-composer dump-autoload
+### Register the shopify vite configuration
+
+* Goto `config/unopim-vite.php` file and add following line under 'viters' keys
+```php
+        'shopify' => [
+            'hot_file'                 => 'shopify-vite.hot',
+            'build_directory'          => 'themes/shopify/build',
+            'package_assets_directory' => 'src/Resources/assets',   
+        ],
 ```
 
 - Run these commands below to complete the setup
