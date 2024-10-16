@@ -11,17 +11,6 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
 composer require unopim/shopify-connector
 ```
 
-### Register the shopify vite configuration
-
-* Goto `config/unopim-vite.php` file and add following line under 'viters' keys
-```php
-        'shopify' => [
-            'hot_file'                 => 'shopify-vite.hot',
-            'build_directory'          => 'themes/shopify/build',
-            'package_assets_directory' => 'src/Resources/assets',   
-        ],
-```
-
 * Run the command to execute migrations and clear the cache.
 
 ```bash
