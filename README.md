@@ -1,6 +1,6 @@
 # UnoPim Shopify Connector
 
-Easily integrate your Shopify store with UnoPim to manage and sync product data seamlessly.
+Effortlessly integrate your Shopify store with UnoPim for seamless product data management and synchronization. You can currently export catalogs, including categories and both simple and variant products, from UnoPim to Shopify.
 
 ## Installation
 
