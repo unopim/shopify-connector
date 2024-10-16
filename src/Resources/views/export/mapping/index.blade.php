@@ -83,7 +83,7 @@
                                     />
                                     <x-admin::form.control-group.error control-name="{{ $field['name'] }}" />
                                 </x-admin::form.control-group>
-                                <x-admin::form.control-group>
+                                <x-admin::form.control-group class="!mb-0">
                                     <x-admin::form.control-group.control
                                         type="text"
                                         :name="'default_' . $field['name']"
