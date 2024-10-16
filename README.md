@@ -20,18 +20,11 @@ composer require unopim/shopify-connector
         ],
 ```
 
-- Run these commands below to complete the setup
-```
-php artisan migrate
-```
-```
-php artisan storage:link
-```
-```
-php artisan optimize:clear
-```
-```
-php artisan vendor:publish --all
+* Run the command to execute migrations and clear the cache.
+
+```bash
+php artisan shopify-package:install;
+php artisan optimize:clear;
 ```
 
 ## Running Test Cases
