@@ -22,7 +22,7 @@ php artisan optimize:clear;
 ## Running Test Cases with composer
 
 1. **Register Test Directory**  
-   In the `composer.json` file, register the test directory under the `autoload-dev` `psr` section:
+   In the `composer.json` file, register the test directory under the `autoload-dev` `psr-4` section:
 
    ```json
    "Webkul\\Shopify\\Tests\\": "vendor/unopim/shopify-connector/tests/"
@@ -48,15 +48,15 @@ php artisan optimize:clear;
    ```
 ## Installation without composer
 
-Unzip the respective extension zip and then rename the folder to `Shopify` and move into the `packages/Webkul` directory of the root project.
+Download and unzip the respective extension zip. Rename the folder to `Shopify` and move into the `packages/Webkul` directory of the project's root directory.
 
 1. **Regsiter the package provider**
-   Goto `config/app.php` file and add following line under 'providers'
+   In the `config/app.php` file add the below provider class under the `providers` key
 
    ```php
       Webkul\Shopify\Providers\ShopifyServiceProvider::class,
    ``` 
-2. Goto `composer.json` file and add following line under 'psr-4'
+2. In the `composer.json` file register the test directory under the `autoload` `psr-4` section
 
    ```json
    "Webkul\\Shopify\\": "packages/Webkul/Shopify/src"
@@ -71,7 +71,7 @@ Unzip the respective extension zip and then rename the folder to `Shopify` and m
 
 ## Running test cases
 1. **Register Test Directory**
-   Register test directory in `composer.json` under the `autoload-dev` `psr` section
+   Register test directory in `composer.json` under the `autoload-dev` `psr-4` section
 
    ```json
    "Webkul\\Shopify\\Tests\\": "packages/Webkul/Shopify/tests"
