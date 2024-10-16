@@ -24,35 +24,26 @@ php artisan optimize:clear;
    In the `composer.json` file, register the test directory under the `autoload-dev` `psr` section:
 
    ```json
-   "Webkul\\Shopify\\Tests\\": "packages/Webkul/Shopify/tests"
+   "Webkul\\Shopify\\Tests\\": "vendor/unopim/shopify-connector/tests/"
    ```
 
 2. **Configure TestCase**  
    Open the `tests/Pest.php` file and add this line:
 
    ```php
-   uses(Webkul\Shopify\Tests\ShopifyTestCase::class)->in('../packages/Webkul/Shopify/tests');
+   uses(Webkul\Shopify\Tests\ShopifyTestCase::class)->in('../vendor/unopim/shopify-connector/tests');
    ```
 
-3. **Register the Test Suite**  
-   In the `phpunit.xml` file, add the following lines for the test suite:
-
-   ```xml
-   <testsuite name="Shopify Feature Tests">
-       <directory suffix="Test.php">./packages/Webkul/Shopify/tests/Feature</directory>
-   </testsuite>
-   ```
-
-4. **Dump Composer Autoload for Tests**  
+3. **Dump Composer Autoload for Tests**  
    ```bash
    composer dump-autoload
    ```
 
-5. **Run Tests**  
+4. **Run Tests**  
    To run tests for the Shopify package, use the following command:
 
    ```bash
-   ./vendor/bin/pest ./packages/Webkul/Shopify/tests/Feature
+   ./vendor/bin/pest ./vendor/unopim/shopify-connector/tests
    ```
 
 ---
