@@ -4,6 +4,49 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
 
 ## Requiremenets:
 * **Unopim**: v0.1.3
+  
+## ✨ Features
+
+- **Sync Multiple Stores**  
+  This feature exports products from UnoPim to Shopify and allows syncing multiple Shopify stores.
+
+  ![Sync Multiple Stores Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Sync%20Multiple%20Stores.png)
+
+- **Export Attribute Mapping**  
+  With this module, you can map attributes to export the attribute from UnoPim to Shopify.
+
+  ![Export Attribute Mapping Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Export%20Attribute%20Mapping.png)
+ 
+- **Locale Mapping**  
+  This feature allows you to map all UnoPim published locale to corresponding Shopify locale.
+
+  ![Locale Mapping Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Locale%20Mapping.png)
+
+- **Metafields Mapping**  
+  You can map Meta fields like strings, integers, and JSON strings to easily export product details from UnoPim to Shopify.
+
+  ![Metafields Mapping Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Metafields%20Mapping.png)
+
+- **Tags, MetaFields, and Other Settings**  
+  This module provides additional settings for exporting products data from UnoPim to Shopify.
+
+  ![Tags, MetaFields, and Other Settings Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Tags%2C%20MetaFields%2C%20and%20Other%20Settings.png)
+
+- **Filter Data From Export**  
+  Channel, Currency, and Product (SKU) are among the data that may be filtered with this module.
+
+  ![Filter Data From Export Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Filter%20Data%20From%20Export.png)
+
+- **Export Product**  
+  This module allows you to export products from UnoPim to Shopify along with associated data, such as an attribute, image, and all.
+
+  ![Export Product Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Export%20Product.png)
+
+- **Export Category**  
+  This module allows you to export the category to Shopify from Unopim.
+
+  ![Export Category Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Export%20Category.png)
+
 
 ## Installation with composer
 
