@@ -62,11 +62,22 @@ php artisan shopify-package:install;
 php artisan optimize:clear;
 ```
 
+## **Enable Queue Operations**  
+   - Start the queue to execute actions, such as job operations, by running the following command:
+     ```bash
+     php artisan queue:work
+     ```
+   - If the `queue:work` command is configured to run via a process manager like Supervisor, restart the Supervisor (or related) service after module installation to apply changes:
+     ```bash
+     sudo service supervisor restart
+     ```
+
+This ensures that the latest updates to the module are reflected in all background tasks.
+
 ## Running Test Cases with composer
 
 1. **Register Test Directory**  
    In the `composer.json` file, register the test directory under the `autoload-dev` `psr-4` section:
-
    ```json
    "Webkul\\Shopify\\Tests\\": "vendor/unopim/shopify-connector/tests/"
    ```
@@ -111,6 +122,18 @@ Download and unzip the respective extension zip. Rename the folder to `Shopify` 
    php artisan shopify-package:install
    php artisan optimize:clear
    ```
+
+## **Enable Queue Operations**  
+   - Start the queue to execute actions, such as job operations, by running the following command:
+     ```bash
+     php artisan queue:work
+     ```
+   - If the `queue:work` command is configured to run via a process manager like Supervisor, restart the Supervisor (or related) service after module installation to apply changes:
+     ```bash
+     sudo service supervisor restart
+     ```
+
+This ensures that the latest updates to the module are reflected in all background tasks.
 
 ## Running test cases
 1. **Register Test Directory**
