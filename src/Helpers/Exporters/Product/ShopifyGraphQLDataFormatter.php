@@ -34,7 +34,7 @@ class ShopifyGraphQLDataFormatter
     /**
      * Formats raw product data for GraphQL API based on export mapping and other parameters.
      * */
-    public function formatDataForGraphql(array $rawData, array $exportMapping, string $locale, array $parentData = []): array
+    public function formatDataForGraphql(array $rawData, array $exportMapping, string $locale, array $parentData = [], $mappingDefn = []): array
     {
         $status = $this->getStatus($rawData, $parentData);
         $formatted = [
@@ -49,7 +49,7 @@ class ShopifyGraphQLDataFormatter
 
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
-        $formatted = $this->processShopifyConnectorOthers($formatted, $rawData, $exportMapping, $locale, $parentData);
+        $formatted = $this->processShopifyConnectorOthers($formatted, $rawData, $exportMapping, $locale, $parentData, $mappingDefn);
 
         return $formatted;
     }
@@ -75,6 +75,10 @@ class ShopifyGraphQLDataFormatter
 
         if (! empty($parentData['status']) && $parentData['status'] == 'false') {
             $status = 'DRAFT';
+        }
+
+        if (! empty($parentData['status']) && $parentData['status'] == 'true') {
+            $status = 'ACTIVE';
         }
 
         return $status;
@@ -139,10 +143,11 @@ class ShopifyGraphQLDataFormatter
         array $rawData,
         array $exportMapping,
         ?string $locale,
-        array $parentData
+        array $parentData,
+        array $mappingDefn = []
     ): array {
         foreach ($exportMapping['shopify_connector_others'] ?? [] as $shopifyMetafieldType => $unopimMetaField) {
-            $formatted = $this->applyMetaFields($formatted, $rawData, $shopifyMetafieldType, $unopimMetaField, $locale, $parentData);
+            $formatted = $this->applyMetaFields($formatted, $rawData, $shopifyMetafieldType, $unopimMetaField, $locale, $parentData, $mappingDefn);
         }
 
         return $formatted;
@@ -328,7 +333,8 @@ class ShopifyGraphQLDataFormatter
         string $shopifyMetafieldType,
         string $unopimMetaField,
         string $locale,
-        array $parentData
+        array $parentData,
+        array $mappingDefn = []
     ): array {
         $attr = explode(',', $unopimMetaField);
 
@@ -336,7 +342,18 @@ class ShopifyGraphQLDataFormatter
             $this->metaFieldAttributeCode[] = $unoAttribute;
 
             $attribute = $this->attributeRepository->findOneByField('code', $unoAttribute);
-            $namespace = $this->getMetaFieldNamespace($attribute);
+
+            $mappingDefnAll = array_merge($mappingDefn['productMetafield'] ?? [], $mappingDefn['productVariantMetafield'] ?? []);
+
+            if (array_key_exists($unoAttribute, $mappingDefnAll)) {
+
+                $namespace = $mappingDefnAll[$unoAttribute];
+
+            } else {
+
+                $namespace = $this->getMetaFieldNamespace($attribute);
+
+            }
 
             if (! $namespace) {
                 continue;

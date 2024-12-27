@@ -7,12 +7,22 @@ return [
             'category' => 'Shopify Category',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Shopify Product',
+            'category' => 'Shopify Category',
+            'attribute'=> 'Shopify Attribute',
+            'family'   => 'Shopify Family Variant Attribute Assignment',
+            'metafield'=> 'Shopify Metafield Definitions',
+        ],
+    ],
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'Credentials',
                 'export-mappings' => 'Export Mappings',
+                'import-mappings' => 'Import Mappings',
                 'settings'        => 'Settings',
             ],
         ],
@@ -48,7 +58,7 @@ return [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',
                 'url'                   => 'Shopify URL',
-                'shopifyurlplaceholder' => 'Shopify URL (http://demo.myshopify.com)',
+                'shopifyurlplaceholder' => 'http://demo.myshopify.com',
                 'accesstoken'           => 'Admin API access token',
                 'apiVersion'            => 'API Version',
                 'save'                  => 'Save',
@@ -79,7 +89,7 @@ return [
                 'image'         => 'Attribute to used as image',
                 'metafields'    => 'Attributes to be used as Metafields',
                 'filed-shopify' => 'Field in Shopify',
-                'attribute'     => 'Attribute',
+                'attribute'     => 'UnoPim Attribute',
                 'fixed-value'   => 'Fixed Value',
             ],
 
@@ -97,6 +107,7 @@ return [
                 'metafields'                   => 'Meta Fields Export Setting',
                 'metaFieldsKey'                => 'Use Key for Meta Field as Attribute Code / Label',
                 'metaFieldsNameSpace'          => 'Use Namespace for Meta Field as Attribute Group Code / global',
+                'credentials'                  => 'Credentials Export',
                 'other-settings'               => 'Other Settings',
                 'roundof-attribute-value'      => 'Remove Extra fractional Zeros of Metric Attribute Value (e.g. 201.2000 as 201.2)',
                 'option_name_label'            => 'Value for Option Name as Attribute Label (By Default Attribute Code)',
@@ -105,6 +116,25 @@ return [
             'errors' => [
                 'invalid-credential' => 'Invalid Credential.The credential is either disabled or incorrect',
                 'invalid-locale'     => 'Invalid Locale. Please mapp the locale in credential edit section',
+            ],
+        ],
+
+        'import' => [
+            'mapping' => [
+                'title'                => 'Import Mappings',
+                'back-btn'             => 'Back',
+                'save'                 => 'Save',
+                'created'              => 'Import Mapping saved successfully',
+                'image'                => 'Attribute to used as image',
+                'filed-shopify'        => 'Field in Shopify',
+                'attribute'            => 'UnoPim Attribute',
+                'variantimage'         => 'Attribute to used as variant image',
+                'other'                => 'Shopify Other Mapping',
+                'family'               => 'Family mapping (for products)',
+                'metafieldDefinitions' => 'Shopify Metafield Definition Mapping',
+            ],
+            'setting' => [
+                'credentialmapping' => 'Credential mapping',
             ],
         ],
         'fields' => [
@@ -120,8 +150,8 @@ return [
             'tags'                        => 'Tags',
             'barcode'                     => 'Barcode',
             'compare_at_price'            => 'Compare Price',
-            'seo_title'                   => 'Seo Title',
-            'seo_description'             => 'Seo Description',
+            'seo_title'                   => 'SEO Title',
+            'seo_description'             => 'SEO Description',
             'handle'                      => 'Handle',
             'taxable'                     => 'Taxable',
             'inventory_cost'              => 'Cost per item',

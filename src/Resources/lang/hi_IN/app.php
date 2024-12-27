@@ -7,6 +7,17 @@ return [
             'category' => 'Shopify श्रेणी',
         ],
     ],
+
+    'importers' => [
+        'shopify' => [
+            'product'  => 'शोपिफाई उत्पाद',
+            'category' => 'शोपिफाई श्रेणी',
+            'attribute'=> 'शोपिफाई विशेषता',
+            'family'   => 'शोपिफाई परिवार',
+            'metafield'=> 'शॉपिफ़ाई मेटाफ़ील्ड परिभाषाएँ',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [

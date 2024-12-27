@@ -61,6 +61,9 @@ class MappingController extends Controller
         $data = $request->all();
         $filteredData = array_filter($data);
         $mappingFields = [];
+        $mappingFieldss = [
+            'mapping' => [],
+        ];
         foreach ($filteredData as $row => $value) {
             if ($row == '_token' || $row == '_method') {
                 continue;

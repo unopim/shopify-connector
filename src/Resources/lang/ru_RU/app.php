@@ -7,6 +7,16 @@ return [
             'category' => 'Shopify категория',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Продукт Shopify',
+            'category' => 'Категория Shopify',
+            'attribute'=> 'Атрибут Shopify',
+            'family'   => 'Семья Shopify',
+            'metafield'=> 'Определения метаполей Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [

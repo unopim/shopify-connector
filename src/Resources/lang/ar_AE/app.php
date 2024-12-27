@@ -7,6 +7,17 @@ return [
             'category' => 'فئة شوبفاي',
         ],
     ],
+
+    'importers' => [
+        'shopify' => [
+            'product'  => 'منتج شوبيفاي',
+            'category' => 'فئة شوبيفاي',
+            'attribute'=> 'خاصية شوبيفاي',
+            'family'   => 'عائلة شوبيفاي',
+            'metafield'=> 'تعريفات الحقول الوصفية في شوبيفاي',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [

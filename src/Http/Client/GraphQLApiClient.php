@@ -140,12 +140,12 @@ class GraphQLApiClient
         ],
 
         'manualCollectionGetting' => [
-            'query'  => 'query MyCollections($first: Int!, $collectionType: String!) { collections(first: $first, query: $collectionType) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
+            'query'  => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
             'method' => 'POST',
         ],
 
         'GetCollectionsByCursor' => [
-            'query'  => 'query GetCollections($first: Int!, $collectionType: String!, $afterCursor: String!) { collections(first: $first, query: $collectionType, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
+            'query'  => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
             'method' => 'POST',
         ],
 
@@ -240,12 +240,12 @@ class GraphQLApiClient
         ],
 
         'productAllvalueGetting' => [
-            'query'  => 'query { products(first: 10, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { id title } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable inventoryManagement  inventoryQuantity inventoryPolicy fulfillmentService { id handle serviceName } inventoryItem { id tracked inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  weight weightUnit  selectedOptions { name value } image { id originalSrc altText } } } } seo { title description } metafields(first: 10) { edges { node { id namespace key value } } } } } } }',
+            'query'  => 'query { products(first: 10, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key value } } } } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGettingByCursor' => [
-            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { id title } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryManagement inventoryPolicy fulfillmentService { id handle serviceName } inventoryItem { id tracked inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  weight weightUnit  selectedOptions { name value } image { id originalSrc altText } } } } seo { title description } metafields(first: 10) { edges { node { id namespace key value } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key value } } } } } } }',
             'method' => 'POST',
         ],
 
@@ -284,6 +284,11 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
+        'productFileUpdate' => [
+            'query'  => 'mutation FileUpdate($input: [FileUpdateInput!]!) { fileUpdate(files: $input) { userErrors { code field message } files { alt } } }',
+            'method' => 'POST',
+        ],
+
         'productCreateMedia' => [
             'query'  => 'mutation productCreateMedia($media: [CreateMediaInput!]!, $productId: ID!) { productCreateMedia(media: $media, productId: $productId) { media { alt id mediaContentType status } mediaUserErrors { field message } product { id title } } }',
             'method' => 'POST',
@@ -296,6 +301,16 @@ class GraphQLApiClient
 
         'productDelete' => [
             'query'  => 'mutation productDelete($input: ProductDeleteInput!) { productDelete(input: $input) { deletedProductId userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'metafieldDefinitionsProductVariantType' => [
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'method' => 'POST',
+        ],
+
+        'metafieldDefinitionsProductType' => [
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
             'method' => 'POST',
         ],
     ];

@@ -50,7 +50,6 @@
             </div>
             <!-- Datagrid -->
             <x-admin::datagrid :src="route('shopify.credentials.index')" ref="datagrid" class="mb-8"/>
-
             <!-- Modal Form -->
             <x-admin::form
                 v-slot="{ meta, errors, handleSubmit }"

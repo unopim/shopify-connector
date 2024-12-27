@@ -7,6 +7,16 @@ return [
             'category' => 'Shopify-Kategorie',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Shopify-Produkt',
+            'category' => 'Shopify-Kategorie',
+            'attribute'=> 'Shopify-Attribut',
+            'family'   => 'Shopify-Familie',
+            'metafield'=> 'Metafelddefinitionen von Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [

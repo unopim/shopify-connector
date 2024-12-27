@@ -22,6 +22,8 @@ class Exporter extends AbstractExporter
     use ShopifyGraphqlRequest;
     use TranslationTrait;
 
+    public const BATCH_SIZE = 10;
+
     public const COLLECTION_NOT_EXIST = 'Collection does not exist';
 
     /**

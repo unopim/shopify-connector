@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Webkul\Shopify\Http\Controllers\CredentialController;
+use Webkul\Shopify\Http\Controllers\ImportMappingController;
 use Webkul\Shopify\Http\Controllers\MappingController;
 use Webkul\Shopify\Http\Controllers\OptionController;
 use Webkul\Shopify\Http\Controllers\SettingController;
@@ -38,10 +39,22 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
 
         });
 
+        Route::prefix('import')->group(function () {
+            Route::controller(ImportMappingController::class)->prefix('mapping')->group(function () {
+                Route::get('{id}', 'index')->name('admin.shopify.import-mappings');
+
+                Route::post('create', 'store')->name('shopify.import-mappings.create');
+            });
+        });
+
         Route::controller(OptionController::class)->group(function () {
             Route::get('get-attribute', 'listAttributes')->name('admin.shopify.get-attribute');
 
             Route::get('get-image-attribute', 'listImageAttributes')->name('admin.shopify.get-image-attribute');
+
+            Route::get('get-metafield-attribute', 'listMetafieldAttributes')->name('admin.shopify.get-metafield-attribute');
+
+            Route::get('selected-metafield-attribute', 'selectedMetafieldAttributes')->name('admin.shopify.get-selected-attribute');
 
             Route::get('get-shopify-credentials', 'listShopifyCredential')->name('shopify.credential.fetch-all');
 
@@ -50,6 +63,10 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::get('get-shopify-currency', 'listCurrency')->name('shopify.currency.fetch-all');
 
             Route::get('get-shopify-locale', 'listLocale')->name('shopify.locale.fetch-all');
+
+            Route::get('get-shopify-attrGroup', 'listAttributeGroup')->name('shopify.attribute-group.fetch-all');
+
+            Route::get('get-shopify-family', 'listShopifyFamily')->name('admin.shopify.get-all-family-variants');
         });
 
     });

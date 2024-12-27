@@ -7,6 +7,16 @@ return [
             'category' => 'Categoría de Shopify',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Producto Shopify',
+            'category' => 'Categoría Shopify',
+            'attribute'=> 'Atributo Shopify',
+            'family'   => 'Familia Shopify',
+            'metafield'=> 'Definiciones de metacampos de Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
@@ -91,6 +101,7 @@ return [
                 'metafields'                   => 'Configuración de Exportación de Meta Fields',
                 'metaFieldsKey'                => 'Usar Clave para Meta Field como Código/Label del Atributo',
                 'metaFieldsNameSpace'          => 'Usar Namespace para Meta Field como Código de Grupo de Atributo/global',
+                'crednetials'                  => 'Select Credentials',
                 'other-settings'               => 'Otras Configuraciones',
                 'roundof-attribute-value'      => 'Eliminar Decimales Extras de los Valores Métricos (ej. 201.2000 como 201.2)',
                 'option_name_label'            => 'Valor para el Nombre de Opción como Label del Atributo (Por Defecto Código de Atributo)',

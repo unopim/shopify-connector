@@ -7,6 +7,16 @@ return [
             'category' => 'Shopify 类别',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Shopify 产品',
+            'category' => 'Shopify 类别',
+            'attribute'=> 'Shopify 属性',
+            'family'   => 'Shopify 家族',
+            'metafield'=> 'Shopify 元字段定义',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [

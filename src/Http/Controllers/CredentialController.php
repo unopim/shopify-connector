@@ -45,11 +45,22 @@ class CredentialController extends Controller
     {
         $data = $request->all();
         $url = $data['shopUrl'];
+        $url = $data['shopUrl'] = rtrim($url, '/');
 
         if (strpos($url, 'http') !== 0) {
             return new JsonResponse([
                 'errors' => [
                     'shopUrl' => [trans('shopify::app.shopify.credential.invalidurl')],
+                ],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $credential = $this->shopifyRepository->findWhere(['shopUrl' => $url])->first();
+
+        if ($credential) {
+            return new JsonResponse([
+                'errors' => [
+                    'shopUrl' => ['The shop url has already been taken.'],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -67,9 +78,17 @@ class CredentialController extends Controller
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $credentialCreate = $this->shopifyRepository->create($data);
+        try {
+            $credentialCreate = $this->shopifyRepository->create($data);
 
-        session()->flash('success', trans('shopify::app.shopify.credential.created'));
+            session()->flash('success', trans('shopify::app.shopify.credential.created'));
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'errors' => [
+                    'shopUrl'     => [$e->getMessage()],
+                ],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return new JsonResponse([
             'redirect_url' => route('shopify.credentials.edit', $credentialCreate->id),
@@ -170,10 +189,13 @@ class CredentialController extends Controller
 
         $requestData['storeLocales'] = $languages;
 
-        $requestData['extras'] = [
-            'locations'    => $requestData['locations'],
-            'salesChannel' => $requestData['salesChannel'],
-        ];
+        $extras = $credential->extras;
+
+        $extras['locations'] = $requestData['locations'];
+
+        $extras['salesChannel'] = $requestData['salesChannel'];
+
+        $requestData['extras'] = $extras;
 
         unset($requestData['salesChannel']);
         unset($requestData['locations']);
