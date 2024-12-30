@@ -51,7 +51,7 @@ class Importer extends AbstractImporter
      */
     protected $credential;
 
-    protected $mappingDefn;
+    protected $defintiionMapping;
 
     /**
      * Shopify credential as array for api request.
@@ -100,7 +100,7 @@ class Importer extends AbstractImporter
 
         $this->credential = $this->shopifyRepository->find($filters['credentials'] ?? null);
 
-        $this->mappingDefn = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
+        $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
 
         $this->locale = $filters['locale'] ?? null;
 
@@ -117,7 +117,7 @@ class Importer extends AbstractImporter
     {
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Disabled Shopify credential');
+            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
         }
 
         $this->credentialArray = [
@@ -183,7 +183,7 @@ class Importer extends AbstractImporter
         }
         $simpleProductFamilyId = $importMapping['family_variant'] ?? null;
         unset($importMapping['family_variant']);
-        $metaFieldAllAttr = array_merge(array_column($family, 'code'), array_unique($this->mappingDefn), array_values($importMapping), $allImageAttr);
+        $metaFieldAllAttr = array_merge(array_column($family, 'code'), array_unique($this->defintiionMapping), array_values($importMapping), $allImageAttr);
         $metaFieldAllAttr[] = 'sku';
         $metaFieldAttrIds = $this->attributeRepository->whereIn('code', $metaFieldAllAttr)->pluck('id')->toArray();
 
@@ -259,7 +259,7 @@ class Importer extends AbstractImporter
             unset($importMappingAttr['images']);
             unset($importMappingAttr['family_variant']);
 
-            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->mappingDefn);
+            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->defintiionMapping);
 
             $attrId = [];
 

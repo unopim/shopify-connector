@@ -206,17 +206,14 @@ class OptionController extends Controller
 
         if (! empty($searchIdentifiers)) {
             $values = $searchIdentifiers['values'] ?? [];
-
             $attributeRepository = $attributeRepository->whereIn(
                 $searchIdentifiers['columnName'],
                 is_array($values) ? $values : [$values]
             );
             if (! empty($notInclude)) {
                 $notIncludeValues = array_values(array_diff(array_values($notInclude), $values));
-
                 $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
             }
-
         } else {
             if (! empty($notInclude)) {
                 unset($notInclude[$fieldName]);
@@ -232,7 +229,6 @@ class OptionController extends Controller
 
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
-
             $formattedoptions[] = [
                 'id'    => $attribute->id,
                 'code'  => $attribute->code,
@@ -281,7 +277,6 @@ class OptionController extends Controller
 
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
-
             $formattedoptions[] = [
                 'id'    => $attribute->id,
                 'code'  => $attribute->code,
@@ -332,7 +327,6 @@ class OptionController extends Controller
         $currentLocaleCode = core()->getRequestedLocaleCode();
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
-
             $formattedoptions[] = [
                 'id'    => $attribute->id,
                 'code'  => $attribute->code,
@@ -431,16 +425,16 @@ class OptionController extends Controller
             );
         }
 
-        $attributes = $attributeFamilyRepository->get();
+        $attributesFamilies = $attributeFamilyRepository->get();
 
         $formattedoptions = [];
 
-        foreach ($attributes as $attribute) {
-            $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
+        foreach ($attributesFamilies as $attributesFamily) {
+            $translatedLabel = $attributesFamily->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
-                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
+                'id'    => $attributesFamily->id,
+                'code'  => $attributesFamily->code,
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attributesFamily->code}]",
             ];
         }
 

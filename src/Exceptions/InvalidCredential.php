@@ -15,5 +15,5 @@ class InvalidCredential extends Exception
     /**
      * @var string The error message for the exception.
      */
-    protected $message = 'Invalid Credential: The credential is either disabled or incorrect';
+    protected $message = 'Invalid Credential: The credential is either disabled, incorrect, or does not exist';
 }

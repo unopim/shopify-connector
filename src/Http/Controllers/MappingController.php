@@ -58,16 +58,10 @@ class MappingController extends Controller
      */
     public function store(ExportMappingForm $request)
     {
-        $data = $request->all();
+        $data = $request->except(['_token', '_method']);
         $filteredData = array_filter($data);
         $mappingFields = [];
-        $mappingFieldss = [
-            'mapping' => [],
-        ];
         foreach ($filteredData as $row => $value) {
-            if ($row == '_token' || $row == '_method') {
-                continue;
-            }
             $sectionName = 'shopify_connector_settings';
 
             if (str_contains($row, 'default_')) {
@@ -80,13 +74,12 @@ class MappingController extends Controller
             }
 
             $mappingFields[$sectionName][$row] = $value;
-            $mappingFieldss['mapping'] = $mappingFields;
         }
 
         $shopifyMapping = $this->shopifyExportMappingRepository->first();
 
-        if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFieldss['mapping']) {
-            $shopifyMapping = $this->shopifyExportMappingRepository->update($mappingFieldss, 1);
+        if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFields) {
+            $shopifyMapping = $this->shopifyExportMappingRepository->update(['mapping' => $mappingFields], 1);
         }
 
         session()->flash('success', trans('shopify::app.shopify.export.mapping.created'));

@@ -89,7 +89,7 @@ class Exporter extends AbstractExporter
 
     protected $metaFieldAttributeCode = [];
 
-    protected $mappingDefn = [];
+    protected $defintiionMapping = [];
 
     protected $productId = [];
 
@@ -159,7 +159,7 @@ class Exporter extends AbstractExporter
         $this->jobChannel = $filters['channel'];
 
         $this->credential = $this->shopifyRepository->find($filters['credentials']);
-        $this->mappingDefn = $this->credential?->extras;
+        $this->defintiionMapping = $this->credential?->extras;
 
         $mappings = $this->shopifyExportmapping->findMany([1, 2]);
 
@@ -615,7 +615,7 @@ class Exporter extends AbstractExporter
         array $parentMapping
     ): array {
 
-        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->mappingDefn);
+        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->defintiionMapping);
         $this->metaFieldAttributeCode = $this->shopifyGraphQLDataFormatter->getMetafieldAttrCode();
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
@@ -912,10 +912,10 @@ class Exporter extends AbstractExporter
                 ];
             }, $mediaIdsUnassign);
             $inputs = [];
-            if (!empty($removingIds)) {
-                $inputs= array_map(function ($mediaRemove) use ($productId) {
+            if (! empty($removingIds)) {
+                $inputs = array_map(function ($mediaRemove) use ($productId) {
                     return [
-                        'id'              => $mediaRemove,
+                        'id'                 => $mediaRemove,
                         'referencesToRemove' => [$productId],
                     ];
                 }, $removingIds);
@@ -1337,14 +1337,14 @@ class Exporter extends AbstractExporter
             $imagesAttr = explode(',', $exportSeting['images']);
             $imageAttrCode = [];
             $updateMedia = [];
-            
+
             foreach ($imagesAttr as $imageAttr) {
 
                 if (! empty($rawData[$imageAttr])) {
                     $medias = $this->processMedia($imageAttr, $rawData, $imageAttrCode, $updateMedia, $medias);
                     $this->childImageAttr[] = $imageAttr;
                 } else {
-
+                    $mappingImageC = $this->checkMappingInDbForImage($imageAttr, 'productImage', $rawData['sku']);
                     $this->removeImgAttr[] = $mappingImageC[0]['externalId'] ?? null;
                 }
 

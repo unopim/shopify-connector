@@ -181,38 +181,11 @@
                         vendosr: '',
                         errors: {},
                     },
-                    disabledFields: {},
-                    onchange: '',
                     notInclude: @json($importMapping ?? null),
-                    selectedAttributeType: @json($credentialId ?? null),
-                    fieldName: 'meta_fields',
-                    idCredential: @json($credentialId ?? null),
+                    fieldName: 'meta_fields', 
                 };
             },
-            watch: {
-                selectedAttributeType(value) {
-                    var value = JSON.parse(value)?.id;
-                    this.idCredential = value;
-                    this.$refs.addOptionsRow.params[0] = value;
-                    this.$refs.addOptionsRow.optionsList = [];
-                    this.$refs.addOptionsRow.selectedValue = [];
-                    this.$refs.addOptionsRows.params[0] = value;
-                    this.$refs.addOptionsRows.optionsList = [];
-                    this.$refs.addOptionsRows.selectedValue = [];
-                    this.$refs.addOptionsRowss.params[0] = value;
-                    this.$refs.addOptionsRowss.optionsList = [];
-                    this.$refs.addOptionsRowss.selectedValue = [];
-
-                    this.$axios.get("{{ route('admin.shopify.get-selected-attribute') }}", {params: {id: value}})
-                    .then(response => {
-                        this.$refs.addOptionsRowss.selectedValue = response.data[value+'_string'] ?? [];
-                        this.$refs.addOptionsRows.selectedValue = response.data[value+'_integer'] ?? [];
-                        this.$refs.addOptionsRow.selectedValue = response.data[value+'_json'] ?? [];
-                        }).catch(error => {
-                            console.log(error);
-                        });
-                }
-            },
+             
             methods: {
                 handleOpenedSelect(event, fieldName) {
                     const values = Object.values(this.notInclude);

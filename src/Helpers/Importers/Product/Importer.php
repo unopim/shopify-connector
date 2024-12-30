@@ -80,7 +80,7 @@ class Importer extends AbstractImporter
 
     protected $importMapping;
 
-    protected $mappingDefn;
+    protected $defintiionMapping;
 
     /**
      * Shopify credential as array for api request.
@@ -210,7 +210,7 @@ class Importer extends AbstractImporter
 
         $this->credential = $this->shopifyRepository->find($filters['credentials'] ?? null);
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Disabled Shopify credentials');
+            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
         }
         $this->locale = $filters['locale'] ?? null;
 
@@ -218,7 +218,7 @@ class Importer extends AbstractImporter
 
         $this->currency = $filters['currency'] ?? null;
 
-        $this->mappingDefn = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
+        $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
     }
 
     /**
@@ -376,7 +376,7 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            $metaFieldAllAttr = $this->mappingDefn ?? [];
+            $metaFieldAllAttr = $this->defintiionMapping ?? [];
 
             unset($mappingAttr['family_variant']);
             $variantImageAttr = $mappingAttr['variantimages'] ?? null;
@@ -503,7 +503,15 @@ class Importer extends AbstractImporter
                         continue;
                     }
 
-                    $variantSkus[] = $productVariant['node']['sku'] ?? null;
+                    if (! empty($productVariant['node']['sku'])) {
+
+                        $variantSkus[] = $productVariant['node']['sku'] ?? null;
+                    } else {
+
+                        $this->jobLogger->warning('Variant SKU not found in product '.$shopifyProductId);
+
+                        continue;
+                    }
 
                     if (empty($productVariant['node']['sku'])) {
                         $storeKey[] = $key;
@@ -650,6 +658,11 @@ class Importer extends AbstractImporter
                 $shopifyProductId = $rowData['node']['id'];
                 foreach ($variants as $key => $productVariant) {
                     $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
+                    if (empty($productVariant['node']['sku'])) {
+                        $this->jobLogger->warning('SKU not found in product '.$shopifyProductId);
+
+                        continue;
+                    }
                 }
 
                 if (! $variantData) {
