@@ -346,13 +346,9 @@ class ShopifyGraphQLDataFormatter
             $defintiionMappingAll = array_merge($defintiionMapping['productMetafield'] ?? [], $defintiionMapping['productVariantMetafield'] ?? []);
 
             if (array_key_exists($unoAttribute, $defintiionMappingAll)) {
-
                 $namespace = $defintiionMappingAll[$unoAttribute];
-
             } else {
-
                 $namespace = $this->getMetaFieldNamespace($attribute);
-
             }
 
             if (! $namespace) {
@@ -360,7 +356,6 @@ class ShopifyGraphQLDataFormatter
             }
 
             $metaFieldKey = $this->getAttributeLabelOrCodeForMetaField($attribute, $unoAttribute, $locale);
-
             $metafieldType = $this->getShopifyMetafieldType($shopifyMetafieldType);
 
             if (! empty(@$rawData[$unoAttribute])) {

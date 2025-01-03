@@ -9,7 +9,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -19,7 +19,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'channel',
-                    'title'      => 'Channel',
+                    'title'      => 'shopify::app.shopify.job.channel',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -29,7 +29,7 @@ return [
                     'list_route' => 'shopify.channel.fetch-all',
                 ], [
                     'name'       => 'currency',
-                    'title'      => 'Currency',
+                    'title'      => 'shopify::app.shopify.job.currency',
                     'required'   => true,
                     'type'       => 'select',
                     'validation' => 'required',
@@ -39,7 +39,7 @@ return [
                     'list_route' => 'shopify.currency.fetch-all',
                 ], [
                     'name'     => 'productfilter',
-                    'title'    => 'Product (SKU)',
+                    'title'    => 'shopify::app.shopify.job.productfilter',
                     'required' => false,
                     'type'     => 'textarea',
                 ],
@@ -55,7 +55,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',

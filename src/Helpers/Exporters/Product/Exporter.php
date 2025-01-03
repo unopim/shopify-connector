@@ -1329,7 +1329,7 @@ class Exporter extends AbstractExporter
     /**
      * Handles Product images.
      */
-    public function formatDataForGraphqlImage(array $rawData, array $exportSeting, array $parentrawData, ?string $parentId = null): array
+    public function formatDataForGraphqlImage(array $rawData, array $exportSeting, array $parentrawData): array
     {
         $medias = [];
 

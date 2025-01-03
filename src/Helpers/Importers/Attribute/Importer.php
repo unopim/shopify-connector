@@ -7,16 +7,17 @@ use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
-use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\ValidatedBatched;
 
 class Importer extends AbstractImporter
 {
     use ShopifyGraphqlRequest;
+    use ValidatedBatched;
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 100;
 
     /**
      * cursor position
@@ -195,55 +196,6 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Save validated batches
-     */
-    protected function saveValidatedBatches(): self
-    {
-        $source = $this->getSource();
-
-        $batchRows = [];
-
-        $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
-        $this->importBatchRepository->deleteWhere([
-            'job_track_id' => $this->import->id,
-        ]);
-
-        while (
-            $source->valid()
-            || count($batchRows)
-        ) {
-            if (
-                count($batchRows) == self::BATCH_SIZE
-                || ! $source->valid()
-            ) {
-                $this->importBatchRepository->create([
-                    'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
-                ]);
-
-                $batchRows = [];
-            }
-
-            if ($source->valid()) {
-                $rowData = $source->current();
-
-                if ($this->validateRow($rowData, 1)) {
-                    $batchRows[] = $this->prepareRowForDb($rowData);
-                }
-
-                $this->processedRowsCount++;
-
-                $source->next();
-            }
-        }
-
-        return $this;
-    }
-
-    /**
      * Start the import process for Attribute Import
      */
     public function importBatch(JobTrackBatchContract $batch): bool
@@ -274,7 +226,7 @@ class Importer extends AbstractImporter
                 $optionArray = [];
                 $optionExistInAttr = array_column($option->toArray(), 'code');
                 $newOptions = array_udiff($rowData['code'], $optionExistInAttr, function ($a, $b) {
-                    return strcasecmp($a, $b); // Case-insensitive comparison
+                    return strcasecmp($a, $b);
                 });
                 $initialOrder += 1;
                 foreach ($newOptions as $key => $newOption) {

@@ -60,7 +60,7 @@ class CredentialController extends Controller
         if ($credential) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl' => ['The shop url has already been taken.'],
+                    'shopUrl' => [trans('shopify::app.shopify.credential.already_taken')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }

@@ -78,7 +78,7 @@
                     />
                 </x-admin::form.control-group>
                 <x-admin::form.control-group class="mb-4" v-if=" (selectedAttributeType == 1)">
-                    <x-admin::form.control-group.label >
+                    <x-admin::form.control-group.label>
                         @lang('shopify::app.shopify.export.setting.tagSeprator')
                     </x-admin::form.control-group.label>
 

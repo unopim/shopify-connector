@@ -17,13 +17,15 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\ValidatedBatched;
 
 class Importer extends AbstractImporter
 {
     use DataMappingTrait;
     use ShopifyGraphqlRequest;
+    use ValidatedBatched;
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 100;
 
     public const UNOPIM_ENTITY_NAME = 'familyCount';
 
@@ -193,7 +195,6 @@ class Importer extends AbstractImporter
                 throw new \Exception('Product family mapping not found.');
             }
             $familyModel = $familyModel->first();
-            $previousAttributeGroupMappingIds = $familyModel->attributeFamilyGroupMappings()->pluck('id')->toArray();
 
             $allIds = $this->attributeFamilyGroupMappingRepository->whereIn('attribute_family_id', [$simpleProductFamilyId])->pluck('id')->toArray();
 
@@ -231,6 +232,7 @@ class Importer extends AbstractImporter
                 DB::table('attribute_group_mappings')->insertOrIgnore($data);
             }
         }
+
     }
 
     /**
@@ -302,55 +304,6 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Save validated batches
-     */
-    protected function saveValidatedBatches(): self
-    {
-        $source = $this->getSource();
-
-        $batchRows = [];
-
-        $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
-        $this->importBatchRepository->deleteWhere([
-            'job_track_id' => $this->import->id,
-        ]);
-
-        while (
-            $source->valid()
-            || count($batchRows)
-        ) {
-            if (
-                count($batchRows) == self::BATCH_SIZE
-                || ! $source->valid()
-            ) {
-                $this->importBatchRepository->create([
-                    'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
-                ]);
-
-                $batchRows = [];
-            }
-
-            if ($source->valid()) {
-                $rowData = $source->current();
-
-                if ($this->validateRow($rowData, 1)) {
-                    $batchRows[] = $this->prepareRowForDb($rowData);
-                }
-
-                $this->processedRowsCount++;
-
-                $source->next();
-            }
-        }
-
-        return $this;
-    }
-
-    /**
      * Start the import process For Family Import Data
      */
     public function importBatch(JobTrackBatchContract $batch): bool
@@ -365,9 +318,6 @@ class Importer extends AbstractImporter
      */
     public function saveFamilyData(JobTrackBatchContract $batch): bool
     {
-        $attributes = [];
-        $this->initFilters();
-
         $batch = $this->importBatchRepository->update([
             'state'   => Import::STATE_PROCESSED,
             'summary' => [

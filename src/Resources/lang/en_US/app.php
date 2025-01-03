@@ -54,6 +54,7 @@ return [
             'update-success' => 'Credential Updated Success',
             'invalid'        => 'Invalid Credential',
             'invalidurl'     => 'Invalid URL',
+            'already_taken'  => 'The shop url has already been taken.',
             'index'          => [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',
@@ -136,6 +137,18 @@ return [
             'setting' => [
                 'credentialmapping' => 'Credential mapping',
             ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'Family not exist for the title:- :title 1st you need to import family',
+                    'variant-sku-not-exist' => 'Variant SKU not found in product:- :id',
+                    'duplicate-sku'         => ':sku :- Duplicate SKU Found in product',
+                    'required-field'        => ':attribute :- Field Is required for Sku:- :sku',
+                    'family-not-mapping'    => 'family not mapping for the title:- :title',
+                    'attribute-not-exist'   => ':attributes Attributes not exist for product',
+                    'not-found-sku'         => 'SKU not found in product:- :id',
+                    'option-not-found'      => ':attribute - :option Option is not found in the unopim sku:- :sku',
+                ],
+            ],
         ],
         'fields' => [
             'name'                        => 'Name',
@@ -158,6 +171,13 @@ return [
 
         ],
         'exportmapping' => 'Attribute Mappings',
+        'job'           => [
+            'credentials'      => 'Shopify Credential',
+            'channel'          => 'Channel',
+            'currency'         => 'Currency',
+            'productfilter'    => 'Product Filter (SKU)',
+            'locale'           => 'Locale',
+            'attribute-groups' => 'Attribute Groups',
+        ],
     ],
-
 ];

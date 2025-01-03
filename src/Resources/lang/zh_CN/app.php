@@ -23,6 +23,7 @@ return [
                 'shopify'         => 'Shopify',
                 'credentials'     => '凭据',
                 'export-mappings' => '导出映射',
+                'import-mappings' => '导入映射',
                 'settings'        => '设置',
             ],
         ],
@@ -54,6 +55,7 @@ return [
             'update-success' => '更新成功',
             'invalid'        => '无效凭据',
             'invalidurl'     => '无效的 URL',
+            'already_taken'  => '商店网址已被占用',
             'index'          => [
                 'title'                 => 'Shopify 凭据',
                 'create'                => '创建凭据',
@@ -112,6 +114,37 @@ return [
                 'invalid-locale'     => '无效的区域设置。请在凭据编辑部分中映射区域设置',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => '导入映射',
+                'back-btn'             => '返回',
+                'save'                 => '保存',
+                'created'              => '导入映射已成功保存',
+                'image'                => '用于图片的属性',
+                'filed-shopify'        => 'Shopify 字段',
+                'attribute'            => 'UnoPim 属性',
+                'variantimage'         => '用于变体图片的属性',
+                'other'                => 'Shopify 其他映射',
+                'family'               => '家族映射（用于产品）',
+                'metafieldDefinitions' => 'Shopify 元字段定义映射',
+            ],
+            'setting' => [
+                'credentialmapping' => '凭证映射',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => '标题为:- :title 的家族不存在，请先导入家族',
+                    'variant-sku-not-exist' => '产品中未找到变体 SKU:- :id',
+                    'duplicate-sku'         => ':sku :- 在产品中发现重复的 SKU',
+                    'required-field'        => ':attribute :- SKU:- :sku 的字段是必需的',
+                    'family-not-mapping'    => '标题为:- :title 的家族未映射',
+                    'attribute-not-exist'   => ':attributes 属性在产品中不存在',
+                    'not-found-sku'         => '产品中未找到 SKU:- :id',
+                    'option-not-found'      => ':attribute - :option 在 UnoPim SKU:- :sku 中未找到选项',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => '名称',
             'description'                 => '描述',
@@ -132,5 +165,14 @@ return [
             'inventory_cost'              => '库存成本',
         ],
         'exportmapping' => '属性映射',
+        'job'           => [
+            'credentials'      => 'Shopify 凭证',
+            'channel'          => '渠道',
+            'currency'         => '货币',
+            'productfilter'    => '产品过滤器 (SKU)',
+            'locale'           => '语言区域',
+            'attribute-groups' => '属性组',
+        ],
+
     ],
 ];

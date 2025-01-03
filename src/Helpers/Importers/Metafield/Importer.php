@@ -11,12 +11,14 @@ use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\ValidatedBatched;
 
 class Importer extends AbstractImporter
 {
     use ShopifyGraphqlRequest;
+    use ValidatedBatched;
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 100;
 
     /**
      * cursor position
@@ -209,7 +211,7 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            $attributeFormate = [
+            $attributeFormat = [
                 'code'        => $attribute['node']['key'],
                 'type'        => $this->attributeType[$metafieldType],
                 'namespace'   => $attribute['node']['namespace'],
@@ -219,10 +221,10 @@ class Importer extends AbstractImporter
             ];
 
             if ($metafieldType == 'number_integer') {
-                $attributeFormate['validation'] = 'number';
+                $attributeFormat['validation'] = 'number';
             }
 
-            $attributesArray[] = $attributeFormate;
+            $attributesArray[] = $attributeFormat;
         }
 
         return $attributesArray;
@@ -234,55 +236,6 @@ class Importer extends AbstractImporter
     public function validateData(): void
     {
         $this->saveValidatedBatches();
-    }
-
-    /**
-     * Save validated batches
-     */
-    protected function saveValidatedBatches(): self
-    {
-        $source = $this->getSource();
-
-        $batchRows = [];
-
-        $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
-        $this->importBatchRepository->deleteWhere([
-            'job_track_id' => $this->import->id,
-        ]);
-
-        while (
-            $source->valid()
-            || count($batchRows)
-        ) {
-            if (
-                count($batchRows) == self::BATCH_SIZE
-                || ! $source->valid()
-            ) {
-                $this->importBatchRepository->create([
-                    'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
-                ]);
-
-                $batchRows = [];
-            }
-
-            if ($source->valid()) {
-                $rowData = $source->current();
-
-                if ($this->validateRow($rowData, 1)) {
-                    $batchRows[] = $this->prepareRowForDb($rowData);
-                }
-
-                $this->processedRowsCount++;
-
-                $source->next();
-            }
-        }
-
-        return $this;
     }
 
     /**

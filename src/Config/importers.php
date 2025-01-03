@@ -9,7 +9,7 @@ return [
             'fields'  => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -19,7 +19,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'locale',
-                    'title'      => 'Locale',
+                    'title'      => 'shopify::app.shopify.job.locale',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -41,7 +41,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -51,7 +51,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'locale',
-                    'title'      => 'Locale',
+                    'title'      => 'shopify::app.shopify.job.locale',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -72,7 +72,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -82,7 +82,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'locale',
-                    'title'      => 'Locale',
+                    'title'      => 'shopify::app.shopify.job.locale',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -92,7 +92,7 @@ return [
                     'list_route' => 'shopify.locale.fetch-all',
                 ], [
                     'name'       => 'attributegroupid',
-                    'title'      => 'Attribute Groups',
+                    'title'      => 'shopify::app.shopify.job.attribute-groups',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -114,7 +114,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -124,7 +124,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'channel',
-                    'title'      => 'Channel',
+                    'title'      => 'shopify::app.shopify.job.channel',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -134,7 +134,7 @@ return [
                     'list_route' => 'shopify.channel.fetch-all',
                 ], [
                     'name'       => 'locale',
-                    'title'      => 'Locale',
+                    'title'      => 'shopify::app.shopify.job.locale',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -144,7 +144,7 @@ return [
                     'list_route' => 'shopify.locale.fetch-all',
                 ], [
                     'name'       => 'currency',
-                    'title'      => 'Currency',
+                    'title'      => 'shopify::app.shopify.job.currency',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -165,7 +165,7 @@ return [
             'fields' => [
                 [
                     'name'       => 'credentials',
-                    'title'      => 'Shopify credentials',
+                    'title'      => 'shopify::app.shopify.job.credentials',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',
@@ -175,7 +175,7 @@ return [
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
                     'name'       => 'locale',
-                    'title'      => 'Locale',
+                    'title'      => 'shopify::app.shopify.job.locale',
                     'required'   => true,
                     'validation' => 'required',
                     'type'       => 'select',

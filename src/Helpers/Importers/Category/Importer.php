@@ -16,13 +16,15 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\ValidatedBatched;
 
 class Importer extends AbstractImporter
 {
     use DataMappingTrait;
     use ShopifyGraphqlRequest;
+    use ValidatedBatched;
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 100;
 
     public const UNOPIM_ENTITY_NAME = 'category';
 
@@ -148,55 +150,6 @@ class Importer extends AbstractImporter
     public function validateData(): void
     {
         $this->saveValidatedBatches();
-    }
-
-    /**
-     * Save validated batches
-     */
-    protected function saveValidatedBatches(): self
-    {
-        $source = $this->getSource();
-
-        $batchRows = [];
-
-        $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
-        $this->importBatchRepository->deleteWhere([
-            'job_track_id' => $this->import->id,
-        ]);
-
-        while (
-            $source->valid()
-            || count($batchRows)
-        ) {
-            if (
-                count($batchRows) == self::BATCH_SIZE
-                || ! $source->valid()
-            ) {
-                $this->importBatchRepository->create([
-                    'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
-                ]);
-
-                $batchRows = [];
-            }
-
-            if ($source->valid()) {
-                $rowData = $source->current();
-
-                if ($this->validateRow($rowData, 1)) {
-                    $batchRows[] = $this->prepareRowForDb($rowData);
-                }
-
-                $this->processedRowsCount++;
-
-                $source->next();
-            }
-        }
-
-        return $this;
     }
 
     /**
@@ -357,15 +310,5 @@ class Importer extends AbstractImporter
     public function validateRow(array $rowData, int $rowNumber): bool
     {
         return true;
-    }
-
-    /**
-     * Get Categories linked to channel which should not be deleted
-     */
-    public function getNonDeletableCategories(): void
-    {
-        if (! $this->nonDeletableCategories) {
-            $this->nonDeletableCategories = $this->channelRepository->pluck('root_category_id')->toArray();
-        }
     }
 }

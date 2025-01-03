@@ -191,6 +191,7 @@ class OptionController extends Controller
         $query = request()->get('query') ?? '';
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId', 'notInclude']);
         $attributeRepository = $this->attributeRepository;
+
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
             $attributeRepository = in_array('number', $entityName)
@@ -360,7 +361,6 @@ class OptionController extends Controller
                     'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
                 ];
             }
-
         }
 
         return new JsonResponse($formattedoptions);

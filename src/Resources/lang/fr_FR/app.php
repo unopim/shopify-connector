@@ -23,6 +23,7 @@ return [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'Identifiants',
                 'export-mappings' => 'Mappages d\'exportation',
+                'import-mappings' => 'Importer les correspondances',
                 'settings'        => 'Paramètres',
             ],
         ],
@@ -54,6 +55,7 @@ return [
             'update-success' => 'Mise à jour réussie',
             'invalid'        => 'Identifiant invalide',
             'invalidurl'     => 'URL invalide',
+            'already_taken'  => 'L URL de la boutique a déjà été prise.',
             'index'          => [
                 'title'                 => 'Identifiants Shopify',
                 'create'                => 'Créer un identifiant',
@@ -111,6 +113,37 @@ return [
                 'invalid-locale'     => 'Locale invalide. Veuillez mapper la locale dans la section de modification des identifiants.',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'Mappings d’importation',
+                'back-btn'             => 'Retour',
+                'save'                 => 'Enregistrer',
+                'created'              => 'Mapping d’importation enregistré avec succès',
+                'image'                => 'Attribut utilisé comme image',
+                'filed-shopify'        => 'Champ dans Shopify',
+                'attribute'            => 'Attribut UnoPim',
+                'variantimage'         => 'Attribut utilisé comme image de variante',
+                'other'                => 'Autres mappings Shopify',
+                'family'               => 'Mapping de la famille (pour les produits)',
+                'metafieldDefinitions' => 'Mapping des définitions de champs personnalisés Shopify',
+            ],
+            'setting' => [
+                'credentialmapping' => 'Mapping des identifiants',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'La famille n’existe pas pour le titre : - :title. Vous devez d’abord importer la famille',
+                    'variant-sku-not-exist' => 'SKU de variante introuvable dans le produit : - :id',
+                    'duplicate-sku'         => ':sku : - SKU en double trouvé dans le produit',
+                    'required-field'        => ':attribute : - Le champ est requis pour le SKU : - :sku',
+                    'family-not-mapping'    => 'La famille n’est pas mappée pour le titre : - :title',
+                    'attribute-not-exist'   => 'Les attributs :attributes n’existent pas pour le produit',
+                    'not-found-sku'         => 'SKU introuvable dans le produit : - :id',
+                    'option-not-found'      => ':attribute - :option L’option est introuvable dans le SKU UnoPim : - :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'Nom',
             'description'                 => 'Description',
@@ -131,5 +164,14 @@ return [
             'inventory_cost'              => 'Coût des stocks',
         ],
         'exportmapping' => 'Mappages des attributs',
+        'job'           => [
+            'credentials'      => 'Identifiants Shopify',
+            'channel'          => 'Canal',
+            'currency'         => 'Devise',
+            'productfilter'    => 'Filtre de produits (SKU)',
+            'locale'           => 'Langue',
+            'attribute-groups' => 'Groupes d’attributs',
+        ],
+
     ],
 ];
