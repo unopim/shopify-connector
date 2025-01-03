@@ -44,7 +44,7 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 100;
 
     /**
      * @var array
@@ -89,7 +89,7 @@ class Exporter extends AbstractExporter
 
     protected $metaFieldAttributeCode = [];
 
-    protected $defintiionMapping = [];
+    protected $definitionMapping = [];
 
     protected $productId = [];
 
@@ -159,7 +159,7 @@ class Exporter extends AbstractExporter
         $this->jobChannel = $filters['channel'];
 
         $this->credential = $this->shopifyRepository->find($filters['credentials']);
-        $this->defintiionMapping = $this->credential?->extras;
+        $this->definitionMapping = $this->credential?->extras;
 
         $mappings = $this->shopifyExportmapping->findMany([1, 2]);
 
@@ -614,8 +614,7 @@ class Exporter extends AbstractExporter
         array $finalOption,
         array $parentMapping
     ): array {
-
-        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->defintiionMapping);
+        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->definitionMapping);
         $this->metaFieldAttributeCode = $this->shopifyGraphQLDataFormatter->getMetafieldAttrCode();
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
