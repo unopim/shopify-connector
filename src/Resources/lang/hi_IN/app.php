@@ -7,12 +7,24 @@ return [
             'category' => 'Shopify श्रेणी',
         ],
     ],
+
+    'importers' => [
+        'shopify' => [
+            'product'  => 'शोपिफाई उत्पाद',
+            'category' => 'शोपिफाई श्रेणी',
+            'attribute'=> 'शोपिफाई विशेषता',
+            'family'   => 'शोपिफाई परिवार',
+            'metafield'=> 'शॉपिफ़ाई मेटाफ़ील्ड परिभाषाएँ',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'प्रमाण पत्र',
                 'export-mappings' => 'निर्यात मानचित्रण',
+                'import-mappings' => 'आयात मैपिंग्स',
                 'settings'        => 'सेटिंग्स',
             ],
         ],
@@ -44,6 +56,7 @@ return [
             'update-success' => 'सफलतापूर्वक अपडेट किया गया',
             'invalid'        => 'अमान्य प्रमाण पत्र',
             'invalidurl'     => 'अमान्य URL',
+            'already_taken'  => 'शॉप यूआरएल पहले ही लिया जा चुका है।',
             'index'          => [
                 'title'                 => 'Shopify प्रमाण पत्र',
                 'create'                => 'प्रमाण पत्र बनाएं',
@@ -100,6 +113,37 @@ return [
                 'invalid-credential' => 'अमान्य क्रेडेंशियल। क्रेडेंशियल या तो अक्षम है या गलत है',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'आयात मैपिंग्स',
+                'back-btn'             => 'वापस',
+                'save'                 => 'सहेजें',
+                'created'              => 'आयात मैपिंग सफलतापूर्वक सहेजा गया',
+                'image'                => 'चित्र के रूप में उपयोग करने के लिए गुण',
+                'filed-shopify'        => 'Shopify में फ़ील्ड',
+                'attribute'            => 'UnoPim गुण',
+                'variantimage'         => 'वेरिएंट छवि के रूप में उपयोग करने के लिए गुण',
+                'other'                => 'Shopify अन्य मैपिंग्स',
+                'family'               => 'परिवार मैपिंग (उत्पादों के लिए)',
+                'metafieldDefinitions' => 'Shopify मेटाफील्ड परिभाषा मैपिंग',
+            ],
+            'setting' => [
+                'credentialmapping' => 'क्रेडेंशियल मैपिंग',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'शीर्षक के लिए परिवार मौजूद नहीं है:- :title पहले आपको परिवार आयात करना होगा',
+                    'variant-sku-not-exist' => 'वेरिएंट SKU उत्पाद में नहीं मिला:- :id',
+                    'duplicate-sku'         => ':sku :- उत्पाद में डुप्लिकेट SKU पाया गया',
+                    'required-field'        => ':attribute :- फ़ील्ड SKU के लिए आवश्यक है:- :sku',
+                    'family-not-mapping'    => 'शीर्षक के लिए परिवार मैप नहीं किया गया है:- :title',
+                    'attribute-not-exist'   => ':attributes गुण उत्पाद के लिए मौजूद नहीं हैं',
+                    'not-found-sku'         => 'उत्पाद में SKU नहीं मिला:- :id',
+                    'option-not-found'      => ':attribute - :option विकल्प UnoPim SKU में नहीं मिला:- :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'नाम',
             'description'                 => 'विवरण',
@@ -120,5 +164,13 @@ return [
             'inventory_cost'              => 'भंडार लागत',
         ],
         'exportmapping' => 'विशेषता मानचित्रण',
+        'job'           => [
+            'credentials'      => 'Shopify प्रमाण-पत्र',
+            'channel'          => 'चैनल',
+            'currency'         => 'मुद्रा',
+            'productfilter'    => 'उत्पाद फ़िल्टर (SKU)',
+            'locale'           => 'भाषा',
+            'attribute-groups' => 'गुण समूह',
+        ],
     ],
 ];

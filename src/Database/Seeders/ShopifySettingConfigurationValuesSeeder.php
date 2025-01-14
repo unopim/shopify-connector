@@ -23,6 +23,11 @@ class ShopifySettingConfigurationValuesSeeder extends Seeder
                 'extras'     => null,
                 'created_at' => now(),
                 'updated_at' => now(),
+            ], [
+                'mapping'    => null,
+                'extras'     => null,
+                'created_at' => now(),
+                'updated_at' => now(),
             ],
         ]);
     }

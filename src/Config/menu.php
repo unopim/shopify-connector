@@ -22,10 +22,16 @@ return [
         'params' => [1],
         'sort'   => 2,
     ], [
+        'key'    => 'shopify.import-mappings',
+        'name'   => 'shopify::app.components.layouts.sidebar.import-mappings',
+        'route'  => 'admin.shopify.import-mappings',
+        'params' => [3],
+        'sort'   => 3,
+    ], [
         'key'    => 'shopify.settings',
         'name'   => 'shopify::app.components.layouts.sidebar.settings',
         'route'  => 'admin.shopify.settings',
         'params' => [2],
-        'sort'   => 3,
+        'sort'   => 4,
     ],
 ];

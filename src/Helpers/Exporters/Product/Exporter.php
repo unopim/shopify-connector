@@ -51,6 +51,14 @@ class Exporter extends AbstractExporter
      */
     protected $channelsAndLocales = [];
 
+    protected $childImageAttr = [];
+
+    protected $removeImgAttr = [];
+
+    protected $parentImageAttr = [];
+
+    protected $parentRemoveImgAttr = [];
+
     /**
      * @var array
      */
@@ -80,6 +88,8 @@ class Exporter extends AbstractExporter
     protected $collectionsToLeaveIds = [];
 
     protected $metaFieldAttributeCode = [];
+
+    protected $definitionMapping = [];
 
     protected $productId = [];
 
@@ -149,6 +159,7 @@ class Exporter extends AbstractExporter
         $this->jobChannel = $filters['channel'];
 
         $this->credential = $this->shopifyRepository->find($filters['credentials']);
+        $this->definitionMapping = $this->credential?->extras;
 
         $mappings = $this->shopifyExportmapping->findMany([1, 2]);
 
@@ -168,9 +179,9 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialAsArray = [
-            'shopUrl'     => $this->credential->shopUrl,
-            'accessToken' => $this->credential->accessToken,
-            'apiVersion'  => $this->credential->apiVersion,
+            'shopUrl'     => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion'  => $this->credential?->apiVersion,
         ];
     }
 
@@ -326,7 +337,7 @@ class Exporter extends AbstractExporter
 
         $formattedGraphqlData = $this->formatGraphqlData($mergedFields, $parentMergedFields, $finalCategories, $finalOption, $parentMapping);
 
-        $imageData = $this->formatDataForGraphqlImage($mergedFields, $this->exportMapping->mapping['shopify_connector_settings'], $parentMergedFields ?? []);
+        $imageData = $this->formatDataForGraphqlImage($mergedFields, $this->exportMapping->mapping['shopify_connector_settings'] ?? [], $parentMergedFields ?? []);
 
         if (! empty($imageData)) {
             $this->imageData = array_merge($imageData[$rowData['sku']] ?? [], $imageData[@$parentData['sku']] ?? []);
@@ -603,7 +614,7 @@ class Exporter extends AbstractExporter
         array $finalOption,
         array $parentMapping
     ): array {
-        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping, $this->shopifyDefaultLocale, $parentMergedFields);
+        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->definitionMapping);
         $this->metaFieldAttributeCode = $this->shopifyGraphQLDataFormatter->getMetafieldAttrCode();
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
@@ -771,7 +782,7 @@ class Exporter extends AbstractExporter
             );
 
             $matchedAttr = array_intersect_key(
-                $this->exportMapping->mapping['shopify_connector_settings'],
+                $this->exportMapping->mapping['shopify_connector_settings'] ?? [],
                 array_flip($this->translationShopifyFields)
             );
 
@@ -883,13 +894,37 @@ class Exporter extends AbstractExporter
         string $productId,
         array $rowData,
         array $parentData,
-        array $imageData
+        array $imageData,
     ): void {
         if (! empty($this->updateMedia)) {
-            $this->requestGraphQlApiAction('productUpdateMedia', $this->credentialAsArray, [
+            $productMedias = $this->requestGraphQlApiAction('productUpdateMedia', $this->credentialAsArray, [
                 'productId' => $productId,
                 'media'     => $this->updateMedia,
             ]);
+
+            $mediaIdsUnassign = $productMedias['body']['data']['productUpdateMedia']['media'] ?? [];
+            $removingIds = array_values(array_filter($this->removeImgAttr));
+            $input = array_map(function ($media) use ($productId) {
+                return [
+                    'id'              => $media['id'],
+                    'referencesToAdd' => [$productId],
+                ];
+            }, $mediaIdsUnassign);
+            $inputs = [];
+            if (! empty($removingIds)) {
+                $inputs = array_map(function ($mediaRemove) use ($productId) {
+                    return [
+                        'id'                 => $mediaRemove,
+                        'referencesToRemove' => [$productId],
+                    ];
+                }, $removingIds);
+            }
+
+            $input = array_merge($input, $inputs);
+
+            $jsonData = ['input' => $input];
+
+            $this->requestGraphQlApiAction('productFileUpdate', $this->credentialAsArray, $jsonData);
         }
 
         if (! empty($this->imageData)) {
@@ -901,12 +936,11 @@ class Exporter extends AbstractExporter
             $resultImage = $this->requestGraphQlApiAction('productCreateMedia', $this->credentialAsArray, $newImageAdded);
 
             $mediasUpdate = $this->updateMedia = $resultImage['body']['data']['productCreateMedia']['media'];
-
             if (! empty($mediasUpdate)) {
-                $this->mapMediaImages($rowData, $mediasUpdate, $productId, $imageData);
+                $this->mapMediaImages($rowData, $mediasUpdate, $productId, $imageData, $this->childImageAttr);
 
                 if (! empty($parentData)) {
-                    $this->mapMediaImages($parentData, $mediasUpdate, $productId, $imageData);
+                    $this->mapMediaImages($parentData, $mediasUpdate, $productId, $imageData, $this->parentImageAttr);
                 }
             }
         }
@@ -915,12 +949,12 @@ class Exporter extends AbstractExporter
     /**
      * Maps media images to a Shopify product and updates the media information.
      * */
-    private function mapMediaImages(array $data, array &$mediasUpdate, string $productId, array $imageData): void
+    private function mapMediaImages(array $data, array &$mediasUpdate, string $productId, array $imageData, array $mappingImageAttr): void
     {
         foreach ($imageData[$data['sku']] ?? [] as $key => $imageUrl) {
             $this->imageMapping(
                 'productImage',
-                $this->imageAttributes[$key],
+                $mappingImageAttr[$key],
                 $mediasUpdate[$key]['id'],
                 $this->export->id,
                 $productId,
@@ -1151,6 +1185,8 @@ class Exporter extends AbstractExporter
     {
         $commonFields = $this->getCommonFields($rowData);
 
+        $commonFields['status'] = $rowData['status'] == 1 ? 'true' : 'false';
+
         $localeSpecificFields = $this->getLocaleSpecificFields($rowData, $this->shopifyDefaultLocale);
 
         $channelSpecificFields = $this->getChannelSpecificFields($rowData, $this->jobChannel);
@@ -1292,7 +1328,7 @@ class Exporter extends AbstractExporter
     /**
      * Handles Product images.
      */
-    public function formatDataForGraphqlImage(array $rawData, array $exportSeting, array $parentrawData, ?string $parentId = null): array
+    public function formatDataForGraphqlImage(array $rawData, array $exportSeting, array $parentrawData): array
     {
         $medias = [];
 
@@ -1302,12 +1338,24 @@ class Exporter extends AbstractExporter
             $updateMedia = [];
 
             foreach ($imagesAttr as $imageAttr) {
+
                 if (! empty($rawData[$imageAttr])) {
                     $medias = $this->processMedia($imageAttr, $rawData, $imageAttrCode, $updateMedia, $medias);
+                    $this->childImageAttr[] = $imageAttr;
+                } else {
+                    $mappingImageC = $this->checkMappingInDbForImage($imageAttr, 'productImage', $rawData['sku']);
+                    $this->removeImgAttr[] = $mappingImageC[0]['externalId'] ?? null;
                 }
 
                 if (! empty($parentrawData[$imageAttr])) {
                     $medias = $this->processMedia($imageAttr, $parentrawData, $imageAttrCode, $updateMedia, $medias);
+                    $this->parentImageAttr[] = $imageAttr;
+                } else {
+                    if (isset($parentrawData['sku'])) {
+                        $mappingImageP = $this->checkMappingInDbForImage($imageAttr, 'productImage', $parentrawData['sku']);
+                        $this->removeImgAttr[] = $mappingImageP[0]['externalId'] ?? null;
+                    }
+
                 }
             }
 

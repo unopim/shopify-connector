@@ -22,6 +22,10 @@ trait ShopifyGraphqlRequest
      */
     protected function requestGraphQlApiAction(string $mutationType, ?array $credential = [], ?array $formatedVariable = []): array
     {
+        if (! $credential || ! isset($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion'])) {
+            throw new \InvalidArgumentException('Invalid Shopify credentials provided.');
+        }
+
         $credential = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
 
         $response = $credential->request($mutationType, $formatedVariable);

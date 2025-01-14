@@ -7,12 +7,24 @@ return [
             'category' => 'فئة شوبفاي',
         ],
     ],
+
+    'importers' => [
+        'shopify' => [
+            'product'  => 'منتج شوبيفاي',
+            'category' => 'فئة شوبيفاي',
+            'attribute'=> 'خاصية شوبيفاي',
+            'family'   => 'عائلة شوبيفاي',
+            'metafield'=> 'تعريفات الحقول الوصفية في شوبيفاي',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'شوبفاي',
                 'credentials'     => 'بيانات الاعتماد',
                 'export-mappings' => 'تعيينات التصدير',
+                'import-mappings' => 'استيراد التعيينات',
                 'settings'        => 'الإعدادات',
             ],
         ],
@@ -44,6 +56,7 @@ return [
             'update-success' => 'تم التحديث بنجاح',
             'invalid'        => 'بيانات الاعتماد غير صالحة',
             'invalidurl'     => 'رابط غير صالح',
+            'already_taken'  => 'تم استخدام عنوان URL للمتجر بالفعل.',
             'index'          => [
                 'title'                 => 'بيانات اعتماد شوبفاي',
                 'create'                => 'إنشاء بيانات اعتماد',
@@ -100,6 +113,37 @@ return [
                 'invalid-credential' => 'بيانات الاعتماد غير صالحة. بيانات الاعتماد معطلة أو غير صحيحة',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'خرائط الاستيراد',
+                'back-btn'             => 'رجوع',
+                'save'                 => 'حفظ',
+                'created'              => 'تم حفظ خريطة الاستيراد بنجاح',
+                'image'                => 'السمة المستخدمة كصورة',
+                'filed-shopify'        => 'الحقل في Shopify',
+                'attribute'            => 'سمة UnoPim',
+                'variantimage'         => 'السمة المستخدمة كصورة للمتغير',
+                'other'                => 'خرائط أخرى في Shopify',
+                'family'               => 'تعيين العائلة (للمنتجات)',
+                'metafieldDefinitions' => 'تعيين تعريف الحقول الوصفية في Shopify',
+            ],
+            'setting' => [
+                'credentialmapping' => 'تعيين بيانات الاعتماد',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'العائلة غير موجودة للعنوان: - :title أولاً تحتاج إلى استيراد العائلة',
+                    'variant-sku-not-exist' => 'لم يتم العثور على SKU للمتغير في المنتج: - :id',
+                    'duplicate-sku'         => ':sku : - تم العثور على SKU مكرر في المنتج',
+                    'required-field'        => ':attribute : - الحقل مطلوب للـ SKU: - :sku',
+                    'family-not-mapping'    => 'العائلة غير مخصصة للعنوان: - :title',
+                    'attribute-not-exist'   => ':attributes السمة غير موجودة للمنتج',
+                    'not-found-sku'         => 'SKU غير موجود في المنتج: - :id',
+                    'option-not-found'      => ':attribute - :option الخيار غير موجود في SKU في UnoPim: - :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'اسم',
             'description'                 => 'وصف',
@@ -120,5 +164,13 @@ return [
             'inventory_cost'              => 'تكلفة المخزون',
         ],
         'exportmapping' => 'تعيينات الخصائص',
+        'job'           => [
+            'credentials'      => 'بيانات اعتماد Shopify',
+            'channel'          => 'القناة',
+            'currency'         => 'العملة',
+            'productfilter'    => 'مرشح المنتج (SKU)',
+            'locale'           => 'اللغة',
+            'attribute-groups' => 'مجموعات السمات',
+        ],
     ],
 ];

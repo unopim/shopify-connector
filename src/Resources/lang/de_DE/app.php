@@ -7,12 +7,23 @@ return [
             'category' => 'Shopify-Kategorie',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Shopify-Produkt',
+            'category' => 'Shopify-Kategorie',
+            'attribute'=> 'Shopify-Attribut',
+            'family'   => 'Shopify-Familie',
+            'metafield'=> 'Metafelddefinitionen von Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'Anmeldeinformationen',
                 'export-mappings' => 'Export-Zuordnungen',
+                'import-mappings' => 'Importzuordnungen',
                 'settings'        => 'Einstellungen',
             ],
         ],
@@ -44,6 +55,7 @@ return [
             'update-success' => 'Erfolgreich aktualisiert',
             'invalid'        => 'Ungültige Anmeldeinformationen',
             'invalidurl'     => 'Ungültige URL',
+            'already_taken'  => 'Die Shop-URL wurde bereits verwendet.',
             'index'          => [
                 'title'                 => 'Shopify-Anmeldeinformationen',
                 'create'                => 'Anmeldeinformationen erstellen',
@@ -101,6 +113,37 @@ return [
                 'invalid-locale'     => 'Ungültige Locale. Bitte mappen Sie die Locale im Abschnitt zur Bearbeitung der Anmeldeinformationen.',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'Importzuordnungen',
+                'back-btn'             => 'Zurück',
+                'save'                 => 'Speichern',
+                'created'              => 'Importzuordnung erfolgreich gespeichert',
+                'image'                => 'Attribut, das als Bild verwendet wird',
+                'filed-shopify'        => 'Feld in Shopify',
+                'attribute'            => 'UnoPim-Attribut',
+                'variantimage'         => 'Attribut, das als Variantenbild verwendet wird',
+                'other'                => 'Andere Shopify-Zuordnungen',
+                'family'               => 'Familienzuordnung (für Produkte)',
+                'metafieldDefinitions' => 'Shopify-Metafeld-Definitionszuordnung',
+            ],
+            'setting' => [
+                'credentialmapping' => 'Anmeldezuordnung',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'Familie existiert nicht für den Titel: - :title. Sie müssen zuerst die Familie importieren',
+                    'variant-sku-not-exist' => 'Varianten-SKU wurde im Produkt nicht gefunden: - :id',
+                    'duplicate-sku'         => ':sku : - Doppelte SKU im Produkt gefunden',
+                    'required-field'        => ':attribute : - Feld ist erforderlich für SKU: - :sku',
+                    'family-not-mapping'    => 'Familie nicht zugeordnet für den Titel: - :title',
+                    'attribute-not-exist'   => ':attributes Attribute existieren nicht für das Produkt',
+                    'not-found-sku'         => 'SKU wurde im Produkt nicht gefunden: - :id',
+                    'option-not-found'      => ':attribute - :option Option wurde in der UnoPim-SKU nicht gefunden: - :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'Name',
             'description'                 => 'Beschreibung',
@@ -121,5 +164,14 @@ return [
             'inventory_cost'              => 'Lagerkosten',
         ],
         'exportmapping' => 'Attributzuordnungen',
+        'job'           => [
+            'credentials'      => 'Shopify-Zugangsdaten',
+            'channel'          => 'Kanal',
+            'currency'         => 'Währung',
+            'productfilter'    => 'Produktfilter (SKU)',
+            'locale'           => 'Sprache',
+            'attribute-groups' => 'Attributgruppen',
+        ],
+
     ],
 ];

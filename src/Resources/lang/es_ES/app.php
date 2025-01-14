@@ -7,12 +7,23 @@ return [
             'category' => 'Categoría de Shopify',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Producto Shopify',
+            'category' => 'Categoría Shopify',
+            'attribute'=> 'Atributo Shopify',
+            'family'   => 'Familia Shopify',
+            'metafield'=> 'Definiciones de metacampos de Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'Credenciales',
                 'export-mappings' => 'Mapeos de Exportación',
+                'import-mappings' => 'Mapas de importación',
                 'settings'        => 'Configuraciones',
             ],
         ],
@@ -44,6 +55,7 @@ return [
             'update-success' => 'Actualización Exitosa',
             'invalid'        => 'Credencial Inválida',
             'invalidurl'     => 'URL Inválida',
+            'already_taken'  => 'La URL de la tienda ya ha sido tomada.',
             'index'          => [
                 'title'                 => 'Credenciales de Shopify',
                 'create'                => 'Crear Credencial',
@@ -91,6 +103,7 @@ return [
                 'metafields'                   => 'Configuración de Exportación de Meta Fields',
                 'metaFieldsKey'                => 'Usar Clave para Meta Field como Código/Label del Atributo',
                 'metaFieldsNameSpace'          => 'Usar Namespace para Meta Field como Código de Grupo de Atributo/global',
+                'crednetials'                  => 'Select Credentials',
                 'other-settings'               => 'Otras Configuraciones',
                 'roundof-attribute-value'      => 'Eliminar Decimales Extras de los Valores Métricos (ej. 201.2000 como 201.2)',
                 'option_name_label'            => 'Valor para el Nombre de Opción como Label del Atributo (Por Defecto Código de Atributo)',
@@ -101,6 +114,37 @@ return [
                 'invalid-locale'     => 'Localización no válida. Por favor, mapea la localización en la sección de edición de credenciales',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'Mapeos de Importación',
+                'back-btn'             => 'Volver',
+                'save'                 => 'Guardar',
+                'created'              => 'El mapeo de importación se guardó correctamente',
+                'image'                => 'Atributo utilizado como imagen',
+                'filed-shopify'        => 'Campo en Shopify',
+                'attribute'            => 'Atributo de UnoPim',
+                'variantimage'         => 'Atributo utilizado como imagen de variante',
+                'other'                => 'Otros mapeos en Shopify',
+                'family'               => 'Mapeo de familia (para productos)',
+                'metafieldDefinitions' => 'Mapeo de definiciones de campos personalizados de Shopify',
+            ],
+            'setting' => [
+                'credentialmapping' => 'Mapeo de credenciales',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'La familia no existe para el título: - :title. Primero necesitas importar la familia',
+                    'variant-sku-not-exist' => 'El SKU de la variante no se encontró en el producto: - :id',
+                    'duplicate-sku'         => ':sku : - Se encontró un SKU duplicado en el producto',
+                    'required-field'        => ':attribute : - El campo es obligatorio para el SKU: - :sku',
+                    'family-not-mapping'    => 'La familia no está mapeada para el título: - :title',
+                    'attribute-not-exist'   => 'Los atributos :attributes no existen para el producto',
+                    'not-found-sku'         => 'El SKU no se encontró en el producto: - :id',
+                    'option-not-found'      => ':attribute - :option La opción no se encuentra en el SKU de UnoPim: - :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'Nombre',
             'description'                 => 'Descripción',
@@ -121,5 +165,13 @@ return [
             'inventory_cost'              => 'Costo de Inventario',
         ],
         'exportmapping' => 'Mapeo de Atributos',
+        'job'           => [
+            'credentials'      => 'Credenciales de Shopify',
+            'channel'          => 'Canal',
+            'currency'         => 'Moneda',
+            'productfilter'    => 'Filtro de productos (SKU)',
+            'locale'           => 'Idioma',
+            'attribute-groups' => 'Grupos de atributos',
+        ],
     ],
 ];

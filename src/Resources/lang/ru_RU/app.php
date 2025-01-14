@@ -7,12 +7,23 @@ return [
             'category' => 'Shopify категория',
         ],
     ],
+    'importers' => [
+        'shopify' => [
+            'product'  => 'Продукт Shopify',
+            'category' => 'Категория Shopify',
+            'attribute'=> 'Атрибут Shopify',
+            'family'   => 'Семья Shopify',
+            'metafield'=> 'Определения метаполей Shopify',
+        ],
+    ],
+
     'components' => [
         'layouts' => [
             'sidebar' => [
                 'shopify'         => 'Shopify',
                 'credentials'     => 'Учетные данные',
                 'export-mappings' => 'Экспортные сопоставления',
+                'import-mappings' => 'Импорт маппингов',
                 'settings'        => 'Настройки',
             ],
         ],
@@ -44,6 +55,7 @@ return [
             'update-success' => 'Успешно обновлено',
             'invalid'        => 'Неверные учетные данные',
             'invalidurl'     => 'Неверный URL',
+            'already_taken'  => 'URL магазина уже занят.',
             'index'          => [
                 'title'                 => 'Учетные данные Shopify',
                 'create'                => 'Создать учетные данные',
@@ -102,6 +114,37 @@ return [
                 'invalid-locale'     => 'Неверный локаль. Пожалуйста, настройте локаль в разделе редактирования учетных данных.',
             ],
         ],
+        'import' => [
+            'mapping' => [
+                'title'                => 'Маппинг импорта',
+                'back-btn'             => 'Назад',
+                'save'                 => 'Сохранить',
+                'created'              => 'Маппинг импорта успешно сохранен',
+                'image'                => 'Атрибут, используемый как изображение',
+                'filed-shopify'        => 'Поле в Shopify',
+                'attribute'            => 'Атрибут UnoPim',
+                'variantimage'         => 'Атрибут, используемый как изображение вариации',
+                'other'                => 'Другие маппинги Shopify',
+                'family'               => 'Маппинг семейства (для продуктов)',
+                'metafieldDefinitions' => 'Маппинг определения метаполя Shopify',
+            ],
+            'setting' => [
+                'credentialmapping' => 'Маппинг учетных данных',
+            ],
+            'job' => [
+                'product' => [
+                    'family-not-exist'      => 'Семейство не существует для заголовка: - :title. Сначала нужно импортировать семейство',
+                    'variant-sku-not-exist' => 'SKU вариации не найдено в продукте: - :id',
+                    'duplicate-sku'         => ':sku : - Найдено дублирующееся SKU в продукте',
+                    'required-field'        => ':attribute : - Поле обязательно для SKU: - :sku',
+                    'family-not-mapping'    => 'Семейство не сопоставлено для заголовка: - :title',
+                    'attribute-not-exist'   => 'Атрибуты :attributes не существуют для продукта',
+                    'not-found-sku'         => 'SKU не найдено в продукте: - :id',
+                    'option-not-found'      => ':attribute - :option Опция не найдена в SKU UnoPim: - :sku',
+                ],
+            ],
+        ],
+
         'fields' => [
             'name'                        => 'Название',
             'description'                 => 'Описание',
@@ -122,6 +165,15 @@ return [
             'inventory_cost'              => 'Стоимость инвентаря',
         ],
         'exportmapping' => 'Сопоставления атрибутов',
+        'job'           => [
+            'credentials'      => 'Учетные данные Shopify',
+            'channel'          => 'Канал',
+            'currency'         => 'Валюта',
+            'productfilter'    => 'Фильтр продуктов (SKU)',
+            'locale'           => 'Языковая локаль',
+            'attribute-groups' => 'Группы атрибутов',
+        ],
+
     ],
 
 ];

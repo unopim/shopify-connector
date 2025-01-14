@@ -32,9 +32,14 @@ return [
         'route' => 'admin.shopify.export-mappings',
         'sort'  => 2,
     ], [
+        'key'   => 'shopify.import-mappings',
+        'name'  => 'shopify::app.components.layouts.sidebar.import-mappings',
+        'route' => 'admin.shopify.import-mappings',
+        'sort'  => 3,
+    ], [
         'key'   => 'shopify.settings',
         'name'  => 'shopify::app.components.layouts.sidebar.settings',
         'route' => 'admin.shopify.settings',
-        'sort'  => 3,
+        'sort'  => 4,
     ],
 ];
