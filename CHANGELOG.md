@@ -1,3 +1,7 @@
+# 1.1.0
+- Import **Categories** from Shopify to UnoPim.
+- Import **Products** from Shopify to UnoPim
+
 # 1.0.0 - "Here We Go" (14-10-2024)
 
 ## Features
