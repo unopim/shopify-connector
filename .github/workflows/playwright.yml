@@ -1,4 +1,4 @@
-name: Playwright Test with UnoPim Setup
+name: Shopify Connector Playwright Tests
 
 on:
   push:
@@ -9,8 +9,16 @@ on:
       - main
 
 jobs:
-  run-tests:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ${{ matrix.operating-systems }}
+
+    strategy:
+      matrix:
+        operating-systems: [ubuntu-latest]
+        php-versions: ['8.2']
+
+    name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
+
     services:
       mysql:
         image: mysql:8.0
@@ -22,72 +30,65 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-        extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
-        ini-values: error_reporting=E_ALL
-        tools: composer:v2
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
+          ini-values: error_reporting=E_ALL
+          tools: composer
 
-    - name: Clone UnoPim
-      run: |
-        git clone https://github.com/unopim/unopim/releases/download/v0.1.6/unopim-v0.1.6.tar.gz unopim
-        cd unopim
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -u root -proot --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
 
-    - name: Install UnoPim dependencies
-      run: |
-        cd unopim
-        composer install
+      - name: Grant MySQL privileges
+        run: |
+          mysql -h 127.0.0.1 -u root -proot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION; FLUSH PRIVILEGES;"
 
-    - name: Set Environment
-      run: |
-        cd unopim
-        cp .env.example .env
-        sed -i "s|^APP_ENV=.*$|APP_ENV=testing|" .env
-        sed -i "s|^DB_HOST=.*$|DB_HOST=127.0.0.1|" .env
-        sed -i "s|^DB_PORT=.*$|DB_PORT=3306|" .env
-        sed -i "s|^DB_DATABASE=.*$|DB_DATABASE=unopim|" .env
-        sed -i "s|^DB_USERNAME=.*$|DB_USERNAME=root|" .env
-        sed -i "s|^DB_PASSWORD=.*$|DB_PASSWORD=root|" .env
+      - name: Install UnoPIM
+        run: |
+          git clone https://github.com/unopim/unopim.git
+          cd unopim
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          sed -i "s|^DB_HOST=.*|DB_HOST=127.0.0.1|" .env
+          sed -i "s|^DB_PORT=.*|DB_PORT=3306|" .env
+          sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
+          sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
+          sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
+          php artisan unopim:install --skip-env-check --skip-admin-creation
 
-    - name: Install UnoPim
-      run: |
-        cd unopim
-        php artisan unopim:install --skip-env-check --skip-admin-creation
+      - name: Install Shopify Connector Plugin
+        run: |
+          cd unopim
+          composer require unopim/shopify-connector
+          composer dump-autoload
+          php artisan shopify-package:install
+          php artisan optimize:clear
 
-    - name: Install Shopify Connector
-      run: |
-        cd unopim
-        composer require unopim/shopify-connector
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-    - name: Run UnoPim Artisan commands
-      run: |
-        cd unopim
-        composer dump-autoload
-        php artisan shopify-package:install
-        php artisan optimize:clear
-        php artisan serve --host=127.0.0.1 --port=8000 &
+      - name: Install Playwright dependencies
+        run: |
+          npm install
+          npx playwright install --with-deps
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
+      - name: Run Playwright tests
+        run: npx playwright test
 
-    - name: Install Playwright dependencies
-      run: npm install
-
-    - name: Install Playwright Browsers
-      run: npx playwright install
-
-    - name: Run Playwright tests
-      run: npx playwright test
-
-    - name: Upload Playwright videos
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-videos
-        path: videos/
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report
