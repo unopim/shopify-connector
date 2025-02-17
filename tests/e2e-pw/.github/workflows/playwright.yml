@@ -1,0 +1,93 @@
+name: Playwright Test with UnoPim Setup
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: unopim
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
+        ini-values: error_reporting=E_ALL
+        tools: composer:v2
+
+    - name: Clone UnoPim
+      run: |
+        git clone https://github.com/unopim/unopim/releases/download/v0.1.6/unopim-v0.1.6.tar.gz unopim
+        cd unopim
+
+    - name: Install UnoPim dependencies
+      run: |
+        cd unopim
+        composer install
+
+    - name: Set Environment
+      run: |
+        cd unopim
+        cp .env.example .env
+        sed -i "s|^APP_ENV=.*$|APP_ENV=testing|" .env
+        sed -i "s|^DB_HOST=.*$|DB_HOST=127.0.0.1|" .env
+        sed -i "s|^DB_PORT=.*$|DB_PORT=3306|" .env
+        sed -i "s|^DB_DATABASE=.*$|DB_DATABASE=unopim|" .env
+        sed -i "s|^DB_USERNAME=.*$|DB_USERNAME=root|" .env
+        sed -i "s|^DB_PASSWORD=.*$|DB_PASSWORD=root|" .env
+
+    - name: Install UnoPim
+      run: |
+        cd unopim
+        php artisan unopim:install --skip-env-check --skip-admin-creation
+
+    - name: Install Shopify Connector
+      run: |
+        cd unopim
+        composer require unopim/shopify-connector
+
+    - name: Run UnoPim Artisan commands
+      run: |
+        cd unopim
+        composer dump-autoload
+        php artisan shopify-package:install
+        php artisan optimize:clear
+        php artisan serve --host=127.0.0.1 --port=8000 &
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install Playwright dependencies
+      run: npm install
+
+    - name: Install Playwright Browsers
+      run: npx playwright install
+
+    - name: Run Playwright tests
+      run: npx playwright test
+
+    - name: Upload Playwright videos
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-videos
+        path: videos/
