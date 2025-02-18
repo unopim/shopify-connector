@@ -67,12 +67,12 @@ jobs:
         run: |
           # Ensure Shopify Connector is outside the unopim clone
           mkdir -p ./shopify-connector
-          cp -r $GITHUB_WORKSPACE/* ./shopify-connector/  # This ensures it’s copied outside unopim
+          cp -r $GITHUB_WORKSPACE/* ./unopim/packages/Webkul/Shopify/  # This ensures it’s copied outside unopim
 
-      - name: Copy Shopify Connector to Unopim
-        run: |
-          mkdir -p ./unopim/packages/Webkul/Shopify
-          cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
+      # - name: Copy Shopify Connector to Unopim
+      #   run: |
+      #     mkdir -p ./unopim/packages/Webkul/Shopify
+      #     cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
 
       - name: Register Shopify Connector Package
         run: |
