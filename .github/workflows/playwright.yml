@@ -11,7 +11,6 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.operating-systems }}
-
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
@@ -32,6 +31,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Debug directory structure
+        run: |
+          echo "Current Directory:"
+          pwd
+          echo "Contents of the root directory:"
+          ls -alh
+          echo "Contents of shopify-connector:"
+          ls -alh ./shopify-connector
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -63,10 +71,19 @@ jobs:
           php artisan key:generate
           php artisan migrate --force
 
+      - name: Check if shopify-connector exists
+        run: |
+          if [ -d "./shopify-connector" ]; then
+            echo "shopify-connector exists"
+          else
+            echo "shopify-connector does not exist"
+            exit 1
+          fi
+
       - name: Copy Shopify Connector from Current Repo
         run: |
           mkdir -p ./unopim/packages/Webkul/Shopify
-          cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
+          cp -r $GITHUB_WORKSPACE/shopify-connector/* ./unopim/packages/Webkul/Shopify/
 
       - name: Register Shopify Connector Package
         run: |
