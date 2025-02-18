@@ -63,10 +63,15 @@ jobs:
           php artisan key:generate
           php artisan migrate --force
 
-      - name: Install Shopify Connector Plugin
+      - name: Copy Shopify Connector from Current Repo
+        run: |
+          cp -r ./packages/ShopifyConnector ./unopim/packages/Webkul/Shopify
+
+      - name: Register Shopify Connector Package
         run: |
           cd unopim
-          composer require unopim/shopify-connector
+          sed -i "/'providers' => \[/a \    Webkul\\Shopify\\Providers\\ShopifyServiceProvider::class," config/app.php
+          sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear
@@ -78,15 +83,18 @@ jobs:
 
       - name: Install Playwright dependencies
         run: |
+          cd unopim/packages/Webkul/Shopify/tests/e2e-pw
           npm install
           npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test
+        run: |
+          cd unopim/packages/Webkul/Shopify/tests/e2e-pw
+          npx playwright test
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report
+          path: unopim/packages/Webkul/Shopify/tests/e2e-pw/playwright-report
