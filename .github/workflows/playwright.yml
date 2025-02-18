@@ -65,7 +65,8 @@ jobs:
 
       - name: Copy Shopify Connector from Current Repo
         run: |
-          cp -r ./packages/ShopifyConnector ./unopim/packages/Webkul/Shopify
+          mkdir -p ./unopim/packages/Webkul/Shopify
+          cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
 
       - name: Register Shopify Connector Package
         run: |
