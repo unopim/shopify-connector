@@ -68,6 +68,7 @@ jobs:
 
       - name: Copy Shopify Connector to Unopim
         run: |
+          mkdir -p ./unopim/packages/Webkul/Shopify
           cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
 
       - name: Register Shopify Connector Package
