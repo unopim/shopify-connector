@@ -76,6 +76,9 @@ jobs:
           cd unopim
           sed -i "/Webkul\\\\User\\\\Providers\\\\UserServiceProvider::class,/a \        Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," config/app.php
           sed -i '/"Webkul\\\\AdminApi\\\\": "packages\/Webkul\/AdminApi\/src",/a \            "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
+          ls -la
+          cat config/app.php
+          cat composer.json
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear
