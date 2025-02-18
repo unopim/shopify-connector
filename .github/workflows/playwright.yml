@@ -1,21 +1,4 @@
-Skip to content
-Navigation Menu
-Copilot
 
-Type / to search
-Copilot Chat
-Copying files between directories in GitHub Actions
-playwright.yml
-Check this file
-
-I want to copy checkout directory file into cloned unopim
-
-I want to checkout in different direcotory and unopim should be in different directory
-To achieve your goal, we will modify the workflow file to ensure the checkout directory and unopim directory are separate, and then copy the necessary files into the unopim directory.
-
-Here's the updated workflow file with the necessary changes:
-
-YAML
 name: Shopify Connector Playwright Tests
 
 on:
