@@ -54,14 +54,14 @@ jobs:
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env
-          php artisan key:generate
-          php artisan migrate --force
           sed -i "s|^DB_HOST=.*|DB_HOST=127.0.0.1|" .env
           sed -i "s|^DB_PORT=.*|DB_PORT=3306|" .env
           sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
           sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
           sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
           php artisan unopim:install --skip-env-check --skip-admin-creation
+          php artisan key:generate
+          php artisan migrate --force
 
       - name: Install Shopify Connector Plugin
         run: |
