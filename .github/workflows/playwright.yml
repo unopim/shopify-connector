@@ -83,6 +83,18 @@ jobs:
           php artisan shopify-package:install
           php artisan optimize:clear
 
+        # Start UnoPim server
+      - name: Start UnoPim server
+        run: |
+          cd unopim
+          php artisan migrate:fresh --seed
+          php artisan serve --host=0.0.0.0 --port=8000 &
+
+      # Wait for UnoPim to start
+      - name: Wait for UnoPim to start
+        run: |
+          npx wait-on http://localhost:8000
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
