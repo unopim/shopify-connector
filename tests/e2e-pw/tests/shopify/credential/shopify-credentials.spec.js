@@ -53,7 +53,7 @@ test.describe('Shopify Credentials Page', () => {
   });
 });
 
-test.describe('Shopify Create credential Page', () => {
+test.describe.serial('Shopify Create credential Page', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the Shopify Credentials Page
     await page.goto('admin/shopify/credentials');
