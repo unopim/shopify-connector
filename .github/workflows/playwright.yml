@@ -1,0 +1,119 @@
+
+name: Shopify Connector Playwright Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ${{ matrix.operating-systems }}
+    
+    strategy:
+      matrix:
+        operating-systems: [ubuntu-latest]
+        php-versions: ['8.2']
+
+    name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: unopim
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: shopify-connector
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
+          ini-values: error_reporting=E_ALL
+          tools: composer
+
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -u root -proot --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
+
+      - name: Install UnoPIM
+        run: |
+          git clone https://github.com/unopim/unopim.git
+          cd unopim
+          composer install --no-interaction --prefer-dist
+          cp .env.example .env
+          sed -i "s|^DB_HOST=.*|DB_HOST=127.0.0.1|" .env
+          sed -i "s|^DB_PORT=.*|DB_PORT=3306|" .env
+          sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
+          sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
+          sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
+          php artisan unopim:install --skip-env-check --skip-admin-creation
+          php artisan key:generate
+          php artisan migrate --force
+
+      - name: Copy Shopify Connector to Unopim
+        run: |
+          mkdir -p ./unopim/packages/Webkul/Shopify
+          cp -r ./shopify-connector/* ./unopim/packages/Webkul/Shopify/
+
+      - name: Register Shopify Connector Package
+        run: |
+          cd unopim
+          sed -i "/Webkul\\\\User\\\\Providers\\\\UserServiceProvider::class,/a \        Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," config/app.php
+          sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
+          ls -la
+          cat config/app.php
+          cat composer.json
+          composer dump-autoload
+          php artisan shopify-package:install
+          php artisan optimize:clear
+
+        # Start UnoPim server
+      - name: Start UnoPim server
+        run: |
+          cd unopim
+          php artisan migrate:fresh --seed
+          php artisan serve --host=0.0.0.0 --port=8000 &
+
+      # Wait for UnoPim to start
+      - name: Wait for UnoPim to start
+        run: |
+          npx wait-on http://localhost:8000
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Playwright dependencies
+        run: |
+          cd unopim/packages/Webkul/Shopify/tests/e2e-pw
+          npm install
+          npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: |
+          cd unopim/packages/Webkul/Shopify/tests/e2e-pw
+          npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: unopim/packages/Webkul/Shopify/tests/e2e-pw/playwright-report
