@@ -1,4 +1,3 @@
-
 name: Shopify Connector Playwright Tests
 
 on:
@@ -11,14 +10,13 @@ on:
 
 jobs:
   test:
+    name: Playwright End-to-end UI Test Cases
     runs-on: ${{ matrix.operating-systems }}
-    
+
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
         php-versions: ['8.2']
-
-    name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
 
     services:
       mysql:
@@ -83,14 +81,12 @@ jobs:
           php artisan shopify-package:install
           php artisan optimize:clear
 
-        # Start UnoPim server
       - name: Start UnoPim server
         run: |
           cd unopim
           php artisan migrate:fresh --seed
           php artisan serve --host=0.0.0.0 --port=8000 &
 
-      # Wait for UnoPim to start
       - name: Wait for UnoPim to start
         run: |
           npx wait-on http://localhost:8000
