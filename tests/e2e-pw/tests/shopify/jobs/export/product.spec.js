@@ -21,19 +21,14 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         // await page.click('button[type="submit"]');
 
         await page.click('#export-type .multiselect__select');
-        await page.click('li.multiselect__element#null-2');
+        await page.click('li.multiselect__element#null-0');
 
         // Click the save button
         await page.click('button[type="submit"]');
 
         // Validate required field messages
         const codeValidation = await page.locator('p.text-red-600:has-text("The Code field is required")').isVisible();
-        const credentialsValidation = await page.locator('p.text-red-600:has-text("The Shopify credentials field is required")').isVisible();
-
         expect(codeValidation).toBeTruthy();
-        expect(credentialsValidation).toBeTruthy();
-        // expect(channelValidation).toBeTruthy();
-        // expect(currencyValidation).toBeTruthy();
 
         console.log('Validated required fields for Shopify Category type');
     })

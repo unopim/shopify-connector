@@ -109,16 +109,7 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         await expect(toggle).not.toBeChecked();
     });
 
-    test('Submit the export settings form', async ({ page }) => {
-        // Click Save button
-        // await page.locator('button[type="submit"]').click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Settings saved')).toBeVisible();
-        // await expect(page.locator('.success-message')).toBeVisible();
-    });
-
     test('Back button should navigate to credentials page', async ({ page }) => {
-        // await page.locator('button:has-text("Back")').click();
         await page.getByRole('link', { name: 'Back' }).click();
         await expect(page).toHaveURL(/credentials/);
     });

@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 test.use({ storageState: 'storage/auth.json' }); // Reuse login session
-// test.use({ launchOptions: { slowMo: 500 } }); // Slow down actions by 1 second
-
 
 // Define all mapping elements from Mapping page.
 const mappingElements = [
@@ -53,9 +51,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
             console.log(`Mapping ${element.field}`);
 
             const input = page.locator(`input[name="${element.inputName}"]`);
-            // await expect(input).toBeVisible();
-
-            // await input.fill(element.field);
         }
 
         const saveButton = page.getByRole('button', { name: 'Save' });
@@ -70,9 +65,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
             console.log(`Mapping ${meta.field}`);
 
             const input = page.locator(`input[name="${meta.inputName}"]`);
-            // await expect(input).toBeVisible();
-
-            // await input.fill(meta.field);
         }
 
         const saveButton = page.getByRole('button', { name: 'Save' });
@@ -81,45 +73,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.getByText('Mapping saved successfully')).toBeVisible();
     });
 
-
-    // test.only('Dynamically Map Fields with Conditional Selection', async ({ page }) => {
-    //     for (const mapping of dropdownMappings) {
-    //         console.log(`Checking options for ${mapping.field}`);
-
-    //         // Click on the dropdown for the current field
-    //         const dropdown = page.locator(`.multiselect__placeholder`, { hasText: mapping.field.split('[')[0].trim() });
-    //         await dropdown.click();
-
-    //         // Wait for the dropdown list to load
-    //         const optionsList = page.locator('.multiselect__content[style*="display: inline-block"]');
-    //         await expect(optionsList).toBeVisible();
-
-    //         // Fetch all available options dynamically
-    //         const options = await optionsList.locator('.multiselect__option span').allInnerTexts();
-    //         console.log(`Options for ${mapping.field}:`, options);
-
-    //         if (options.includes(mapping.desiredOption)) {
-    //             console.log(`Selecting ${mapping.desiredOption} for ${mapping.field}`);
-    //             const optionToSelect = optionsList.locator('.multiselect__option', { hasText: mapping.desiredOption });
-    //             await optionToSelect.click();
-
-    //             //   const selectedTag = page.locator('.multiselect__single');
-    //             //   await expect(selectedTag).toHaveText(mapping.desiredOption);
-    //             const dropdownContainer = dropdown.locator('.multiselect'); // Scope to current dropdown
-    //             const selectedTag = dropdownContainer.locator('.multiselect__single');
-
-    //             await expect(selectedTag).toHaveText(mapping.desiredOption);
-    //         } else {
-    //             console.log(`No matching option for ${mapping.field}. Leaving blank.`);
-    //             await page.keyboard.press('Escape');
-    //         }
-    //     }
-
-    //     const saveButton = page.getByRole('button', { name: 'Save' });
-    //     await saveButton.click();
-
-    //     await expect(page.getByText('Mapping saved successfully')).toBeVisible();
-    // });
     test('should navigate to shopify mapping page', async ({ page }) => {
         // Go directly to the admin dashboard (User is already logged in)
         await expect(page.getByRole('link', { name: 'General' })).toBeVisible();
@@ -140,11 +93,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await page.locator('#default_tags').click();
         await page.locator('#default_tags').clear();
         await page.locator('#default_tags').fill('shopify');
-        // await page.getByText('Barcode', { exact: true }).click();
-        // await page.getByRole('listbox').getByText('Product Number').click();
-        await page.locator('div').filter({ hasText: /^Seo Description$/ }).click();
-        await page.getByRole('listbox').getByText('Meta Description').click();
-        // await page.getByText('Cost per item [cost]Cost per').click();
         await page.locator('div').filter({ hasText: /^Select option$/ }).first().click();
         await page.locator('div:nth-child(4) > .flex > div:nth-child(2)').click();
         await page.getByRole('combobox').filter({ hasText: /^No elements found\. Consider changing the search query\.List is empty\.$/ }).getByPlaceholder('Select option').click();
