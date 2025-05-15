@@ -18,7 +18,7 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
 
         // Expect URL to change after clicking the button
         await expect(page).toHaveURL('http://localhost:8000/admin/settings/data-transfer/exports/create');
-        await page.click('button[type="submit"]');
+        await page.locator('button[type="submit"][class="primary-button"]').click();
 
         await page.click('#export-type .multiselect__select');
         await page.click('li.multiselect__element#null-1');
