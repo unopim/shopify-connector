@@ -35,7 +35,7 @@ jobs:
 
     - name: Clone UnoPim
       run: |
-        git clone https://github.com/unopim/unopim/releases/download/v0.1.6/unopim-v0.1.6.tar.gz unopim
+        git clone --branch master https://github.com/unopim/unopim.git unopim
         cd unopim
 
     - name: Install UnoPim dependencies
