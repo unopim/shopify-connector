@@ -126,9 +126,9 @@ test.describe.serial('Shopify Create credential Page', () => {
     await page.getByText('Select Locales').first().click();
     await page.getByRole('option').getByText('English (United States)').click();
     await page.getByText('Select Locales').click();
-    await page.getByRole('option').getByText('English (United States)').click();
+    await page.locator('(//span[contains(text(), "English (United States)")])[2]').click();
     await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByText('Credential Updated Success').click();
+    await page.getByText('Credential Updated Success');
     await expect(page.getByText('Credential Updated Success')).toBeVisible();
   });
 
