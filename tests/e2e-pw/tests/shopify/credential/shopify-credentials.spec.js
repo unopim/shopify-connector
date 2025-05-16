@@ -66,27 +66,27 @@ test.describe.serial('Shopify Create credential Page', () => {
     await expect(page.locator('#app')).toContainText('The Shopify URL field is required');
     await expect(page.getByText('The Admin API access token')).toBeVisible();
     await expect(page.locator('#app')).toContainText('The Admin API access token field is required');
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).click();
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).fill('tesst');
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).click();
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('tesst');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('The Admin API access token')).toBeVisible();
     await expect(page.locator('#app')).toContainText('The Admin API access token field is required');
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).click();
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).fill('');
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).click();
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('');
     await page.getByRole('textbox', { name: 'Admin API access token' }).click();
     await page.getByRole('textbox', { name: 'Admin API access token' }).fill('fdssdfsdf');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('The Shopify URL field is')).toBeVisible();
     await expect(page.locator('#app')).toContainText('The Shopify URL field is required');
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).click();
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).fill('sfasdfasdfas');
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).click();
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('sfasdfasdfas');
     await page.getByRole('textbox', { name: 'Admin API access token' }).click();
     await page.getByRole('textbox', { name: 'Admin API access token' }).fill('fdssdfsdffasdfasdfasdf');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Invalid URL')).toBeVisible();
     await expect(page.locator('#app')).toContainText('Invalid URL');
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).click();
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).fill('http://shopify.demo,com');
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).click();
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('http://shopify.demo,com');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Invalid Credential').first()).toBeVisible();
     await expect(page.locator('#app')).toContainText('Invalid Credential');
@@ -99,7 +99,7 @@ test.describe.serial('Shopify Create credential Page', () => {
 
   test('Credential creation with the valid data', async ({ page }) => {
     await page.getByRole('button', { name: 'Create Credential' }).click();
-    await page.getByRole('textbox', { name: 'Shopify URL (http://demo.' }).fill('http://quickstart-c2b9e6cf.myshopify.com');
+    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('http://quickstart-c2b9e6cf.myshopify.com');
     await page.getByRole('textbox', { name: 'Admin API access token' }).fill('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');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('banner')).toBeVisible();
@@ -126,9 +126,9 @@ test.describe.serial('Shopify Create credential Page', () => {
     await page.getByText('Select Locales').first().click();
     await page.getByRole('option').getByText('English (United States)').click();
     await page.getByText('Select Locales').click();
-    await page.getByRole('option').getByText('English (United States)').click();
+    await page.locator('(//span[contains(text(), "English (United States)")])[2]').click();
     await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByText('Credential Updated Success').click();
+    await page.getByText('Credential Updated Success');
     await expect(page.getByText('Credential Updated Success')).toBeVisible();
   });
 
