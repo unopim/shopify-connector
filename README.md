@@ -3,7 +3,7 @@
 Effortlessly integrate your Shopify store with UnoPim for seamless product data management and synchronization. You can currently export catalogs, including categories and both simple and variant products, from UnoPim to Shopify.
 
 ## Requiremenets:
-* **Unopim**: v0.1.3
+* **Unopim**: v0.2
   
 ## ✨ Features
 
