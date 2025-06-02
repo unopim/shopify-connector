@@ -66,7 +66,15 @@
                             @endphp
 
                             <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                                <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }}</p>
+                                <div>
+                                    <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }} 
+                                    @if(isset($field['tooltip']))
+                                    <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang($field['tooltip'])</p> </div>
+                                     </p>
+                                    @endif
+                                </div>
+                                
+                                
                                 <x-admin::form.control-group class="!mb-0">
                                     <x-admin::form.control-group.control
                                         :type="$selecttype"
@@ -99,127 +107,165 @@
                                 </x-admin::form.control-group>
                             </div>
                         @endforeach
-                        @php 
-                            $imageData = '';
-                            if (isset($exportMapping['images']) && !empty($exportMapping['images'])) {
-                                $imageData = $exportMapping['images'];
-                            }
-                        @endphp
+     
+                        
+                    </div>
+
+                    <!----- Image mappings ---->
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="text-base text-gray-800 dark:text-white font-semibold">
+                            @lang('shopify::app.shopify.export.mapping.images.title')
+                            </p>
+                        </div>
+
+
                         <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                            <p class="break-words"> @lang('shopify::app.shopify.export.mapping.image')</p>
-                            <x-admin::form.control-group>
+                           
+                        @php
+                        $mediaAttributes = '';
+                        $mediaType  = '';
+                        $selectType = 'select';
+                        if (isset($mediaMapping['mediaAttributes']) && !empty($mediaMapping['mediaAttributes'])) {
+                            $mediaAttributes = $mediaMapping['mediaAttributes'];
+                            $mediaType = $mediaMapping['mediaType'];
+                            $selectType = 'gallery' === $mediaType ? 'select' : 'multiselect';
+            
+                        }
+
+                        $supportedTypes = ['image', 'gallery'];
+
+                        $attributeTypes = [];
+
+                        foreach($supportedTypes as $type) {
+                            $attributeTypes[] = [
+                                'id'    => $type,
+                                'label' => trans('admin::app.catalog.attributes.create.'. $type)
+                            ];
+                        }
+
+                        $attributeTypesJson = json_encode($attributeTypes);
+
+                    @endphp
+                        <x-admin::form.control-group>
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.export.mapping.images.label.type')</p>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                id="mediaType"
+                                class="cursor-pointer"
+                                name="mediaType"
+                                v-model="attributeType"
+                                :label="trans('shopify::app.shopify.export.mapping.images.label.type')"
+                                :options="$attributeTypesJson"
+                                track-by="id"
+                                label-by="label"
+                                @input="handleDependentChange('mediaType', 'mediaAttributes')"
+                                ref="mediaType"
+                                v-model="selectedAttributeType"
+                            >
+                            </x-admin::form.control-group.control>
+
+                            <x-admin::form.control-group.error control-name="mediaType" />
+                        </x-admin::form.control-group>
+                        
+                        <x-admin::form.control-group>
+                        <p class="break-words py-3"> @lang('shopify::app.shopify.export.mapping.images.label.attribute')</p>
                                 <x-admin::form.control-group.control
                                     type="multiselect"
                                     track-by="code"
                                     label-by="label"
-                                    :value="$imageData"
+                                    :value="$mediaAttributes"
                                     async=true
-                                    name="images"
+                                    name="mediaAttributes"
                                     :list-route="route('admin.shopify.get-image-attribute')"
+                                    @input="handleDependentChange('mediaType', 'mediaAttributes')"
+                                    ref="mediaAttributes"
+                                    ::disabled="isDisabled()"
                                 />
-                                <x-admin::form.control-group.error control-name="{{ $field['name'] }}" />
+                                <x-admin::form.control-group.error control-name="mediaAttributes" />
                             </x-admin::form.control-group>
                              
+                     
                         </div>
                     </div>
-                    @php 
-                        $otherMapping = $formattedOtherMapping;
 
-                        $otherMapingresult = [
-                            'meta_fields_string'  => [],
-                            'meta_fields_integer' => [],
-                            'meta_fields_json'    => [],
-                        ];
-                        if (!empty($otherMapping)) {
-                            foreach ($otherMapping as $key => $values) {
-                                $otherMapingresult[$key] = $values;
-                            }
-                        }
-                         
-                    @endphp
-                    <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="text-base text-gray-800 dark:text-white font-semibold">
+                            @lang('shopify::app.shopify.export.mapping.unit.title')
+                            </p>
+                        </div>
+
+
                         <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                            <p class="break-words"></p>
-                            <x-admin::form.control-group>
+                           
+                        @php
+                            $weightunit = $metaFieldTypeInShopify['weight']['unitoptions'] ?? null;
+                            $weightUnitValue = $shopifyMapping?->mapping['unit']['weight'] ?? null;
+                        @endphp
+                        <x-admin::form.control-group class="!mb-0">
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.export.mapping.unit.weight')</p>
+                        </x-admin::form.control-group>
+                        <x-admin::form.control-group class="!mb-0">
                                 <x-admin::form.control-group.control
-                                    type="multiselect"
-                                    track-by="code"
-                                    label-by="label"
-                                    async=true
-                                    :entityName="json_encode(['text', 'select'])"
-                                    :value="json_encode($otherMapingresult['meta_fields_string'])"
-                                    name="meta_fields_string"
-                                    :list-route="route('admin.shopify.get-attribute')"
+                                    type="select"
+                                    track-by="id"
+                                    label-by="name"
+                                    :value="old('weightunit') ?? $weightUnitValue"
+                                    :options="json_encode($weightunit, true)"
+                                    name="weightunit"
+                                    rules="required"
                                 />
-                                <x-admin::form.control-group.error control-name="meta_fields_string" />
-                            </x-admin::form.control-group>
-                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.error control-name="weightunit" />
+                        </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                           
+                        @php
+                            $volume = $metaFieldTypeInShopify['volume']['unitoptions'] ?? null;
+                            $volumeUnitValue = $shopifyMapping?->mapping['unit']['volume'] ?? null;
+                        @endphp
+                        <x-admin::form.control-group class="!mb-0">
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.export.mapping.unit.volume')</p>
+                        </x-admin::form.control-group>
+                        <x-admin::form.control-group class="!mb-0">
                                 <x-admin::form.control-group.control
-                                    type="text"
-                                    track-by="code"
-                                    label-by="label"
-                                    async=true
-                                    name="metsaaa_fields_string"
-                                    :placeholder="trans('admin::app.shopify.mapping.input_meta_fields')"
-                                    :disabled=true
-                                    value="Single line text"
+                                    type="select"
+                                    track-by="id"
+                                    label-by="name"
+                                    :value="old('volumeunit') ?? $volumeUnitValue"
+                                    :options="json_encode($volume, true)"
+                                    name="volumeunit"
+                                    rules="required"
                                 />
-                            </x-admin::form.control-group>
-                            <p class="break-words">@lang('shopify::app.shopify.export.mapping.metafields')</p>
-                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.error control-name="volumeunit" />
+                        </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                           
+                        @php
+                            $dimension = $metaFieldTypeInShopify['dimension']['unitoptions'] ?? null;
+                            $dimensionunit = $shopifyMapping?->mapping['unit']['dimension'] ?? null;
+                        @endphp
+                        <x-admin::form.control-group class="!mb-0">
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.export.mapping.unit.dimension')</p>
+                        </x-admin::form.control-group>
+                        <x-admin::form.control-group class="!mb-0">
                                 <x-admin::form.control-group.control
-                                    type="multiselect"
-                                    track-by="code"
-                                    label-by="label"
-                                    :entityName="json_encode(['number'])"
-                                    async=true
-                                    :value="json_encode($otherMapingresult['meta_fields_integer'])"
-                                    name="meta_fields_integer"
-                                    :list-route="route('admin.shopify.get-attribute')"
+                                    type="select"
+                                    track-by="id"
+                                    label-by="name"
+                                    :value="old('dimensionunit') ?? $dimensionunit"
+                                    :options="json_encode($dimension, true)"
+                                    name="dimensionunit"
+                                    rules="required"
                                 />
-                                <x-admin::form.control-group.error control-name="meta_fields_integer" />
-                            </x-admin::form.control-group>
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.control
-                                    type="text"
-                                    track-by="code"
-                                    label-by="label"
-                                    async=true
-                                    name="meta_fielsds_string"
-                                    :placeholder="trans('admin::app.shopify.mapping.input_meta_fields')"
-                                    :disabled=true
-                                    value="Integer"
-                                />
-                            </x-admin::form.control-group>
-                            <p class="break-words"></p>
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.control
-                                    type="multiselect"
-                                    track-by="code"
-                                    label-by="label"
-                                    async=true
-                                    name="meta_fields_json"
-                                    :entityName="json_encode(['textarea'])"
-                                    :value="json_encode($otherMapingresult['meta_fields_json'])"
-                                    :list-route="route('admin.shopify.get-attribute')"
-                                />
-                                <x-admin::form.control-group.error control-name="meta_fields_json" />
-                            </x-admin::form.control-group>
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.control
-                                    type="text"
-                                    track-by="code"
-                                    label-by="label"
-                                    async=true
-                                    name="meta_fields_straing"
-                                    :placeholder="trans('admin::app.shopify.mapping.input_meta_fields')"
-                                    :disabled=true
-                                    value="Json"
-                                />
-                            </x-admin::form.control-group>
+                                <x-admin::form.control-group.error control-name="dimensionunit" />
+                        </x-admin::form.control-group>
                         </div>
                     </div>
-
                 </div>
             </div>
         </x-admin::form>
@@ -231,9 +277,33 @@
                 return {
                     disabledFields: {},
                     onchange: {},
+                    selectedAttributeType: @json($mediaType ?? null),
                 };
             },
+            watch: {
+                selectedAttributeType(value) {
+                    this.$refs.mediaAttributes.selectedValue = [];
+                }
+            },
             methods: {
+                isDisabled(){
+                   
+                    if (this.$refs['mediaType'] && !this.$refs['mediaType'].selectedValue) 
+                    {
+                     this.$refs['mediaAttributes'].selectedValue = null;
+                     
+                     return true
+                    }
+
+                    return false
+                },
+                handleDependentChange(fieldName, dependentFieldName) {
+                    let value = this.$refs[fieldName].selectedOption;
+                    this.$refs[dependentFieldName].params[fieldName] = value;
+                    console.log(fieldName, value);
+                    this.$refs[dependentFieldName].optionsList = '';
+                },
+                
                 handleSelectChange(event, fieldName) {
                     var defaultFieldName = 'default_' + fieldName;
 
@@ -244,7 +314,7 @@
                     }
                 },
 
-                isFieldDisabled(value, defaultFieldName) {  
+                isFieldDisabled(value, defaultFieldName) {
                     this.disabledFields[defaultFieldName] = true;
 
                     if (value == 'null' || value == '' || !value) {

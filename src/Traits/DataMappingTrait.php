@@ -44,6 +44,64 @@ trait DataMappingTrait
     }
 
     /**
+     * Check if the mapping exists in the database for an image.
+     */
+    protected function getAllImageMappingBySku(string $entity, string $productId, array $attr = [], $galleryAttr = true): ?array
+    {
+        $mappingCheck = $this->shopifyMappingRepository
+            ->where('entityType', $entity)
+            ->where('relatedId', $productId)
+            ->where('apiUrl', $this?->credential?->shopUrl);
+        if ($galleryAttr) {
+            $mappingCheck = $mappingCheck->whereNot(function ($query) use ($attr) {
+                foreach ($attr as $id) {
+                    $query->orWhere('code', 'like', "%{$id}%");
+                }
+            });
+
+        } else {
+            $mappingCheck = $mappingCheck->whereNotIn('code', $attr);
+        }
+
+        return $mappingCheck->get()->toArray();
+    }
+
+    /**
+     * Check if the mapping exists in the database for an image.
+     */
+    protected function checkMappingInDbForGallery(string $attributeCode, string $entity, string $productSku, $asset = false): ?array
+    {
+        if ($attributeCode) {
+            $mappedData = $this->shopifyMappingRepository
+                ->where('entityType', $entity)
+                ->where('relatedSource', $productSku)
+                ->where('apiUrl', $this?->credential?->shopUrl)
+                ->get();
+            $mappedData = $mappedData->toArray();
+            $filteredMappedData = [];
+
+            foreach ($mappedData as $data) {
+                $code = explode('_', $data['code']);
+                $endNumber = end($code);
+                array_pop($code);
+                $code = implode('_', $code);
+                if ($code !== $attributeCode) {
+                    continue;
+                }
+                if ($asset) {
+                    $filteredMappedData[$endNumber] = $data;
+                } else {
+                    $filteredMappedData[] = $data;
+                }
+            }
+
+            return $filteredMappedData;
+        }
+
+        return null;
+    }
+
+    /**
      * Handle the Shopify API response after an API request.
      *
      * @param  array  $formattedItem
@@ -177,5 +235,24 @@ trait DataMappingTrait
     protected function deleteProductVariantMapping(string $variant, string $sku): void
     {
         $mappings = $this->shopifyMappingRepository->where('externalId', $variant)->delete();
+    }
+
+    /**
+     * Delete productvariant mapping.
+     */
+    protected function deleteProductMediaMapping(array $mediaIds): void
+    {
+        $mappings = $this->shopifyMappingRepository->whereIN('externalId', $mediaIds)->delete();
+    }
+
+    /**
+     * Delete media mapping.
+     */
+    protected function deleteProductMediaMappingById(string $productId, string $entityType): void
+    {
+        $this->shopifyMappingRepository
+            ->where('relatedId', $productId)
+            ->where('entityType', $entityType)
+            ->delete();
     }
 }

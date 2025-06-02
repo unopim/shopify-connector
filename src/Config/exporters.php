@@ -67,4 +67,25 @@ return [
             ],
         ],
     ],
+
+    'shopifyMetafield' => [
+        'title'    => 'shopify::app.exporters.shopify.metafields',
+        'exporter' => 'Webkul\Shopify\Helpers\Exporters\MetaField\Exporter',
+        'source'   => 'Webkul\Shopify\Repositories\ShopifyMetaFieldRepository',
+        'filters'  => [
+            'fields' => [
+                [
+                    'name'       => 'credentials',
+                    'title'      => 'Shopify credentials',
+                    'required'   => true,
+                    'validation' => 'required',
+                    'type'       => 'select',
+                    'async'      => true,
+                    'track_by'   => 'id',
+                    'label_by'   => 'label',
+                    'list_route' => 'shopify.credential.fetch-all',
+                ],
+            ],
+        ],
+    ],
 ];

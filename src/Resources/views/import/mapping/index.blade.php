@@ -68,7 +68,14 @@
                             @endphp
 
                             <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                                <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }}</p>
+                                <div>
+                                    <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }} 
+                                    @if(isset($field['tooltip']))
+                                    <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang($field['tooltip'])</p> </div>
+                                     </p>
+                                    @endif
+                                </div>
+
                                 <x-admin::form.control-group class="!mb-0">
                                     <x-admin::form.control-group.control
                                         :type="$selecttype"
@@ -101,6 +108,97 @@
                             </div>
                         @endforeach
                     </div>
+
+                    <!----- Image mappings ---->
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="text-base text-gray-800 dark:text-white font-semibold">
+                            @lang('shopify::app.shopify.import.mapping.images.title')
+                            </p>
+                        </div>
+
+
+                        <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                           
+                        @php
+                            $mediaAttributes = '';
+                            $mediaType  = '';
+                            $selectType = 'select';
+                            if (isset($mediaMapping['mediaAttributes']) && !empty($mediaMapping['mediaAttributes'])) {
+                                $mediaAttributes = $mediaMapping['mediaAttributes'];
+                                $mediaType = $mediaMapping['mediaType'];
+                                $selectType = 'gallery' === $mediaType ? 'select' : 'multiselect';
+                            }
+
+                        $supportedTypes = ['image', 'gallery'];
+
+                        $attributeTypes = [];
+
+                        foreach($supportedTypes as $type) {
+                            $attributeTypes[] = [
+                                'id'    => $type,
+                                'label' => trans('admin::app.catalog.attributes.create.'. $type)
+                            ];
+                        }
+
+                        $attributeTypesJson = json_encode($attributeTypes);
+                        
+                    @endphp
+                        <x-admin::form.control-group>
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.import.mapping.images.label.type')</p>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                id="type"
+                                class="cursor-pointer"
+                                name="mediaType"
+                                v-model="attributeType"
+                                :label="trans('shopify::app.shopify.import.mapping.images.label.type')"
+                                :options="$attributeTypesJson"
+                                track-by="id"
+                                label-by="label"
+                                ref="mediaType"
+                                v-model="selectedAttributeType"
+                            >
+                            </x-admin::form.control-group.control>
+
+                            <x-admin::form.control-group.error control-name="mediaType" />
+                        </x-admin::form.control-group>
+                        
+                        <x-admin::form.control-group v-if=" (mediaAttributeType === 'gallery')">
+                            <p class="break-words py-3"> @lang('shopify::app.shopify.import.mapping.images.label.attribute')</p>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                track-by="code"
+                                label-by="label"
+                                ::value="valueMedia"
+                                async=true
+                                entityName="gallery"
+                                name="mediaAttributes"
+                                :list-route="route('admin.shopify.get-image-attribute')"
+                                ref="mediaAttributes"
+                                ::disabled="isDisabled()"
+                            />
+                            <x-admin::form.control-group.error control-name="mediaAttributes" />
+                        </x-admin::form.control-group>
+                        <x-admin::form.control-group v-if=" (mediaAttributeType === 'image')">
+                        <p class="break-words py-3"> @lang('shopify::app.shopify.import.mapping.images.label.attribute')</p>
+                            <x-admin::form.control-group.control
+                                type="multiselect"
+                                track-by="code"
+                                label-by="label"
+                                ::value="valueMedia"
+                                async=true
+                                name="mediaAttributes"
+                                entityName="image"
+                                :list-route="route('admin.shopify.get-image-attribute')"
+                                ref="mediaAttributes"
+                                ::disabled="isDisabled()"
+                            />
+                            <x-admin::form.control-group.error control-name="mediaAttributes" />
+                        </x-admin::form.control-group>
+                        </div>
+                    </div>
+
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
                         <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="text-base text-gray-800 dark:text-white font-semibold">
@@ -121,36 +219,8 @@
                                 $family = $importMapping['family_variant'];
                             }
                         @endphp
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                            <p class="break-words"> @lang('shopify::app.shopify.import.mapping.image')</p>
-                            <x-admin::form.control-group class="!mb-0">
-                                <x-admin::form.control-group.control
-                                    type="multiselect"
-                                    track-by="code"
-                                    label-by="label"
-                                    :value="$imageData"
-                                    async=true
-                                    name="images"
-                                    :list-route="route('admin.shopify.get-image-attribute')"
-                                />
-                                <x-admin::form.control-group.error control-name="{{ $field['name'] }}" />
-                            </x-admin::form.control-group>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                            <p class="break-words"> @lang('shopify::app.shopify.import.mapping.variantimage')</p>
-                            <x-admin::form.control-group class="!mb-0">
-                                <x-admin::form.control-group.control
-                                    type="select"
-                                    track-by="code"
-                                    label-by="label"
-                                    :value="$variantImage"
-                                    async=true
-                                    name="variantimages"
-                                    :list-route="route('admin.shopify.get-image-attribute')"
-                                />
-                                <x-admin::form.control-group.error control-name="variantimages" />
-                            </x-admin::form.control-group>
-                        </div>
+
+    
                         <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="break-words required"> @lang('shopify::app.shopify.import.mapping.family')</p>
                             <x-admin::form.control-group class="!mb-0">
@@ -182,11 +252,33 @@
                         errors: {},
                     },
                     notInclude: @json($importMapping ?? null),
+                    selectedAttributeType: @json($mediaType ?? null),
+                    selectType: @json($selectType ?? null),
+                    mediaAttributeType: @json($mediaType ?? null),
                     fieldName: 'meta_fields', 
+                    valueMedia: @json($mediaAttributes ?? null),
                 };
             },
-             
+            watch: {
+                selectedAttributeType(value) {
+                    if (value) {
+                        this.mediaAttributeType = JSON.parse(value)?.id ?? null;
+                    }
+                    this.valueMedia = null;
+                }
+            },
             methods: {
+                isDisabled(){
+                   if (this.$refs['mediaType'] && !this.$refs['mediaType'].selectedValue) 
+                   {
+                    this.$refs['mediaAttributes'].selectedValue = null;
+
+                    return true
+                   }
+
+                   return false
+                },
+                
                 handleOpenedSelect(event, fieldName) {
                     const values = Object.values(this.notInclude);
                     var json = JSON.parse(event);

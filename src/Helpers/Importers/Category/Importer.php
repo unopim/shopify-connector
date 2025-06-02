@@ -24,7 +24,7 @@ class Importer extends AbstractImporter
     use ShopifyGraphqlRequest;
     use ValidatedBatched;
 
-    public const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 10;
 
     public const UNOPIM_ENTITY_NAME = 'category';
 
@@ -118,7 +118,7 @@ class Importer extends AbstractImporter
             'apiVersion'  => $this->credential?->apiVersion,
         ];
 
-        $collections = new \ArrayIterator($this->getCategoriesByCursor());
+        $collections = new \Webkul\Shopify\Helpers\Iterator\CategoryIterator($this->credentialArray);
 
         return $collections;
     }
@@ -177,9 +177,7 @@ class Importer extends AbstractImporter
              */
             $this->prepareCategories($rowData, $categories);
         }
-
         $this->saveCategories($categories);
-
         /**
          * Update import batch summary
          */

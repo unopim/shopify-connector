@@ -11,14 +11,12 @@ use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
-use Webkul\Shopify\Traits\ValidatedBatched;
 
 class Importer extends AbstractImporter
 {
     use ShopifyGraphqlRequest;
-    use ValidatedBatched;
 
-    public const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 10;
 
     /**
      * cursor position
@@ -114,7 +112,6 @@ class Importer extends AbstractImporter
         $requestData = $this->credential?->extras;
         $requestData['productMetafield'] = array_combine(array_column($productMetafieldDefinition, 'code'), array_column($productMetafieldDefinition, 'namespace'));
         $requestData['productVariantMetafield'] = array_combine(array_column($productVariantMetaField, 'code'), array_column($productVariantMetaField, 'namespace'));
-
         $filters = $this->import->jobInstance->filters;
 
         $this->shopifyRepository->update(['extras' => $requestData], $filters['credentials']);
@@ -146,6 +143,7 @@ class Importer extends AbstractImporter
             $metafieldAttribute = ! empty($graphResponse['body']['data']['metafieldDefinitions']['edges'])
                 ? $graphResponse['body']['data']['metafieldDefinitions']['edges']
                 : [];
+
             $formattedOption = $this->formatedAttribute($metafieldAttribute);
 
             $allAttribute = array_merge($allAttribute, $formattedOption);
@@ -211,7 +209,7 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            $attributeFormat = [
+            $attributeFormate = [
                 'code'        => $attribute['node']['key'],
                 'type'        => $this->attributeType[$metafieldType],
                 'namespace'   => $attribute['node']['namespace'],
@@ -221,10 +219,10 @@ class Importer extends AbstractImporter
             ];
 
             if ($metafieldType == 'number_integer') {
-                $attributeFormat['validation'] = 'number';
+                $attributeFormate['validation'] = 'number';
             }
 
-            $attributesArray[] = $attributeFormat;
+            $attributesArray[] = $attributeFormate;
         }
 
         return $attributesArray;
@@ -236,6 +234,55 @@ class Importer extends AbstractImporter
     public function validateData(): void
     {
         $this->saveValidatedBatches();
+    }
+
+    /**
+     * Save validated batches
+     */
+    protected function saveValidatedBatches(): self
+    {
+        $source = $this->getSource();
+
+        $batchRows = [];
+
+        $source->rewind();
+        /**
+         * Clean previous saved batches
+         */
+        $this->importBatchRepository->deleteWhere([
+            'job_track_id' => $this->import->id,
+        ]);
+
+        while (
+            $source->valid()
+            || count($batchRows)
+        ) {
+            if (
+                count($batchRows) == self::BATCH_SIZE
+                || ! $source->valid()
+            ) {
+                $this->importBatchRepository->create([
+                    'job_track_id' => $this->import->id,
+                    'data'         => $batchRows,
+                ]);
+
+                $batchRows = [];
+            }
+
+            if ($source->valid()) {
+                $rowData = $source->current();
+
+                if ($this->validateRow($rowData, 1)) {
+                    $batchRows[] = $this->prepareRowForDb($rowData);
+                }
+
+                $this->processedRowsCount++;
+
+                $source->next();
+            }
+        }
+
+        return $this;
     }
 
     /**

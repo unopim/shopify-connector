@@ -36,6 +36,13 @@ return [
                 'edit'   => '编辑',
                 'delete' => '删除',
             ],
+
+            'metafield' => [
+                'create'      => '创建元字段',
+                'edit'        => '编辑元字段',
+                'delete'      => '删除元字段',
+                'mass_delete' => '批量删除元字段',
+            ],
         ],
 
         'version' => '版本: 1.0.0',
@@ -173,6 +180,5 @@ return [
             'locale'           => '语言区域',
             'attribute-groups' => '属性组',
         ],
-
     ],
 ];

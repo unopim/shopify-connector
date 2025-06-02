@@ -10,11 +10,11 @@ return [
 
     'importers' => [
         'shopify' => [
-            'product'  => 'منتج شوبيفاي',
-            'category' => 'فئة شوبيفاي',
-            'attribute'=> 'خاصية شوبيفاي',
-            'family'   => 'عائلة شوبيفاي',
-            'metafield'=> 'تعريفات الحقول الوصفية في شوبيفاي',
+            'product'   => 'منتج شوبيفاي',
+            'category'  => 'فئة شوبيفاي',
+            'attribute' => 'خاصية شوبيفاي',
+            'family'    => 'عائلة شوبيفاي',
+            'metafield' => 'تعريفات الحقول الوصفية في شوبيفاي',
         ],
     ],
 
@@ -36,6 +36,12 @@ return [
                 'create' => 'إنشاء',
                 'edit'   => 'تحرير',
                 'delete' => 'حذف',
+            ],
+            'metafield'  => [
+                'create'      => 'إنشاء ميتافيلد',
+                'edit'        => 'تحرير ميتافيلد',
+                'delete'      => 'حذف ميتافيلد',
+                'mass_delete' => 'الحذف الجماعي لميتافيلد',
             ],
         ],
 
@@ -172,5 +178,44 @@ return [
             'locale'           => 'اللغة',
             'attribute-groups' => 'مجموعات السمات',
         ],
+        'metafield'     => [
+            'datagrid' => [
+                'definitiontype'  => 'تستخدم لـ',
+                'attributeLabel'  => 'سمة Unopim',
+                'definitionName'  => 'اسم التعريف',
+                'contentTypeName' => 'نوع',
+                'pin'             => 'دبوس',
+            ],
+            'index'    => [
+                'title'                     => 'تعريفات الحقول الوصفية',
+                'create'                    => 'إضافة تعريف',
+                'definitiontype'            => 'تستخدم لـ',
+                'attribute'                 => 'سمة UnoPim',
+                'ContentTypeName'           => 'نوع',
+                'attributes'                => 'اسم التعريف',
+                'urlvalidation'             => 'التحقق من صحة URL',
+                'urlvalidationdata'         => 'يجب أن تكون القيم مسبوقة بـ: "HTTPS"، "HTTP"، "mailto:"، "sms:"، أو "tel:"',
+                'name_space_key'            => 'المجال والمفتاح',
+                'description'               => 'وصف',
+                'onevalue'                  => 'قيمة واحدة',
+                'listvalue'                 => 'قائمة القيم',
+                'validation'                => 'التحقق',
+                'maxvalue'                  => 'القيمة القصوى',
+                'adminFilterable'           => 'التصفية للمنتجات',
+                'smartCollectionCondition'  => 'مجموعات ذكية',
+                'storefronts'               => 'الوصول إلى الواجهات الأمامية',
+            ],
+            'edit'     => [
+                'title'           => 'تحرير تعريف الحقل الوصفي',
+                'back-btn'        => 'رجوع',
+                'update'          => 'تحديث',
+                'save'            => 'حفظ',
+            ],
+            'delete-success'      => 'تم حذف تعريف الحقل الوصفي بنجاح',
+            'update-success'      => 'تم تحديث تعريف الحقل الوصفي بنجاح',
+            'created'             => 'تم إنشاء تعريف الحقل الوصفي بنجاح',
+            'mass-delete-success' => 'تم حذف تعريفات الحقول الوصفية بنجاح',
+        ],
+
     ],
 ];

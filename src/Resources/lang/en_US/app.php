@@ -3,27 +3,31 @@
 return [
     'exporters' => [
         'shopify' => [
-            'product'  => 'Shopify Product',
-            'category' => 'Shopify Category',
+            'product'    => 'Shopify Product',
+            'category'   => 'Shopify Category',
+            'metafields' => 'Shopify Metafields Defintion',
         ],
     ],
     'importers' => [
         'shopify' => [
-            'product'  => 'Shopify Product',
-            'category' => 'Shopify Category',
-            'attribute'=> 'Shopify Attribute',
-            'family'   => 'Shopify Family Variant Attribute Assignment',
-            'metafield'=> 'Shopify Metafield Definitions',
+            'product'   => 'Shopify Product',
+            'category'  => 'Shopify Category',
+            'attribute' => 'Shopify Attribute',
+            'family'    => 'Shopify Family Variant Attribute Assignment',
+            'metafield' => 'Shopify Metafield Definitions',
         ],
     ],
     'components' => [
         'layouts' => [
             'sidebar' => [
-                'shopify'         => 'Shopify',
-                'credentials'     => 'Credentials',
-                'export-mappings' => 'Export Mappings',
-                'import-mappings' => 'Import Mappings',
                 'settings'        => 'Settings',
+                'shopify'               => 'Shopify',
+                'credentials'           => 'Credentials',
+                'export-mappings'       => 'Export Mappings',
+                'import-mappings'       => 'Import Mappings',
+                'meta-fields'           => 'Metafield Definitions',
+                'settings'              => 'Settings',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
@@ -34,6 +38,12 @@ return [
                 'create' => 'Create',
                 'edit'   => 'Edit',
                 'delete' => 'Delete',
+            ],
+            'metafield' => [
+                'create'      => 'Create Metafield',
+                'edit'        => 'Edit Metafield',
+                'delete'      => 'Delete Metafield',
+                'mass_delete' => 'Mass Delete Metafield',
             ],
         ],
 
@@ -88,10 +98,25 @@ return [
                 'save'          => 'Save',
                 'created'       => 'Export Mapping saved successfully',
                 'image'         => 'Attribute to used as image',
+                'gallery'       => 'Attribute to used as gallery',
                 'metafields'    => 'Attributes to be used as Metafields',
                 'filed-shopify' => 'Field in Shopify',
                 'attribute'     => 'UnoPim Attribute',
                 'fixed-value'   => 'Fixed Value',
+                'images'        => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type'      => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+
+                'unit'          => [
+                    'title'     => 'Shopify unit Mapping',
+                    'weight'    => 'Unit Weight',
+                    'volume'    => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
 
             'settings' => [
@@ -127,12 +152,20 @@ return [
                 'save'                 => 'Save',
                 'created'              => 'Import Mapping saved successfully',
                 'image'                => 'Attribute to used as image',
+                'gallery'              => 'Attribute to used as gallery',
                 'filed-shopify'        => 'Field in Shopify',
                 'attribute'            => 'UnoPim Attribute',
                 'variantimage'         => 'Attribute to used as variant image',
                 'other'                => 'Shopify Other Mapping',
                 'family'               => 'Family mapping (for products)',
                 'metafieldDefinitions' => 'Shopify Metafield Definition Mapping',
+                'images'               => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type'      => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'Credential mapping',
@@ -178,6 +211,49 @@ return [
             'productfilter'    => 'Product Filter (SKU)',
             'locale'           => 'Locale',
             'attribute-groups' => 'Attribute Groups',
+        ],
+        'metafield' => [
+            'datagrid' => [
+                'definitiontype'  => 'Used For',
+                'attributeLabel'  => 'Unopim Attribute',
+                'definitionName'  => 'Definition name',
+                'contentTypeName' => 'Type',
+                'pin'             => 'Pin',
+            ],
+            'index'    => [
+                'title'                     => 'Metafield definitions',
+                'create'                    => 'Add definition',
+                'definitiontype'            => 'Used For',
+                'attribute'                 => 'UnoPim Attribute',
+                'ContentTypeName'           => 'Type',
+                'attributes'                => 'Definition Name',
+                'urlvalidation'             => 'Validation',
+                'urlvalidationdata'         => 'Values must be prefixed with: “HTTPS”, “HTTP”, “mailto:”, “sms:”, or “tel:”',
+                'name_space_key'            => 'Namespace and key',
+                'description'               => 'Description',
+                'onevalue'                  => 'One Value',
+                'listvalue'                 => 'List of Values',
+                'validation'                => 'Validations',
+                'maxvalue'                  => 'Max value',
+                'adminFilterable'           => 'Filtering for products',
+                'smartCollectionCondition'  => 'Smart collections',
+                'storefronts'               => 'Storefronts access',
+                'unit'                      => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
+            ],
+
+            'edit'     => [
+                'title'           => 'Edit Metafield Definition',
+                'back-btn'        => 'Back',
+                'update'          => 'Update',
+                'save'            => 'Save',
+            ],
+            'delete-success'      => 'Metafield Definition Created successfully',
+            'update-success'      => 'MetaField Defintion Updated successfully',
+            'created'             => 'Create Metafield Definition successfully',
+            'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
         ],
     ],
 ];

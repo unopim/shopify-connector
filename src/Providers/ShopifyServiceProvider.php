@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
+use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -29,6 +30,7 @@ class ShopifyServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ShopifyInstaller::class,
+                ShopifyMappingProduct::class,
             ]);
         }
 

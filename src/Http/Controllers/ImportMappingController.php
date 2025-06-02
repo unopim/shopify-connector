@@ -40,7 +40,12 @@ class ImportMappingController extends Controller
         $formattedShopifyMapping = $attribute;
         $metafieldattr = [];
 
-        return view('shopify::import.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyMapping', 'shopifyCredentials'));
+        $mediaMapping = [];
+        foreach ($shopifyMapping->mapping['mediaMapping'] ?? [] as $row => $value) {
+            $mediaMapping[$row] = $value;
+        }
+
+        return view('shopify::import.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyMapping', 'shopifyCredentials', 'mediaMapping'));
     }
 
     /**
@@ -49,8 +54,9 @@ class ImportMappingController extends Controller
     public function store(FormRequest $request)
     {
         $filteredData = array_filter($request->except(['_token', '_method']));
-
+        $mappingFields = [];
         $filteredData = array_filter($filteredData, fn ($key) => ! str_starts_with($key, 'default_'), ARRAY_FILTER_USE_KEY);
+        $this->formatMediaMapping($filteredData, $mappingFields);
         $duplicates = array_filter(array_count_values($filteredData), fn ($count) => $count > 1);
         $duplicateKeys = array_keys(array_filter($filteredData, fn ($value) => isset($duplicates[$value])));
 
@@ -65,8 +71,6 @@ class ImportMappingController extends Controller
                 ->withErrors($keysAsArray)
                 ->withInput();
         }
-
-        $mappingFields = [];
 
         foreach ($filteredData as $row => $value) {
             $sectionName = 'shopify_connector_settings';
@@ -83,5 +87,20 @@ class ImportMappingController extends Controller
         session()->flash('success', trans('shopify::app.shopify.export.mapping.created'));
 
         return redirect()->route('admin.shopify.import-mappings', 3);
+    }
+
+    public function formatMediaMapping(array &$filteredData, array &$mappingFields)
+    {
+        $type = 'mediaType';
+        $attributes = 'mediaAttributes';
+        $section = 'mediaMapping';
+
+        if (isset($filteredData[$type]) && isset($filteredData[$attributes])) {
+            $mappingFields[$section][$type] = $filteredData[$type];
+            $mappingFields[$section][$attributes] = $filteredData[$attributes];
+
+            unset($filteredData[$attributes]);
+            unset($filteredData[$type]);
+        }
     }
 }

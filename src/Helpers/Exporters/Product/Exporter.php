@@ -2,12 +2,15 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Attribute\Repositories\AttributeFamilyGroupMappingRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Core\Repositories\ChannelRepository;
+use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -18,6 +21,7 @@ use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -32,6 +36,10 @@ class Exporter extends AbstractExporter
 
     public const NOT_EXIST_PRODUCT = 'Product does not exist';
 
+    public const VARIANT_CREATE = 'productVariantsBulkCreate';
+
+    public const VARIANT_UPDATE = 'productVariantsBulkUpdate';
+
     public const NOT_EXIST_PRODUCT_VARIANT = 'Product variant does not exist';
 
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
@@ -40,24 +48,26 @@ class Exporter extends AbstractExporter
 
     protected $variantIndexes = ['price', 'weight', 'cost', 'compareAtPrice', 'barcode', 'taxable', 'inventoryPolicy', 'sku', 'inventoryTracked', 'inventoryQuantity'];
 
+    protected $imageMineType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+
     protected $credential;
 
     protected $imageData = [];
 
-    public const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 50;
 
     /**
      * @var array
      */
-    protected $channelsAndLocales = [];
-
     protected $childImageAttr = [];
 
     protected $removeImgAttr = [];
 
     protected $parentImageAttr = [];
 
-    protected $parentRemoveImgAttr = [];
+    protected $variantMetafieldAttrCode = [];
+
+    protected bool $exportsFile = false;
 
     /**
      * @var array
@@ -69,10 +79,6 @@ class Exporter extends AbstractExporter
      */
     protected $attributes = [];
 
-    protected $childCount = [];
-
-    protected $removeCollectionId = [];
-
     protected $currency;
 
     protected $jobChannel;
@@ -83,9 +89,11 @@ class Exporter extends AbstractExporter
 
     protected $imageAttributes;
 
-    protected $updateMedia = [];
+    protected $productMetaFieldMapping = [];
 
-    protected $collectionsToLeaveIds = [];
+    protected $variantMetaFieldMapping = [];
+
+    protected $updateMedia = [];
 
     protected $metaFieldAttributeCode = [];
 
@@ -103,7 +111,9 @@ class Exporter extends AbstractExporter
 
     protected $productOptions;
 
-    protected bool $exportsFile = false;
+    protected $attributesAll = [];
+
+    protected $assetAttr = [];
 
     public $seprators = [
         'colon' => ': ',
@@ -126,7 +136,9 @@ class Exporter extends AbstractExporter
         protected ShopifyExportMappingRepository $shopifyExportmapping,
         protected AttributeGroupRepository $attributeGroupRepository,
         protected AttributeFamilyGroupMappingRepository $attributeFamilyGroupMappingRepository,
-        protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter
+        protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ?AssetRepository $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
     }
@@ -139,12 +151,13 @@ class Exporter extends AbstractExporter
     public function initilize()
     {
         $this->initCredential();
+        $this->attributesAll = $this->attributeRepository->all()->keyBy('code');
 
         $this->initPublications();
 
         $this->initDefaultLocale();
 
-        $this->shopifyGraphQLDataFormatter->setInitialData($this->locationId, $this->currency, $this->attributeRepository, $this->settingMapping);
+        $this->shopifyGraphQLDataFormatter->setInitialData($this->locationId, $this->currency, $this->settingMapping, $this->attributesAll);
     }
 
     /**
@@ -162,8 +175,9 @@ class Exporter extends AbstractExporter
         $this->definitionMapping = $this->credential?->extras;
 
         $mappings = $this->shopifyExportmapping->findMany([1, 2]);
-
         $this->exportMapping = $mappings->first();
+        $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
+        $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
 
         $this->settingMapping = $mappings->last();
 
@@ -252,38 +266,115 @@ class Exporter extends AbstractExporter
 
         $skus = null;
 
+        $query = $this->source->select('sku');
+
         if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
             $skus = explode(',', $filters['productfilter']);
             $skus = array_map('trim', $skus);
+
+            $query->whereIn('sku', $skus);
         }
 
-        $qb = $this->source->with([
-            'attribute_family',
-            'parent.super_attributes',
-            'super_attributes',
-        ])->where('type', '!=', 'configurable')->orderBy('id', 'desc');
-
-        if ($skus) {
-            $qb->whereIn('sku', $skus)
-                ->orWhereIn('parent_id', function ($query) use ($skus) {
-                    $query->select('id')
-                        ->from('products')
-                        ->whereIn('sku', $skus);
-                });
-        }
-
-        return $qb->get()?->getIterator();
+        return $query->get()?->getIterator();
     }
 
     public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
     {
-        foreach ($batch->data as $key => $rowData) {
+        $skus = array_column($batch->data, 'sku');
+        $allProducts = DB::table('products')
+            ->leftJoin('attribute_families as aft', 'products.attribute_family_id', '=', 'aft.id')
+            ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
+
+            ->leftJoin('product_super_attributes as psa', function ($join) {
+                $join->on('parent_products.id', '=', 'psa.product_id')
+                    ->orOn('products.id', '=', 'psa.product_id');
+            })
+            ->leftJoin('attributes as attr', 'psa.attribute_id', '=', 'attr.id')
+            ->leftJoin('attribute_translations as attr_trans', 'attr.id', '=', 'attr_trans.attribute_id')
+            ->select(
+                'products.id',
+                'products.sku',
+                'products.status',
+                'products.type',
+                'products.values',
+                'products.attribute_family_id',
+                'products.additional',
+                'products.created_at',
+                'products.updated_at',
+                'aft.code as attribute_family_code',
+
+                // Parent Product Data
+                'parent_products.id as parent_id',
+                'parent_products.sku as parent_sku',
+                'parent_products.type as parent_type',
+                'parent_products.status as parent_status',
+                'parent_products.values as parent_values',
+                'parent_products.attribute_family_id as parent_attribute_family_id',
+
+                // Fetch super attributes, ensuring they are retrieved from the parent
+                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT attr.code ORDER BY attr.code ASC SEPARATOR ','), '') as super_attributes")
+            )
+            ->where(function ($query) use ($skus) {
+                $query->whereIn('products.sku', $skus)
+                    ->orWhereIn('parent_products.sku', $skus);
+            })
+            ->where('products.type', '!=', 'configurable')
+            ->groupBy('products.id')
+            ->get()
+            ->toArray();
+
+        foreach ($allProducts as $product) {
+            $parent = $product?->parent_values ?? null;
+            $superAttrCode = explode(',', $product?->super_attributes);
+            $superAttr = [];
+            foreach ($superAttrCode as $attributeCode) {
+                $attr = $this->attributesAll[$attributeCode] ?? null;
+                if ($attr) {
+                    $superAttr[] = [
+                        'id'                => $attr?->id,
+                        'code'              => $attr?->code,
+                        'name'              => $attr?->name,
+                        'type'              => $attr?->type,
+                        'is_unique'         => $attr?->is_unique,
+                        'is_required'       => $attr?->is_required,
+                        'default_value'     => $attr?->default_value,
+                        'regex_pattern'     => $attr?->regex_pattern,
+                        'value_per_locale'  => $attr?->value_per_locale,
+                        'value_per_channel' => $attr?->value_per_channel,
+                        'usable_in_grid'    => $attr?->value_per_channel,
+                        'translations'      => $attr->translations->toArray(),
+                    ];
+                }
+            }
+
+            if ($parent) {
+                $parent = [
+                    'id'                  => $product->parent_id,
+                    'sku'                 => $product->parent_sku,
+                    'type'                => $product->parent_type,
+                    'status'              => $product->parent_status,
+                    'values'              => json_decode($product->parent_values, true),
+                    'attribute_family_id' => $product->parent_attribute_family_id,
+                    'super_attributes'    => $superAttr,
+                ];
+            }
+            $rowData = [
+                'id'                  => $product->id,
+                'sku'                 => $product->sku,
+                'type'                => $product->type,
+                'parent'              => $parent,
+                'status'              => $product->status,
+                'values'              => json_decode($product->values, true),
+                'parent_id'           => $product->parent_id,
+                'attribute_family_id' => $product->attribute_family_id,
+                'additional'          => json_decode($product->additional, true),
+                'super_attributes'    => [],
+            ];
             $productResult = $this->processProductData($rowData);
+            $this->createdItemsCount++;
             if (! $productResult) {
                 continue;
             }
-
-            $this->createdItemsCount++;
         }
     }
 
@@ -319,7 +410,7 @@ class Exporter extends AbstractExporter
 
         $this->getCategoriesByCode($rowData['values']['categories'] ?? [], $finalCategories);
 
-        if (isset($rowData['parent']) && ! empty($rowData['parent'])) {
+        if (! empty($rowData['parent'])) {
             $parentMapping = $this->checkMappingInDb(['code' => $rowData['parent']['sku']]) ?? null;
 
             $skipParent = $parentMapping ? $this->export->id == $parentMapping[0]['jobInstanceId'] : false;
@@ -336,20 +427,25 @@ class Exporter extends AbstractExporter
         }
 
         $formattedGraphqlData = $this->formatGraphqlData($mergedFields, $parentMergedFields, $finalCategories, $finalOption, $parentMapping);
+        $mediaMappings = $this->exportMapping->mapping['mediaMapping'] ?? [];
 
-        $imageData = $this->formatDataForGraphqlImage($mergedFields, $this->exportMapping->mapping['shopify_connector_settings'] ?? [], $parentMergedFields ?? []);
+        $imageData = [];
+        if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'image') {
+            $imageData = $this->formatImageDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? []);
+        }
 
+        if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'gallery') {
+            $imageData = $this->formatGalleryDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? [], $skipParent);
+        }
         if (! empty($imageData)) {
-            $this->imageData = array_merge($imageData[$rowData['sku']] ?? [], $imageData[@$parentData['sku']] ?? []);
+            $this->imageData = array_merge($imageData[@$parentData['sku']] ?? [], $imageData[$rowData['sku']] ?? []);
         }
 
         $variantData = $formattedGraphqlData['variant'];
-
         unset($formattedGraphqlData['variant']);
 
         if (empty($mapping) && ! empty($parentMapping)) {
             $resultVariant = $this->processVariantCreationResult($formattedGraphqlData, $variantData, $imageData, $rowData, $productOptionValues, $parentMapping);
-
             if (! $resultVariant) {
                 return null;
             }
@@ -372,8 +468,8 @@ class Exporter extends AbstractExporter
 
                 ['variantId' => $variantId, 'optionsGetting' => $optionsGetting, 'productId' => $productId] = $createResult;
             } else {
+                $variantData = $variantData + $productOptionValues;
                 $productId = ! empty($parentMapping) ? $parentMapping[0]['externalId'] : $mapping[0]['externalId'];
-
                 ['variantId' => $variantId, 'optionsGetting' => $optionsGetting] = $this->processProductUpdate(
                     $skipParent,
                     $formattedGraphqlData,
@@ -384,7 +480,9 @@ class Exporter extends AbstractExporter
                     $rowData,
                     $imageData,
                     $variantData,
-                    $variableOption
+                    $variableOption,
+                    $mediaMappings,
+                    $finalOption,
                 );
             }
 
@@ -423,24 +521,25 @@ class Exporter extends AbstractExporter
         array $imageData,
         array $productOptionValues
     ): ?array {
-        $productOption = [];
-
-        if (empty($parentData)) {
-            $formattedGraphqlData['productOptions'][] = [
-                'name'   => 'Title',
-                'values' => [
-                    [
-                        'name' => 'default',
-                    ],
-                ],
-            ];
+        if (! empty($parentData)) {
+            $variantData = $productOptionValues + $variantData;
+            if (! empty($formattedGraphqlData['metafields'])) {
+                $variantData['metafields'] = $formattedGraphqlData['metafields'];
+            }
         }
+
         $result = $this->apiRequestShopifyProduct($formattedGraphqlData, $this->credentialAsArray);
+
         if (! $this->checkNotExistError($result)) {
             return null;
         }
-        if ((isset($result['body']['data']['productCreate']['userErrors']) && ! empty($result['body']['data']['productCreate']['userErrors']))) {
-            $this->logWarning($result['body']['data']['productCreate']['userErrors'], $parentData['sku'] ?? $rowData['sku']);
+
+        $productCreateErr = $result['body']['data']['productCreate']['userErrors'] ?? [];
+        if (! empty($productCreateErr)) {
+            if (! empty($formattedGraphqlData['parentMetaFields'])) {
+                $this->prependAttributeCodesToErrors($productCreateErr, $formattedGraphqlData['parentMetaFields']);
+            }
+            $this->logWarning($productCreateErr, $parentData['sku'] ?? $rowData['sku']);
             $this->skippedItemsCount++;
 
             return null;
@@ -448,44 +547,51 @@ class Exporter extends AbstractExporter
 
         $productDataByApi = $result['body']['data']['productCreate']['product'];
 
-        $variants = $productDataByApi['variants']['edges'];
-
         $productId = $productDataByApi['id'];
 
         $imageIds = $productDataByApi['media']['nodes'];
 
         $variantMediaId = reset($imageIds)['id'] ?? null;
-
+        if (! empty($this->publicationId)) {
+            $existingPublicationId = $productDataByApi['resourcePublications']['edges'] ?? [];
+            $this->updateSalesChannelPublishing($productId, $existingPublicationId, $this->publicationId, $this->credentialAsArray);
+        }
+        if (! empty($parentData) && $variantMediaId) {
+            $variantData['mediaId'] = $variantMediaId;
+        }
         $this->parentMapping($parentData['sku'] ?? $rowData['sku'], $productId, $this->export->id);
 
         $this->imageIdMapping($imageIds, $imageData, $rowData, $parentData ?? [], $productId);
 
-        if (empty($parentData)) {
-            foreach ($variants as $variant) {
-                $variantId = $variant['node']['id'];
-                $variantData['id'] = $variantId;
-                $finalVariantData = ['input' => $variantData];
-                $finalVariantData['input']['productId'] = $productId;
+        $finalVariantData = [
+            'productId'     => $productId,
+            'strategy'      => 'REMOVE_STANDALONE_VARIANT',
+            'variantsInput' => [$variantData],
+        ];
 
-                $result = $this->apiRequestShopifyDefaultVariantCreate($finalVariantData, $this->credentialAsArray);
+        $result = $this->apiRequestShopifyDefaultVariantCreate($finalVariantData, $this->credentialAsArray);
 
-                if (! $this->checkNotExistError($result)) {
-                    return null;
-                }
-            }
+        if (! $this->checkNotExistError($result)) {
+            return null;
         }
 
-        if (! empty($parentData)) {
-            $result = $this->productVariantFormatAndCreate($formattedGraphqlData, $variantData, [], $rowData, $productOptionValues, $productId, $variantMediaId);
-
-            $variantId = $result['body']['data']['productVariantsBulkCreate']['productVariants'][0]['id'];
-            $productOption = $result['body']['data']['productVariantsBulkCreate']['product']['options'];
-
-            $this->parentMapping($rowData['sku'], $variantId, $this->export->id, $productId);
-
-            foreach ($variants as $variant) {
-                $this->requestGraphQlApiAction('productVariantDelete', $this->credentialAsArray, ['id' => $variant['node']['id']]);
+        $variantErrorResult = $result['body']['data'][self::VARIANT_CREATE]['userErrors'] ?? [];
+        if (! empty($variantErrorResult)) {
+            $errors = array_column($variantErrorResult, 'message');
+            if (! empty($variantData['metafields'])) {
+                $this->variantMetafieldAttributeCodeError($errors, $variantErrorResult, $variantData['metafields']);
             }
+            $this->logWarning($errors, $rowData['sku']);
+            $this->skippedItemsCount++;
+
+            return null;
+        }
+
+        $variantId = $result['body']['data'][self::VARIANT_CREATE]['productVariants'][0]['id'];
+
+        $productOption = $result['body']['data'][self::VARIANT_CREATE]['product']['options'];
+        if (! empty($parentData)) {
+            $this->parentMapping($rowData['sku'], $variantId, $this->export->id, $productId);
         }
 
         return [
@@ -493,6 +599,44 @@ class Exporter extends AbstractExporter
             'optionsGetting' => $productOption,
             'productId'      => $productId,
         ];
+    }
+
+    /**
+     * Update Sales Channel Publishing
+     *
+     * */
+    public function updateSalesChannelPublishing(string $productId, array $existingPublicationId, array $publicationsIds, array $credential): void
+    {
+        $existingIds = array_map(fn ($item) => $item['node']['publication']['id'], $existingPublicationId);
+        $newIds = array_column($publicationsIds, 'publicationId');
+        sort($existingIds);
+        sort($newIds);
+        if ($existingIds !== $newIds) {
+            $productPublishFormate = [
+                'id'                  => $productId,
+                'productPublications' => $publicationsIds,
+            ];
+            $this->requestGraphQlApiAction('productPublish', $credential, ['input' => $productPublishFormate]);
+            $removePublication = array_values(array_diff($existingIds, $newIds));
+            if (! empty($removePublication)) {
+                $removePublicationIds = array_map(fn ($id) => ['publicationId' => $id], $removePublication);
+                $this->updateSalesChannelUnpublishing($productId, $removePublicationIds, $credential);
+            }
+        }
+    }
+
+    /**
+     * Remove Sales Channel Publishing
+     *
+     * */
+    public function updateSalesChannelUnpublishing(string $productId, array $salesChannel, array $credential): void
+    {
+        $productUnpublishFormate = [
+            'id'                  => $productId,
+            'productPublications' => $salesChannel,
+        ];
+
+        $this->requestGraphQlApiAction('productUnpublish', $credential, ['input' => $productUnpublishFormate]);
     }
 
     /**
@@ -509,14 +653,42 @@ class Exporter extends AbstractExporter
         array $rowData,
         array $imageData,
         array $variantData,
-        array $variableOption
+        array $variableOption,
+        array $mediaMappings,
+        array $finalOption,
     ): array|null|bool {
         $productOption = [];
-
+        $productOptionExist = [];
         if (! $skipParent) {
-            $result = $this->updateProductWithMetafields($formattedGraphqlData, $this->credentialAsArray, $productId, $parentMapping, $mapping, $parentData, $rowData);
-            $errorUpdate = $result['body']['data']['productUpdate']['userErrors'] ?? [];
+            $mediaType = $mediaMappings['mediaType'] ?? null;
+            $galleryAttr = false;
+            $attrImage = $mediaMappings['mediaAttributes'] ?? null;
 
+            if ($attrImage) {
+                $mediaAttr = explode(',', $attrImage);
+
+                if ($mediaType == 'gallery') {
+                    $galleryAttr = true;
+                }
+
+                $mediaAttr = array_merge($mediaAttr, $this->assetAttr); // Working on this point
+                $allimageAttr = $this->getAllImageMappingBySku('productImage', $productId, $mediaAttr, $galleryAttr);
+                $deleteIds = array_merge(array_column($allimageAttr, 'externalId'), $this->removeImgAttr);
+                if (! empty($deleteIds)) {
+                    $this->requestGraphQlApiAction('productDeleteMedia', $this->credentialAsArray, [
+                        'mediaIds'  => $deleteIds,
+                        'productId' => $productId,
+                    ]);
+
+                    $this->deleteProductMediaMapping($deleteIds);
+                }
+            }
+
+            $result = $this->updateProductWithMetafields($formattedGraphqlData, $this->credentialAsArray, $productId, $parentMapping, $mapping, $parentData, $rowData);
+
+            $productOptionExist = $result['body']['data']['productUpdate']['product']['options'] ?? [];
+            $productOptionExist = array_column($productOptionExist, 'name') ?? [];
+            $errorUpdate = $result['body']['data']['productUpdate']['userErrors'] ?? [];
             if (isset($errorUpdate[0]['message']) && $errorUpdate[0]['message'] == self::NOT_EXIST_PRODUCT) {
                 $this->deleteProductMapping($productId);
                 if (! empty($parentData)) {
@@ -531,6 +703,10 @@ class Exporter extends AbstractExporter
             }
 
             if (! empty($errorUpdate)) {
+                $metafieldProduct = $formattedGraphqlData['parentMetaFields'] ?? $formattedGraphqlData['metafields'];
+                if (! empty($metafieldProduct)) {
+                    $this->prependAttributeCodesToErrors($errorUpdate, $metafieldProduct);
+                }
                 $this->logWarning($errorUpdate, $parentData['sku'] ?? $rowData['sku']);
                 $this->skippedItemsCount++;
 
@@ -543,43 +719,48 @@ class Exporter extends AbstractExporter
         }
 
         $this->handleMediaUpdates($productId, $rowData, $parentData, $imageData);
-
         if (empty($parentMapping)) {
             $this->handleAfterApiRequest($rowData, $result, $mapping, $this->export->id, $formattedGraphqlData);
             $variants = $result['body']['data']['productUpdate']['product']['variants']['edges'];
-
             foreach ($variants as $variant) {
                 $variantId = $variant['node']['id'];
-                $variantDataFormatted = ['input' => array_merge($variant['node'], $variantData)];
-                $this->requestGraphQlApiAction('ProductVariantUpdate', $this->credentialAsArray, $variantDataFormatted);
+                $inventoryData = $variantData['inventoryQuantities'];
+                unset($variantData['inventoryQuantities']);
+                $variantDataFormatted = [
+                    'productId' => $productId,
+                    'variants'  => array_merge($variant['node'], $variantData),
+                ];
+
+                $defaultVariant = $this->requestGraphQlApiAction(self::VARIANT_UPDATE, $this->credentialAsArray, $variantDataFormatted);
+                $productVariant = $defaultVariant['body']['data'][self::VARIANT_UPDATE] ?? [];
+                $inventoryToLocations = $productVariant['productVariants'][0]['inventoryItem']['inventoryLevels']['edges'] ?? [];
+                $inventoryItemId = $productVariant['productVariants'][0]['inventoryItem']['id'];
+                $addedQuantity = (int) $inventoryData['availableQuantity'] - (int) $productVariant['productVariants'][0]['inventoryQuantity'];
+                foreach ($inventoryToLocations as $inventoryToLocation) {
+                    $this->updateInventoryValue($inventoryToLocation['node']['location']['id'], $inventoryItemId, $addedQuantity);
+                }
             }
         } else {
-            $productOption = $this->updateProductOptions($parentData, $variableOption);
+            $needToAdd = array_diff(array_column($finalOption, 'name'), $productOptionExist);
+            if (! empty($needToAdd)) {
+                $filteredOptions = array_values(array_filter($finalOption, function ($option) use ($needToAdd) {
+                    return in_array($option['name'], $needToAdd);
+                }));
 
-            $hasDefaultTitleWithVariants = current(array_filter($productOption[0]['optionValues'], function ($optionValue) {
-                return $optionValue['name'] === 'Default Title' && $optionValue['hasVariants'] === true;
-            }));
-
-            if ($hasDefaultTitleWithVariants) {
-                $this->deleteProductMapping($productId);
-                if (! empty($parentData)) {
-                    $rowData['parent'] = $parentData;
-                }
-                $variable = [
-                    'input' => [
-                        'id' => $productId,
-                    ],
+                $formateOptCreate = [
+                    'productId' => $productId,
+                    'options'   => $filteredOptions,
                 ];
-                $this->requestGraphQlApiAction('productDelete', $this->credentialAsArray, $variable);
-                $notExistProductCreated = $this->processProductData($rowData);
-
-                if ($notExistProductCreated) {
-                    return true;
-                }
+                $optionResult = $this->requestGraphQlApiAction('createOptions', $this->credentialAsArray, $formateOptCreate);
+                $productOption = $optionResult['body']['data']['productOptionsCreate']['product']['options'];
             }
 
+            $productOption = $this->updateProductOptions($parentData, $variableOption);
             if (! empty($this->updateMedia) && empty($variantData['mediaId'])) {
-                $variantData['mediaId'] = reset($this->updateMedia)['id'];
+                $key = count($imageData[@$parentData['sku']] ?? []);
+                if (! empty($this->updateMedia[$key]['id'])) {
+                    $variantData['mediaId'] = $this->updateMedia[$key]['id'];
+                }
             }
 
             $variantResult = $this->updateProductVariant(
@@ -614,8 +795,10 @@ class Exporter extends AbstractExporter
         array $finalOption,
         array $parentMapping
     ): array {
-        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->definitionMapping);
-        $this->metaFieldAttributeCode = $this->shopifyGraphQLDataFormatter->getMetafieldAttrCode();
+        $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->productMetaFieldMapping, $this->variantMetaFieldMapping);
+        $this->metaFieldAttributeCode = $this->metafieldTranslationFormate($this->productMetaFieldMapping);
+        $this->variantMetafieldAttrCode = $this->metafieldTranslationFormate($this->variantMetaFieldMapping);
+
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
 
@@ -623,11 +806,15 @@ class Exporter extends AbstractExporter
             $formattedGraphqlData['productOptions'] = $finalOption;
         }
 
-        if (! empty($this->publicationId)) {
-            $formattedGraphqlData['publications'] = $this->publicationId;
-        }
-
         return $formattedGraphqlData;
+    }
+
+    public function metafieldTranslationFormate(array $metafield): array
+    {
+        return array_combine(
+            array_column($metafield, 'name_space_key') ?? [],
+            array_column($metafield, 'code') ?? []
+        );
     }
 
     /**
@@ -659,6 +846,47 @@ class Exporter extends AbstractExporter
     }
 
     /**
+     * for parentMetafield Array
+     * */
+    public function prependAttributeCodesToErrors(array &$errorUpdate, array $metafields): void
+    {
+        $metafieldErrorIndexes = array_map(function ($error) {
+            return $error['field'][1] ?? null;
+        }, array_filter($errorUpdate, function ($error) {
+            return isset($error['field'][0]) && $error['field'][0] === 'metafields';
+        }));
+
+        if (! empty($metafieldErrorIndexes)) {
+            $attrCode = array_map(function ($index) use ($metafields) {
+                return isset($metafields[$index]['key']) ? $metafields[$index]['key'] : null;
+            }, $metafieldErrorIndexes);
+
+            $errorUpdate['attrcode'] = $attrCode;
+        }
+    }
+
+    /**
+     * for variant Metafield Array
+     * */
+    public function variantMetafieldAttributeCodeError(&$error, array $variantMetaField, array $metafields): void
+    {
+        $variantMetafieldError = array_map(function ($error) {
+            return $error['field'][3] ?? null;
+        }, array_filter($variantMetaField, function ($error) {
+            return isset($error['field'][2]) && $error['field'][2] === 'metafields';
+        }));
+
+        if (! empty($variantMetafieldError)) {
+            $attrCode = array_map(function ($index) use ($metafields) {
+                return isset($metafields[$index]['key']) ? $metafields[$index]['key'] : null;
+            }, $variantMetafieldError);
+            $error['metafieldDefinition'] = [
+                'attrcode' => $attrCode,
+            ];
+        }
+    }
+
+    /**
      * Update product with Metafields
      * */
     public function updateProductWithMetafields(
@@ -670,15 +898,15 @@ class Exporter extends AbstractExporter
         array $parentData = [],
         array $rowData = []
     ): ?array {
-        if (! empty($formattedGraphqlData['metafields'])) {
-            $externalId = $parentMapping[0]['externalId'] ?? $mapping[0]['externalId'];
-            $this->filterNewMetaFieldsOnly($credentialAsArray, $externalId, null, $formattedGraphqlData['metafields']);
-        }
-
         $result = $this->apiRequestShopifyProduct($formattedGraphqlData, $credentialAsArray, $productId);
+
         if (! $this->checkNotExistError($result)) {
             return null;
         }
+
+        $existingPublicationId = $result['body']['data']['productUpdate']['product']['resourcePublications']['edges'] ?? [];
+
+        $this->updateSalesChannelPublishing($productId, $existingPublicationId, $this->publicationId, $credentialAsArray);
 
         if (! empty($result['body']['data']['productUpdate']['userErrors'])) {
             return $result;
@@ -708,7 +936,7 @@ class Exporter extends AbstractExporter
         array $rowData
     ): void {
         if (! empty($parentData)) {
-            $childValues = array_values(array_intersect($this->metaFieldAttributeCode, array_keys($mergedFields)));
+            $childValues = array_values(array_intersect(array_values($this->variantMetafieldAttrCode), array_keys($mergedFields)));
 
             if (! $skipParent) {
                 $this->updateProductOptionsTranslation(
@@ -738,7 +966,7 @@ class Exporter extends AbstractExporter
                 $childValues,
                 $this->credential,
                 $this->credentialAsArray,
-                'Variant'
+                $this->variantMetafieldAttrCode
             );
         }
     }
@@ -758,11 +986,8 @@ class Exporter extends AbstractExporter
             $this->productId[] = $productId;
 
             $productData = ! empty($parentMergedFields) ? $parentMergedFields : $mergedFields;
-
             $productItem = ! empty($parentData) ? $parentData : $rowData;
-
-            $parentValues = array_values(array_intersect($this->metaFieldAttributeCode, array_keys($productData)));
-
+            $parentValues = array_values(array_intersect(array_values($this->metaFieldAttributeCode), array_keys($productData)));
             $addedMetafields = $this->getExisitingMetafields($this->credentialAsArray, $productId, null);
 
             $filteredMetafields = array_filter($addedMetafields, function ($item) {
@@ -770,7 +995,6 @@ class Exporter extends AbstractExporter
             });
 
             $filteredMetafields = array_values($filteredMetafields);
-
             $this->metafieldTranslation(
                 $this->shopifyDefaultLocale,
                 $this->jobChannel,
@@ -778,7 +1002,8 @@ class Exporter extends AbstractExporter
                 $filteredMetafields,
                 $parentValues,
                 $this->credential,
-                $this->credentialAsArray
+                $this->credentialAsArray,
+                $this->metaFieldAttributeCode,
             );
 
             $matchedAttr = array_intersect_key(
@@ -811,22 +1036,20 @@ class Exporter extends AbstractExporter
         ?array $parentData
     ): string|bool|null {
         $variantData['id'] = $variantId = $mapping[0]['externalId'];
-
         if (isset($formattedGraphqlData['metafields'])) {
             $variantData['metafields'] = $formattedGraphqlData['metafields'];
         }
+        $inventoryData = $variantData['inventoryQuantities'] ?? [];
+        unset($variantData['inventoryQuantities']);
+        $variantInput = [
+            'productId' => $productId,
+            'variants'  => [$variantData],
+        ];
 
-        $variantInput = ['input' => $variantData];
-
-        if (! empty($formattedGraphqlData['metafields'])) {
-            $this->filterNewMetaFieldsOnly($this->credentialAsArray, $productId, $variantId, $formattedGraphqlData['metafields']);
-        }
-
-        $result = $this->requestGraphQlApiAction('ProductVariantUpdate', $this->credentialAsArray, $variantInput);
-
-        $errorUpdate = $result['body']['data']['productVariantUpdate']['userErrors'] ?? [];
-
-        if (isset($errorUpdate[0]['message']) && $errorUpdate[0]['message'] == self::NOT_EXIST_PRODUCT_VARIANT) {
+        $result = $this->requestGraphQlApiAction(self::VARIANT_UPDATE, $this->credentialAsArray, $variantInput);
+        $productVariant = $result['body']['data'][self::VARIANT_UPDATE] ?? [];
+        $errors = array_column($productVariant['userErrors'] ?? [], 'message');
+        if (in_array(self::NOT_EXIST_PRODUCT_VARIANT, $errors)) {
             $this->deleteProductVariantMapping($variantId, $rowData['sku']);
             if (! empty($parentData)) {
                 $rowData['parent'] = $parentData;
@@ -839,8 +1062,11 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if (! empty($errorUpdate)) {
-            $this->logWarning($errorUpdate, $rowData['sku']);
+        if (! empty($errors)) {
+            if (! empty($formattedGraphqlData['metafields'])) {
+                $this->variantMetafieldAttributeCodeError($errors, $productVariant['userErrors'], $formattedGraphqlData['metafields']);
+            }
+            $this->logWarning($errors, $rowData['sku']);
             $this->skippedItemsCount++;
 
             return null;
@@ -850,11 +1076,42 @@ class Exporter extends AbstractExporter
             return null;
         }
 
-        $updatedVariantId = $result['body']['data']['productVariantUpdate']['productVariant']['id'];
+        $inventoryToLocations = $productVariant['productVariants'][0]['inventoryItem']['inventoryLevels']['edges'] ?? [];
+        $inventoryItemId = $productVariant['productVariants'][0]['inventoryItem']['id'];
+        $addedQuantity = (int) $inventoryData['availableQuantity'] - (int) $productVariant['productVariants'][0]['inventoryQuantity'];
+        foreach ($inventoryToLocations as $inventoryToLocation) {
+            $this->updateInventoryValue($inventoryToLocation['node']['location']['id'], $inventoryItemId, $addedQuantity);
+        }
+
+        $updatedVariantId = $productVariant['productVariants'][0]['id'];
 
         $this->updateMapping($rowData['sku'], $updatedVariantId, $this->export->id, $mapping[0]['id']);
 
         return $updatedVariantId;
+    }
+
+    /**
+     * Updates product inventorty location value
+     *
+     * */
+    public function updateInventoryValue($locationId, $inventoryId, $inventoryValue): void
+    {
+        $input = [
+            'input' => [
+                'reason'               => 'correction',
+                'name'                 => 'available',
+                'referenceDocumentUri' => 'logistics://some.warehouse/take/2023-01/13',
+                'changes'              => [
+                    [
+                        'delta'           => $inventoryValue,
+                        'inventoryItemId' => $inventoryId,
+                        'locationId'      => $locationId,
+                    ],
+                ],
+            ],
+        ];
+
+        $this->requestGraphQlApiAction('inventoryAdjustQuantities', $this->credentialAsArray, $input);
     }
 
     /**
@@ -878,7 +1135,6 @@ class Exporter extends AbstractExporter
             }
 
             $optionResult = $this->requestGraphQlApiAction('productOptionUpdated', $this->credentialAsArray, $variableOption[$key]);
-
             $optionsGetting = $optionResult['body']['data']['productOptionUpdate']['product']['options'];
 
             $this->productOptions[$parentData['sku']] = $optionsGetting;
@@ -897,34 +1153,17 @@ class Exporter extends AbstractExporter
         array $imageData,
     ): void {
         if (! empty($this->updateMedia)) {
-            $productMedias = $this->requestGraphQlApiAction('productUpdateMedia', $this->credentialAsArray, [
-                'productId' => $productId,
-                'media'     => $this->updateMedia,
-            ]);
-
-            $mediaIdsUnassign = $productMedias['body']['data']['productUpdateMedia']['media'] ?? [];
-            $removingIds = array_values(array_filter($this->removeImgAttr));
-            $input = array_map(function ($media) use ($productId) {
-                return [
-                    'id'              => $media['id'],
-                    'referencesToAdd' => [$productId],
-                ];
-            }, $mediaIdsUnassign);
-            $inputs = [];
-            if (! empty($removingIds)) {
-                $inputs = array_map(function ($mediaRemove) use ($productId) {
-                    return [
-                        'id'                 => $mediaRemove,
-                        'referencesToRemove' => [$productId],
-                    ];
-                }, $removingIds);
+            $jsonData = ['input' => $this->updateMedia];
+            $fileUpdate = $this->requestGraphQlApiAction('productFileUpdate', $this->credentialAsArray, $jsonData);
+            $errors = $fileUpdate['body']['data']['fileUpdate']['userErrors'] ?? [];
+            $errorCode = array_column($errors, 'code');
+            if (in_array('FILE_DOES_NOT_EXIST', $errorCode)) {
+                preg_match('/^File ids \[(.*?)\]/', $errors[0]['message'], $matches);
+                if (! empty($matches[1])) {
+                    $fileIds = json_decode('['.$matches[1].']', true);
+                    $this->deleteProductMediaMapping($fileIds);
+                }
             }
-
-            $input = array_merge($input, $inputs);
-
-            $jsonData = ['input' => $input];
-
-            $this->requestGraphQlApiAction('productFileUpdate', $this->credentialAsArray, $jsonData);
         }
 
         if (! empty($this->imageData)) {
@@ -932,16 +1171,15 @@ class Exporter extends AbstractExporter
                 'productId' => $productId,
                 'media'     => $this->imageData,
             ];
-
             $resultImage = $this->requestGraphQlApiAction('productCreateMedia', $this->credentialAsArray, $newImageAdded);
-
             $mediasUpdate = $this->updateMedia = $resultImage['body']['data']['productCreateMedia']['media'];
-            if (! empty($mediasUpdate)) {
-                $this->mapMediaImages($rowData, $mediasUpdate, $productId, $imageData, $this->childImageAttr);
 
-                if (! empty($parentData)) {
-                    $this->mapMediaImages($parentData, $mediasUpdate, $productId, $imageData, $this->parentImageAttr);
-                }
+            if (! empty($parentData) && ! empty($imageData[$parentData['sku']])) {
+                $this->mapMediaImages($parentData, $mediasUpdate, $productId, $imageData, $this->parentImageAttr);
+            }
+
+            if (! empty($mediasUpdate) && ! empty($imageData[$rowData['sku']])) {
+                $this->mapMediaImages($rowData, $mediasUpdate, $productId, $imageData, $this->childImageAttr);
             }
         }
     }
@@ -977,7 +1215,7 @@ class Exporter extends AbstractExporter
         array $rowData,
         array $productOptionValues,
         string $parentId,
-        ?string $variantMediaId = null
+        ?string $variantMediaId = null,
     ) {
         if (isset($formattedGraphqlData['metafields'])) {
             $variantData['metafields'] = $formattedGraphqlData['metafields'];
@@ -997,6 +1235,12 @@ class Exporter extends AbstractExporter
 
         if (empty($finalVariant['media'])) {
             $finalVariant['media'] = [];
+        }
+
+        $related = $this->getAllImageMappingBySku('product', $parentId);
+
+        if (empty($related)) {
+            $finalVariant['strategy'] = 'REMOVE_STANDALONE_VARIANT';
         }
 
         $result = $this->requestGraphQlApiAction('CreateProductVariants', $this->credentialAsArray, $finalVariant);
@@ -1024,25 +1268,29 @@ class Exporter extends AbstractExporter
             $parentMapping[0]['externalId']
         );
 
-        if (
-            isset($result['body']['data']['productVariantsBulkCreate']['userErrors'])
-            && ! empty($result['body']['data']['productVariantsBulkCreate']['userErrors'])
-        ) {
-            $this->logWarning($result['body']['data']['productVariantsBulkCreate']['userErrors'], $rowData['sku']);
+        $variantErrorResult = $result['body']['data'][self::VARIANT_CREATE]['userErrors'] ?? [];
+        if (! empty($variantErrorResult)) {
+            $errors = array_column($variantErrorResult, 'message');
+            // $optionValue = array_column($productOptionValues['optionValues'], 'name');
+            // $message = "The variant '".implode(' / ', $optionValue)."' already exists. Please change at least one option value.";
+            if (! empty($formattedGraphqlData['metafields'])) {
+                $this->variantMetafieldAttributeCodeError($errors, $variantErrorResult, $formattedGraphqlData['metafields']);
+            }
+            $this->logWarning($errors, $rowData['sku']);
             $this->skippedItemsCount++;
 
             return null;
         }
 
-        $variantId = $result['body']['data']['productVariantsBulkCreate']['productVariants'][0]['id'];
+        $variantId = $result['body']['data'][self::VARIANT_CREATE]['productVariants'][0]['id'];
 
-        $optionsGetting = $result['body']['data']['productVariantsBulkCreate']['product']['options'];
+        $optionsGetting = $result['body']['data'][self::VARIANT_CREATE]['product']['options'];
 
-        $productId = $result['body']['data']['productVariantsBulkCreate']['product']['id'];
+        $productId = $result['body']['data'][self::VARIANT_CREATE]['product']['id'];
 
         if ($imageData && isset($imageData[$rowData['sku']])) {
             $medias = array_slice(
-                $result['body']['data']['productVariantsBulkCreate']['product']['media']['nodes'],
+                $result['body']['data'][self::VARIANT_CREATE]['product']['media']['nodes'],
                 -count($imageData[$rowData['sku']])
             );
 
@@ -1079,18 +1327,15 @@ class Exporter extends AbstractExporter
         array $parentData,
         string $productId
     ): void {
-        foreach ($imageData[$rowData['sku']] ?? [] as $key => $imageUrl) {
-            $this->imageMapping('productImage', $this->imageAttributes[$key], $imageIds[$key]['id'], $this->export->id, $productId, $rowData['sku']);
+        foreach ($imageData[@$parentData['sku']] ?? [] as $key => $imageUrl) {
+            $this->imageMapping('productImage', $this->parentImageAttr[$key] ?? $this->imageAttributes[$key], $imageIds[$key]['id'], $this->export->id, $productId, $parentData['sku']);
 
             unset($imageIds[$key]['id']);
         }
 
         $imageIds = array_values(array_filter($imageIds));
-
-        foreach ($imageData[@$parentData['sku']] ?? [] as $key => $imageUrl) {
-            $this->imageMapping('productImage', $this->imageAttributes[$key], $imageIds[$key]['id'], $this->export->id, $productId, $parentData['sku']);
-
-            unset($imageIds[$key]['id']);
+        foreach ($imageData[$rowData['sku']] ?? [] as $key => $imageUrl) {
+            $this->imageMapping('productImage', $this->childImageAttr[$key], $imageIds[$key]['id'], $this->export->id, $productId, $rowData['sku']);
         }
     }
 
@@ -1101,7 +1346,6 @@ class Exporter extends AbstractExporter
     {
         foreach ($categoriesCode ?? [] as $key => $value) {
             $check = $this->checkMappingInDb(['code' => $value], 'category');
-
             if (isset($check[0]['externalId'])) {
                 $finalCategories[] = $check[0]['externalId'];
             }
@@ -1127,7 +1371,6 @@ class Exporter extends AbstractExporter
         foreach ($superAttributes as $key => $optionvalues) {
             $translationsOption = $optionvalues['translations'];
             $name = $optionvalues['code'];
-
             if (isset($this->settingMapping->mapping['option_name_label']) && $this->settingMapping->mapping['option_name_label']) {
                 $name = array_column(array_filter($translationsOption, fn ($item) => $item['locale'] === $shopifyDefaultLocale), 'name')[0] ?? $optionvalues['name'];
             }
@@ -1135,12 +1378,12 @@ class Exporter extends AbstractExporter
             if ($key < 3) {
                 $options = [
                     'name'   => $name,
-                    'values' => [['name' => 'default']],
+                    'values' => [['name' => $mergedFields[$optionvalues['code']]]],
                 ];
                 $finalOption[] = $options;
             }
 
-            $attribute = $this->attributeRepository->findOneByField('code', $optionvalues['code']);
+            $attribute = $this->attributesAll[$optionvalues['code']] ?? null;
 
             $optionTrans = $attribute->options()->where('code', '=', $mergedFields[$optionvalues['code']])->first()->toArray();
 
@@ -1204,16 +1447,14 @@ class Exporter extends AbstractExporter
     {
         if (isset($formattedGraphqlData['parentMetaFields'])) {
             $formattedGraphqlData['metafields'] = $formattedGraphqlData['parentMetaFields'];
-
             unset($formattedGraphqlData['parentMetaFields']);
         }
 
         if ($id) {
             $formattedGraphqlData['id'] = $id;
-
-            $response = $this->requestGraphQlApiAction('productUpdate', $credential, ['input' => $formattedGraphqlData]);
+            $response = $this->requestGraphQlApiAction('productUpdate', $credential, ['product' => $formattedGraphqlData]);
         } else {
-            $response = $this->requestGraphQlApiAction('createProduct', $credential, ['input' => $formattedGraphqlData, 'media' => $this->imageData]);
+            $response = $this->requestGraphQlApiAction('createProduct', $credential, ['product' => $formattedGraphqlData, 'media' => $this->imageData]);
         }
 
         return $response;
@@ -1223,32 +1464,11 @@ class Exporter extends AbstractExporter
      * Creates a new product variant in Shopify and deletes the original variant.
      *
      * */
-    public function apiRequestShopifyDefaultVariantCreate(array $variantData, array $credential, bool $model = false): ?array
+    public function apiRequestShopifyDefaultVariantCreate(array $variantData, array $credential): ?array
     {
-        $idv = $variantData['input']['id'];
-
-        unset($variantData['input']['id']);
-
-        $response = $this->requestGraphQlApiAction('productVariantCreate', $credential, $variantData);
-
-        $this->requestGraphQlApiAction('productVariantDelete', $credential, ['id' => $idv]);
+        $response = $this->requestGraphQlApiAction('CreateProductVariantsDefault', $credential, $variantData);
 
         return $response;
-    }
-
-    /**
-     * Deletes existing metafields for a given product or variant.
-     *
-     * */
-    public function filterNewMetaFieldsOnly(array $credential, string $productId, ?string $variantId, array $metafields): void
-    {
-        $existingMetaFields = $this->getExisitingMetafields($credential, $productId, $variantId);
-
-        foreach ($existingMetaFields as $existingMetaField) {
-            $input['input']['id'] = $existingMetaField['node']['id'];
-
-            $response = $this->requestGraphQlApiAction('deleteMetafield', $credential, $input);
-        }
     }
 
     /**
@@ -1265,19 +1485,21 @@ class Exporter extends AbstractExporter
 
         $existingMetaFields = [];
         $url = null;
-
+        $first = 30;
         do {
             if (! $url) {
                 $endPoint = 'productMetafields';
                 $variable = [
-                    'id' => $productId,
+                    'id'     => $productId,
+                    'first'  => $first,
                 ];
                 $productType = 'product';
 
                 if ($variantId) {
                     $endPoint = 'productVariantMetafield';
                     $variable = [
-                        'id' => $variantId,
+                        'id'     => $variantId,
+                        'first'  => $first,
                     ];
                     $productType = 'productVariant';
                 }
@@ -1285,17 +1507,16 @@ class Exporter extends AbstractExporter
                 $endPoint = 'productMetafieldsByCursor';
                 $variable = [
                     'id'          => $productId,
-                    'first'       => 50,
+                    'first'       => $first,
                     'afterCursor' => $url,
                 ];
                 $productType = 'product';
 
                 if ($variantId) {
                     $endPoint = 'productVariantMetafieldByCursor';
-
                     $variable = [
                         'id'          => $variantId,
-                        'first'       => 50,
+                        'first'       => $first,
                         'afterCursor' => $url,
                     ];
 
@@ -1311,8 +1532,12 @@ class Exporter extends AbstractExporter
 
             $gettingMetaFields = $response['body']['data'][$productType]['metafields']['edges'];
 
-            if (! empty($response['body']['data'][$productType]['metafields']['edges'])) {
+            if (! empty($gettingMetaFields)) {
                 $existingMetaFields = array_merge($existingMetaFields, $gettingMetaFields);
+            }
+
+            if ($first != count($gettingMetaFields)) {
+                break;
             }
 
             $lastCursor = @end($gettingMetaFields)['cursor'];
@@ -1328,54 +1553,306 @@ class Exporter extends AbstractExporter
     /**
      * Handles Product images.
      */
-    public function formatDataForGraphqlImage(array $rawData, array $exportSeting, array $parentrawData): array
+    public function formatImageDataForGraphqlImage(array $rawData, array $mediaMapping, array $parentRawData): array
     {
         $medias = [];
+        $imageAttrCode = [];
+        $parentImageAttrCode = [];
+        $assetAttrCode = [];
+        $updateMedia = [];
 
-        if (isset($exportSeting['images']) && ! empty($exportSeting['images'])) {
-            $imagesAttr = explode(',', $exportSeting['images']);
-            $imageAttrCode = [];
-            $updateMedia = [];
+        if (! isset($mediaMapping['mediaAttributes']) || empty($mediaMapping['mediaAttributes'])) {
+            return $medias;
+        }
 
-            foreach ($imagesAttr as $imageAttr) {
+        $imagesAttr = explode(',', $mediaMapping['mediaAttributes']);
+        foreach ($imagesAttr as $imageAttr) {
+            // Process parent data
+            if (! empty($parentRawData[$imageAttr])) {
+                $medias = $this->handleImageAttribute(
+                    $imageAttr,
+                    $parentRawData,
+                    $parentImageAttrCode,
+                    $updateMedia,
+                    $medias,
+                    $assetAttrCode
+                );
+            } else {
+                $this->removeIfMappedInDb($imageAttr, $parentRawData['sku'] ?? null);
+            }
 
-                if (! empty($rawData[$imageAttr])) {
-                    $medias = $this->processMedia($imageAttr, $rawData, $imageAttrCode, $updateMedia, $medias);
-                    $this->childImageAttr[] = $imageAttr;
-                } else {
-                    $mappingImageC = $this->checkMappingInDbForImage($imageAttr, 'productImage', $rawData['sku']);
-                    $this->removeImgAttr[] = $mappingImageC[0]['externalId'] ?? null;
-                }
+            // Process child data
+            if (! empty($rawData[$imageAttr])) {
+                $medias = $this->handleImageAttribute(
+                    $imageAttr,
+                    $rawData,
+                    $imageAttrCode,
+                    $updateMedia,
+                    $medias,
+                    $assetAttrCode
+                );
+            } else {
+                $this->removeIfMappedInDb($imageAttr, $rawData['sku'] ?? null);
+            }
+        }
 
-                if (! empty($parentrawData[$imageAttr])) {
-                    $medias = $this->processMedia($imageAttr, $parentrawData, $imageAttrCode, $updateMedia, $medias);
-                    $this->parentImageAttr[] = $imageAttr;
-                } else {
-                    if (isset($parentrawData['sku'])) {
-                        $mappingImageP = $this->checkMappingInDbForImage($imageAttr, 'productImage', $parentrawData['sku']);
-                        $this->removeImgAttr[] = $mappingImageP[0]['externalId'] ?? null;
+        $this->assetAttr = $assetAttrCode;
+        $this->childImageAttr = $imageAttrCode;
+        $this->parentImageAttr = $parentImageAttrCode;
+        $this->imageAttributes = array_merge($parentImageAttrCode, $imageAttrCode);
+        $this->updateMedia = $updateMedia;
+
+        return $medias;
+    }
+
+    private function handleImageAttribute(
+        string $imageAttr,
+        array $data,
+        array &$imageAttrCode,
+        array &$updateMedia,
+        array $medias,
+        array &$assetAttrCode
+    ): array {
+        $attrType = $this->attributesAll[$imageAttr]->type ?? null;
+        if ($attrType === 'asset') {
+            $ids = explode(',', $data[$imageAttr]);
+            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            foreach ($assets ?? [] as $asset) {
+                $imageKey = $imageAttr.'_'.$asset['id'];
+                $assetAttrCode[] = $imageKey;
+                if ($asset['mime_type'] == 'video/mp4') {
+                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageKey, $updateMedia);
+                    if (! empty($videoInstance)) {
+                        $imageAttrCode[] = $imageKey;
                     }
 
+                    continue;
+                } elseif (in_array($asset['mime_type'], $this->imageMineType)) {
+                    $medias = $this->processMedia($imageKey, $data, $imageAttrCode, $updateMedia, $medias, $asset['path']);
+                } else {
+                    continue;
                 }
             }
 
-            $this->imageAttributes = $imageAttrCode;
-            $this->updateMedia = $updateMedia;
+            $this->removeImgAttr = $this->removeAssetsImages($imageAttr, $data);
+        } else {
+            $medias = $this->processMedia($imageAttr, $data, $imageAttrCode, $updateMedia, $medias);
         }
 
         return $medias;
+    }
+
+    private function removeIfMappedInDb(string $imageAttr, ?string $sku): void
+    {
+        if ($sku) {
+            $mapping = $this->checkMappingInDbForImage($imageAttr, 'productImage', $sku);
+            $this->removeImgAttr[] = $mapping[0]['externalId'] ?? null;
+        }
+    }
+
+    private function videoAddToShopify($asset, $sku, &$medias, $imageAttrKey, &$updateMedia)
+    {
+        $mappingImage = $this->checkMappingInDbForImage($imageAttrKey, 'productImage', $sku);
+        if (! empty($mappingImage)) {
+            return [];
+        }
+        $fileCreateForMp4 = [
+            'filename'  => $asset['file_name'],
+            'mimeType'  => $asset['mime_type'],
+            'resource'  => strtoupper($asset['file_type']),
+            'fileSize'  => (string) $asset['file_size'],
+        ];
+
+        $videoResponse = $this->requestGraphQlApiAction('stagedUploadsCreate', $this->credentialAsArray, [
+            'input' => $fileCreateForMp4,
+        ]);
+
+        $stagedTargets = $videoResponse['body']['data']['stagedUploadsCreate']['stagedTargets'] ?? [];
+        foreach ($stagedTargets as $stagedTarget) {
+            $multipart = [];
+            foreach ($stagedTarget['parameters'] as $param) {
+                $multipart[] = [
+                    'name'     => $param['name'],
+                    'contents' => $param['value'],
+                ];
+            }
+
+            $filePath = base_path('storage/app/private/'.$asset['path']);
+
+            if (! file_exists($filePath) || ! is_readable($filePath)) {
+                throw new \Exception('File does not exist or not Readable at path: '.$filePath);
+            }
+
+            $multipart[] = [
+                'name'     => 'file',
+                'contents' => fopen($filePath, 'r'),
+                'filename' => $asset['file_name'],
+                'headers'  => [
+                    'Content-Type' => $asset['mime_type'],
+                ],
+            ];
+
+            $response = Http::withOptions([
+                'headers' => ['Accept' => '*/*'], // Optional but safe
+            ])->asMultipart()->post($stagedTarget['url'], $multipart);
+
+            if ($response->failed()) {
+                return [];
+            }
+
+            $medias[$sku][] = [
+                'mediaContentType' => 'VIDEO',
+                'originalSource'   => $stagedTarget['resourceUrl'],
+            ];
+
+            return $medias;
+        }
+    }
+
+    /**
+     * Handles Product gallery images.
+     */
+    public function formatGalleryDataForGraphqlImage(array $rawData, array $mediaMapping, array $parentRawData, bool $skipParent): array
+    {
+        $medias = [];
+
+        if (empty($mediaMapping['mediaAttributes'])) {
+            return $medias;
+        }
+
+        $imageAttrs = explode(',', $mediaMapping['mediaAttributes']);
+        $imageAttrCode = [];
+        $parentImageAttrCode = [];
+        $updateMedia = [];
+        $allRemoveGallery = [];
+
+        foreach ($imageAttrs as $imageAttr) {
+            // Process child data
+            if (! empty($rawData)) {
+                $this->processGalleryAttribute(
+                    $rawData,
+                    $imageAttr,
+                    $imageAttrCode,
+                    $updateMedia,
+                    $medias,
+                    $allRemoveGallery
+                );
+            }
+
+            // Process parent data
+            if (! empty($parentRawData) && ! $skipParent) {
+                $this->processGalleryAttribute(
+                    $parentRawData,
+                    $imageAttr,
+                    $parentImageAttrCode,
+                    $updateMedia,
+                    $medias,
+                    $allRemoveGallery
+                );
+            }
+        }
+
+        $this->imageAttributes = $this->childImageAttr = array_values(array_unique($imageAttrCode));
+        $this->parentImageAttr = array_values(array_unique($parentImageAttrCode));
+        $this->removeImgAttr = $allRemoveGallery;
+        $this->updateMedia = $updateMedia;
+
+        return $medias;
+    }
+
+    private function processGalleryAttribute(
+        array $data,
+        string $imageAttr,
+        array &$imageAttrCode,
+        array &$updateMedia,
+        array &$medias,
+        array &$allRemoveGallery
+    ): void {
+        if (empty($data[$imageAttr])) {
+            $allRemoveGallery = array_merge($allRemoveGallery, $this->removeEmptyGallery($imageAttr, $data));
+
+            return;
+        }
+
+        $attrType = $this->attributesAll[$imageAttr]?->type ?? null;
+
+        if ($attrType === 'asset') {
+            $ids = explode(',', $data[$imageAttr]);
+            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            foreach ($assets ?? [] as $asset) {
+                $imageAttrKey = $imageAttr.'_'.$asset['id'];
+                if ($asset['mime_type'] == 'video/mp4') {
+                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageAttrKey, $updateMedia);
+                    if (! empty($videoInstance)) {
+                        $imageAttrCode[] = $imageAttrKey;
+                    }
+
+                    continue;
+                } elseif (in_array($asset['mime_type'], $this->imageMineType)) {
+                    $medias = $this->processMedia($imageAttrKey, $data, $imageAttrCode, $updateMedia, $medias, $asset['path']);
+                } else {
+                    continue;
+                }
+            }
+
+            $allRemoveGallery = array_merge($allRemoveGallery, $this->removeAssetsImages($imageAttr, $data));
+        } else {
+            $allRemoveGallery = array_merge($allRemoveGallery, $this->removeGalleryImages($imageAttr, $data));
+            $medias = $this->processGallery($imageAttr, $data, $imageAttrCode, $updateMedia, $medias);
+        }
+    }
+
+    public function removeGalleryImages(string $galleryAttr, array $itemData)
+    {
+        $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku']);
+        $removeGalleryAttr = [];
+        foreach ($mappingGallery as $key => $galley) {
+            if (! isset($itemData[$galleryAttr][$key])) {
+                $removeGalleryAttr[] = $galley['externalId'] ?? null;
+            }
+        }
+
+        return $removeGalleryAttr;
+    }
+
+    public function removeAssetsImages(string $galleryAttr, array $itemData)
+    {
+        $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku'], $asset = true);
+        $assetIds = explode(',', $itemData[$galleryAttr]);
+        $removeGalleryAttr = [];
+        foreach ($mappingGallery as $key => $galley) {
+            if (! in_array((string) $key, $assetIds)) {
+                $removeGalleryAttr[] = $galley['externalId'] ?? null;
+            }
+        }
+
+        return $removeGalleryAttr;
+    }
+
+    public function removeEmptyGallery(string $galleryAttr, array $itemData)
+    {
+
+        $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku']);
+        $removeGalleryAttr = array_column($mappingGallery, 'externalId');
+
+        return $removeGalleryAttr;
     }
 
     /**
      * Processes media data for a given image attribute and item data.
      *
      * */
-    public function processMedia(string $imageAttr, array $itemData, array &$imageAttrCode, array &$updateMedia, array $medias): array
+    public function processMedia(string $imageAttr, array $itemData, array &$imageAttrCode, array &$updateMedia, array $medias, $assetPath = false): array
     {
         $mappingImage = $this->checkMappingInDbForImage($imageAttr, 'productImage', $itemData['sku']);
+        if ($assetPath) {
+            $fullUrl = route('admin.dam.file.fetch', ['path' => $assetPath]);
+        } else {
+            $urlPath = is_array(@$itemData[$imageAttr]) ? @$itemData[$imageAttr][0] : @$itemData[$imageAttr];
+            $fullUrl = Storage::url($urlPath);
+        }
 
-        $fullUrl = Storage::url(@$itemData[$imageAttr]);
-
+        $fullUrl = str_replace('http://localhost', 'https://f3d5-115-241-28-98.ngrok-free.app', $fullUrl);
         if (! empty($mappingImage)) {
             $updateMedia[] = [
                 'alt'                => 'Some more alt text',
@@ -1391,10 +1868,42 @@ class Exporter extends AbstractExporter
         }
 
         $medias[$itemData['sku']][] = [
-            'alt'              => 'This is image description',
             'mediaContentType' => 'IMAGE',
             'originalSource'   => $fullUrl,
         ];
+
+        return $medias;
+    }
+
+    public function processGallery(string $imageAttr, array $itemData, array &$imageAttrCode, array &$updateMedia, array $medias): array
+    {
+        $imageData = $itemData[$imageAttr];
+
+        if (is_string($imageData)) {
+            $imageData = [$imageData];
+        }
+        foreach ($imageData as $key => $image) {
+            $image = str_replace(' ', '%20', $image);
+            $galleryImageAttribute = $imageAttr.'_'.$key;
+            $fullUrl = Storage::url($image);
+            $fullUrl = str_replace('http://localhost', 'https://f3d5-115-241-28-98.ngrok-free.app', $fullUrl);
+            $mappingImage = $this->checkMappingInDbForImage($galleryImageAttribute, 'productImage', $itemData['sku']);
+            if (! empty($mappingImage)) {
+                $updateMedia[] = [
+                    'id'                 => $mappingImage[0]['externalId'],
+                    'previewImageSource' => $fullUrl,
+                    'referencesToAdd'    => [$mappingImage[0]['relatedId']],
+                ];
+            }
+            if (empty($mappingImage)) {
+                $imageAttrCode[] = $galleryImageAttribute;
+
+                $medias[$itemData['sku']][] = [
+                    'mediaContentType' => 'IMAGE',
+                    'originalSource'   => $fullUrl,
+                ];
+            }
+        }
 
         return $medias;
     }

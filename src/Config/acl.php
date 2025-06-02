@@ -37,9 +37,29 @@ return [
         'route' => 'admin.shopify.import-mappings',
         'sort'  => 3,
     ], [
+        'key'   => 'shopify.meta-fields',
+        'name'  => 'shopify::app.components.layouts.sidebar.metafield-definitions',
+        'route' => 'shopify.metafield.index',
+        'sort'  => 4,
+    ], [
+        'key'   => 'shopify.meta-fields.create',
+        'name'  => 'shopify::app.shopify.acl.metafield.create',
+        'route' => 'shopify.metafield.store',
+        'sort'  => 1,
+    ], [
+        'key'   => 'shopify.meta-fields.edit',
+        'name'  => 'shopify::app.shopify.acl.metafield.edit',
+        'route' => 'shopify.metafield.edit',
+        'sort'  => 2,
+    ], [
+        'key'   => 'shopify.meta-fields.delete',
+        'name'  => 'shopify::app.shopify.acl.metafield.delete',
+        'route' => 'shopify.metafield.delete',
+        'sort'  => 3,
+    ], [
         'key'   => 'shopify.settings',
         'name'  => 'shopify::app.components.layouts.sidebar.settings',
         'route' => 'admin.shopify.settings',
-        'sort'  => 4,
+        'sort'  => 5,
     ],
 ];
