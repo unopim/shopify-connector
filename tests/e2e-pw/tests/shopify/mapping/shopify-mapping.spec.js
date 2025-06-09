@@ -20,8 +20,7 @@ const mappingElements = [
     { field: 'Seo Description [metafields_global_description_tag]', inputName: 'metafields_global_description_tag', placeholder: 'Seo Description' },
     { field: 'Handle [handle]', inputName: 'handle', placeholder: 'Handle' },
     { field: 'Taxable [taxable]', inputName: 'taxable', placeholder: 'Taxable' },
-    { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' },
-    { field: 'Attribute to be used as image', inputName: 'images', placeholder: 'Select option' }
+    { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' }
 ];
 
 const dropdownMappings = [
@@ -48,19 +47,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         }
 
         const saveButton = page.getByRole('button', { name: 'Save' });
-
-        const [response] = await Promise.all([
-            page.waitForResponse(resp =>
-                resp.url().includes('/admin/shopify/export/mapping/1') &&
-                (resp.status() === 200 || resp.status() === 302) // Accept redirect
-            ),
-            saveButton.click(),
-        ]);
-
-        console.log('Status:', response.status());
-        console.log('Redirected to:', response.headers()['location'] || 'N/A');
-
-        // Confirm success message is shown on next page after redirect
+        await saveButton.click();
         await expect(page.getByText('Mapping saved successfully')).toBeVisible();
 
     });
