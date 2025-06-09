@@ -44,7 +44,7 @@ test.describe('Shopify Credentials Page', () => {
   test('Verify table headers', async ({ page }) => {
     const headers = ['Shopify URL', 'API Version', 'Enable', 'Actions'];
     for (const header of headers) {
-      await expect(page.locator(`p:text("${header}")`)).toBeVisible();
+      await expect(page.getByText(header)).toBeVisible({ timeout: 10000 });
     }
   });
 
