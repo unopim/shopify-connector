@@ -35,12 +35,15 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
 
     test('Map Shopify Fields', async ({ page }) => {
+
         for (const element of mappingElements) {
             console.log(`Mapping ${element.field}`);
 
             const input = page.locator(`input[name="${element.inputName}"]`);
         }
-
+        await page.locator('input[name="dimensionunit"]').fill('GRAMS');
+        await page.locator('input[name="volumeunit"]').fill('CENTILITERS');
+        await page.locator('input[name="weightunit"]').fill('CENTIMETERS');
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
         await expect(page.getByText('Mapping saved successfully')).toBeVisible();
@@ -53,7 +56,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved successfully Close')).toBeVisible();
+        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.locator('div').filter({ hasText: /^Name$/ }).click();
         await page.getByText('Name', { exact: true }).click();
