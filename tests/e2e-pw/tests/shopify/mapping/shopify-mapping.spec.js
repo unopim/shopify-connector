@@ -23,11 +23,6 @@ const mappingElements = [
     { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' }
 ];
 
-const dropdownMappings = [
-    { field: 'Name [title]', inputName: 'title', desiredOption: 'Name' },
-    // { field: 'Cost [cast]', inputName: 'cost', desiredOption: 'Cost' },
-    // { field: 'Description [descriptionHtml]', inputName: 'descriptionHtml', desiredOption: 'Description' }
-];
 test.describe('UnoPim Shopify mapping tab Navigation', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to the Shopify Credentials Page
@@ -85,7 +80,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
         await page.getByRole('link', { name: 'Export Mappings' }).click();
-
     });
 });
 
