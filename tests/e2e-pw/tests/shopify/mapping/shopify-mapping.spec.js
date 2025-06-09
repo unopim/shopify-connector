@@ -50,12 +50,19 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
     test('should navigate to Shopify mapping page and fill export mapping form', async ({ page }) => {
         await expect(page.getByRole('link', { name: 'General' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('General');
-        await expect(page.getByRole('paragraph', { name: 'Export Mappings' })).toBeVisible();
+        await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
+        await expect(page.getByText('Export Mapping saved successfully Close')).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
+        await page.locator('div').filter({ hasText: /^Name$/ }).click();
+        await page.getByText('Name', { exact: true }).click();
+        await page.getByText('Description', { exact: true }).click();
+        await page.locator('div').filter({ hasText: /^Price$/ }).click();
         await page.locator('#default_productType').click();
+        await page.locator('#default_productType').clear();
         await page.locator('#default_productType').fill('unopim');
+        await page.locator('#default_productType').click();
         await page.locator('#default_tags').click();
         await page.locator('#default_tags').fill('shopify');
         const mediaTypeDropdown = page.locator('div:has-text("Media Type") + div input[placeholder="Select option"]');
