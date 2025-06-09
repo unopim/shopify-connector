@@ -47,35 +47,29 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
     });
 
-    test('should navigate to shopify mapping page', async ({ page }) => {
-        // Go directly to the admin dashboard (User is already logged in)
+    test('should navigate to Shopify mapping page and fill export mapping form', async ({ page }) => {
         await expect(page.getByRole('link', { name: 'General' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('General');
-        await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
+        await expect(page.getByRole('paragraph', { name: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved successfully Close')).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
-        await page.locator('div').filter({ hasText: /^Name$/ }).click();
-        await page.getByText('Name', { exact: true }).click();
-        await page.getByText('Description', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Price$/ }).click();
         await page.locator('#default_productType').click();
-        await page.locator('#default_productType').clear();
         await page.locator('#default_productType').fill('unopim');
-        await page.locator('#default_productType').click();
         await page.locator('#default_tags').click();
-        await page.locator('#default_tags').clear();
         await page.locator('#default_tags').fill('shopify');
-        await page.locator('div').filter({ hasText: /^Select option$/ }).first().click();
-        await page.locator('div:nth-child(4) > .flex > div:nth-child(2)').click();
-        await page.getByRole('combobox').filter({ hasText: /^No elements found\. Consider changing the search query\.List is empty\.$/ }).getByPlaceholder('Select option').click();
-        await page.getByText('Select option').nth(2).click();
+        const mediaTypeDropdown = page.locator('div:has-text("Media Type") + div input[placeholder="Select option"]');
+        await mediaTypeDropdown.click();
+        await page.getByText('Gallery', { exact: true }).click();
+        const mediaAttributesDropdown = page.locator('div:has-text("Media Attributes") + div input[placeholder="Select option"]');
+        await expect(mediaAttributesDropdown).toBeEnabled();
+        await mediaAttributesDropdown.click();
+        const firstAttributeOption = page.locator('.multiselect__option').first();
+        await expect(firstAttributeOption).toBeVisible();
+        await firstAttributeOption.click();
         await page.getByText('Attributes to be used as').click();
-        await page.locator('div').filter({ hasText: /^Select option$/ }).nth(2).click();
+        await page.locator('div:has-text("Select option")').nth(2).click();
         await page.getByText('Select option').nth(1).click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved')).toBeVisible();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
