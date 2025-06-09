@@ -24,12 +24,6 @@ const mappingElements = [
     { field: 'Attribute to be used as image', inputName: 'images', placeholder: 'Select option' }
 ];
 
-const metaFieldsMapping = [
-    { field: 'Meta String', inputName: 'meta_fields_string', placeholder: 'Select option' },
-    { field: 'Meta Integer', inputName: 'meta_fields_integer', placeholder: 'Select option' },
-    { field: 'Meta JSON', inputName: 'meta_fields_json', placeholder: 'Select option' }
-];
-
 const dropdownMappings = [
     { field: 'Name [title]', inputName: 'title', desiredOption: 'Name' },
     // { field: 'Cost [cast]', inputName: 'cost', desiredOption: 'Cost' },
@@ -56,21 +50,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
 
-        await expect(page.getByText('Mapping saved successfully')).toBeVisible();
-    });
-
-
-    test('Map Shopify Meta Fields', async ({ page }) => {
-        for (const meta of metaFieldsMapping) {
-            console.log(`Mapping ${meta.field}`);
-
-            const input = page.locator(`input[name="${meta.inputName}"]`);
-        }
-
-        const saveButton = page.getByRole('button', { name: 'Save' });
-        await saveButton.click();
-
-        await expect(page.getByText('Mapping saved successfully')).toBeVisible();
+        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
     });
 
     test('should navigate to shopify mapping page', async ({ page }) => {

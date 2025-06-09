@@ -64,7 +64,10 @@
                         if (isset($metaFieldTypeInShopify[$metaField?->type]['listvalue']['smartCollectionCondition'])) {
                             $smartCollectionCondition = $metaFieldTypeInShopify[$metaField?->type]['listvalue']['smartCollectionCondition'] ? null : $metaFieldTypeInShopify[$metaField?->type]['listvalue']['smartCollectionCondition'];
                         }
-                        
+
+                        if (in_array($metaField?->type, ['rating', 'number_decimal', 'number_integer']) && !$metaField->listvalue) {
+                            $smartCollectionCondition = true;
+                        }
                         
                         $adminFilterable = (($metaFieldTypeInShopify[$metaField?->type]['adminFilterable'] ?? null) && $metaField?->ownerType == 'PRODUCT') ? true : null;
                         
