@@ -41,9 +41,15 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
             const input = page.locator(`input[name="${element.inputName}"]`);
         }
-        await page.locator('input[name="dimensionunit"]').fill('GRAMS');
-        await page.locator('input[name="volumeunit"]').fill('CENTILITERS');
-        await page.locator('input[name="weightunit"]').fill('CENTIMETERS');
+        await page.locator('input[type="hidden"][name="dimensionunit"]').evaluate((el) => {
+            el.value = 'OUNCES';
+        });
+        await page.locator('input[type="hidden"][name="volumeunit"]').evaluate((el) => {
+            el.value = 'CENTILITERS';
+        });
+        await page.locator('input[type="hidden"][name="weightunit"]').evaluate((el) => {
+            el.value = 'CENTIMETERS';
+        });
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
         await expect(page.getByText('Mapping saved successfully')).toBeVisible();
