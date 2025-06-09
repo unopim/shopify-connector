@@ -49,8 +49,8 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
-
-        await expect(page.locator('span:text("Export Mapping saved successfully")')).toBeVisible({ timeout: 10000 });
+        await page.waitForTimeout(500); // Slight wait after save
+        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible({ timeout: 10000 });
 
     });
 
