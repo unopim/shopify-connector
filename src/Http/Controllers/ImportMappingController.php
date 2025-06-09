@@ -84,7 +84,7 @@ class ImportMappingController extends Controller
             $shopifyMapping = $this->shopifyExportMappingRepository->update($mappingFieldss, 3);
         }
 
-        session()->flash('success', trans('shopify::app.shopify.export.mapping.created'));
+        session()->flash('success', trans('shopify::app.shopify.import.mapping.created'));
 
         return redirect()->route('admin.shopify.import-mappings', 3);
     }
