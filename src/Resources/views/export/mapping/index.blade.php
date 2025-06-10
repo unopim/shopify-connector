@@ -211,6 +211,8 @@
                                     label-by="name"
                                     :value="old('weightunit') ?? $weightUnitValue"
                                     :options="json_encode($weightunit, true)"
+                                    :label="trans('shopify::app.shopify.export.mapping.unit.weight')"
+                                    :placeholder="trans('shopify::app.shopify.export.mapping.unit.weight')"
                                     name="weightunit"
                                     rules="required"
                                 />
@@ -233,6 +235,8 @@
                                     track-by="id"
                                     label-by="name"
                                     :value="old('volumeunit') ?? $volumeUnitValue"
+                                    :label="trans('shopify::app.shopify.export.mapping.unit.volume')"
+                                    :placeholder="trans('shopify::app.shopify.export.mapping.unit.volume')"
                                     :options="json_encode($volume, true)"
                                     name="volumeunit"
                                     rules="required"
@@ -257,6 +261,8 @@
                                     label-by="name"
                                     :value="old('dimensionunit') ?? $dimensionunit"
                                     :options="json_encode($dimension, true)"
+                                    :label="trans('shopify::app.shopify.export.mapping.unit.dimension')"
+                                    :placeholder="trans('shopify::app.shopify.export.mapping.unit.dimension')"
                                     name="dimensionunit"
                                     rules="required"
                                 />
