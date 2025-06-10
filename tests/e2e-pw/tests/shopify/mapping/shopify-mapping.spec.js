@@ -41,11 +41,19 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
             const input = page.locator(`input[name="${element.inputName}"]`);
         }
-        await page.fill('input[type="hidden"][name="dimensionunit"]', 'OUNCES');
-        await page.fill('input[type="hidden"][name="volumeunit"]', 'CENTILITERS');
-        await page.fill('input[type="hidden"][name="weightunit"]', 'CENTIMETERS');
+        
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
+        await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.locator('#app')).toContainText('The weightunit field is required');
+      await expect(page.locator('#app')).toContainText('The volumeunit field is required');
+      await expect(page.locator('#app')).toContainText('The dimensionunit field is required');
+      await page.getByText(/^Unit Weight$/).click();
+      await page.getByRole('option').getByText('kg').click();  
+      await page.getByText(/^Unit Volume$/).click();
+      await page.getByRole('option').getByText('L').click();
+      await page.getByText(/^Unit Dimension$/).click();
+      await page.getByRole('option').getByText('cm').click();
         await expect(page.getByText('Mapping saved successfully')).toBeVisible();
 
     });
