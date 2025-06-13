@@ -102,10 +102,7 @@ test.describe.serial('Shopify Create credential Page', () => {
     await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('http://quickstart-4a9be6b7.myshopify.com');
     await page.getByRole('textbox', { name: 'Admin API access token' }).fill('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');
     await page.getByRole('button', { name: 'Save' }).click();
-    const toast = page.locator('div.flex >> text=Credential Created Success');
-    await expect(toast).toBeVisible();
-    const text = await page.textContent('body');
-    console.log(text);
+    await expect(page.getByText('Credential Created Success')).toBeVisible();
     await page.getByRole('link', { name: 'Back' }).click();
     await expect(page.locator('#app')).toContainText('Yes');
     await page.getByText('1 Results').click();
