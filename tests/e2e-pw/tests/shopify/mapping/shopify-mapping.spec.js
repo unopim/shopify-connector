@@ -45,9 +45,9 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
         await page.getByRole('button', { name: 'Save' }).click();
-      await expect(page.locator('#app')).toContainText('The weightunit field is required');
-      await expect(page.locator('#app')).toContainText('The volumeunit field is required');
-      await expect(page.locator('#app')).toContainText('The dimensionunit field is required');
+      await expect(page.locator('#app')).toContainText('The Unit Weight field is required');
+      await expect(page.locator('#app')).toContainText('The Unit Volume field is required');
+      await expect(page.locator('#app')).toContainText('The Unit Dimension field is required');
       await page.locator('div').filter({ hasText: /^Unit Weight$/ }).click();
       await page.getByText('kg', { exact: true }).click();
       await page.locator('div').filter({ hasText: /^Unit Volume$/ }).click();
