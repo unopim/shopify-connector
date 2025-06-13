@@ -610,7 +610,8 @@ class Importer extends AbstractImporter
                 $variantImageAttr = $variantImageAttr[0];
             }
             $mappingAttr = $variantImageAttr ?? null;
-            if ($mediaMapping['mediaType'] == 'gallery') {
+            $mType = $mediaMapping['mediaType'] ?? null;
+            if ($mType == 'gallery') {
                 $mappingAttr = $variantImageAttr.'_0';
             }
             if (! empty($productVariant['node']['image'])) {

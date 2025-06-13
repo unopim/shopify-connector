@@ -177,7 +177,7 @@ class ShopifyGraphQLDataFormatter
                 $attribute = $this->attributeAll[$unopimField] ?? null;
                 if ($attribute?->type == 'select') {
                     $option = $attribute->options()->where('code', $typeCastValues)->orderBy('sort_order')->first();
-                    $optionTrans = $option->toArray()['translations'];
+                    $optionTrans = $option?->toArray()['translations'] ?? [];
                     $optionLabelValue = array_values(array_filter($optionTrans, fn ($item) => $item['locale'] === $locale))[0]['label'] ?? null;
                     if (! empty($optionLabelValue)) {
                         $typeCastValues = $optionLabelValue;

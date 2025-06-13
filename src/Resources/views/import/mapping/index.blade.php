@@ -281,8 +281,7 @@
                 
                 handleOpenedSelect(event, fieldName) {
                     const values = Object.values(this.notInclude);
-                    var json = JSON.parse(event);
-                    this.notInclude[fieldName] = json?.code;
+                    this.notInclude[fieldName] = event?.target?.value?.code;
                 },
             },
         });
