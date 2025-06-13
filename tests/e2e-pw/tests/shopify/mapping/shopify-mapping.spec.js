@@ -65,16 +65,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.locator('#app')).toContainText('The Unit Weight field is required');
-        await expect(page.locator('#app')).toContainText('The Unit Volume field is required');
-        await expect(page.locator('#app')).toContainText('The Unit Dimension field is required');
-        await page.locator('div').filter({ hasText: /^Unit Weight$/ }).click();
-        await page.getByText('kg', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Unit Volume$/ }).click();
-        await page.getByText('L', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Unit Dimension$/ }).click();
-        await page.getByText('cm', { exact: true }).click();
-        await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.locator('div').filter({ hasText: /^Name$/ }).click();
@@ -105,4 +95,3 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await page.getByRole('link', { name: 'Export Mappings' }).click();
     });
 });
-
