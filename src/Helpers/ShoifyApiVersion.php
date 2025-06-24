@@ -9,8 +9,8 @@ class ShoifyApiVersion
      */
     public array $apiVersion = [
         [
-            'id'   => '2024-07',
-            'name' => '2024-07',
+            'id'   => '2025-01',
+            'name' => '2025-01',
         ],
     ];
 

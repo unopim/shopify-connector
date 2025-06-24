@@ -78,7 +78,7 @@
                     />
                 </x-admin::form.control-group>
                 <x-admin::form.control-group class="mb-4" v-if=" (selectedAttributeType == 1)">
-                    <x-admin::form.control-group.label>
+                    <x-admin::form.control-group.label >
                         @lang('shopify::app.shopify.export.setting.tagSeprator')
                     </x-admin::form.control-group.label>
 
@@ -114,80 +114,6 @@
                     />
 
                     <x-admin::form.control-group.error control-name="tagSeprator" />
-                </x-admin::form.control-group>
-            </div>
-            <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
-                <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
-                        @lang('shopify::app.shopify.export.setting.metafields')
-                </p>
-
-                <x-admin::form.control-group class="mb-4 w-[525px] ">
-                    <x-admin::form.control-group.label class="required">
-                        @lang('shopify::app.shopify.export.setting.metaFieldsKey')
-                    </x-admin::form.control-group.label>
-
-                    @php
-                        $metaFieldsKey = [
-                            [
-                                'id' => 'code',
-                                'name' => 'Attribute Code',
-                            ], [
-                                'id' => 'label',
-                                'name' => 'Attribute Label',
-                            ],
-                        ];
-                        $metaFieldsKey = json_encode($metaFieldsKey, true);
-                        $metaFieldsKeyValue = $shopifySettings->mapping['metaFieldsKey'] ?? '';
-                    @endphp
-
-                    <x-admin::form.control-group.control
-                        type="select"
-                        id="metaFieldsKey"
-                        name="metaFieldsKey" 
-                        :label="trans('shopify::app.shopify.export.setting.metaFieldsKey')"
-                        :placeholder="trans('shopify::app.shopify.export.setting.metaFieldsKey')"
-                        :options="$metaFieldsKey"
-                        :value="$metaFieldsKeyValue"
-                        rules="required"
-                        track-by="id"
-                        label-by="name"
-                    />
-
-                    <x-admin::form.control-group.error control-name="metaFieldsKey" />
-                </x-admin::form.control-group>
-                <x-admin::form.control-group class="mb-4 w-[525px]">
-                    <x-admin::form.control-group.label class="required">
-                        @lang('shopify::app.shopify.export.setting.metaFieldsNameSpace')
-                    </x-admin::form.control-group.label>
-
-                    @php
-                        $metaFieldsNameSpace = [
-                            [
-                                'id' => 'code',
-                                'name' => 'Attribute Group Code',
-                            ], [
-                                'id' => 'global',
-                                'name' => 'global',
-                            ],
-                        ];
-                        $metaFieldsNameSpace = json_encode($metaFieldsNameSpace, true);
-                        $metaFieldsNameSpaceValue = $shopifySettings->mapping['metaFieldsNameSpace'] ?? '';
-                    @endphp
-
-                    <x-admin::form.control-group.control
-                        type="select"
-                        id="metaFieldsNameSpace"
-                        name="metaFieldsNameSpace" 
-                        :label="trans('shopify::app.shopify.export.setting.metaFieldsNameSpace')"
-                        :placeholder="trans('shopify::app.shopify.export.setting.metaFieldsNameSpace')"
-                        :options="$metaFieldsNameSpace"
-                        :value="$metaFieldsNameSpaceValue"
-                        rules="required"
-                        track-by="id"
-                        label-by="name"
-                    />
-
-                    <x-admin::form.control-group.error control-name="metaFieldsNameSpace" />
                 </x-admin::form.control-group>
             </div>
             <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
