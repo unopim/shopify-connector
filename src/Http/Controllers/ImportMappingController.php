@@ -56,6 +56,7 @@ class ImportMappingController extends Controller
         $filteredData = array_filter($request->except(['_token', '_method']));
         $mappingFields = [];
         $filteredData = array_filter($filteredData, fn ($key) => ! str_starts_with($key, 'default_'), ARRAY_FILTER_USE_KEY);
+        $mappingFieldss['mapping'] = [];
         $this->formatMediaMapping($filteredData, $mappingFields);
         $duplicates = array_filter(array_count_values($filteredData), fn ($count) => $count > 1);
         $duplicateKeys = array_keys(array_filter($filteredData, fn ($value) => isset($duplicates[$value])));

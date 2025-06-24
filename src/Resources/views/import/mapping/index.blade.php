@@ -231,6 +231,8 @@
                                     rules="required"
                                     :value="$family"
                                     async=true
+                                    :label="trans('shopify::app.shopify.import.mapping.families')"
+                                    :placeholder="trans('shopify::app.shopify.import.mapping.families')"
                                     name="family_variant"
                                     :list-route="route('admin.shopify.get-all-family-variants')"
                                 />

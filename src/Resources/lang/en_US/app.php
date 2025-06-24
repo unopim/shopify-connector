@@ -158,6 +158,7 @@ return [
                 'variantimage'         => 'Attribute to used as variant image',
                 'other'                => 'Shopify Other Mapping',
                 'family'               => 'Family mapping (for products)',
+                'families'             => 'Choose Family',
                 'metafieldDefinitions' => 'Shopify Metafield Definition Mapping',
                 'images'               => [
                     'title' => 'Shopify Media Mapping',
