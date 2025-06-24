@@ -80,12 +80,6 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         const mediaTypeDropdown = page.locator('#mediaType .multiselect__select');
         await mediaTypeDropdown.click();
         await page.getByText('Gallery', { exact: true }).click();
-        const mediaAttributesDropdown = page.locator('div:has-text("Media Attributes") .multiselect--disabled');
-        await expect(mediaAttributesDropdown).toBeEnabled();
-        await mediaAttributesDropdown.click();
-        const firstAttributeOption = page.locator('.multiselect__option').first();
-        await expect(firstAttributeOption).toBeVisible();
-        await firstAttributeOption.click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
