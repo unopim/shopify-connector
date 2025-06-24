@@ -1852,7 +1852,6 @@ class Exporter extends AbstractExporter
             $fullUrl = Storage::url($urlPath);
         }
 
-        $fullUrl = str_replace('http://localhost', 'https://f3d5-115-241-28-98.ngrok-free.app', $fullUrl);
         if (! empty($mappingImage)) {
             $updateMedia[] = [
                 'alt'                => 'Some more alt text',
@@ -1886,7 +1885,6 @@ class Exporter extends AbstractExporter
             $image = str_replace(' ', '%20', $image);
             $galleryImageAttribute = $imageAttr.'_'.$key;
             $fullUrl = Storage::url($image);
-            $fullUrl = str_replace('http://localhost', 'https://f3d5-115-241-28-98.ngrok-free.app', $fullUrl);
             $mappingImage = $this->checkMappingInDbForImage($galleryImageAttribute, 'productImage', $itemData['sku']);
             if (! empty($mappingImage)) {
                 $updateMedia[] = [
