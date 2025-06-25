@@ -251,7 +251,7 @@ return [
                 'update'          => 'Update',
                 'save'            => 'Save',
             ],
-            'delete-success'      => 'Metafield Definition Created successfully',
+            'delete-success'      => 'Metafield Definition Deleted successfully',
             'update-success'      => 'MetaField Defintion Updated successfully',
             'created'             => 'Create Metafield Definition successfully',
             'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
