@@ -183,7 +183,7 @@ return [
         'metafield'     => [
             'datagrid' => [
                 'definitiontype'  => 'Verwendet für',
-                'attributeLabel'  => 'Unopim-Attribut',
+                'attribute-label'  => 'Unopim-Attribut',
                 'definitionName'  => 'Definitionsname',
                 'contentTypeName' => 'Typ',
                 'pin'             => 'Pin',
@@ -207,6 +207,23 @@ return [
                 'smartCollectionCondition'  => 'Intelligente Sammlungen',
                 'storefronts'               => 'Storefront-Zugriff',
             ],
+
+            'type' => [
+                'single_line_text_field' => 'Einzeiliger Text',
+                'color'                  => 'Farbe',
+                'rating'                 => 'Bewertung',
+                'url'                    => 'URL',
+                'multi_line_text_field'  => 'Mehrzeiliger Text',
+                'json'                   => 'JSON',
+                'boolean'                => 'Wahr oder Falsch',
+                'date'                   => 'Datum',
+                'number_decimal'         => 'Dezimalzahl',
+                'number_integer'         => 'Ganze Zahl',
+                'dimension'              => 'Abmessung',
+                'weight'                 => 'Gewicht',
+                'volume'                 => 'Volumen',
+            ],
+
             'edit'     => [
                 'title'           => 'Metafeldd Definition bearbeiten',
                 'back-btn'        => 'Zurück',

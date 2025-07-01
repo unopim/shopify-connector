@@ -181,7 +181,7 @@ return [
         'metafield'     => [
             'datagrid' => [
                 'definitiontype'  => 'تستخدم لـ',
-                'attributeLabel'  => 'سمة Unopim',
+                'attribute-label'  => 'سمة Unopim',
                 'definitionName'  => 'اسم التعريف',
                 'contentTypeName' => 'نوع',
                 'pin'             => 'دبوس',
@@ -205,6 +205,23 @@ return [
                 'smartCollectionCondition'  => 'مجموعات ذكية',
                 'storefronts'               => 'الوصول إلى الواجهات الأمامية',
             ],
+
+            'type' => [
+                'single_line_text_field' => 'سطر نصي واحد',
+                'color'                  => 'لون',
+                'rating'                 => 'تقييم',
+                'url'                    => 'رابط',
+                'multi_line_text_field'  => 'نص متعدد الأسطر',
+                'json'                   => 'JSON',
+                'boolean'                => 'صح أو خطأ',
+                'date'                   => 'تاريخ',
+                'number_decimal'         => 'عدد عشري',
+                'number_integer'         => 'عدد صحيح',
+                'dimension'              => 'أبعاد',
+                'weight'                 => 'وزن',
+                'volume'                 => 'حجم',
+            ],
+
             'edit'     => [
                 'title'           => 'تحرير تعريف الحقل الوصفي',
                 'back-btn'        => 'رجوع',

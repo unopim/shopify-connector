@@ -91,25 +91,52 @@ class ShopifyGraphQLDataFormatter
                 $type = $field['type'] ?? null;
                 $attribute = $this->attributeAll[$unoAttribute] ?? null;
 
-                if ($type == 'multi_line_text_field' || $type == 'color') {
-                    $metafieldValue = @$rawData[$unoAttribute];
-                } elseif ($type == 'rating' && isset($field['validations'])) {
-                    $ratingValidation = json_decode($field['validations'], true);
-                    $updatedData = array_combine(
-                        array_map(fn ($key) => 'scale_'.$key, array_keys($ratingValidation)),
-                        $ratingValidation
-                    );
-                    $updatedData['value'] = @$rawData[$unoAttribute];
-                    $metafieldValue = json_encode($updatedData, true);
-                } elseif ($type == 'weight') {
-                    $metafieldValue = json_encode(['value' => @$rawData[$unoAttribute], 'unit' => $units['weight'] ?? 'GRAMS']);
-                } elseif ($type == 'volume') {
-                    $metafieldValue = json_encode(['value' => @$rawData[$unoAttribute], 'unit' => $units['volume'] ?? 'MILLILITERS']);
-                } elseif ($type == 'dimension') {
-                    $metafieldValue = json_encode(['value' => @$rawData[$unoAttribute], 'unit' => $units['dimension'] ?? 'MILLIMETERS']);
-                } else {
-                    $metafieldValue = $attribute?->type == 'price' ? @$rawData[$unoAttribute][$this->currency] : $this->stripTagMetafield(@$rawData[$unoAttribute]);
+                switch ($type) {
+                    case 'multi_line_text_field':
+                    case 'color':
+                        $metafieldValue = @$rawData[$unoAttribute];
+                        break;
+
+                    case 'rating':
+                        if (isset($field['validations'])) {
+                            $ratingValidation = json_decode($field['validations'], true);
+                            $updatedData = array_combine(
+                                array_map(fn ($key) => 'scale_' . $key, array_keys($ratingValidation)),
+                                $ratingValidation
+                            );
+                            $updatedData['value'] = @$rawData[$unoAttribute];
+                            $metafieldValue = json_encode($updatedData, true);
+                        }
+                        break;
+
+                    case 'weight':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['weight'] ?? 'GRAMS'
+                        ]);
+                        break;
+
+                    case 'volume':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['volume'] ?? 'MILLILITERS'
+                        ]);
+                        break;
+
+                    case 'dimension':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['dimension'] ?? 'MILLIMETERS'
+                        ]);
+                        break;
+
+                    default:
+                        $metafieldValue = ($attribute?->type === 'price')
+                            ? @$rawData[$unoAttribute][$this->currency]
+                            : $this->stripTagMetafield(@$rawData[$unoAttribute]);
+                        break;
                 }
+
 
                 if (! empty($field['listvalue'])) {
                     $type = $field['listvalue'] ? 'list.'.$type : $type;

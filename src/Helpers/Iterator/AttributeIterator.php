@@ -8,13 +8,13 @@ class AttributeIterator implements \Iterator
 {
     use ShopifyGraphqlRequest;
 
-    private $cursor;                // Tracks the current cursor for pagination
+    private $cursor;
 
-    private $currentPageData;       // Holds data for the current page
+    private $currentPageData;
 
-    private $currentKey;            // Tracks the current index within the current page
+    private $currentKey;
 
-    private $credential;            // Credentials for Shopify API
+    private $credential;
 
     private $mergedOptions;
 

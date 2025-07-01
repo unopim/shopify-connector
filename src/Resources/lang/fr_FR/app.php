@@ -183,7 +183,7 @@ return [
         'metafield'     => [
             'datagrid' => [
                 'definitiontype'  => 'Utilisé pour',
-                'attributeLabel'  => 'Attribut Unopim',
+                'attribute-label'  => 'Attribut Unopim',
                 'definitionName'  => 'Nom de la définition',
                 'contentTypeName' => 'Type',
                 'pin'             => 'Épingler',
@@ -207,6 +207,23 @@ return [
                 'smartCollectionCondition'  => 'Collections intelligentes',
                 'storefronts'               => 'Accès aux vitrines',
             ],
+
+            'type' => [
+                'single_line_text_field' => 'Texte sur une seule ligne',
+                'color'                  => 'Couleur',
+                'rating'                 => 'Évaluation',
+                'url'                    => 'URL',
+                'multi_line_text_field'  => 'Texte multiligne',
+                'json'                   => 'JSON',
+                'boolean'                => 'Vrai ou faux',
+                'date'                   => 'Date',
+                'number_decimal'         => 'Nombre décimal',
+                'number_integer'         => 'Nombre entier',
+                'dimension'              => 'Dimension',
+                'weight'                 => 'Poids',
+                'volume'                 => 'Volume',
+            ],
+
             'edit'     => [
                 'title'           => 'Modifier la définition du champ méta',
                 'back-btn'        => 'Retour',
@@ -220,7 +237,7 @@ return [
             'metafield'           => [
                 'datagrid' => [
                     'definitiontype'  => '用于',
-                    'attributeLabel'  => 'Unopim 属性',
+                    'attribute-label'  => 'Unopim 属性',
                     'definitionName'  => '定义名称',
                     'contentTypeName' => '类型',
                     'pin'             => '固定',
@@ -244,6 +261,23 @@ return [
                     'smartCollectionCondition'  => '智能集合',
                     'storefronts'               => '店面访问',
                 ],
+
+                'type' => [
+                    'single_line_text_field' => 'Texte sur une seule ligne',
+                    'color'                  => 'Couleur',
+                    'rating'                 => 'Évaluation',
+                    'url'                    => 'URL',
+                    'multi_line_text_field'  => 'Texte multiligne',
+                    'json'                   => 'JSON',
+                    'boolean'                => 'Vrai ou faux',
+                    'date'                   => 'Date',
+                    'number_decimal'         => 'Nombre décimal',
+                    'number_integer'         => 'Nombre entier',
+                    'dimension'              => 'Dimension',
+                    'weight'                 => 'Poids',
+                    'volume'                 => 'Volume',
+                ],
+
                 'edit'     => [
                     'title'           => '编辑元字段定义',
                     'back-btn'        => '返回',

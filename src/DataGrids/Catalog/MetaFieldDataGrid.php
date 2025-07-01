@@ -47,7 +47,7 @@ class MetaFieldDataGrid extends DataGrid
 
         $this->addColumn([
             'index'      => 'code',
-            'label'      => trans('shopify::app.shopify.metafield.datagrid.attributeLabel'),
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.attribute-label'),
             'type'       => 'string',
             'searchable' => true,
             'filterable' => true,

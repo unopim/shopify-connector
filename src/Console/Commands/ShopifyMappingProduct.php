@@ -108,10 +108,10 @@ class ShopifyMappingProduct extends Command
         $progressBar->start();
         $this->progressBar = $progressBar;
 
-        $errroes = $this->getProductsByPage($this->page, $onlyNew);
-        if ($errroes) {
+        $errors = $this->getProductsByPage($this->page, $onlyNew);
+        if ($errors) {
             $io->error([
-                $errroes,
+                $errors,
             ]);
 
             return 0;
@@ -161,7 +161,7 @@ class ShopifyMappingProduct extends Command
         return $response['body']['data']['productsCount']['count'] ?? null;
     }
 
-    public function formateData($products, $onlyNew)
+    public function formateData($products, $onlyNew): void
     {
         $this->page = end($products)['cursor'] ?? null;
 

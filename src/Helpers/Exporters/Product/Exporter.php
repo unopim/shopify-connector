@@ -1271,8 +1271,6 @@ class Exporter extends AbstractExporter
         $variantErrorResult = $result['body']['data'][self::VARIANT_CREATE]['userErrors'] ?? [];
         if (! empty($variantErrorResult)) {
             $errors = array_column($variantErrorResult, 'message');
-            // $optionValue = array_column($productOptionValues['optionValues'], 'name');
-            // $message = "The variant '".implode(' / ', $optionValue)."' already exists. Please change at least one option value.";
             if (! empty($formattedGraphqlData['metafields'])) {
                 $this->variantMetafieldAttributeCodeError($errors, $variantErrorResult, $formattedGraphqlData['metafields']);
             }
@@ -1829,13 +1827,12 @@ class Exporter extends AbstractExporter
         return $removeGalleryAttr;
     }
 
-    public function removeEmptyGallery(string $galleryAttr, array $itemData)
+    public function removeEmptyGallery(string $galleryAttr, array $itemData): array
     {
-
         $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku']);
         $removeGalleryAttr = array_column($mappingGallery, 'externalId');
 
-        return $removeGalleryAttr;
+        return $removeGalleryAttr ?? [];
     }
 
     /**

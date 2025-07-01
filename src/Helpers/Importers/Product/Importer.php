@@ -285,7 +285,6 @@ class Importer extends AbstractImporter
     protected function saveProductsData(JobTrackBatchContract $batch): bool
     {
         $this->initFilters();
-        // dd($batch->data);
         foreach ($batch->data as $rowData) {
             $productId = $rowData['node']['id'];
             $isRemainingVariant = $rowData['node']['variants']['pageInfo']['hasNextPage'] ?? false;

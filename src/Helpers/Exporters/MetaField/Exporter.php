@@ -240,19 +240,6 @@ class Exporter extends AbstractExporter
             $metaId = $resultCollection['createdDefinition']['id'] ?? null;
         }
 
-        // if ($resultCollection['userErrors'][0]['code'] == 'TAKEN') {
-        //     $formattedData = $this->prepareMetaFieldDefinition($rawData, true);
-
-        //     $response = $this->requestGraphQlApiAction('metafieldDefinitionUpdate', $this->credentialArray, ['input' => $formattedData]);
-        //     $updateId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
-        // } elseif (! empty($resultCollection['userErrors'])) {
-        //     $this->handleErrors($resultCollection['userErrors'], $rawData['code']);
-
-        //     return;
-        // }
-
-        // $metaId = $resultCollection['createdDefinition']['id'] ?? $updateId ?? null;
-
         if ($metaId) {
             $apiUrlData = [$shopUrl => $metaId];
 

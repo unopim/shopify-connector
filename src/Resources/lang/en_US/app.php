@@ -216,7 +216,7 @@ return [
         'metafield' => [
             'datagrid' => [
                 'definitiontype'  => 'Used For',
-                'attributeLabel'  => 'Unopim Attribute',
+                'attribute-label'  => 'Unopim Attribute',
                 'definitionName'  => 'Definition name',
                 'contentTypeName' => 'Type',
                 'pin'             => 'Pin',
@@ -243,6 +243,22 @@ return [
                     'minvalue' => '',
                     'maxvalue' => '',
                 ],
+            ],
+
+            'type' => [
+                'single_line_text_field' => 'Single line text',
+                'color'                  => 'Color',
+                'rating'                 => 'Rating',
+                'url'                    => 'Url',
+                'multi_line_text_field'  => 'Multi-line text',
+                'json'                   => 'JSON',
+                'boolean'                => 'True and False',
+                'date'                   => 'Date',
+                'number_decimal'         => 'Decimal',
+                'number_integer'         => 'Number',
+                'dimension'              => 'Dimension',
+                'weight'                 => 'Weight',
+                'volume'                 => 'Volume',
             ],
 
             'edit'     => [

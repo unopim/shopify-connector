@@ -183,7 +183,7 @@ return [
         'metafield'     => [
             'datagrid' => [
                 'definitiontype'  => 'Usado para',
-                'attributeLabel'  => 'Atributo Unopim',
+                'attribute-label'  => 'Atributo Unopim',
                 'definitionName'  => 'Nombre de la definición',
                 'contentTypeName' => 'Tipo',
                 'pin'             => 'Pin',
@@ -207,6 +207,23 @@ return [
                 'smartCollectionCondition'  => 'Colecciones inteligentes',
                 'storefronts'               => 'Acceso a escaparates',
             ],
+
+            'type' => [
+                'single_line_text_field' => 'Texto de una línea',
+                'color'                  => 'Color',
+                'rating'                 => 'Calificación',
+                'url'                    => 'URL',
+                'multi_line_text_field'  => 'Texto de varias líneas',
+                'json'                   => 'JSON',
+                'boolean'                => 'Verdadero o falso',
+                'date'                   => 'Fecha',
+                'number_decimal'         => 'Número decimal',
+                'number_integer'         => 'Número entero',
+                'dimension'              => 'Dimensión',
+                'weight'                 => 'Peso',
+                'volume'                 => 'Volumen',
+            ],
+
             'edit'     => [
                 'title'           => 'Editar definición de Metacampo',
                 'back-btn'        => 'Atrás',

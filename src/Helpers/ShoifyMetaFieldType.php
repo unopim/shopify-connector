@@ -361,7 +361,151 @@ class ShoifyMetaFieldType
      */
     public function getMetaFieldType(): array
     {
-        return $this->metaFieldType;
+        return [
+            'text'    => [
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id'         => 'color',
+                    'name'       => trans('shopify::app.shopify.metafield.type.color'),
+                ],
+                [
+                    'id'         => 'rating',
+                    'name'       => trans('shopify::app.shopify.metafield.type.rating'),
+                ],
+                [
+                    'id'         => 'url',
+                    'name'       => trans('shopify::app.shopify.metafield.type.url'),
+                ],
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id'         => 'json',
+                    'name'       => trans('shopify::app.shopify.metafield.type.json'),
+                ],
+            ],
+
+            'textarea' => [
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id'         => 'json',
+                    'name'       => trans('shopify::app.shopify.metafield.type.json'),
+                ],
+            ],
+
+            'boolean' => [
+                [
+                    'id'         => 'boolean',
+                    'name'       => trans('shopify::app.shopify.metafield.type.boolean'),
+                ],
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'select' => [
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+            ],
+
+            'multiselect' => [
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'date' => [
+                [
+                    'id'         => 'date',
+                    'name'       => trans('shopify::app.shopify.metafield.type.date'),
+                ],
+                [
+                    'id'         => 'multi_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'decimal' => [
+                [
+                    'id'         => 'number_decimal',
+                    'name'       => trans('shopify::app.shopify.metafield.type.number_decimal'),
+                ],
+                [
+                    'id'         => 'number_integer',
+                    'name'       => trans('shopify::app.shopify.metafield.type.number_integer'),
+                ],
+                [
+                    'id'         => 'dimension',
+                    'name'       => trans('shopify::app.shopify.metafield.type.dimension'),
+                ],
+                [
+                    'id'         => 'weight',
+                    'name'       => trans('shopify::app.shopify.metafield.type.weight'),
+                ],
+                [
+                    'id'         => 'volume',
+                    'name'       => trans('shopify::app.shopify.metafield.type.volume'),
+                ],
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'number' => [
+                [
+                    'id'         => 'number_integer',
+                    'name'       => trans('shopify::app.shopify.metafield.type.number_integer'),
+                ],
+                [
+                    'id'         => 'number_decimal',
+                    'name'       => trans('shopify::app.shopify.metafield.type.number_decimal'),
+                ],
+                [
+                    'id'         => 'dimension',
+                    'name'       => trans('shopify::app.shopify.metafield.type.dimension'),
+                ],
+                [
+                    'id'         => 'weight',
+                    'name'       => trans('shopify::app.shopify.metafield.type.weight'),
+                ],
+                [
+                    'id'         => 'volume',
+                    'name'       => trans('shopify::app.shopify.metafield.type.volume'),
+                ],
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+        ];
     }
 
     /**
