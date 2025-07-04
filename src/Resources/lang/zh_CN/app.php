@@ -36,6 +36,13 @@ return [
                 'edit'   => '编辑',
                 'delete' => '删除',
             ],
+
+            'metafield' => [
+                'create'      => '创建元字段',
+                'edit'        => '编辑元字段',
+                'delete'      => '删除元字段',
+                'mass_delete' => '批量删除元字段',
+            ],
         ],
 
         'version' => '版本: 1.0.0',
@@ -145,6 +152,50 @@ return [
             ],
         ],
 
+        'metafield' => [
+            'datagrid' => [
+                'definitiontype'  => '用途',
+                'attribute-label' => 'UnoPim 属性',
+                'definitionName'  => '定义名称',
+                'contentTypeName' => '类型',
+                'pin'             => '固定',
+            ],
+            'index' => [
+                'title'                    => '元字段定义',
+                'create'                   => '添加定义',
+                'definitiontype'           => '用途',
+                'attribute'                => 'UnoPim 属性',
+                'ContentTypeName'          => '类型',
+                'attributes'               => '定义名称',
+                'urlvalidation'            => '验证',
+                'urlvalidationdata'        => '值必须以以下前缀之一开头：“HTTPS”、“HTTP”、“mailto:”、“sms:” 或 “tel:”',
+                'name_space_key'           => '命名空间和键',
+                'description'              => '描述',
+                'onevalue'                 => '单个值',
+                'listvalue'                => '值列表',
+                'validation'               => '验证',
+                'maxvalue'                 => '最大值',
+                'adminFilterable'          => '产品筛选',
+                'smartCollectionCondition' => '智能集合',
+                'storefronts'              => '店面访问',
+            ],
+            'type' => [
+                'single_line_text_field' => '单行文本',
+                'color'                  => '颜色',
+                'rating'                 => '评分',
+                'url'                    => 'URL',
+                'multi_line_text_field'  => '多行文本',
+                'json'                   => 'JSON',
+                'boolean'                => '真假值',
+                'date'                   => '日期',
+                'number_decimal'         => '小数',
+                'number_integer'         => '整数',
+                'dimension'              => '尺寸',
+                'weight'                 => '重量',
+                'volume'                 => '体积',
+            ],
+        ],
+
         'fields' => [
             'name'                        => '名称',
             'description'                 => '描述',
@@ -173,6 +224,5 @@ return [
             'locale'           => '语言区域',
             'attribute-groups' => '属性组',
         ],
-
     ],
 ];

@@ -85,6 +85,7 @@ jobs:
         run: |
           cd unopim
           php artisan migrate:fresh --seed
+          php artisan db:seed --class="Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder"
           php artisan serve --host=0.0.0.0 --port=8000 &
 
       - name: Wait for UnoPim to start

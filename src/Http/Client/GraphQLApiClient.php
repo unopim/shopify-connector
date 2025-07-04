@@ -72,6 +72,7 @@ class GraphQLApiClient
             'method' => $method,
             'body'   => json_encode($body, true),
         ];
+
     }
 
     /**
@@ -113,10 +114,13 @@ class GraphQLApiClient
         $response = $this->createResponse($request);
 
         // Rate Limit Handling
-        if ($response['code'] == 429) {
-            sleep(4);
+        if (isset($response['body']['errors'])) {
+            $error = array_column($response['body']['errors'], 'message');
+            if (in_array('Throttled', $error)) {
+                $response = $this->request($endpoint, $parameters, $payload, $logger);
 
-            return $this->request($endpoint, $parameters, $payload, $logger);
+                return $response;
+            }
         }
 
         return $response;
@@ -135,7 +139,7 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
         'createCollection' => [
-            'query'  => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle} } }',
+            'query'  => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
@@ -150,7 +154,17 @@ class GraphQLApiClient
         ],
 
         'updateCollection' => [
-            'query'  => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml} } }',
+            'query'  => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'method' => 'POST',
+        ],
+
+        'metafieldDefinitionCreate' => [
+            'query'  => 'mutation MetafieldDefinitionCreateMutation($input: MetafieldDefinitionInput!) {  metafieldDefinitionCreate(definition: $input) { createdDefinition { id key namespace name ownerType validations { name value } } userErrors { code message field } } }',
+            'method' => 'POST',
+        ],
+
+        'metafieldDefinitionUpdate' => [
+            'query'  => 'mutation UpdateMetafieldDefinition($input: MetafieldDefinitionUpdateInput!) { metafieldDefinitionUpdate(definition: $input) { updatedDefinition { id name } userErrors { field message code } } }',
             'method' => 'POST',
         ],
 
@@ -160,12 +174,32 @@ class GraphQLApiClient
         ],
 
         'createProduct' => [
-            'query'  => 'mutation ProductCreate($input: ProductInput!, $media: [CreateMediaInput!]) { productCreate(input: $input, media: $media) { product { id title handle productType vendor tags handle media(first: 10) { nodes { id } } options { id name values optionValues { id name } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
+            'query'  => 'mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!] ) { productCreate(product: $product, media: $media) { product { id title handle resourcePublications(first: 30) { edges { node { publication { id } } } } media(first: 60) { nodes { id } } options { id name values optionValues { id name } } variants(first: 30) { edges { node { id }  } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
-        'ProductVariantUpdate' => [
-            'query'  => 'mutation ProductVariantUpdate($input: ProductVariantInput!) { productVariantUpdate(input: $input) { productVariant { id price inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } } userErrors { field message } } }',
+        'productPublish' => [
+            'query'  => 'mutation productPublish($input: ProductPublishInput!) { productPublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'productUnpublish' => [
+            'query'  => 'mutation productUnPublish($input: ProductUnpublishInput!) { productUnpublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'CreateProductVariantsDefault' => [
+            'query'  => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id options { id name values optionValues { id name hasVariants } } } } }',
+            'method' => 'POST',
+        ],
+
+        'productVariantsBulkUpdate' => [
+            'query'  => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'productVariantsBulkUpdatewithproduct' => [
+            'query'  => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $product: ProductUpdateInput) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } productUpdate(product: $product) { product { id } } }',
             'method' => 'POST',
         ],
 
@@ -195,7 +229,12 @@ class GraphQLApiClient
         ],
 
         'productUpdate' => [
-            'query'  => 'mutation ProductUpdate($input: ProductInput!, $media: [CreateMediaInput!]) { productUpdate(input: $input, media: $media) { product { id title handle productType vendor tags descriptionHtml options { id name values optionValues { id name hasVariants } } media(first: 10) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
+            'query'  => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'productUpdateWithVariantGetting' => [
+            'query'  => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
@@ -215,7 +254,7 @@ class GraphQLApiClient
         ],
 
         'CreateProductVariants' => [
-            'query'  => 'mutation CreateProductVariants($productId: ID!, $variantsInput: [ProductVariantsBulkInput!]!, $media: [CreateMediaInput!]!) { productVariantsBulkCreate(productId: $productId, variants: $variantsInput, media: $media) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id media(first: 10) { nodes { id } }  options { id name values optionValues { id name hasVariants } } } } }',
+            'query'  => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!, $media: [CreateMediaInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput, media: $media) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id media(first: 30) { nodes { id } }  options { id name values optionValues { id name hasVariants } } } } }',
             'method' => 'POST',
         ],
 
@@ -230,32 +269,37 @@ class GraphQLApiClient
         ],
 
         'productGettingOptions' => [
-            'query'  => 'query { products(first: 10, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 10) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query { products(first: 50, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
         'productOptionByCursor' => [
-            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 10) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGetting' => [
-            'query'  => 'query { products(first: 10, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key value } } } } } } }',
+            'query'  => 'query { products(first: 20, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace type key value } } } } } } }',
+            'method' => 'POST',
+        ],
+
+        'gettingRemaingVariant' => [
+            'query'  => 'query GetProductVariants($productId: ID!, $after: String) { product(id: $productId) { title variants(first: 30, after: $after) { edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } pageInfo { hasNextPage } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGettingByCursor' => [
-            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { edges { node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url width height } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key value } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } images(first: 10) { edges { node { id originalSrc altText } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key type value } } } } } } }',
             'method' => 'POST',
         ],
 
         'productMetafields' => [
-            'query'  => 'query GetProduct($id: ID!) { product(id: $id) {   metafields(first: 10) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query GetProduct($id: ID!, $first: Int!) { product(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
         'productMetafieldsByCursor' => [
-            'query'  => 'query GetProduct($id: ID!, $first: Int!, $afterCursor: String!) { product(id: $id) {   metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query GetProduct($id: ID!, $first: Int!, $afterCursor: String!) { product(id: $id) { metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
@@ -265,7 +309,7 @@ class GraphQLApiClient
         ],
 
         'productVariantMetafield' => [
-            'query'  => 'query productVariant($id: ID!) { productVariant(id: $id) {   metafields(first: 1) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query productVariant($id: ID!, $first: Int!) { productVariant(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
@@ -286,6 +330,11 @@ class GraphQLApiClient
 
         'productFileUpdate' => [
             'query'  => 'mutation FileUpdate($input: [FileUpdateInput!]!) { fileUpdate(files: $input) { userErrors { code field message } files { alt } } }',
+            'method' => 'POST',
+        ],
+
+        'productDeleteMedia' => [
+            'query'  => 'mutation productDeleteMedia($mediaIds: [ID!]!, $productId: ID!) { productDeleteMedia(mediaIds: $mediaIds, productId: $productId) { deletedMediaIds deletedProductImageIds mediaUserErrors { field message } product { id title media(first: 25) { nodes { alt mediaContentType status } } } } }',
             'method' => 'POST',
         ],
 
@@ -311,6 +360,27 @@ class GraphQLApiClient
 
         'metafieldDefinitionsProductType' => [
             'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'method' => 'POST',
+        ],
+
+        'publishablePublish' => [
+            'query'  => 'mutation PublishablePublish($collectionId: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $collectionId, input: $input) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'unpublishableUnpublish' => [
+            'query' => 'mutation PublishableUnpublish($collectionId: ID!, $input: [PublicationInput!]!) {
+            publishableUnpublish(id: $collectionId, input: $input){ userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'getTotalProductCount'  => [
+            'query'  => 'query { productsCount(query: "id:>=1") { count } }',
+            'method' => 'POST',
+        ],
+
+        'stagedUploadsCreate' => [
+            'query'  => 'mutation stagedUploadsCreate($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }',
             'method' => 'POST',
         ],
     ];

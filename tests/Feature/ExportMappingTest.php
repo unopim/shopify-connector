@@ -19,8 +19,6 @@ it('should update the export setting mapping', function () {
     $exportSetting = [
         'enable_tags_attribute' => 1,
         'tagSeprator'           => ':',
-        'metaFieldsKey'         => 'code',
-        'metaFieldsNameSpace'   => 'global',
         'option_name_label'     => 1,
     ];
 
@@ -61,7 +59,6 @@ it('should update the export mapping with metafield mapping', function () {
     $this->loginAsAdmin();
 
     $name = Attribute::factory()->create(['type' => 'text']);
-    $shortDescription = Attribute::factory()->create(['type' => 'text']);
     $description = Attribute::factory()->create(['type' => 'textarea']);
     $price = Attribute::factory()->create(['type' => 'price']);
     $weight = Attribute::factory()->create(['type' => 'text']);
@@ -71,9 +68,6 @@ it('should update the export mapping with metafield mapping', function () {
         'descriptionHtml'     => $description->code,
         'price'               => $price->code,
         'weight'              => $weight->code,
-        'meta_fields_string'  => [$name, $shortDescription],
-        'meta_fields_integer' => [$weight],
-        'meta_fields_json'    => [$description],
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)

@@ -44,7 +44,7 @@ test.describe('Shopify Credentials Page', () => {
   test('Verify table headers', async ({ page }) => {
     const headers = ['Shopify URL', 'API Version', 'Enable', 'Actions'];
     for (const header of headers) {
-      await expect(page.locator(`p:text("${header}")`)).toBeVisible();
+      await expect(page.getByText(header)).toBeVisible({ timeout: 10000 });
     }
   });
 
@@ -103,7 +103,7 @@ test.describe.serial('Shopify Create credential Page', () => {
     await page.getByRole('textbox', { name: 'Admin API access token' }).fill('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');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('banner')).toBeVisible();
-    await expect(page.getByText('Credential Created Success')).toBeVisible();
+    await expect(page.locator('body')).toContainText('Credential Created Success');
     await page.getByRole('link', { name: 'Back' }).click();
     await expect(page.locator('#app')).toContainText('Yes');
     await page.getByText('1 Results').click();

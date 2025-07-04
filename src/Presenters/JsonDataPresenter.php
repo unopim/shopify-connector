@@ -32,7 +32,6 @@ class JsonDataPresenter extends JsonDataPresenters
 
         $removed = static::calculateDifference($oldArray, $newArray);
         $updated = static::calculateDifference($newArray, $oldArray);
-
         static::normalizeValues($removed, 'old', $normalizedData);
         static::normalizeValues($updated, 'new', $normalizedData);
 

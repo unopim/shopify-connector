@@ -22,7 +22,7 @@ class Exporter extends AbstractExporter
     use ShopifyGraphqlRequest;
     use TranslationTrait;
 
-    public const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 10;
 
     public const COLLECTION_NOT_EXIST = 'Collection does not exist';
 
@@ -32,6 +32,10 @@ class Exporter extends AbstractExporter
      * @var string
      */
     public const UNOPIM_ENTITY_NAME = 'category';
+
+    public const UPDATE_PUBLISH_CHANNEL = 'publishablePublish';
+
+    public const UPDATE_UNPUBLISH_CHANNEL = 'unpublishableUnpublish';
 
     /**
      * Shopify credential.
@@ -193,10 +197,6 @@ class Exporter extends AbstractExporter
                 'title'  => $localeSpecificFields['name'] ?? $rawData['code'],
             ];
 
-            if (! empty($this->publicationId) && empty($mapping)) {
-                $category['publications'] = $this->publicationId;
-            }
-
             if (empty($mapping)) {
                 $responseData = $this->apiRequestShopify($category);
                 $resultCollection = $responseData['body']['data']['collectionCreate'] ?? [];
@@ -215,9 +215,7 @@ class Exporter extends AbstractExporter
                 $responseData = $this->apiRequestShopify($category, $category['id']);
                 $resultCollection = $responseData['body']['data']['collectionUpdate'] ?? [];
                 $this->logWarning($resultCollection['userErrors'], $rawData['code']);
-
                 if (! empty($resultCollection['userErrors'])) {
-                    $category['publications'] = $this->publicationId;
                     $resultCollection = $this->handleAfterApiRequest($rawData, $responseData, $mapping, $this->export->id, $category);
 
                     if (! empty($resultCollection['userErrors']) || empty($resultCollection)) {
@@ -231,8 +229,40 @@ class Exporter extends AbstractExporter
                 $this->createdItemsCount++;
             }
 
+            if (empty($resultCollection['userErrors']) && ! empty($this->publicationId)) {
+                $this->updateSalesChannel($resultCollection, $this->publicationId);
+            }
+
             $this->categoryTranslation($this->shopifyDefaultLocale, $rawData, $this->credential,
                 $this->credentialArray, $resultCollection['collection'] ?? []);
+        }
+    }
+
+    /**
+     * Update sales channel of the collection
+     */
+    public function updateSalesChannel($collectionResult, $publicationIds): void
+    {
+        $collectionId = $collectionResult['collection']['id'];
+        $existingPublications = $collectionResult['collection']['resourcePublications']['edges'] ?? [];
+
+        $existingIds = array_map(fn ($item) => $item['node']['publication']['id'], $existingPublications);
+        $newIds = array_column($publicationIds, 'publicationId');
+        sort($existingIds);
+        sort($newIds);
+        if ($existingIds !== $newIds) {
+            $this->requestGraphQlApiAction(self::UPDATE_PUBLISH_CHANNEL, $this->credentialArray, [
+                'collectionId' => $collectionId,
+                'input'        => $publicationIds,
+            ]);
+
+            $removePublication = array_values(array_diff($existingIds, $newIds));
+            if (! empty($removePublication)) {
+                $this->requestGraphQlApiAction(self::UPDATE_UNPUBLISH_CHANNEL, $this->credentialArray, [
+                    'collectionId' => $collectionId,
+                    'input'        => array_map(fn ($id) => ['publicationId' => $id], $removePublication),
+                ]);
+            }
         }
     }
 

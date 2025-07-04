@@ -92,17 +92,11 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
             expect(selected).toBe(optionText);
             console.log(`Selected option for ${dropdownId}: ${selected}`);
         };
-
-        // Verify and select options for the first dropdown
-        await verifyAndSelectDropdown('#metaFieldsKey', 'Attribute Label');
-
-        // Verify and select options for the second dropdown
-        await verifyAndSelectDropdown('#metaFieldsNameSpace', 'Attribute Group Code');
     });
 
 
     test('Toggle value of option name in other setting', async ({ page }) => {
-        const toggle = await page.locator('div:nth-child(3) > div > .relative > .rounded-full');
+        const toggle = await page.locator('div:nth-child(3) .relative .rounded-full');
         await toggle.check();
         await expect(toggle).toBeChecked();
         await toggle.uncheck();
