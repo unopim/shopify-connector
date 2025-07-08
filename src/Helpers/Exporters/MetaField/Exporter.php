@@ -175,7 +175,6 @@ class Exporter extends AbstractExporter
                 if (! empty($resultCollection['userErrors'])) {
                     $errorsMessage = array_column($resultCollection['userErrors'], 'message');
                     if (in_array(self::NOT_FOUND_DEFINITION, $errorsMessage)) {
-                        // Retry with creation if update error indicates a missing definition
                         $this->processCreateFlow($rawData, $shopUrl);
 
                         continue;
