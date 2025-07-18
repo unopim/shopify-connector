@@ -17,7 +17,7 @@ class Importer extends AbstractImporter
     use ShopifyGraphqlRequest;
     use ValidatedBatched;
 
-    public const BATCH_SIZE = 100;
+    public const BATCH_SIZE = 10;
 
     /**
      * cursor position
@@ -91,6 +91,7 @@ class Importer extends AbstractImporter
     public function getSource()
     {
         $this->initFilters();
+
         if (! $this->credential?->active) {
             throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
         }
@@ -100,91 +101,7 @@ class Importer extends AbstractImporter
             'apiVersion'  => $this->credential?->apiVersion,
         ];
 
-        $attributeAndOption = new \ArrayIterator($this->productOptionByCursor());
-
-        return $attributeAndOption;
-    }
-
-    /**
-     * Attribute Getting by cursor
-     */
-    public function productOptionByCursor(): array
-    {
-        $cursor = null;
-        $allAttribute = [];
-        $formattedOption = [];
-        do {
-            $variables = [];
-            $mutationType = 'productGettingOptions';
-            if ($cursor) {
-                $variables = [
-                    'first'       => 50,
-                    'afterCursor' => $cursor,
-                ];
-                $mutationType = 'productOptionByCursor';
-            }
-            $graphResponse = $this->requestGraphQlApiAction($mutationType, $this->credentialArray, $variables);
-
-            $graphqlOption = ! empty($graphResponse['body']['data']['products']['edges'])
-                ? $graphResponse['body']['data']['products']['edges']
-                : [];
-
-            $formattedOption = $this->formatedAttributeAndOption($graphqlOption);
-
-            $allAttribute = array_merge($allAttribute, $formattedOption);
-            $lastCursor = ! empty($graphqlOption) ? end($graphqlOption)['cursor'] : null;
-
-            if ($cursor === $lastCursor || empty($lastCursor)) {
-                break;
-            }
-            $cursor = $lastCursor;
-
-        } while (! empty($graphqlOption));
-
-        $mergedOptions = [];
-
-        foreach ($allAttribute as $option) {
-            $name = $option['name'];
-            if (isset($mergedOptions[$name])) {
-                $mergedOptions[$name]['code'] = array_unique(
-                    array_merge($mergedOptions[$name]['code'], $option['code'])
-                );
-            } else {
-                $mergedOptions[$name] = $option;
-            }
-        }
-
-        $mergedOptions = array_values($mergedOptions);
-
-        return $mergedOptions;
-    }
-
-    /**
-     * Formating Attribute and attriute Option
-     */
-    public function formatedAttributeAndOption(array $options): array
-    {
-        $optionsArray = [];
-        foreach ($options as $option) {
-            $productOptions = $option['node']['options'];
-            foreach ($productOptions as $productOption) {
-                if ($productOption['name'] == 'Title' && in_array('Default Title', $productOption['values'])) {
-                    continue;
-                }
-
-                $modified_array = array_map(function ($string) {
-                    return trim(preg_replace('/[^A-Za-z0-9]+/', '-', $string), '-');
-                }, $productOption['values'] ?? []);
-
-                $optionsArray[] = [
-                    'name' => trim(preg_replace('/[^A-Za-z0-9]+/', '_', $productOption['name'])),
-                    'type' => 'select',
-                    'code' => $modified_array,
-                ];
-            }
-        }
-
-        return $optionsArray;
+        return new \Webkul\Shopify\Helpers\Iterator\AttributeIterator($this->credentialArray);
     }
 
     /**
@@ -212,6 +129,8 @@ class Importer extends AbstractImporter
     {
         $this->initFilters();
         $attributes = [];
+        $newAttrCreate = [];
+        $mergedOptions = [];
         foreach ($batch->data as $rowData) {
             $attributeModel = $this->attributeRepository->findOneByField('code', strtolower($rowData['name']));
 
@@ -265,7 +184,6 @@ class Importer extends AbstractImporter
                     ],
                     'options' => $newOptionArray,
                 ];
-
                 $newlyAttrCreated = $this->attributeRepository->create($newAttrCreate);
                 $this->createdItemsCount++;
             }

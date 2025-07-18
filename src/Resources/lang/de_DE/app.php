@@ -9,11 +9,11 @@ return [
     ],
     'importers' => [
         'shopify' => [
-            'product'  => 'Shopify-Produkt',
-            'category' => 'Shopify-Kategorie',
-            'attribute'=> 'Shopify-Attribut',
-            'family'   => 'Shopify-Familie',
-            'metafield'=> 'Metafelddefinitionen von Shopify',
+            'product'   => 'Shopify-Produkt',
+            'category'  => 'Shopify-Kategorie',
+            'attribute' => 'Shopify-Attribut',
+            'family'    => 'Shopify-Familie',
+            'metafield' => 'Metafelddefinitionen von Shopify',
         ],
     ],
 
@@ -35,6 +35,13 @@ return [
                 'create' => 'Erstellen',
                 'edit'   => 'Bearbeiten',
                 'delete' => 'Löschen',
+            ],
+
+            'metafield'  => [
+                'create'      => 'Metafeld erstellen',
+                'edit'        => 'Metafeld bearbeiten',
+                'delete'      => 'Metafeld löschen',
+                'mass_delete' => 'Metafelder massenhaft löschen',
             ],
         ],
 
@@ -173,5 +180,60 @@ return [
             'attribute-groups' => 'Attributgruppen',
         ],
 
+        'metafield'     => [
+            'datagrid' => [
+                'definitiontype'  => 'Verwendet für',
+                'attribute-label'  => 'Unopim-Attribut',
+                'definitionName'  => 'Definitionsname',
+                'contentTypeName' => 'Typ',
+                'pin'             => 'Pin',
+            ],
+            'index'    => [
+                'title'                     => 'Metafeldd Definitionen',
+                'create'                    => 'Definition hinzufügen',
+                'definitiontype'            => 'Verwendet für',
+                'attribute'                 => 'UnoPim-Attribut',
+                'ContentTypeName'           => 'Typ',
+                'attributes'                => 'Definitionsname',
+                'urlvalidation'             => 'Validierung',
+                'urlvalidationdata'         => 'Werte müssen mit „HTTPS“, „HTTP“, „mailto:“, „sms:“ oder „tel:“ beginnen',
+                'name_space_key'            => 'Namensraum und Schlüssel',
+                'description'               => 'Beschreibung',
+                'onevalue'                  => 'Einzelwert',
+                'listvalue'                 => 'Liste von Werten',
+                'validation'                => 'Validierungen',
+                'maxvalue'                  => 'Maximalwert',
+                'adminFilterable'           => 'Filterung für Produkte',
+                'smartCollectionCondition'  => 'Intelligente Sammlungen',
+                'storefronts'               => 'Storefront-Zugriff',
+            ],
+
+            'type' => [
+                'single_line_text_field' => 'Einzeiliger Text',
+                'color'                  => 'Farbe',
+                'rating'                 => 'Bewertung',
+                'url'                    => 'URL',
+                'multi_line_text_field'  => 'Mehrzeiliger Text',
+                'json'                   => 'JSON',
+                'boolean'                => 'Wahr oder Falsch',
+                'date'                   => 'Datum',
+                'number_decimal'         => 'Dezimalzahl',
+                'number_integer'         => 'Ganze Zahl',
+                'dimension'              => 'Abmessung',
+                'weight'                 => 'Gewicht',
+                'volume'                 => 'Volumen',
+            ],
+
+            'edit'     => [
+                'title'           => 'Metafeldd Definition bearbeiten',
+                'back-btn'        => 'Zurück',
+                'update'          => 'Aktualisieren',
+                'save'            => 'Speichern',
+            ],
+            'delete-success'      => 'Metafeldd Definition erfolgreich gelöscht',
+            'update-success'      => 'Metafeldd Definition erfolgreich aktualisiert',
+            'created'             => 'Metafeldd Definition erfolgreich erstellt',
+            'mass-delete-success' => 'Metafeldd Definitionen erfolgreich gelöscht',
+        ],
     ],
 ];

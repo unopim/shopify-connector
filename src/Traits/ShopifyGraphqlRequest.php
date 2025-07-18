@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Traits;
 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage as StorageFacade;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Models\JobTrack;
 use Webkul\Shopify\Exceptions\InvalidCredential;
@@ -43,5 +45,38 @@ trait ShopifyGraphqlRequest
         }
 
         return $response;
+    }
+
+    /**
+     * Attempts to download the image from the provided URL.
+     */
+    public function handleUrlField(mixed $imageUrl, string $imagePath): string|bool
+    {
+
+        try {
+            $response = Http::get($imageUrl);
+
+            if ($response->failed()) {
+                return false;
+            }
+
+            $imageContents = $response->body();
+
+            $path = parse_url($imageUrl, PHP_URL_PATH);
+
+            $fileName = basename($path);
+
+            if (! preg_match('/\.[a-zA-Z0-9]+$/', $fileName)) {
+                $fileName .= '.png';
+            }
+
+            $path = $imagePath.$fileName;
+
+            StorageFacade::disk('public')->put($path, $imageContents);
+
+            return $path;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

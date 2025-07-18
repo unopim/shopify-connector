@@ -2,9 +2,6 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
-use Illuminate\Support\Facades\DB;
-use Webkul\Attribute\Contracts\Attribute;
-
 class ShopifyGraphQLDataFormatter
 {
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
@@ -12,8 +9,6 @@ class ShopifyGraphQLDataFormatter
     protected $seoFields = ['metafields_global_title_tag', 'metafields_global_description_tag'];
 
     protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
-
-    protected $metaFieldAttributeCode = [];
 
     protected $currency = 'USD';
 
@@ -27,16 +22,21 @@ class ShopifyGraphQLDataFormatter
 
     protected $settingMapping;
 
-    protected $attributeRepository;
-
-    protected $defaultLocale;
+    protected $attributeAll;
 
     /**
      * Formats raw product data for GraphQL API based on export mapping and other parameters.
      * */
-    public function formatDataForGraphql(array $rawData, array $exportMapping, string $locale, array $parentData = [], $definitionMapping = []): array
-    {
+    public function formatDataForGraphql(
+        array $rawData,
+        array $exportMapping,
+        string $locale,
+        array $parentData = [],
+        $productMetaField = [],
+        $variantMetaField = [],
+    ): array {
         $status = $this->getStatus($rawData, $parentData);
+
         $formatted = [
             'title'  => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
@@ -49,17 +49,126 @@ class ShopifyGraphQLDataFormatter
 
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
-        $formatted = $this->processShopifyConnectorOthers($formatted, $rawData, $exportMapping, $locale, $parentData, $definitionMapping);
+
+        $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
         return $formatted;
     }
 
-    /**
-     * Return the metafield attribute
-     * */
-    public function getMetafieldAttrCode(): array
+    public function processShopifyMetafieldDefintions(
+        array &$formatted,
+        array $rawData,
+        ?string $locale,
+        array $parentData,
+        array $productMetaField,
+        array $variantMetaField,
+        array $units,
+    ): void {
+        if (! empty($productMetaField) && ! empty($parentData)) {
+            $formatted['parentMetaFields'] = $this->processProductMetaFieldDefintions($parentData, $locale, $productMetaField, $units);
+        }
+
+        $metaField = empty($parentData) ? $productMetaField : $variantMetaField;
+
+        $formatted['metafields'] = $this->processProductMetaFieldDefintions($rawData, $locale, $metaField, $units);
+    }
+
+    public function processProductMetaFieldDefintions(
+        array $rawData,
+        ?string $locale,
+        array $productMetaField,
+        array $units
+    ) {
+        $formatted = [];
+        foreach ($productMetaField as $field) {
+            $unoAttribute = $field['code'] ?? null;
+            if (! empty(@$rawData[$unoAttribute])) {
+                $nameSpaceAndKey = explode('.', $field['name_space_key']);
+                if (count($nameSpaceAndKey) > 2) {
+                    continue;
+                }
+
+                $type = $field['type'] ?? null;
+                $attribute = $this->attributeAll[$unoAttribute] ?? null;
+
+                switch ($type) {
+                    case 'multi_line_text_field':
+                    case 'color':
+                        $metafieldValue = @$rawData[$unoAttribute];
+                        break;
+
+                    case 'rating':
+                        if (isset($field['validations'])) {
+                            $ratingValidation = json_decode($field['validations'], true);
+                            $updatedData = array_combine(
+                                array_map(fn ($key) => 'scale_' . $key, array_keys($ratingValidation)),
+                                $ratingValidation
+                            );
+                            $updatedData['value'] = @$rawData[$unoAttribute];
+                            $metafieldValue = json_encode($updatedData, true);
+                        }
+                        break;
+
+                    case 'weight':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['weight'] ?? 'GRAMS'
+                        ]);
+                        break;
+
+                    case 'volume':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['volume'] ?? 'MILLILITERS'
+                        ]);
+                        break;
+
+                    case 'dimension':
+                        $metafieldValue = json_encode([
+                            'value' => @$rawData[$unoAttribute],
+                            'unit' => $units['dimension'] ?? 'MILLIMETERS'
+                        ]);
+                        break;
+
+                    default:
+                        $metafieldValue = ($attribute?->type === 'price')
+                            ? @$rawData[$unoAttribute][$this->currency]
+                            : $this->stripTagMetafield(@$rawData[$unoAttribute]);
+                        break;
+                }
+
+
+                if (! empty($field['listvalue'])) {
+                    $type = $field['listvalue'] ? 'list.'.$type : $type;
+                    $metafieldValue = $this->formatMetafieldValue($metafieldValue, $attribute, $locale);
+                }
+
+                $formatted[] = [
+                    'key'       => $nameSpaceAndKey[1],
+                    'value'     => $metafieldValue,
+                    'type'      => $type,
+                    'namespace' => $nameSpaceAndKey[0],
+                ];
+            }
+        }
+
+        return $formatted;
+    }
+
+    public function formatMetafieldValue($metafieldValue, $attribute, $locale)
     {
-        return $this->metaFieldAttributeCode;
+        if (in_array($attribute?->type, ['multiselect', 'select'])) {
+            $translateLabels = $this->getTranslatedOptionLabels($attribute, $metafieldValue, $locale);
+
+            return json_encode($translateLabels, true);
+        }
+
+        return json_encode([$metafieldValue], true);
+    }
+
+    public function isValidHexColor($color)
+    {
+        return preg_match('/^#(?:[0-9a-fA-F]{3}){1,2}$/', $color);
     }
 
     /**
@@ -92,6 +201,15 @@ class ShopifyGraphQLDataFormatter
         foreach ($exportMapping['shopify_connector_settings'] ?? [] as $shopifyField => $unopimField) {
             if (in_array($shopifyField, $this->productIndexes)) {
                 $typeCastValues = $parentData[$unopimField] ?? @$rawData[$unopimField] ?? '';
+                $attribute = $this->attributeAll[$unopimField] ?? null;
+                if ($attribute?->type == 'select') {
+                    $option = $attribute->options()->where('code', $typeCastValues)->orderBy('sort_order')->first();
+                    $optionTrans = $option?->toArray()['translations'] ?? [];
+                    $optionLabelValue = array_values(array_filter($optionTrans, fn ($item) => $item['locale'] === $locale))[0]['label'] ?? null;
+                    if (! empty($optionLabelValue)) {
+                        $typeCastValues = $optionLabelValue;
+                    }
+                }
                 $formatted[$shopifyField] = (string) $typeCastValues;
 
                 continue;
@@ -105,7 +223,7 @@ class ShopifyGraphQLDataFormatter
             }
 
             if (in_array($shopifyField, $this->variantIndexes)) {
-                $formatted = $this->processVariantFields($formatted, $rawData, $shopifyField, $unopimField);
+                $formatted = $this->processVariantFields($formatted, $rawData, $shopifyField, $unopimField, $exportMapping['unit'] ?? []);
 
                 continue;
             }
@@ -136,31 +254,14 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Processes additional Shopify connector fields, applying metafields from the export mapping.
-     **/
-    protected function processShopifyConnectorOthers(
-        array $formatted,
-        array $rawData,
-        array $exportMapping,
-        ?string $locale,
-        array $parentData,
-        array $definitionMapping = []
-    ): array {
-        foreach ($exportMapping['shopify_connector_others'] ?? [] as $shopifyMetafieldType => $unopimMetaField) {
-            $formatted = $this->applyMetaFields($formatted, $rawData, $shopifyMetafieldType, $unopimMetaField, $locale, $parentData, $definitionMapping);
-        }
-
-        return $formatted;
-    }
-
-    /**
      * Processes specific variant fields and formats them for Shopify.
      * */
     protected function processVariantFields(
         array $formatted,
         array $rawData,
         string $shopifyField,
-        string $unopimField
+        string $unopimField,
+        array $units,
     ): array {
         switch ($shopifyField) {
             case 'inventoryPolicy':
@@ -196,7 +297,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) ($rawData[$unopimField] ?? 0),
-                    'unit'  => 'GRAMS',
+                    'unit'  => $units['weight'] ?? 'GRAMS',
                 ];
 
                 break;
@@ -225,12 +326,13 @@ class ShopifyGraphQLDataFormatter
         $unopimAttr = explode(',', $unopimField);
 
         foreach ($unopimAttr as $attributeCode) {
-            $attribute = $this->attributeRepository->findOneByField('code', $attributeCode);
-
-            $attributeLabel = empty($attribute->translate($locale)->name) ? $attribute->code : $attribute->translate($locale)->name;
-
+            $attribute = $this->attributeAll[$attributeCode] ?? null;
+            $attributeLabel = empty($attribute?->translate($locale)->name) ? $attribute?->code : $attribute?->translate($locale)->name;
             $value = strip_tags(@$parentData[$attributeCode] ?? @$rawData[$attributeCode] ?? null);
-
+            if (in_array($attribute?->type, ['multiselect', 'select'])) {
+                $value = $this->getTranslatedOptionLabels($attribute, $value, $locale);
+                $value = implode(' / ', $value);
+            }
             if (! $value) {
                 continue;
             }
@@ -246,7 +348,7 @@ class ShopifyGraphQLDataFormatter
             }
 
             if ($this->settingMapping->mapping['enable_named_tags_attribute'] ?? false) {
-                $attributeData[] = $attributeLabel.':'.$attribute->type.':'.$value;
+                $attributeData[] = $attributeLabel.':'.$attribute?->type.':'.$value;
 
                 continue;
             }
@@ -255,6 +357,24 @@ class ShopifyGraphQLDataFormatter
         }
 
         return $attributeData;
+    }
+
+    /**
+     * Get option label from option code
+     */
+    protected function getTranslatedOptionLabels($attribute, $value, string $locale)
+    {
+        $values = explode(',', $value);
+        $optionTrans = $attribute->options()->whereIn('code', $values)->get()->toArray();
+        $translationsArray = array_column($optionTrans, 'translations');
+        $translateLabels = array_map(function ($translations, $index) use ($locale, $values) {
+            $labelArr = array_column(array_filter($translations, fn ($t) => $t['locale'] === $locale), 'label');
+            $label = $labelArr[0] ?? null;
+
+            return ! empty($label) ? $label : $values[$index];
+        }, $translationsArray, array_keys($translationsArray));
+
+        return $translateLabels;
     }
 
     /**
@@ -325,66 +445,6 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Applies Shopify metafields for both raw and parent data.
-     */
-    protected function applyMetaFields(
-        array $formatted,
-        array $rawData,
-        string $shopifyMetafieldType,
-        string $unopimMetaField,
-        string $locale,
-        array $parentData,
-        array $definitionMapping = []
-    ): array {
-        $attr = explode(',', $unopimMetaField);
-
-        foreach ($attr as $unoAttribute) {
-            $this->metaFieldAttributeCode[] = $unoAttribute;
-
-            $attribute = $this->attributeRepository->findOneByField('code', $unoAttribute);
-
-            $definitionMappingAll = array_merge($definitionMapping['productMetafield'] ?? [], $definitionMapping['productVariantMetafield'] ?? []);
-
-            $namespace = array_key_exists($unoAttribute, $definitionMappingAll) ? $definitionMappingAll[$unoAttribute] : $this->getMetaFieldNamespace($attribute);
-
-            if (! $namespace) {
-                continue;
-            }
-
-            $metaFieldKey = $this->getAttributeLabelOrCodeForMetaField($attribute, $unoAttribute, $locale);
-            $metafieldType = $this->getShopifyMetafieldType($shopifyMetafieldType);
-
-            if (! empty(@$rawData[$unoAttribute])) {
-                $metafieldValue = $attribute->type == 'price' ? @$rawData[$unoAttribute][$this->currency] : $this->stripTagMetafield(@$rawData[$unoAttribute]);
-
-                $formatted['metafields'][] = [
-                    'key'       => $metaFieldKey,
-                    'value'     => $metafieldValue,
-                    'type'      => $metafieldType,
-                    'namespace' => $namespace,
-                ];
-            }
-
-            if (! empty($parentData)) {
-                if (empty(@$parentData[$unoAttribute])) {
-                    continue;
-                }
-
-                $parentMetaFieldValue = $attribute->type == 'price' ? @$parentData[$unoAttribute][$this->currency] : $this->stripTagMetafield(@$parentData[$unoAttribute]);
-
-                $formatted['parentMetaFields'][] = [
-                    'key'       => $metaFieldKey,
-                    'value'     => $parentMetaFieldValue,
-                    'type'      => $metafieldType,
-                    'namespace' => $namespace,
-                ];
-            }
-        }
-
-        return $formatted;
-    }
-
-    /**
      * striptag metafields value remove html entities and code and new line
      */
     protected function stripTagMetafield(string $metafieldValue): string
@@ -398,65 +458,13 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Retrieves the namespace for a given attribute.
-     */
-    protected function getMetaFieldNamespace($attribute): ?string
-    {
-        if (isset($this->settingMapping->mapping['metaFieldsNameSpace']) && $this->settingMapping->mapping['metaFieldsNameSpace'] == 'code') {
-            $results = DB::table('attribute_group_mappings')
-                ->join('attribute_family_group_mappings', 'attribute_group_mappings.attribute_family_group_id', '=', 'attribute_family_group_mappings.id')
-                ->join('attribute_groups', 'attribute_family_group_mappings.attribute_group_id', '=', 'attribute_groups.id')
-                ->select('attribute_group_mappings.*', 'attribute_family_group_mappings.*', 'attribute_groups.*')
-                ->get();
-
-            $item = $results->firstWhere('attribute_id', $attribute->id);
-
-            return $item ? $item->code : null;
-        }
-
-        return 'global';
-    }
-
-    /**
      * Sets the initial data for the class properties.
      */
-    public function setInitialData(string $locationId, string $currency, $attributeRepo, $settings)
+    public function setInitialData(string $locationId, string $currency, $settings, $attributeAll)
     {
         $this->locationId = $locationId;
         $this->currency = $currency;
-        $this->attributeRepository = $attributeRepo;
         $this->settingMapping = $settings;
-    }
-
-    /**
-     * returns shopify metafield type according to mapping
-     */
-    protected function getShopifyMetafieldType(string $type): ?string
-    {
-        return match ($type) {
-            'meta_fields_string'  => 'single_line_text_field',
-            'meta_fields_integer' => 'number_integer',
-            'meta_fields_json'    => 'json',
-            default               => null,
-        };
-    }
-
-    /**
-     * Returns attribute label or code according to metafield setting for metaFieldsKey
-     */
-    protected function getAttributeLabelOrCodeForMetaField(Attribute $attribute, string $attributeCode, string $locale): string
-    {
-        $metaFieldKey = $attributeCode;
-
-        if (
-            isset($this->settingMapping->mapping['metaFieldsKey'])
-            && $this->settingMapping->mapping['metaFieldsKey'] == 'label'
-        ) {
-            $translatedName = $attribute->translate($locale)->name;
-
-            $metaFieldKey = ! empty($translatedName) ? $translatedName : $metaFieldKey;
-        }
-
-        return $metaFieldKey;
+        $this->attributeAll = $attributeAll;
     }
 }

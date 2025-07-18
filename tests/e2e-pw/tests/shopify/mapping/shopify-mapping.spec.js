@@ -20,21 +20,9 @@ const mappingElements = [
     { field: 'Seo Description [metafields_global_description_tag]', inputName: 'metafields_global_description_tag', placeholder: 'Seo Description' },
     { field: 'Handle [handle]', inputName: 'handle', placeholder: 'Handle' },
     { field: 'Taxable [taxable]', inputName: 'taxable', placeholder: 'Taxable' },
-    { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' },
-    { field: 'Attribute to be used as image', inputName: 'images', placeholder: 'Select option' }
+    { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' }
 ];
 
-const metaFieldsMapping = [
-    { field: 'Meta String', inputName: 'meta_fields_string', placeholder: 'Select option' },
-    { field: 'Meta Integer', inputName: 'meta_fields_integer', placeholder: 'Select option' },
-    { field: 'Meta JSON', inputName: 'meta_fields_json', placeholder: 'Select option' }
-];
-
-const dropdownMappings = [
-    { field: 'Name [title]', inputName: 'title', desiredOption: 'Name' },
-    // { field: 'Cost [cast]', inputName: 'cost', desiredOption: 'Cost' },
-    // { field: 'Description [descriptionHtml]', inputName: 'descriptionHtml', desiredOption: 'Description' }
-];
 test.describe('UnoPim Shopify mapping tab Navigation', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to the Shopify Credentials Page
@@ -47,40 +35,37 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
 
     test('Map Shopify Fields', async ({ page }) => {
+
         for (const element of mappingElements) {
             console.log(`Mapping ${element.field}`);
 
             const input = page.locator(`input[name="${element.inputName}"]`);
         }
-
+        
         const saveButton = page.getByRole('button', { name: 'Save' });
         await saveButton.click();
+        await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.locator('#app')).toContainText('The Unit Weight field is required');
+      await expect(page.locator('#app')).toContainText('The Unit Volume field is required');
+      await expect(page.locator('#app')).toContainText('The Unit Dimension field is required');
+      await page.locator('div').filter({ hasText: /^Unit Weight$/ }).click();
+      await page.getByText('kg', { exact: true }).click();
+      await page.locator('div').filter({ hasText: /^Unit Volume$/ }).click();
+      await page.getByText('L', { exact: true }).click();
+      await page.locator('div').filter({ hasText: /^Unit Dimension$/ }).click();
+      await page.getByText('cm', { exact: true }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByText('Mapping saved successfully')).toBeVisible();
 
-        await expect(page.getByText('Mapping saved successfully')).toBeVisible();
     });
 
-
-    test('Map Shopify Meta Fields', async ({ page }) => {
-        for (const meta of metaFieldsMapping) {
-            console.log(`Mapping ${meta.field}`);
-
-            const input = page.locator(`input[name="${meta.inputName}"]`);
-        }
-
-        const saveButton = page.getByRole('button', { name: 'Save' });
-        await saveButton.click();
-
-        await expect(page.getByText('Mapping saved successfully')).toBeVisible();
-    });
-
-    test('should navigate to shopify mapping page', async ({ page }) => {
-        // Go directly to the admin dashboard (User is already logged in)
+    test('should navigate to Shopify mapping page and fill export mapping form', async ({ page }) => {
         await expect(page.getByRole('link', { name: 'General' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('General');
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved successfully Close')).toBeVisible();
+        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.locator('div').filter({ hasText: /^Name$/ }).click();
         await page.getByText('Name', { exact: true }).click();
@@ -91,22 +76,18 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await page.locator('#default_productType').fill('unopim');
         await page.locator('#default_productType').click();
         await page.locator('#default_tags').click();
-        await page.locator('#default_tags').clear();
         await page.locator('#default_tags').fill('shopify');
-        await page.locator('div').filter({ hasText: /^Select option$/ }).first().click();
-        await page.locator('div:nth-child(4) > .flex > div:nth-child(2)').click();
-        await page.getByRole('combobox').filter({ hasText: /^No elements found\. Consider changing the search query\.List is empty\.$/ }).getByPlaceholder('Select option').click();
-        await page.getByText('Select option').nth(2).click();
-        await page.getByText('Attributes to be used as').click();
-        await page.locator('div').filter({ hasText: /^Select option$/ }).nth(2).click();
-        await page.getByText('Select option').nth(1).click();
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved')).toBeVisible();
+        const mediaTypeDropdown = page.locator('#mediaType .multiselect__select');
+        await mediaTypeDropdown.click();
+        await page.getByText('Gallery', { exact: true }).click();
+        const pLocator = page.locator('p', { hasText: 'Media Attributes' });
+        const multiselect = pLocator.locator('..').locator('.multiselect');
+        await expect(multiselect).toBeVisible();
+        const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
+        expect(hasDisabledClass).toBe(false);
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
         await page.getByRole('link', { name: 'Export Mappings' }).click();
-
     });
 });
-
