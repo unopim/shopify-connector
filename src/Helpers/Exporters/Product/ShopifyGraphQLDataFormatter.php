@@ -235,7 +235,7 @@ class ShopifyGraphQLDataFormatter
             }
         }
 
-        $formatted['variant']['inventoryItem']['sku'] = $rawData['sku'] ?? '';
+        $formatted['variant']['inventoryItem']['sku'] = (string)$rawData['sku'] ?? '';
 
         return $formatted;
     }
@@ -428,7 +428,7 @@ class ShopifyGraphQLDataFormatter
                 }
                 break;
             case 'sku':
-                $formatted['variant']['inventoryItem']['sku'] = $defaultValue;
+                $formatted['variant']['inventoryItem']['sku'] = (string)$defaultValue;
                 break;
             case 'cost':
                 $formatted['variant']['inventoryItem']['cost'] = (float) $defaultValue;

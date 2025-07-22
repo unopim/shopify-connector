@@ -100,7 +100,6 @@
                             type="select"
                             id="apiVersion"
                             name="apiVersion"
-                            disabled="disabled"
                             rules="required"
                             :label="trans('shopify::app.shopify.credential.index.apiVersion')"
                             :placeholder="trans('shopify::app.shopify.credential.index.apiVersion')"
