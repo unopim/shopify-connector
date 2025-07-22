@@ -11,7 +11,7 @@
 
             <div class="flex gap-x-2.5 items-center">
                 <!-- Create User Button -->
-                @if (bouncer()->hasPermission('shopify.credentials.create'))
+                @if (bouncer()->hasPermission('shopify.meta-fields.create'))
                     <button
                         type="button"
                         class="primary-button"
@@ -37,7 +37,7 @@
 
                 <div class="flex gap-x-2.5 items-center">
                     <!-- User Create Button -->
-                    @if (bouncer()->hasPermission('shopify.credentials.create'))
+                    @if (bouncer()->hasPermission('shopify.meta-fields.create'))
                         <button
                             type="button"
                             class="primary-button"

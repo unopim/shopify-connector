@@ -91,7 +91,7 @@ class MetaFieldDataGrid extends DataGrid
      */
     public function prepareActions()
     {
-        if (bouncer()->hasPermission('shopify.metafield.edit')) {
+        if (bouncer()->hasPermission('shopify.meta-fields.edit')) {
             $this->addAction([
                 'icon'   => 'icon-edit',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
@@ -102,7 +102,7 @@ class MetaFieldDataGrid extends DataGrid
             ]);
         }
 
-        if (bouncer()->hasPermission('shopify.metafield.delete')) {
+        if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
             $this->addAction([
                 'icon'   => 'icon-delete',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
@@ -121,7 +121,7 @@ class MetaFieldDataGrid extends DataGrid
      */
     public function prepareMassActions()
     {
-        if (bouncer()->hasPermission('shopify.metafield.delete')) {
+        if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
             $this->addMassAction([
                 'title'   => trans('admin::app.catalog.products.index.datagrid.delete'),
                 'url'     => route('shopify.metafield.mass_delete'),
