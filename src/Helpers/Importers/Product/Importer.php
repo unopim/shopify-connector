@@ -59,6 +59,11 @@ class Importer extends AbstractImporter
     protected array $channelsAndLocales = [];
 
     /**
+     * all child in unopim
+     */
+    protected array $allChildInUnopim = [];
+
+    /**
      * Shopify credential.
      *
      * @var mixed
@@ -309,12 +314,13 @@ class Importer extends AbstractImporter
             }
 
             $unopimCategory = $this->getCollectionFromShopify($rowData['node']['collections']['edges'] ?? []);
-            $productImages = $rowData['node']['images']['edges'];
             $productMedias = $rowData['node']['media']['nodes'];
-
-            $imageMediaids = array_column(array_filter($productMedias, fn ($item) => $item['__typename'] === 'MediaImage'), 'id') ?? [];
+            $mediaData = array_filter($productMedias, fn ($item) => $item['__typename'] === 'MediaImage');
+            $imageMediaids = array_column($mediaData, 'id') ?? [];
             $image = [];
-            $image = array_map(fn ($productImage) => $productImage['node']['originalSrc'], $productImages);
+            $image = array_map(function ($item) {
+                return $item['image']['url'];
+            }, $mediaData);
             $count = 0;
             $count = count(array_filter($rowData['node']['options'], fn ($option) => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
 
@@ -614,7 +620,7 @@ class Importer extends AbstractImporter
                 $mappingAttr = $variantImageAttr.'_0';
             }
             if (! empty($productVariant['node']['image'])) {
-                $imageUrl = $productVariant['node']['image']['originalSrc'];
+                $imageUrl = $productVariant['node']['media']['nodes'][0]['image']['url'];
                 $mediaId = $productVariant['node']['media']['nodes'][0]['id'];
                 $variantImage = $variantProductExist->id ?? $configId;
                 if ($variantImageAttr) {
@@ -699,7 +705,23 @@ class Importer extends AbstractImporter
             ];
         }
 
+        $leftChildProduct = array_diff(array_column($this->allChildInUnopim, 'id'), array_keys($variantProductData));
+        if (! empty($leftChildProduct)) {
+            $this->addExistingVariantProduct($leftChildProduct, $variantProductData);
+        }
+
         return $variantProductData;
+    }
+
+    private function addExistingVariantProduct($leftChildProduct, &$variantProductData): void
+    {
+        foreach ($leftChildProduct ?? [] as $key => $productIds) {
+            $variantProductData[$productIds] = [
+                'sku'    => $this->allChildInUnopim[$key]['sku'],
+                'status' => $this->allChildInUnopim[$key]['status'],
+                'values' => $this->allChildInUnopim[$key]['values'],
+            ];
+        }
     }
 
     private function processConfigurableProductData($rowData, $familyModel, $attributes)
@@ -709,6 +731,7 @@ class Importer extends AbstractImporter
         $this->update = true;
 
         $this->updateVarint = true;
+        $this->allChildInUnopim = $configProductExist?->variants?->toArray() ?? [];
         if (! $configProductExist) {
 
             if (! $familyModel) {
