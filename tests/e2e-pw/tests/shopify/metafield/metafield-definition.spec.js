@@ -153,8 +153,8 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
     await expect(filterToggleStore).toBeChecked();
 
     await page.getByText('Save').click();
-    await page.getByText('MetaField Defintion Updated successfully');
-    await expect(page.getByText('MetaField Defintion Updated successfully')).toBeVisible();
+    await page.getByText('MetaField Definition Updated successfully');
+    await expect(page.getByText('MetaField Definition Updated successfully')).toBeVisible();
   });
 
   test('Delete the Metafield Definition', async ({ page }) => {
