@@ -469,17 +469,12 @@ class Importer extends AbstractImporter
 
         $shopifyProductId = $rowData['node']['id'];
         $configProductMapping = $this->checkMappingInDb(['code' => $rowData['node']['handle']]);
+        $parentSkuFromUnopim = null;
         $configId = $this->processConfigurableProductData(
             $rowData,
             $familyModel,
             $attributes,
-            $common,
-            $localeSpecific,
-            $channelSpecific,
-            $channelAndLocaleSpecific,
-            $mediaMapping,
-            $image,
-            $imageMediaids
+            $parentSkuFromUnopim,
         );
 
         if ($configId === null) {
@@ -490,9 +485,7 @@ class Importer extends AbstractImporter
             $this->parentMapping($rowData['node']['handle'], $shopifyProductId, $this->import->id);
         }
 
-        $mappedImageAttr = [];
         $allMediaIdVariants = [];
-
         $variantProductData = $this->processVariants(
             $variants,
             $rowData,
@@ -501,41 +494,47 @@ class Importer extends AbstractImporter
             $extractVariantAttr,
             $mediaMapping,
             $metaFieldAllAttr,
-            $allMediaIdVariants
+            $allMediaIdVariants,
         );
 
-        if (! empty($mediaMapping) && $mediaMapping['mediaType'] === 'image') {
-            $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $rowData['node']['title'] ?? '', $imageMediaids, $rowData['node']['handle'] ?? '', $rowData['node']['id'], $allMediaIdVariants);
+        $mappedImageAttr = null;
+
+        if (!empty($mediaMapping)) {
+            $title  = $rowData['node']['title']  ?? '';
+            $handle = $rowData['node']['handle'] ?? '';
+            $id     = $rowData['node']['id']     ?? null;
+
+            if ($mediaMapping['mediaType'] === 'image') {
+                $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
+            } elseif ($mediaMapping['mediaType'] === 'gallery') {
+                $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
+            }
         }
 
-        if (! empty($mediaMapping) && $mediaMapping['mediaType'] === 'gallery') {
-            $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $rowData['node']['title'] ?? '', $imageMediaids, $rowData['node']['handle'] ?? '', $rowData['node']['id'], $allMediaIdVariants);
-        }
-
-        if (! $mappedImageAttr) {
+        if (!is_array($mappedImageAttr)) {
             return null;
         }
 
         [$mcommon, $mlocale_specific, $mchannel_specific, $mchannelAndLocaleSpecific] = $mappedImageAttr;
 
         $dataToUpdate = [
-            'sku'     => $rowData['node']['handle'],
+            'sku'     => $parentSkuFromUnopim ?? $rowData['node']['handle'],
             'status'  => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
             'channel' => $this->channel,
             'locale'  => $this->locale,
             'values'  => [
-                'common'           => array_merge($common, $mcommon),
+                'common'           => array_merge($common, $mcommon ?? []),
                 'channel_specific' => [
-                    $this->channel => array_merge($channelSpecific, $mchannel_specific),
+                    $this->channel => array_merge($channelSpecific, $mchannel_specific ?? [] ),
                 ],
 
                 'locale_specific'  => [
-                    $this->locale => array_merge($localeSpecific, $mlocale_specific),
+                    $this->locale => array_merge($localeSpecific, $mlocale_specific ?? []),
                 ],
 
                 'channel_locale_specific' => [
                     $this->channel => [
-                        $this->locale => array_merge($channelAndLocaleSpecific, $mchannelAndLocaleSpecific),
+                        $this->locale => array_merge($channelAndLocaleSpecific, $mchannelAndLocaleSpecific ?? []),
                     ],
                 ],
             ],
@@ -619,8 +618,8 @@ class Importer extends AbstractImporter
             if ($mType == 'gallery') {
                 $mappingAttr = $variantImageAttr.'_0';
             }
-            if (! empty($productVariant['node']['image'])) {
-                $imageUrl = $productVariant['node']['media']['nodes'][0]['image']['url'];
+            $imageUrl = $productVariant['node']['media']['nodes'][0]['image']['url'] ?? [];
+            if (! empty($imageUrl)) {
                 $mediaId = $productVariant['node']['media']['nodes'][0]['id'];
                 $variantImage = $variantProductExist->id ?? $configId;
                 if ($variantImageAttr) {
@@ -724,9 +723,17 @@ class Importer extends AbstractImporter
         }
     }
 
-    private function processConfigurableProductData($rowData, $familyModel, $attributes)
+    private function processConfigurableProductData($rowData, $familyModel, $attributes, &$parentSkuFromUnopim)
     {
-        $configProductExist = $this->productRepository->findOneByField('sku', $rowData['node']['handle']);
+        $variantSku = $rowData['node']['variants']['edges'][0]['node']['sku'];
+        $variantData = $this->productRepository->findOneByField('sku', $variantSku);
+        if ($variantData?->parent?->sku) {
+            $parentSkuFromUnopim = $variantData?->parent?->sku;
+            $configProductExist = $this->productRepository->findOneByField('sku', $variantData?->parent?->sku);
+        } else {
+            $parentSkuFromUnopim = $rowData['node']['handle'];
+            $configProductExist = $this->productRepository->findOneByField('sku', $rowData['node']['handle']);
+        }
         $configId = $configProductExist?->id;
         $this->update = true;
 
