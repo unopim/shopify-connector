@@ -5,7 +5,7 @@ return [
         'shopify' => [
             'product'    => 'Shopify Product',
             'category'   => 'Shopify Category',
-            'metafields' => 'Shopify Metafields Defintion',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
     'importers' => [
@@ -268,7 +268,7 @@ return [
                 'save'            => 'Save',
             ],
             'delete-success'      => 'Metafield Definition Deleted successfully',
-            'update-success'      => 'MetaField Defintion Updated successfully',
+            'update-success'      => 'MetaField Definition Updated successfully',
             'created'             => 'Create Metafield Definition successfully',
             'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
         ],

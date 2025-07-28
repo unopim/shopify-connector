@@ -177,7 +177,13 @@ class CredentialController extends Controller
                 ->withInput();
         }
 
+        $keyOrder = ['name', 'locale', 'primary', 'published'];
+
         $languages = json_decode($requestData['storeLocales'], true);
+
+        $languages = array_map(function ($item) use ($keyOrder) {
+            return array_merge(array_flip($keyOrder), $item);
+        }, $languages);
 
         $languages = array_map(function ($language) {
             if ($language['primary']) {
