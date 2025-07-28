@@ -319,9 +319,10 @@ class Importer extends AbstractImporter
             $imageMediaids = array_column($mediaData, 'id') ?? [];
             $image = [];
             $image = array_map(function ($item) {
-                return $item['image']['url'];
+                return $item['image']['url'] ?? null;
             }, $mediaData);
             $count = 0;
+            $image = array_filter($image);
             $count = count(array_filter($rowData['node']['options'], fn ($option) => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
 
             $mappingAttr = $this->importMapping->mapping['shopify_connector_settings'] ?? [];
