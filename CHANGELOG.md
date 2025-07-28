@@ -1,3 +1,12 @@
+# 1.2.0 ( 28 July 2025 )
+
+- Added Playwright end-to-end testing.
+- Removed auth.json and updated the GitHub workflow.
+- Introduced metafield definition export and asset export functionality.
+- Asset export now supports .mp4 files for video export to Shopify.
+- Fixed permission issue (#13).
+- Improved media import: If a product has more than 20 images, only the first 10 will be imported.
+
 # 1.1.0
 - Import **Categories** from Shopify to UnoPim.
 - Import **Products** from Shopify to UnoPim
