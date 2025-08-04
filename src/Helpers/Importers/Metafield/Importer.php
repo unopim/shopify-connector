@@ -42,7 +42,19 @@ class Importer extends AbstractImporter
         'json'                   => 'textarea',
         'number_integer'         => 'text',
         'multi_line_text_field'  => 'textarea',
+        'color'                  => 'text',
+        'rating'                 => 'text',
+        'url'                    => 'text',
+        'boolean'                => 'boolean',
+        'number_decimal'         => 'text',
+        'dimension'              => 'text',
+        'weight'                 => 'text',
+        'volume'                 => 'text',
     ];
+
+    protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
+
+    protected $decimalType = ['number_decimal'];
 
     /**
      * Shopify credential.
@@ -218,8 +230,10 @@ class Importer extends AbstractImporter
                 ],
             ];
 
-            if ($metafieldType == 'number_integer') {
+            if (in_array($metafieldType, $this->numberType)) {
                 $attributeFormate['validation'] = 'number';
+            } elseif (in_array($metafieldType, $this->decimalType)) {
+                $attributeFormate['validation'] = 'decimal';
             }
 
             $attributesArray[] = $attributeFormate;
