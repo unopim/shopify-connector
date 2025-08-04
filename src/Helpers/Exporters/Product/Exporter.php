@@ -281,6 +281,8 @@ class Exporter extends AbstractExporter
     public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
     {
         $skus = array_column($batch->data, 'sku');
+        $tablePrefix = DB::getTablePrefix();
+
         $allProducts = DB::table('products')
             ->leftJoin('attribute_families as aft', 'products.attribute_family_id', '=', 'aft.id')
             ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
@@ -312,7 +314,7 @@ class Exporter extends AbstractExporter
                 'parent_products.attribute_family_id as parent_attribute_family_id',
 
                 // Fetch super attributes, ensuring they are retrieved from the parent
-                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT attr.code ORDER BY attr.code ASC SEPARATOR ','), '') as super_attributes")
+                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT {$tablePrefix}attr.code ORDER BY {$tablePrefix}attr.code ASC SEPARATOR ','), '') as super_attributes")
             )
             ->where(function ($query) use ($skus) {
                 $query->whereIn('products.sku', $skus)
