@@ -354,12 +354,12 @@ class GraphQLApiClient
         ],
 
         'metafieldDefinitionsProductVariantType' => [
-            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionsProductType' => [
-            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 

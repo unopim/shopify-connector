@@ -119,7 +119,6 @@
                                 <x-admin::form.control-group.control
                                     type="select"
                                     id="apiVersion"
-                                    disabled="disabled"
                                     name="apiVersion"
                                     rules="required"
                                     :label="trans('shopify::app.shopify.credential.index.apiVersion')"

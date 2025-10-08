@@ -11,6 +11,7 @@ use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 
 class Importer extends AbstractImporter
 {
@@ -75,6 +76,7 @@ class Importer extends AbstractImporter
         protected AttributeRepository $attributeRepository,
         protected LocaleRepository $localeRepository,
         protected ShopifyCredentialRepository $shopifyRepository,
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
     ) {
         parent::__construct($importBatchRepository);
 
@@ -235,12 +237,58 @@ class Importer extends AbstractImporter
             } elseif (in_array($metafieldType, $this->decimalType)) {
                 $attributeFormate['validation'] = 'decimal';
             }
+            
+            $data = $this->formatDataForMetafield($attribute);
+
+            $existing = $this->shopifyMetaFieldRepository
+                ->findOneWhere([
+                    ['name_space_key', '=', $data['name_space_key']],
+                    ['ownerType', '=', $data['ownerType']],
+                ]);
+
+            if (!$existing) {
+                $this->shopifyMetaFieldRepository->create($data);
+            }
 
             $attributesArray[] = $attributeFormate;
         }
 
         return $attributesArray;
     }
+
+    public function formatDataForMetafield(array $metafieldDefinition): array
+    {
+        $node = $metafieldDefinition['node'];
+        $typeName = $node['type']['name'];
+        $nameSpaceKey = "{$node['namespace']}.{$node['key']}";
+
+        $data = [
+            'ownerType'       => $node['ownerType'],
+            'type'            => $typeName,
+            'name_space_key'  => $nameSpaceKey,
+            'code'            => $node['key'],
+            'attribute'       => $node['name'],
+            'pin'             => !empty($node['pinnedPosition']),
+            'listvalue'       => str_contains($typeName, 'list'),
+            'ContentTypeName' => $typeName,
+            'apiUrl'          => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+        ];
+
+        // Handle rating validations efficiently
+        if ($typeName === 'rating') {
+            $validations = collect($node['validations']);
+            $scaleMin = $validations->firstWhere('name', 'scale_min')['value'] ?? null;
+            $scaleMax = $validations->firstWhere('name', 'scale_max')['value'] ?? null;
+
+            $data['validations'] = json_encode([
+                'min' => (string) $scaleMin,
+                'max' => (string) $scaleMax,
+            ]);
+        }
+
+        return $data;
+    }
+
 
     /**
      * Validate data for saving attribute

@@ -538,8 +538,8 @@ class Exporter extends AbstractExporter
 
         $productCreateErr = $result['body']['data']['productCreate']['userErrors'] ?? [];
         if (! empty($productCreateErr)) {
-            if (! empty($formattedGraphqlData['parentMetaFields'])) {
-                $this->prependAttributeCodesToErrors($productCreateErr, $formattedGraphqlData['parentMetaFields']);
+            if (! empty($formattedGraphqlData['parentMetaFields']) || ! empty($formattedGraphqlData['metafields'])) {
+                $this->prependAttributeCodesToErrors($productCreateErr, $formattedGraphqlData['parentMetaFields'] ?? $formattedGraphqlData['metafields']);
             }
             $this->logWarning($productCreateErr, $parentData['sku'] ?? $rowData['sku']);
             $this->skippedItemsCount++;
@@ -744,7 +744,7 @@ class Exporter extends AbstractExporter
             }
         } else {
             $needToAdd = array_diff(array_column($finalOption, 'name'), $productOptionExist);
-            if (! empty($needToAdd)) {
+            if (! empty($needToAdd) && count($finalOption) !== count($productOptionExist)) {
                 $filteredOptions = array_values(array_filter($finalOption, function ($option) use ($needToAdd) {
                     return in_array($option['name'], $needToAdd);
                 }));
@@ -1128,7 +1128,7 @@ class Exporter extends AbstractExporter
             $variableOption[$key]['optionInput']['id'] = $value['id'];
             $names = array_column($value['optionValues'], 'name');
 
-            if (in_array($variableOption[$key]['optionValuesToUpdate'][0]['name'], $names)) {
+            if (in_array($variableOption[$key]['optionValuesToUpdate'][0]['name'] ?? [], $names)) {
                 $index = array_search($variableOption[$key]['optionValuesToUpdate'][0]['name'], $names);
                 $variableOption[$key]['optionValuesToUpdate'][0]['id'] = $value['optionValues'][$index]['id'];
             } else {

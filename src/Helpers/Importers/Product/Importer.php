@@ -510,10 +510,10 @@ class Importer extends AbstractImporter
             } elseif ($mediaMapping['mediaType'] === 'gallery') {
                 $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
             }
-        }
 
-        if (!is_array($mappedImageAttr)) {
-            return null;
+            if (!is_array($mappedImageAttr)) {
+                return null;
+            }
         }
 
         [$mcommon, $mlocale_specific, $mchannel_specific, $mchannelAndLocaleSpecific] = $mappedImageAttr;
@@ -604,6 +604,15 @@ class Importer extends AbstractImporter
             }
 
             $variantProductExist = $this->productRepository->findOneByField('sku', $vsku);
+            if ($variantProductExist && $variantProductExist?->parent?->id !== $configId) {
+                if ($variantProductExist?->id) {
+                    $this->productRepository->delete($variantProductExist?->id);
+                }
+                $this->deleteProductVariantMappingIfSimple($shopifyProductId, $vsku);
+                $variantProductExist = $this->productRepository->findOneByField('sku', $vsku);
+                $this->parentMapping($vsku, $productVariant['node']['id'], $this->import->id, $shopifyProductId);
+            }
+
             $imageValue = null;
 
             $variantImageAttr = $mediaMapping['mediaAttributes'] ?? null;
@@ -838,6 +847,7 @@ class Importer extends AbstractImporter
         $simpleId = $productExist?->id;
         $this->update = true;
         $variantSku = $productVariant['node']['sku'] ?? $rowData['node']['handle'];
+        $variantSku = preg_replace('/[^A-Za-z0-9_-]/', '', $variantSku);
         $simpleProductMapping = $this->checkMappingInDb(['code' => $variantSku]);
 
         if (! $simpleProductMapping) {
@@ -860,7 +870,6 @@ class Importer extends AbstractImporter
                 'attribute_family_id' => $simpleProductFamilyId,
             ];
             $this->update = false;
-
             $createdProduct = $this->productRepository->create($data[$vcommon['sku']]);
             $simpleId = $createdProduct->id;
         }
@@ -939,7 +948,7 @@ class Importer extends AbstractImporter
                 continue;
             }
             $unitOption = $this->shoifyMetaFieldTypeData[$metaData['node']['type']]['unitoptions'] ?? null;
-            if ($unitOption) {
+            if ($unitOption || $metaData['node']['type'] === 'rating') {
                 $unitValue = json_decode($source, true);
                 $source = $unitValue['value'] ?? 0;
             }
@@ -1331,7 +1340,7 @@ class Importer extends AbstractImporter
             $classifyAttribute($attribute, $unoAttr, $value, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
         }
 
-        $vcommon['sku'] = str_replace(["\r", "\n"], '', $variantData['node']['sku']);
+        $vcommon['sku'] = preg_replace('/[^A-Za-z0-9_-]/', '', $variantData['node']['sku']);
 
         // Return merged results
         return [

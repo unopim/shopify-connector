@@ -240,6 +240,17 @@ trait DataMappingTrait
     /**
      * Delete productvariant mapping.
      */
+    protected function deleteProductVariantMappingIfSimple(string $variant, string $sku): void
+    {
+        $mappings = $this->shopifyMappingRepository
+        ->where('externalId', $variant)
+        ->where('code', $sku)
+        ->delete();
+    }
+
+    /**
+     * Delete productvariant mapping.
+     */
     protected function deleteProductMediaMapping(array $mediaIds): void
     {
         $mappings = $this->shopifyMappingRepository->whereIN('externalId', $mediaIds)->delete();
