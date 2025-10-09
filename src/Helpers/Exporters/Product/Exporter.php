@@ -439,6 +439,7 @@ class Exporter extends AbstractExporter
         if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'gallery') {
             $imageData = $this->formatGalleryDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? [], $skipParent);
         }
+
         if (! empty($imageData)) {
             $this->imageData = array_merge($imageData[@$parentData['sku']] ?? [], $imageData[$rowData['sku']] ?? []);
         }
@@ -488,26 +489,30 @@ class Exporter extends AbstractExporter
                 );
             }
 
-            $this->handleProductProcessingForTranslation(
-                $productId,
-                $parentMergedFields,
-                $mergedFields,
-                $parentData,
-                $rowData,
-                $formattedGraphqlData
-            );
+            if (count($this->credential?->storelocaleMapping) > 1) {
+                $this->handleProductProcessingForTranslation(
+                    $productId,
+                    $parentMergedFields,
+                    $mergedFields,
+                    $parentData,
+                    $rowData,
+                    $formattedGraphqlData
+                );
+            }
         }
 
-        $this->handleChildProductTranslation(
-            $parentData,
-            $mergedFields,
-            $skipParent,
-            $optionsGetting,
-            $optionValuesTranslation,
-            $productId,
-            $variantId,
-            $rowData
-        );
+        if (count($this->credential?->storelocaleMapping) > 1) {
+            $this->handleChildProductTranslation(
+                $parentData,
+                $mergedFields,
+                $skipParent,
+                $optionsGetting,
+                $optionValuesTranslation,
+                $productId,
+                $variantId,
+                $rowData
+            );
+        }
 
         return true;
     }
@@ -1049,6 +1054,7 @@ class Exporter extends AbstractExporter
         ];
 
         $result = $this->requestGraphQlApiAction(self::VARIANT_UPDATE, $this->credentialAsArray, $variantInput);
+
         $productVariant = $result['body']['data'][self::VARIANT_UPDATE] ?? [];
         $errors = array_column($productVariant['userErrors'] ?? [], 'message');
         if (in_array(self::NOT_EXIST_PRODUCT_VARIANT, $errors)) {

@@ -10,8 +10,8 @@ use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
-use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class Importer extends AbstractImporter
 {
@@ -277,8 +277,8 @@ class Importer extends AbstractImporter
         // Handle rating validations efficiently
         if ($typeName === 'rating') {
             $validations = collect($node['validations']);
-            $scaleMin = $validations->firstWhere('name', 'scale_min')['value'] ?? null;
-            $scaleMax = $validations->firstWhere('name', 'scale_max')['value'] ?? null;
+            $scaleMin = $validations->firstWhere('name', 'scale_min')['value'] ?? 0;
+            $scaleMax = $validations->firstWhere('name', 'scale_max')['value'] ?? 0;
 
             $data['validations'] = json_encode([
                 'min' => (string) $scaleMin,

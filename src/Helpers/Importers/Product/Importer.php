@@ -591,7 +591,8 @@ class Importer extends AbstractImporter
 
                 continue;
             }
-            $vsku = str_replace(["\r", "\n"], '', $vsku);
+
+            $vsku = preg_replace('/[^A-Za-z0-9_-]/', '', $vsku);
             if (in_array($vsku, $variantSkus)) {
                 $this->jobLogger->warning($vsku.':- Duplicate SKU Found in product');
 
