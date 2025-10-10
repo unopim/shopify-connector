@@ -133,14 +133,14 @@ class ShopifyGraphQLDataFormatter
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? @$rawData[$unoAttribute][$this->currency]
-                            : $this->stripTagMetafield(@$rawData[$unoAttribute]);
+                            : $this->stripTagMetafield(@$rawData[$unoAttribute], $unoAttribute, $locale, $attribute);
                         break;
                 }
 
 
                 if (! empty($field['listvalue'])) {
                     $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue($metafieldValue, $attribute, $locale);
+                    $metafieldValue = $this->formatMetafieldValue(@$rawData[$unoAttribute], $attribute, $locale);
                 }
 
                 $formatted[] = [
@@ -447,12 +447,20 @@ class ShopifyGraphQLDataFormatter
     /**
      * striptag metafields value remove html entities and code and new line
      */
-    protected function stripTagMetafield(string $metafieldValue): string
+    protected function stripTagMetafield(string $metafieldValue, $attribute, $locale, $attributes): string
     {
+        if (in_array($attributes?->type, ['multiselect', 'select'])) {
+
+            $value = $this->getTranslatedOptionLabels($attributes, $metafieldValue, $locale);
+
+            return implode(', ', $value);
+        }
+
         $metafieldValue = strip_tags($metafieldValue);
         $metafieldValue = preg_replace('/&#?[a-z0-9]{2,8};/i', '', $metafieldValue);
         $metafieldValue = str_replace(["\r\n", "\r", "\n"], PHP_EOL, $metafieldValue);
         $metafieldValue = preg_replace('/\s+/', ' ', $metafieldValue);
+
 
         return $metafieldValue;
     }
