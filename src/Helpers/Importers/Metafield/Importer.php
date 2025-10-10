@@ -51,6 +51,7 @@ class Importer extends AbstractImporter
         'dimension'              => 'text',
         'weight'                 => 'text',
         'volume'                 => 'text',
+        'date'                   => 'date',
     ];
 
     protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
@@ -288,7 +289,6 @@ class Importer extends AbstractImporter
 
         return $data;
     }
-
 
     /**
      * Validate data for saving attribute
