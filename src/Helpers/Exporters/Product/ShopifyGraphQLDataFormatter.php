@@ -133,7 +133,7 @@ class ShopifyGraphQLDataFormatter
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? @$rawData[$unoAttribute][$this->currency]
-                            : $this->stripTagMetafield(@$rawData[$unoAttribute], $unoAttribute, $locale, $attribute);
+                            : $this->stripTagMetafield(@$rawData[$unoAttribute], $locale, $attribute);
                         break;
                 }
 
@@ -447,7 +447,7 @@ class ShopifyGraphQLDataFormatter
     /**
      * striptag metafields value remove html entities and code and new line
      */
-    protected function stripTagMetafield(string $metafieldValue, $attribute, $locale, $attributes): string
+    protected function stripTagMetafield(string $metafieldValue, ?string $locale, ?object $attributes): string
     {
         if (in_array($attributes?->type, ['multiselect', 'select'])) {
 

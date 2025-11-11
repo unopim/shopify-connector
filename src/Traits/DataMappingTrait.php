@@ -243,9 +243,9 @@ trait DataMappingTrait
     protected function deleteProductVariantMappingIfSimple(string $variant, string $sku): void
     {
         $mappings = $this->shopifyMappingRepository
-        ->where('externalId', $variant)
-        ->where('code', $sku)
-        ->delete();
+            ->where('externalId', $variant)
+            ->where('code', $sku)
+            ->delete();
     }
 
     /**

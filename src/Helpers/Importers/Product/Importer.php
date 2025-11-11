@@ -511,7 +511,7 @@ class Importer extends AbstractImporter
                 $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
             }
 
-            if (!is_array($mappedImageAttr)) {
+            if (! is_array($mappedImageAttr)) {
                 return null;
             }
         }

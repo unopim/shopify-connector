@@ -23,4 +23,9 @@ class ShopifyProductValidator extends JobValidator
         'filters.channel'     => 'Channel',
         'filters.currency'    => 'Currency',
     ];
+
+    public function getValidatorRule(): array
+    {
+        return $this->rules;
+    }
 }
