@@ -1,77 +1,57 @@
 <?php
 
-namespace Tests\Unit\Validators;
-
 use Illuminate\Support\Facades\Validator;
-use Tests\TestCase;
 use Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator;
 
-class ShopifyCategoryAndMetafieldValidatorTest extends TestCase
-{
-    protected ShopifyCategoryAndMetafieldValidator $validator;
+beforeEach(function () {
+    $this->validator = new ShopifyCategoryAndMetafieldValidator();
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->validator = new ShopifyCategoryAndMetafieldValidator();
-    }
+it('should passes validation with valid data', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 1,
+        ],
+    ];
 
-    /** @test */
-    public function it_passes_validation_with_valid_data()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 1,
-            ],
-        ];
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->passes())->toBeTrue();
+});
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
+it('should fails when credentials are missing', function () {
+    $data = [
+        'filters' => [
+        ],
+    ];
 
-        $this->assertTrue($validator->passes());
-    }
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
 
-    /** @test */
-    public function it_fails_when_credentials_are_missing()
-    {
-        $data = [
-            'filters' => [
-                // missing credentials
-            ],
-        ];
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.credentials');
+});
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
+it('should fails when credentials is not integer', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 'abc',
+        ],
+    ];
 
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.credentials', $validator->errors()->toArray());
-    }
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
 
-    /** @test */
-    public function it_fails_when_credentials_is_not_integer()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 'abc',
-            ],
-        ];
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.credentials');
+});
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
+it('should fails when credentials is less than zero', function () {
+    $data = [
+        'filters' => [
+            'credentials' => -1,
+        ],
+    ];
 
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.credentials', $validator->errors()->toArray());
-    }
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
 
-    /** @test */
-    public function it_fails_when_credentials_is_less_than_zero()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => -1,
-            ],
-        ];
-
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
-
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.credentials', $validator->errors()->toArray());
-    }
-}
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.credentials');
+});

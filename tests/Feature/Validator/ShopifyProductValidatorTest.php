@@ -1,103 +1,74 @@
 <?php
 
-namespace Tests\Unit\Validators;
-
 use Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator;
 use Illuminate\Support\Facades\Validator;
-use Tests\TestCase;
 
-class ShopifyProductValidatorTest extends TestCase
-{
-    protected ShopifyProductValidator $validator;
+beforeEach(function () {
+    $this->validator = new ShopifyProductValidator();
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+it('should passes validation with valid data', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 1,
+            'channel'     => 'shopify_default',
+            'currency'    => 'USD',
+        ],
+    ];
 
-        $this->validator = new ShopifyProductValidator();
-    }
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->passes())->toBeTrue();
+});
 
-    /** @test */
-    public function it_passes_validation_with_valid_data()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 1,
-                'channel'     => 'shopify_default',
-                'currency'    => 'USD',
-            ],
-        ];
+it('should fails when credentials are missing', function () {
+    $data = [
+        'filters' => [
+            'channel'  => 'shopify_default',
+            'currency' => 'USD',
+        ],
+    ];
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.credentials');
+});
 
-        $this->assertTrue($validator->passes());
-    }
+it('should fails when channel is missing', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 1,
+            'currency'    => 'USD',
+        ],
+    ];
 
-    /** @test */
-    public function it_fails_when_credentials_are_missing()
-    {
-        $data = [
-            'filters' => [
-                // 'credentials' => missing
-                'channel'  => 'shopify_default',
-                'currency' => 'USD',
-            ],
-        ];
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.channel');
+});
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
+it('should fails when currency is missing', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 1,
+            'channel'     => 'shopify_default',
+        ],
+    ];
 
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.credentials', $validator->errors()->toArray());
-    }
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.currency');
+});
 
-    /** @test */
-    public function it_fails_when_channel_is_missing()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 1,
-                // 'channel' missing
-                'currency' => 'USD',
-            ],
-        ];
+it('should fails when credentials is not integer', function () {
+    $data = [
+        'filters' => [
+            'credentials' => 'abc',
+            'channel'     => 'shopify_default',
+            'currency'    => 'USD',
+        ],
+    ];
 
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
-
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.channel', $validator->errors()->toArray());
-    }
-
-    /** @test */
-    public function it_fails_when_currency_is_missing()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 1,
-                'channel'     => 'shopify_default',
-                // 'currency' missing
-            ],
-        ];
-
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
-
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.currency', $validator->errors()->toArray());
-    }
-
-    /** @test */
-    public function it_fails_when_credentials_is_not_integer()
-    {
-        $data = [
-            'filters' => [
-                'credentials' => 'abc', // invalid
-                'channel'     => 'shopify_default',
-                'currency'    => 'USD',
-            ],
-        ];
-
-        $validator = Validator::make($data, $this->validator->getValidatorRule());
-
-        $this->assertFalse($validator->passes());
-        $this->assertArrayHasKey('filters.credentials', $validator->errors()->toArray());
-    }
-}
+    $validator = Validator::make($data, $this->validator->getValidatorRule());
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.credentials');
+});
