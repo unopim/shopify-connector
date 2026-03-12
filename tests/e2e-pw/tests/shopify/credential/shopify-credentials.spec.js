@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
 test.use({ storageState: 'storage/auth.json' });
-// test.use({ launchOptions: { slowMo: 500 } }); // Slow down actions by 1 second
-// Reuse login session
 
 test.describe('Shopify Credentials Page', () => {
   test.beforeEach(async ({ page }) => {
