@@ -114,8 +114,21 @@ class OptionController extends Controller
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
 
         $searchIdentifiers = isset($queryParams['identifiers']['columnName']) ? $queryParams['identifiers'] : [];
+        $selectedChannel = request()->get('channel');
 
         $currencyRepository = $this->currencyRepository->where('status', 1);
+
+        if (! empty($selectedChannel)) {
+            $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
+
+            $currencyRepository = $currencyRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+                $query->whereIn('code', $selectedChannels);
+            });
+        } elseif (empty($searchIdentifiers)) {
+            return new JsonResponse([
+                'options' => [],
+            ]);
+        }
 
         if (! empty($searchIdentifiers)) {
             $values = $searchIdentifiers['values'] ?? [];
@@ -148,8 +161,41 @@ class OptionController extends Controller
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
         $localeRepository = $this->localeRepository;
         $query = request()->get('query');
+        $credentialId = request()->get('credentials');
+        $selectedChannel = request()->get('channel');
+
+        $credential = null;
+
+        if (! empty($credentialId)) {
+            $credential = $this->shopifyRepository->find($credentialId);
+        }
+
+        $mappedLocales = array_values(array_filter((array) ($credential?->storelocaleMapping ?? [])));
+
+        if (! empty($mappedLocales)) {
+            $localeRepository = $localeRepository->whereIn('code', $mappedLocales);
+        }
+
+        if (request()->has('channel') && empty($selectedChannel)) {
+            return new JsonResponse([
+                'options' => [],
+            ]);
+        }
+
+        if (! empty($selectedChannel)) {
+            $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
+
+            $localeRepository = $localeRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+                $query->whereIn('code', $selectedChannels);
+            });
+        }
+
         if ($query) {
-            $localeRepository = $localeRepository->where('code', 'LIKE', '%'.$query.'%');
+            $localeRepository = $localeRepository
+                ->where(function ($builder) use ($query) {
+                    $builder->where('code', 'LIKE', '%'.$query.'%')
+                        ->orWhere('name', 'LIKE', '%'.$query.'%');
+                });
         }
 
         $searchIdentifiers = isset($queryParams['identifiers']['columnName']) ? $queryParams['identifiers'] : [];
@@ -211,13 +257,22 @@ class OptionController extends Controller
                 is_array($values) ? $values : [$values]
             );
             if (! empty($notInclude)) {
-                $notIncludeValues = array_values(array_diff(array_values($notInclude), $values));
+                $notIncludeValues = array_values(array_filter(
+                    array_diff(array_values($notInclude), is_array($values) ? $values : [$values]),
+                    fn ($value) => $value !== null && $value !== ''
+                ));
+
                 $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
             }
         } else {
             if (! empty($notInclude)) {
                 unset($notInclude[$fieldName]);
-                $attributeRepository = $attributeRepository->whereNotIn('code', array_values($notInclude));
+                $notIncludeValues = array_values(array_filter(
+                    array_values($notInclude),
+                    fn ($value) => $value !== null && $value !== ''
+                ));
+
+                $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
             }
         }
 

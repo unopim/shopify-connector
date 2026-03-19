@@ -96,12 +96,18 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
         }
         $this->credentialArray = [
+            'credentialId' => $this->credential?->id,
             'shopUrl'     => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
             'apiVersion'  => $this->credential?->apiVersion,
+            'clientId'    => $this->credential?->clientId,
+            'clientSecret'=> $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
-        return new \Webkul\Shopify\Helpers\Iterator\AttributeIterator($this->credentialArray);
+        $shopifyLocaleForCurrent = array_search($this->locale, (array) ($this->credential?->storelocaleMapping ?? []), true);
+
+        return new \Webkul\Shopify\Helpers\Iterator\AttributeIterator($this->credentialArray, $shopifyLocaleForCurrent ?: null);
     }
 
     /**
@@ -128,9 +134,7 @@ class Importer extends AbstractImporter
     public function saveAttributeData(JobTrackBatchContract $batch): bool
     {
         $this->initFilters();
-        $attributes = [];
-        $newAttrCreate = [];
-        $mergedOptions = [];
+
         foreach ($batch->data as $rowData) {
             $attributeModel = $this->attributeRepository->findOneByField('code', strtolower($rowData['name']));
 
@@ -139,40 +143,67 @@ class Importer extends AbstractImporter
             }
 
             if ($attributeModel) {
-                $initialOrder = $attributeModel->options()->orderBy('sort_order', 'desc')->first()->sort_order ?? 0;
-                $option = $attributeModel->options()->whereIn('code', $rowData['code'])->orderBy('sort_order')->get();
-
+                $existingOptions = $attributeModel->options()->get(['id', 'code', 'sort_order']);
+                $existingOptionsByCode = [];
                 $optionArray = [];
-                $optionExistInAttr = array_column($option->toArray(), 'code');
-                $newOptions = array_udiff($rowData['code'], $optionExistInAttr, function ($a, $b) {
-                    return strcasecmp($a, $b);
-                });
-                $initialOrder += 1;
-                foreach ($newOptions as $key => $newOption) {
-                    $optionKey = 'option_'.$key;
-                    $optionArray[$optionKey] = [
-                        'isNew'          => 'true',
-                        'isDelete'       => '',
-                        'code'           => $newOption,
-                        'sort_order'     => $initialOrder,
-                        $this->locale    => [
-                            'label' => $newOption,
-                        ],
-                    ];
-                    $initialOrder++;
+
+                foreach ($existingOptions as $existingOption) {
+                    $existingOptionsByCode[strtolower($existingOption->code)] = $existingOption;
                 }
 
-                $attribute = $this->attributeRepository->update(['options' => $optionArray], $attributeModel->id);
+                $initialOrder = ($existingOptions->max('sort_order') ?? 0) + 1;
+                $newOptionIndex = 0;
+
+                foreach ($rowData['code'] as $optValue) {
+                    $existingOption = $existingOptionsByCode[strtolower($optValue)] ?? null;
+                    $optionLabel = $rowData['labels'][$optValue] ?? $optValue;
+
+                    if ($existingOption) {
+                        $optionArray[$existingOption->id] = [
+                            'isNew'       => 'false',
+                            'isDelete'    => 'false',
+                            'code'        => $existingOption->code,
+                            'sort_order'  => $existingOption->sort_order,
+                            $this->locale => [
+                                'label' => $optionLabel,
+                            ],
+                        ];
+
+                        continue;
+                    }
+
+                    $optionArray['option_'.$newOptionIndex] = [
+                        'isNew'       => 'true',
+                        'isDelete'    => '',
+                        'code'        => $optValue,
+                        'sort_order'  => $initialOrder,
+                        $this->locale => [
+                            'label' => $optionLabel,
+                        ],
+                    ];
+
+                    $initialOrder++;
+                    $newOptionIndex++;
+                }
+
+                $this->attributeRepository->update([
+                    $this->locale => [
+                        'name' => $rowData['label'] ?? $rowData['name'],
+                    ],
+                    'options' => $optionArray,
+                ], $attributeModel->id);
+
                 $this->updatedItemsCount++;
             } else {
                 $newOptionArray = [];
                 foreach ($rowData['code'] as $newkey => $optValue) {
-                    $newOptionKey = 'option_'.$newkey + 1;
+                    $newOptionKey = 'option_'.($newkey + 1);
+                    $optionLabel = $rowData['labels'][$optValue] ?? $optValue;
                     $newOptionArray[$newOptionKey] = [
                         'position'       => $newkey,
                         'code'           => $optValue,
                         $this->locale    => [
-                            'label' => $optValue,
+                            'label' => $optionLabel,
                         ],
                     ];
                 }
@@ -180,11 +211,12 @@ class Importer extends AbstractImporter
                     'code'        => strtolower($rowData['name']),
                     'type'        => 'select',
                     $this->locale => [
-                        'name' => $rowData['name'],
+                        'name' => $rowData['label'] ?? $rowData['name'],
                     ],
                     'options' => $newOptionArray,
                 ];
-                $newlyAttrCreated = $this->attributeRepository->create($newAttrCreate);
+
+                $this->attributeRepository->create($newAttrCreate);
                 $this->createdItemsCount++;
             }
         }

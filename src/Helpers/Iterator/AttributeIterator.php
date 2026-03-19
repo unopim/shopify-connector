@@ -16,11 +16,14 @@ class AttributeIterator implements \Iterator
 
     private $credential;
 
-    private $mergedOptions;
+    private $shopifyLocale;
 
-    public function __construct($credential)
+    private array $translationCache = [];
+
+    public function __construct($credential, ?string $shopifyLocale = null)
     {
         $this->credential = $credential;
+        $this->shopifyLocale = $shopifyLocale;
         $this->cursor = null;       // Start with no cursor (first page)
         $this->currentPageData = [];
         $this->currentKey = 0;
@@ -112,18 +115,107 @@ class AttributeIterator implements \Iterator
                     continue;
                 }
 
-                $modified_array = array_map(function ($string) {
-                    return trim(preg_replace('/[^A-Za-z0-9]+/', '-', $string), '-');
-                }, $productOption['values'] ?? []);
+                $optionLabel = $productOption['name'] ?? '';
+                $optionValues = $productOption['optionValues'] ?? [];
+                $optionValueLabels = [];
+                $modifiedArray = [];
 
-                $optionsArray[] = [
-                    'name' => trim(preg_replace('/[^A-Za-z0-9]+/', '_', $productOption['name'])),
-                    'type' => 'select',
-                    'code' => $modified_array,
-                ];
+                if (! empty($this->shopifyLocale) && ! empty($productOption['id'])) {
+                    $translatedOptionLabel = $this->getTranslatedLabel($productOption['id']);
+
+                    if (! empty($translatedOptionLabel)) {
+                        $optionLabel = $translatedOptionLabel;
+                    }
+                }
+
+                if (! empty($optionValues)) {
+                    foreach ($optionValues as $optionValue) {
+                        $defaultLabel = $optionValue['name'] ?? '';
+                        $normalizedCode = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $defaultLabel), '-');
+                        $translatedLabel = $defaultLabel;
+
+                        if (! empty($this->shopifyLocale) && ! empty($optionValue['id'])) {
+                            $fetchedTranslation = $this->getTranslatedLabel($optionValue['id']);
+
+                            if (! empty($fetchedTranslation)) {
+                                $translatedLabel = $fetchedTranslation;
+                            }
+                        }
+
+                        if ($normalizedCode === '') {
+                            continue;
+                        }
+
+                        $modifiedArray[] = $normalizedCode;
+                        $optionValueLabels[$normalizedCode] = $translatedLabel;
+                    }
+                } else {
+                    foreach ($productOption['values'] ?? [] as $optionValue) {
+                        $normalizedCode = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $optionValue), '-');
+
+                        if ($normalizedCode === '') {
+                            continue;
+                        }
+
+                        $modifiedArray[] = $normalizedCode;
+                        $optionValueLabels[$normalizedCode] = $optionValue;
+                    }
+                }
+
+                $name = trim(preg_replace('/[^A-Za-z0-9]+/', '_', $productOption['name'] ?? ''));
+
+                if (!isset($optionsArray[$name])) {
+                    $optionsArray[$name] = [
+                        'name'   => $name,
+                        'label'  => $optionLabel,
+                        'type'   => 'select',
+                        'code'   => array_values(array_unique($modifiedArray)),
+                        'labels' => $optionValueLabels,
+                    ];
+                } else {
+                    $optionsArray[$name]['code'] = array_values(array_unique(array_merge(
+                        $optionsArray[$name]['code'],
+                        $modifiedArray
+                    )));
+
+                    $optionsArray[$name]['labels'] = array_merge(
+                        $optionsArray[$name]['labels'],
+                        $optionValueLabels
+                    );
+                }
             }
         }
 
-        return $optionsArray;
+        return array_values($optionsArray);
+    }
+
+    /**
+     * Fetch translated label for option/optionValue by Shopify locale.
+     */
+    private function getTranslatedLabel(string $resourceId): ?string
+    {
+        $cacheKey = $resourceId.'|'.$this->shopifyLocale;
+
+        if (array_key_exists($cacheKey, $this->translationCache)) {
+            return $this->translationCache[$cacheKey];
+        }
+
+        try {
+            $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credential, [
+                'resourceId' => $resourceId,
+                'locale'     => $this->shopifyLocale,
+            ]);
+
+            $translations = $response['body']['data']['translatableResource']['translations'] ?? [];
+            $translatedName = collect($translations)->firstWhere('key', 'name')['value'] ?? null;
+
+            $this->translationCache[$cacheKey] = $translatedName;
+
+            return $translatedName;
+        } catch (\Throwable $e) {
+            $this->translationCache[$cacheKey] = null;
+
+            return null;
+        }
     }
 }

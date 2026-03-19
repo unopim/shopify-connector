@@ -265,12 +265,23 @@ trait TranslationTrait
                 }
 
                 $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $unopimLocaleCode);
+                $descriptionValue = $localeSpecificFields['description'] ?? '';
+                if ($descriptionValue === '') {
+                    $descriptionValue = '<p></p>';
+                }
 
                 $formatedVariable['translations'][] = [
                     'key'                       => 'title',
                     'value'                     => $localeSpecificFields['name'] ?? $rawData['code'] ?? '',
                     'locale'                    => $shopifyLocaleCode,
                     'translatableContentDigest' => hash('sha256', $collectionResult['title']),
+                ];
+
+                $formatedVariable['translations'][] = [
+                    'key'                       => 'body_html',
+                    'value'                     => $descriptionValue,
+                    'locale'                    => $shopifyLocaleCode,
+                    'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
                 ];
             }
             $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);

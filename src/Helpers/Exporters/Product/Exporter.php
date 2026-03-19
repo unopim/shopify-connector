@@ -193,9 +193,13 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialAsArray = [
+            'credentialId' => $this->credential?->id,
             'shopUrl'     => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
             'apiVersion'  => $this->credential?->apiVersion,
+            'clientId'    => $this->credential?->clientId,
+            'clientSecret'=> $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
 
@@ -281,6 +285,8 @@ class Exporter extends AbstractExporter
     public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
     {
         $skus = array_column($batch->data, 'sku');
+        $tablePrefix = DB::getTablePrefix();
+
         $allProducts = DB::table('products')
             ->leftJoin('attribute_families as aft', 'products.attribute_family_id', '=', 'aft.id')
             ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
@@ -312,7 +318,7 @@ class Exporter extends AbstractExporter
                 'parent_products.attribute_family_id as parent_attribute_family_id',
 
                 // Fetch super attributes, ensuring they are retrieved from the parent
-                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT attr.code ORDER BY attr.code ASC SEPARATOR ','), '') as super_attributes")
+                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT {$tablePrefix}attr.code ORDER BY {$tablePrefix}attr.code ASC SEPARATOR ','), '') as super_attributes")
             )
             ->where(function ($query) use ($skus) {
                 $query->whereIn('products.sku', $skus)
@@ -437,6 +443,7 @@ class Exporter extends AbstractExporter
         if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'gallery') {
             $imageData = $this->formatGalleryDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? [], $skipParent);
         }
+
         if (! empty($imageData)) {
             $this->imageData = array_merge($imageData[@$parentData['sku']] ?? [], $imageData[$rowData['sku']] ?? []);
         }
@@ -486,26 +493,30 @@ class Exporter extends AbstractExporter
                 );
             }
 
-            $this->handleProductProcessingForTranslation(
-                $productId,
-                $parentMergedFields,
-                $mergedFields,
-                $parentData,
-                $rowData,
-                $formattedGraphqlData
-            );
+            if (count($this->credential?->storelocaleMapping) > 1) {
+                $this->handleProductProcessingForTranslation(
+                    $productId,
+                    $parentMergedFields,
+                    $mergedFields,
+                    $parentData,
+                    $rowData,
+                    $formattedGraphqlData
+                );
+            }
         }
 
-        $this->handleChildProductTranslation(
-            $parentData,
-            $mergedFields,
-            $skipParent,
-            $optionsGetting,
-            $optionValuesTranslation,
-            $productId,
-            $variantId,
-            $rowData
-        );
+        if (count($this->credential?->storelocaleMapping) > 1) {
+            $this->handleChildProductTranslation(
+                $parentData,
+                $mergedFields,
+                $skipParent,
+                $optionsGetting,
+                $optionValuesTranslation,
+                $productId,
+                $variantId,
+                $rowData
+            );
+        }
 
         return true;
     }
@@ -536,8 +547,8 @@ class Exporter extends AbstractExporter
 
         $productCreateErr = $result['body']['data']['productCreate']['userErrors'] ?? [];
         if (! empty($productCreateErr)) {
-            if (! empty($formattedGraphqlData['parentMetaFields'])) {
-                $this->prependAttributeCodesToErrors($productCreateErr, $formattedGraphqlData['parentMetaFields']);
+            if (! empty($formattedGraphqlData['parentMetaFields']) || ! empty($formattedGraphqlData['metafields'])) {
+                $this->prependAttributeCodesToErrors($productCreateErr, $formattedGraphqlData['parentMetaFields'] ?? $formattedGraphqlData['metafields']);
             }
             $this->logWarning($productCreateErr, $parentData['sku'] ?? $rowData['sku']);
             $this->skippedItemsCount++;
@@ -683,7 +694,7 @@ class Exporter extends AbstractExporter
                     $this->deleteProductMediaMapping($deleteIds);
                 }
             }
-
+            $this->prepareProductCollectionsToLeave($formattedGraphqlData, $productId);
             $result = $this->updateProductWithMetafields($formattedGraphqlData, $this->credentialAsArray, $productId, $parentMapping, $mapping, $parentData, $rowData);
 
             $productOptionExist = $result['body']['data']['productUpdate']['product']['options'] ?? [];
@@ -743,7 +754,7 @@ class Exporter extends AbstractExporter
             }
         } else {
             $needToAdd = array_diff(array_column($finalOption, 'name'), $productOptionExist);
-            if (! empty($needToAdd)) {
+            if (! empty($needToAdd) && count($finalOption) !== count($productOptionExist)) {
                 $filteredOptions = array_values(array_filter($finalOption, function ($option) use ($needToAdd) {
                     return in_array($option['name'], $needToAdd);
                 }));
@@ -1048,6 +1059,7 @@ class Exporter extends AbstractExporter
         ];
 
         $result = $this->requestGraphQlApiAction(self::VARIANT_UPDATE, $this->credentialAsArray, $variantInput);
+
         $productVariant = $result['body']['data'][self::VARIANT_UPDATE] ?? [];
         $errors = array_column($productVariant['userErrors'] ?? [], 'message');
         if (in_array(self::NOT_EXIST_PRODUCT_VARIANT, $errors)) {
@@ -1127,7 +1139,7 @@ class Exporter extends AbstractExporter
             $variableOption[$key]['optionInput']['id'] = $value['id'];
             $names = array_column($value['optionValues'], 'name');
 
-            if (in_array($variableOption[$key]['optionValuesToUpdate'][0]['name'], $names)) {
+            if (in_array($variableOption[$key]['optionValuesToUpdate'][0]['name'] ?? [], $names)) {
                 $index = array_search($variableOption[$key]['optionValuesToUpdate'][0]['name'], $names);
                 $variableOption[$key]['optionValuesToUpdate'][0]['id'] = $value['optionValues'][$index]['id'];
             } else {
@@ -1349,6 +1361,20 @@ class Exporter extends AbstractExporter
                 $finalCategories[] = $check[0]['externalId'];
             }
         }
+    }
+
+    /**
+     * Build collectionsToLeave so removed categories are detached from Shopify product.
+     */
+    private function prepareProductCollectionsToLeave(array &$formattedGraphqlData, string $productId): void
+    {
+        $response = $this->requestGraphQlApiAction('productCollections', $this->credentialAsArray, ['id' => $productId]);
+        $existingCollections = $response['body']['data']['product']['collections']['edges'] ?? [];
+        $existingCollectionIds = array_values(array_unique(array_filter(array_column(array_column($existingCollections, 'node'), 'id'))));
+        $collectionsToJoin = array_values(array_unique(array_filter($formattedGraphqlData['collectionsToJoin'] ?? [])));
+
+        $formattedGraphqlData['collectionsToJoin'] = $collectionsToJoin;
+        $formattedGraphqlData['collectionsToLeave'] = array_values(array_diff($existingCollectionIds, $collectionsToJoin));
     }
 
     /**

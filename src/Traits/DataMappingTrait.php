@@ -125,9 +125,13 @@ trait DataMappingTrait
             $this->shopifyMappingRepository->delete($mapping[0]['id']);
 
             $credential = [
+                'credentialId' => $this->credential->id,
                 'shopUrl'     => $this->credential->shopUrl,
                 'accessToken' => $this->credential->accessToken,
                 'apiVersion'  => $this->credential->apiVersion,
+                'clientId'    => $this->credential->clientId,
+                'clientSecret'=> $this->credential->clientSecret,
+                'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
             ];
 
             unset($formateItem['id']);
@@ -235,6 +239,17 @@ trait DataMappingTrait
     protected function deleteProductVariantMapping(string $variant, string $sku): void
     {
         $mappings = $this->shopifyMappingRepository->where('externalId', $variant)->delete();
+    }
+
+    /**
+     * Delete productvariant mapping.
+     */
+    protected function deleteProductVariantMappingIfSimple(string $variant, string $sku): void
+    {
+        $mappings = $this->shopifyMappingRepository
+            ->where('externalId', $variant)
+            ->where('code', $sku)
+            ->delete();
     }
 
     /**

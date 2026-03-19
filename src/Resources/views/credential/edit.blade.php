@@ -57,7 +57,7 @@
                             type="text"
                             id="shopUrl"
                             name="shopUrl"
-                            rules="required"
+                            ::rules="{ required: true, url: true, regex: /^https?:\/\/.+/i }"
                             :value="old('shopUrl') ?? $credential->shopUrl"
                             :label="trans('shopify::app.shopify.credential.index.url')"
                             :placeholder="trans('shopify::app.shopify.credential.index.shopifyurlplaceholder')"
@@ -66,7 +66,40 @@
 
                         <x-admin::form.control-group.error control-name="shopUrl" />
                     </x-admin::form.control-group>
-                    
+
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.credential.index.clientId')
+                        </x-admin::form.control-group.label>
+
+                        <x-admin::form.control-group.control
+                            type="text"
+                            id="clientId"
+                            name="clientId"
+                            :value="old('clientId') ?? $credential->clientId"
+                            :label="trans('shopify::app.shopify.credential.index.clientId')"
+                            :placeholder="trans('shopify::app.shopify.credential.index.clientId')"
+                        />
+
+                        <x-admin::form.control-group.error control-name="clientId" />
+                    </x-admin::form.control-group>
+
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.credential.index.clientSecret')
+                        </x-admin::form.control-group.label>
+
+                        <x-admin::form.control-group.control
+                            type="password"
+                            id="clientSecret"
+                            name="clientSecret"
+                            :value="old('clientSecret') ?? $credential->clientSecret"
+                            :label="trans('shopify::app.shopify.credential.index.clientSecret')"
+                            :placeholder="trans('shopify::app.shopify.credential.index.clientSecret')"
+                        />
+
+                        <x-admin::form.control-group.error control-name="clientSecret" />
+                    </x-admin::form.control-group>
                     <x-admin::form.control-group class="w-[525px]">
                         <x-admin::form.control-group.label class="required">
                             @lang('shopify::app.shopify.credential.index.accesstoken')
@@ -220,14 +253,15 @@
                                     $selectedLocale = $storelocaleMapping[$localeCode] ?? null;
                                 @endphp
                            <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
-                                <p class="break-words">{{ $locale['name'].' '.$locale['locale'].' '.$primary }}</p>
-                                
+                                <x-admin::form.control-group.label class="{{ $locale['primary'] ? 'required' : '' }}">
+                                    <p class="break-words">{{ $locale['name'].' '.$locale['locale'].' '.$primary }}</p>
+                                </x-admin::form.control-group.label>
                                 <x-admin::form.control-group>
                                     <x-admin::form.control-group.control
                                         type="select"
                                         id="locales"
                                         name="storelocaleMapping[{{ $localeCode }}]"
-                                        rules="required"
+                                        rules="{{ $locale['primary'] ? 'required' : '' }}"
                                         :options="$options"
                                         :value="$selectedLocale"
                                         :label="trans('admin::app.settings.channels.edit.locales')"

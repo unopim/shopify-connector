@@ -201,12 +201,12 @@ class MetaFieldController extends Controller
 
         if ($minvalue && $maxvalue) {
             $unitData = self::SMALLESTUNIT[$data['type']] ?? null;
-            if (! ctype_digit($minvalue)) {
+            if (! ctype_digit($minvalue) && $data['type'] != 'date') {
                 $errors['minvalue'] = [trans('Only Number Allowed')];
 
                 return null;
             }
-            if (! ctype_digit($maxvalue)) {
+            if (! ctype_digit($maxvalue) && $data['type'] != 'date') {
                 $errors['maxvalue'] = [trans('Only Number Allowed')];
 
                 return null;

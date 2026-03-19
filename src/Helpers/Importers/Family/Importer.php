@@ -121,9 +121,13 @@ class Importer extends AbstractImporter
         }
 
         $this->credentialArray = [
+            'credentialId' => $this->credential?->id,
             'shopUrl'     => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
             'apiVersion'  => $this->credential?->apiVersion,
+            'clientId'    => $this->credential?->clientId,
+            'clientSecret'=> $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
         $attributeAndOption = new \ArrayIterator($this->productOptionByCursor());
@@ -221,6 +225,7 @@ class Importer extends AbstractImporter
                         'attribute_group_id'  => $this->attributeGroupId,
                         'attribute_family_id' => $simpleProductFamilyId,
                     ]);
+                    $this->updatedItemsCount++;
                 }
                 $data = array_map(function ($notInMetafield) use ($groupMappingId) {
                     return [
@@ -229,7 +234,8 @@ class Importer extends AbstractImporter
                     ];
                 }, $notInMetafields);
 
-                DB::table('attribute_group_mappings')->insertOrIgnore($data);
+                $inserted = DB::table('attribute_group_mappings')->insertOrIgnore($data);
+                $this->updatedItemsCount += (int) $inserted;
             }
         }
     }
@@ -331,6 +337,10 @@ class Importer extends AbstractImporter
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
                     'data'         => $batchRows,
+                    'summary'      => [
+                        'created' => $this->getCreatedItemsCount(), 
+                        'updated' => $this->getUpdatedItemsCount()
+                    ],
                 ]);
 
                 $batchRows = [];
@@ -369,10 +379,6 @@ class Importer extends AbstractImporter
     {
         $batch = $this->importBatchRepository->update([
             'state'   => Import::STATE_PROCESSED,
-            'summary' => [
-                'created' => 1,
-                'updated' => 1,
-            ],
         ], $batch->id);
 
         return true;

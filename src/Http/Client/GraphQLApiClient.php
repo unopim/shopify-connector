@@ -144,12 +144,17 @@ class GraphQLApiClient
         ],
 
         'manualCollectionGetting' => [
-            'query'  => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
+            'query'  => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } } } } }',
             'method' => 'POST',
         ],
 
         'GetCollectionsByCursor' => [
-            'query'  => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title handle} } } }',
+            'query'  => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } } } } }',
+            'method' => 'POST',
+        ],
+
+        'getCollectionTranslations' => [
+            'query'  => 'query GetCollectionTranslations($resourceId: ID!, $locale: String!) { translatableResource(resourceId: $resourceId) { translations(locale: $locale) { key value locale } } }',
             'method' => 'POST',
         ],
 
@@ -269,12 +274,12 @@ class GraphQLApiClient
         ],
 
         'productGettingOptions' => [
-            'query'  => 'query { products(first: 50, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query { products(first: 50, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
         'productOptionByCursor' => [
-            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
@@ -300,6 +305,11 @@ class GraphQLApiClient
 
         'productMetafieldsByCursor' => [
             'query'  => 'query GetProduct($id: ID!, $first: Int!, $afterCursor: String!) { product(id: $id) { metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
+            'method' => 'POST',
+        ],
+
+        'productCollections' => [
+            'query'  => 'query GetProductCollections($id: ID!) { product(id: $id) { collections(first: 250) { edges { node { id } } } } }',
             'method' => 'POST',
         ],
 
@@ -354,12 +364,12 @@ class GraphQLApiClient
         ],
 
         'metafieldDefinitionsProductVariantType' => [
-            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionsProductType' => [
-            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 

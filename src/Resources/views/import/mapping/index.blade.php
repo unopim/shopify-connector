@@ -83,6 +83,7 @@
                                         :value="old($field['name']) ?? $value"
                                         :label="trans($field['label'])"
                                         :placeholder="trans($field['label'])"
+                                        ::key="getFieldSelectKey('{{ $field['name'] }}')"
                                         track-by="code"
                                         label-by="label"
                                         @open="openedSelect"
@@ -92,6 +93,7 @@
                                         :list-route="route('admin.shopify.get-attribute')"
                                         formnovalidate
                                         @select-option="handleOpenedSelect($event, '{{ $field['name'] }}')"
+                                        @remove-option="handleRemovedSelect('{{ $field['name'] }}')"
                                     />
                                     <x-admin::form.control-group.control
                                         type="hidden"
@@ -282,8 +284,32 @@
                 },
                 
                 handleOpenedSelect(event, fieldName) {
-                    const values = Object.values(this.notInclude);
-                    this.notInclude[fieldName] = event?.target?.value?.code;
+                    if (! this.notInclude || Array.isArray(this.notInclude)) {
+                        this.notInclude = {};
+                    }
+
+                    this.notInclude[fieldName] = event?.target?.value?.code ?? null;
+                },
+
+                handleRemovedSelect(fieldName) {
+                    if (! this.notInclude || Array.isArray(this.notInclude)) {
+                        this.notInclude = {};
+                    }
+
+                    this.notInclude[fieldName] = null;
+                },
+
+                getFieldSelectKey(fieldName) {
+                    if (! this.notInclude || Array.isArray(this.notInclude)) {
+                        return fieldName;
+                    }
+
+                    const selectedCodes = Object.entries(this.notInclude)
+                        .filter(([key, value]) => key !== fieldName && !! value)
+                        .map(([, value]) => value)
+                        .sort();
+
+                    return `${fieldName}-${selectedCodes.join('|')}`;
                 },
             },
         });

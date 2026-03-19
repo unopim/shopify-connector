@@ -505,6 +505,17 @@ class ShoifyMetaFieldType
                     'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
             ],
+
+            'url' => [
+                [
+                    'id'         => 'single_line_text_field',
+                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id'         => 'url',
+                    'name'       => trans('shopify::app.shopify.metafield.type.url'),
+                ],
+            ],
         ];
     }
 

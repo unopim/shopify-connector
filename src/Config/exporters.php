@@ -2,10 +2,11 @@
 
 return [
     'shopifyProduct' => [
-        'title'    => 'shopify::app.exporters.shopify.product',
-        'exporter' => 'Webkul\Shopify\Helpers\Exporters\Product\Exporter',
-        'source'   => 'Webkul\Product\Repositories\ProductRepository',
-        'filters'  => [
+        'title'     => 'shopify::app.exporters.shopify.product',
+        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\Product\Exporter',
+        'source'    => 'Webkul\Product\Repositories\ProductRepository',
+        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator',
+        'filters'   => [
             'fields' => [
                 [
                     'name'       => 'credentials',
@@ -37,6 +38,7 @@ return [
                     'track_by'   => 'id',
                     'label_by'   => 'label',
                     'list_route' => 'shopify.currency.fetch-all',
+                    'dependent'  => ['channel'],
                 ], [
                     'name'     => 'productfilter',
                     'title'    => 'shopify::app.shopify.job.productfilter',
@@ -48,10 +50,11 @@ return [
     ],
 
     'shopifyCategories' => [
-        'title'    => 'shopify::app.exporters.shopify.category',
-        'exporter' => 'Webkul\Shopify\Helpers\Exporters\Category\Exporter',
-        'source'   => 'Webkul\Category\Repositories\CategoryRepository',
-        'filters'  => [
+        'title'     => 'shopify::app.exporters.shopify.category',
+        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\Category\Exporter',
+        'source'    => 'Webkul\Category\Repositories\CategoryRepository',
+        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'filters'   => [
             'fields' => [
                 [
                     'name'       => 'credentials',
@@ -69,10 +72,11 @@ return [
     ],
 
     'shopifyMetafield' => [
-        'title'    => 'shopify::app.exporters.shopify.metafields',
-        'exporter' => 'Webkul\Shopify\Helpers\Exporters\MetaField\Exporter',
-        'source'   => 'Webkul\Shopify\Repositories\ShopifyMetaFieldRepository',
-        'filters'  => [
+        'title'     => 'shopify::app.exporters.shopify.metafields',
+        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\MetaField\Exporter',
+        'source'    => 'Webkul\Shopify\Repositories\ShopifyMetaFieldRepository',
+        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'filters'   => [
             'fields' => [
                 [
                     'name'       => 'credentials',

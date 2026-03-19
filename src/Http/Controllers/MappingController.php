@@ -93,6 +93,13 @@ class MappingController extends Controller
 
         $shopifyMapping = $this->shopifyExportMappingRepository->first();
 
+        if (is_null($shopifyMapping)) {
+
+            session()->flash('error', 'Export mapping save failed. Please run the Shopify install command.');
+
+            return redirect()->back();
+        }
+
         if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFields) {
             $shopifyMapping = $this->shopifyExportMappingRepository->update(['mapping' => $mappingFields], 1);
         }

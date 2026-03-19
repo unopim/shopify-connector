@@ -98,9 +98,13 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialArray = [
+            'credentialId' => $this->credential->id,
             'shopUrl'     => $this->credential->shopUrl,
             'accessToken' => $this->credential->accessToken,
             'apiVersion'  => $this->credential->apiVersion,
+            'clientId'    => $this->credential->clientId,
+            'clientSecret'=> $this->credential->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
 

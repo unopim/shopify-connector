@@ -81,7 +81,7 @@
                                     type="text"
                                     id="shopUrl"
                                     name="shopUrl"
-                                    rules="required"
+                                    ::rules="{ required: true, url: true, regex: /^https?:\/\/.+/i }"
                                     :label="trans('shopify::app.shopify.credential.index.url')"
                                     :placeholder="trans('shopify::app.shopify.credential.index.shopifyurlplaceholder')"
                                 />
@@ -89,24 +89,40 @@
                                 <x-admin::form.control-group.error control-name="shopUrl" />
                             </x-admin::form.control-group>
 
-                            <!-- accesstoken -->
                             <x-admin::form.control-group>
                                 <x-admin::form.control-group.label class="required">
-                                    @lang('shopify::app.shopify.credential.index.accesstoken')
+                                    @lang('shopify::app.shopify.credential.index.clientId')
                                 </x-admin::form.control-group.label>
 
                                 <x-admin::form.control-group.control
                                     type="text"
-                                    id="accessToken"
-                                    name="accessToken"
+                                    id="clientId"
+                                    name="clientId"
                                     rules="required"
-                                    :label="trans('shopify::app.shopify.credential.index.accesstoken')"
-                                    :placeholder="trans('shopify::app.shopify.credential.index.accesstoken')"
+                                    :label="trans('shopify::app.shopify.credential.index.clientId')"
+                                    :placeholder="trans('shopify::app.shopify.credential.index.clientId')"
                                 />
 
-                                <x-admin::form.control-group.error control-name="accessToken" />
+                                <x-admin::form.control-group.error control-name="clientId" />
                             </x-admin::form.control-group>
-                            
+
+                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.label class="required">
+                                    @lang('shopify::app.shopify.credential.index.clientSecret')
+                                </x-admin::form.control-group.label>
+
+                                <x-admin::form.control-group.control
+                                    type="password"
+                                    id="clientSecret"
+                                    name="clientSecret"
+                                    rules="required"
+                                    :label="trans('shopify::app.shopify.credential.index.clientSecret')"
+                                    :placeholder="trans('shopify::app.shopify.credential.index.clientSecret')"
+                                />
+
+                                <x-admin::form.control-group.error control-name="clientSecret" />
+                            </x-admin::form.control-group>
+
                             <x-admin::form.control-group class="mb-4">
                                 <x-admin::form.control-group.label class="required">
                                     @lang('shopify::app.shopify.credential.index.apiVersion')
@@ -119,13 +135,12 @@
                                 <x-admin::form.control-group.control
                                     type="select"
                                     id="apiVersion"
-                                    disabled="disabled"
                                     name="apiVersion"
                                     rules="required"
                                     :label="trans('shopify::app.shopify.credential.index.apiVersion')"
                                     :placeholder="trans('shopify::app.shopify.credential.index.apiVersion')"
                                     :options="$apiVersion"
-                                    value="2025-01"
+                                    value="2026-01"
                                     track-by="id"
                                     label-by="name"
                                 >

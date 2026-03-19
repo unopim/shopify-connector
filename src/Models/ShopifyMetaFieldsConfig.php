@@ -49,6 +49,7 @@ class ShopifyMetaFieldsConfig extends Model implements HistoryContract, Presenta
         return [
             'validations' => JsonDataPresenter::class,
             'options'     => JsonDataPresenter::class,
+            'apiUrl'      => JsonDataPresenter::class,
         ];
     }
 
