@@ -109,12 +109,12 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialArray = [
-            'credentialId' => $this->credential->id,
-            'shopUrl'     => $this->credential->shopUrl,
-            'accessToken' => $this->credential->accessToken,
-            'apiVersion'  => $this->credential->apiVersion,
-            'clientId'    => $this->credential->clientId,
-            'clientSecret'=> $this->credential->clientSecret,
+            'credentialId'         => $this->credential->id,
+            'shopUrl'              => $this->credential->shopUrl,
+            'accessToken'          => $this->credential->accessToken,
+            'apiVersion'           => $this->credential->apiVersion,
+            'clientId'             => $this->credential->clientId,
+            'clientSecret'         => $this->credential->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
@@ -197,8 +197,8 @@ class Exporter extends AbstractExporter
             $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $this->shopifyDefaultLocale);
 
             $category = [
-                'handle' => $rawData['code'] ?? '',
-                'title'  => $localeSpecificFields['name'] ?? $rawData['code'],
+                'handle'          => $rawData['code'] ?? '',
+                'title'           => $localeSpecificFields['name'] ?? $rawData['code'],
                 'descriptionHtml' => $localeSpecificFields['description'] ?? '',
             ];
 

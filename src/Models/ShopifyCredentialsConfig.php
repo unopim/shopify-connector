@@ -39,9 +39,9 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     ];
 
     protected $casts = [
-        'storelocaleMapping' => 'array',
-        'storeLocales'       => 'array',
-        'extras'             => 'array',
+        'storelocaleMapping'   => 'array',
+        'storeLocales'         => 'array',
+        'extras'               => 'array',
         'accessTokenExpiresAt' => 'datetime',
     ];
 

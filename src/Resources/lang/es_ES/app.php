@@ -57,16 +57,16 @@ return [
             'unopim' => [
                 'locale' => 'Local de Unopim',
             ],
-            'delete-success' => 'Credencial Eliminada con Éxito',
-            'created'        => 'Credencial Creada con Éxito',
-            'update-success' => 'Actualización Exitosa',
-            'invalid'        => 'Credencial Inválida',
-            'invalidurl'     => 'URL Inválida',
-            'already_taken'  => 'La URL de la tienda ya ha sido tomada.',
-            'auto_refresh_not_configured' => 'La actualización automática no está configurada para esta credencial.',
+            'delete-success'                 => 'Credencial Eliminada con Éxito',
+            'created'                        => 'Credencial Creada con Éxito',
+            'update-success'                 => 'Actualización Exitosa',
+            'invalid'                        => 'Credencial Inválida',
+            'invalidurl'                     => 'URL Inválida',
+            'already_taken'                  => 'La URL de la tienda ya ha sido tomada.',
+            'auto_refresh_not_configured'    => 'La actualización automática no está configurada para esta credencial.',
             'unable_to_refresh_access_token' => 'No se pudo actualizar el token de acceso de Shopify.',
-            'invalid_access_token_response' => 'Shopify no devolvió un token de acceso válido.',
-            'index'          => [
+            'invalid_access_token_response'  => 'Shopify no devolvió un token de acceso válido.',
+            'index'                          => [
                 'title'                 => 'Credenciales de Shopify',
                 'create'                => 'Crear Credencial',
                 'url'                   => 'URL de Shopify',
@@ -185,11 +185,11 @@ return [
         ],
         'metafield'     => [
             'datagrid' => [
-                'definitiontype'  => 'Usado para',
+                'definitiontype'   => 'Usado para',
                 'attribute-label'  => 'Atributo Unopim',
-                'definitionName'  => 'Nombre de la definición',
-                'contentTypeName' => 'Tipo',
-                'pin'             => 'Pin',
+                'definitionName'   => 'Nombre de la definición',
+                'contentTypeName'  => 'Tipo',
+                'pin'              => 'Pin',
             ],
             'index'    => [
                 'title'                     => 'Definiciones de Metacampo',

@@ -20,7 +20,7 @@ return [
     'components' => [
         'layouts' => [
             'sidebar' => [
-                'settings'        => 'Settings',
+                'settings'              => 'Settings',
                 'shopify'               => 'Shopify',
                 'credentials'           => 'Credentials',
                 'export-mappings'       => 'Export Mappings',
@@ -59,18 +59,18 @@ return [
             'unopim' => [
                 'locale' => 'Unopim Locale',
             ],
-            'delete-success' => 'Credential Deleted Success',
-            'created'        => 'Credential Created Success',
-            'update-success' => 'Credential Updated Success',
-            'invalid'        => 'Invalid Credential',
-            'invalidurl'     => 'Invalid URL',
-            'already_taken'  => 'The shop url has already been taken.',
-            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
-            'token_refresh_failed'    => 'Invalid Client ID/Secret.',
-            'auto_refresh_not_configured' => 'Auto-refresh is not configured for this credential.',
+            'delete-success'                 => 'Credential Deleted Success',
+            'created'                        => 'Credential Created Success',
+            'update-success'                 => 'Credential Updated Success',
+            'invalid'                        => 'Invalid Credential',
+            'invalidurl'                     => 'Invalid URL',
+            'already_taken'                  => 'The shop url has already been taken.',
+            'token_required_or_oauth'        => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
+            'token_refresh_failed'           => 'Invalid Client ID/Secret.',
+            'auto_refresh_not_configured'    => 'Auto-refresh is not configured for this credential.',
             'unable_to_refresh_access_token' => 'Unable to refresh Shopify access token.',
-            'invalid_access_token_response' => 'Shopify did not return a valid access token.',
-            'index'          => [
+            'invalid_access_token_response'  => 'Shopify did not return a valid access token.',
+            'index'                          => [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',
                 'url'                   => 'Shopify URL',
@@ -222,11 +222,11 @@ return [
         ],
         'metafield' => [
             'datagrid' => [
-                'definitiontype'  => 'Used For',
+                'definitiontype'   => 'Used For',
                 'attribute-label'  => 'Unopim Attribute',
-                'definitionName'  => 'Definition name',
-                'contentTypeName' => 'Type',
-                'pin'             => 'Pin',
+                'definitionName'   => 'Definition name',
+                'contentTypeName'  => 'Type',
+                'pin'              => 'Pin',
             ],
             'index'    => [
                 'title'                     => 'Metafield definitions',

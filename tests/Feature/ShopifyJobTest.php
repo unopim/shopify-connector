@@ -31,8 +31,8 @@ it('should create the shopify product export job', function () {
         'entity_type'     => 'shopifyProduct',
         'filters'         => [
             'credentials' => '1',
-            'channel'  => 'default',
-            'currency' => 'USD',
+            'channel'     => 'default',
+            'currency'    => 'USD',
         ],
     ];
 

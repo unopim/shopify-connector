@@ -57,16 +57,16 @@ return [
             'unopim' => [
                 'locale' => 'Langue Unopim',
             ],
-            'delete-success' => 'Identifiant supprimé avec succès',
-            'created'        => 'Identifiant créé avec succès',
-            'update-success' => 'Mise à jour réussie',
-            'invalid'        => 'Identifiant invalide',
-            'invalidurl'     => 'URL invalide',
-            'already_taken'  => 'L URL de la boutique a déjà été prise.',
-            'auto_refresh_not_configured' => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
+            'delete-success'                 => 'Identifiant supprimé avec succès',
+            'created'                        => 'Identifiant créé avec succès',
+            'update-success'                 => 'Mise à jour réussie',
+            'invalid'                        => 'Identifiant invalide',
+            'invalidurl'                     => 'URL invalide',
+            'already_taken'                  => 'L URL de la boutique a déjà été prise.',
+            'auto_refresh_not_configured'    => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
             'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
-            'invalid_access_token_response' => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
-            'index'          => [
+            'invalid_access_token_response'  => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
+            'index'                          => [
                 'title'                 => 'Identifiants Shopify',
                 'create'                => 'Créer un identifiant',
                 'url'                   => 'URL Shopify',
@@ -185,11 +185,11 @@ return [
 
         'metafield'     => [
             'datagrid' => [
-                'definitiontype'  => 'Utilisé pour',
+                'definitiontype'   => 'Utilisé pour',
                 'attribute-label'  => 'Attribut Unopim',
-                'definitionName'  => 'Nom de la définition',
-                'contentTypeName' => 'Type',
-                'pin'             => 'Épingler',
+                'definitionName'   => 'Nom de la définition',
+                'contentTypeName'  => 'Type',
+                'pin'              => 'Épingler',
             ],
             'index'    => [
                 'title'                     => 'Définitions des champs méta',
@@ -239,11 +239,11 @@ return [
             'mass-delete-success' => 'Définitions des champs méta supprimées avec succès',
             'metafield'           => [
                 'datagrid' => [
-                    'definitiontype'  => '用于',
+                    'definitiontype'   => '用于',
                     'attribute-label'  => 'Unopim 属性',
-                    'definitionName'  => '定义名称',
-                    'contentTypeName' => '类型',
-                    'pin'             => '固定',
+                    'definitionName'   => '定义名称',
+                    'contentTypeName'  => '类型',
+                    'pin'              => '固定',
                 ],
                 'index'    => [
                     'title'                     => '元字段定义',

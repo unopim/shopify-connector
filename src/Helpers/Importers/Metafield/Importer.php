@@ -116,12 +116,12 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
         }
         $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl'     => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
-            'clientId'    => $this->credential?->clientId,
-            'clientSecret'=> $this->credential?->clientSecret,
+            'credentialId'         => $this->credential?->id,
+            'shopUrl'              => $this->credential?->shopUrl,
+            'accessToken'          => $this->credential?->accessToken,
+            'apiVersion'           => $this->credential?->apiVersion,
+            'clientId'             => $this->credential?->clientId,
+            'clientSecret'         => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -242,7 +242,7 @@ class Importer extends AbstractImporter
             } elseif (in_array($metafieldType, $this->decimalType)) {
                 $attributeFormate['validation'] = 'decimal';
             }
-            
+
             $data = $this->formatDataForMetafield($attribute);
 
             $existing = $this->shopifyMetaFieldRepository
@@ -251,7 +251,7 @@ class Importer extends AbstractImporter
                     ['ownerType', '=', $data['ownerType']],
                 ]);
 
-            if (!$existing) {
+            if (! $existing) {
                 $this->shopifyMetaFieldRepository->create($data);
             }
 
@@ -273,7 +273,7 @@ class Importer extends AbstractImporter
             'name_space_key'  => $nameSpaceKey,
             'code'            => $node['key'],
             'attribute'       => $node['name'],
-            'pin'             => !empty($node['pinnedPosition']),
+            'pin'             => ! empty($node['pinnedPosition']),
             'listvalue'       => str_contains($typeName, 'list'),
             'ContentTypeName' => $typeName,
             'apiUrl'          => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),

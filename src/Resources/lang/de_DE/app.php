@@ -57,16 +57,16 @@ return [
             'unopim' => [
                 'locale' => 'Unopim-Sprache',
             ],
-            'delete-success' => 'Anmeldeinformationen erfolgreich gelöscht',
-            'created'        => 'Anmeldeinformationen erfolgreich erstellt',
-            'update-success' => 'Erfolgreich aktualisiert',
-            'invalid'        => 'Ungültige Anmeldeinformationen',
-            'invalidurl'     => 'Ungültige URL',
-            'already_taken'  => 'Die Shop-URL wurde bereits verwendet.',
-            'auto_refresh_not_configured' => 'Die automatische Aktualisierung ist für diese Anmeldedaten nicht konfiguriert.',
+            'delete-success'                 => 'Anmeldeinformationen erfolgreich gelöscht',
+            'created'                        => 'Anmeldeinformationen erfolgreich erstellt',
+            'update-success'                 => 'Erfolgreich aktualisiert',
+            'invalid'                        => 'Ungültige Anmeldeinformationen',
+            'invalidurl'                     => 'Ungültige URL',
+            'already_taken'                  => 'Die Shop-URL wurde bereits verwendet.',
+            'auto_refresh_not_configured'    => 'Die automatische Aktualisierung ist für diese Anmeldedaten nicht konfiguriert.',
             'unable_to_refresh_access_token' => 'Shopify-Zugriffstoken konnte nicht aktualisiert werden.',
-            'invalid_access_token_response' => 'Shopify hat keinen gültigen Zugriffstoken zurückgegeben.',
-            'index'          => [
+            'invalid_access_token_response'  => 'Shopify hat keinen gültigen Zugriffstoken zurückgegeben.',
+            'index'                          => [
                 'title'                 => 'Shopify-Anmeldeinformationen',
                 'create'                => 'Anmeldeinformationen erstellen',
                 'url'                   => 'Shopify-URL',
@@ -185,11 +185,11 @@ return [
 
         'metafield'     => [
             'datagrid' => [
-                'definitiontype'  => 'Verwendet für',
+                'definitiontype'   => 'Verwendet für',
                 'attribute-label'  => 'Unopim-Attribut',
-                'definitionName'  => 'Definitionsname',
-                'contentTypeName' => 'Typ',
-                'pin'             => 'Pin',
+                'definitionName'   => 'Definitionsname',
+                'contentTypeName'  => 'Typ',
+                'pin'              => 'Pin',
             ],
             'index'    => [
                 'title'                     => 'Metafeldd Definitionen',

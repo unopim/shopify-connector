@@ -121,12 +121,12 @@ class Importer extends AbstractImporter
         }
 
         $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl'     => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
-            'clientId'    => $this->credential?->clientId,
-            'clientSecret'=> $this->credential?->clientSecret,
+            'credentialId'         => $this->credential?->id,
+            'shopUrl'              => $this->credential?->shopUrl,
+            'accessToken'          => $this->credential?->accessToken,
+            'apiVersion'           => $this->credential?->apiVersion,
+            'clientId'             => $this->credential?->clientId,
+            'clientSecret'         => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -338,8 +338,8 @@ class Importer extends AbstractImporter
                     'job_track_id' => $this->import->id,
                     'data'         => $batchRows,
                     'summary'      => [
-                        'created' => $this->getCreatedItemsCount(), 
-                        'updated' => $this->getUpdatedItemsCount()
+                        'created' => $this->getCreatedItemsCount(),
+                        'updated' => $this->getUpdatedItemsCount(),
                     ],
                 ]);
 

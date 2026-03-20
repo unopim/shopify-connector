@@ -4,7 +4,6 @@ namespace Webkul\Shopify\Services;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
-use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 
 class ShopifyAccessTokenManager
@@ -132,7 +131,7 @@ class ShopifyAccessTokenManager
         return $resolved;
     }
 
-    protected function isExpiringSoon(string|null $expiresAt): bool
+    protected function isExpiringSoon(?string $expiresAt): bool
     {
         if (empty($expiresAt)) {
             return false;

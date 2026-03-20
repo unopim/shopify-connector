@@ -252,12 +252,12 @@ class Importer extends AbstractImporter
         $this->currency = $filters['currency'] ?? null;
 
         $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl'     => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
-            'clientId'    => $this->credential?->clientId,
-            'clientSecret'=> $this->credential?->clientSecret,
+            'credentialId'         => $this->credential?->id,
+            'shopUrl'              => $this->credential?->shopUrl,
+            'accessToken'          => $this->credential?->accessToken,
+            'apiVersion'           => $this->credential?->apiVersion,
+            'clientId'             => $this->credential?->clientId,
+            'clientSecret'         => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -277,12 +277,12 @@ class Importer extends AbstractImporter
         }
 
         $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl'     => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
-            'clientId'    => $this->credential?->clientId,
-            'clientSecret'=> $this->credential?->clientSecret,
+            'credentialId'         => $this->credential?->id,
+            'shopUrl'              => $this->credential?->shopUrl,
+            'accessToken'          => $this->credential?->accessToken,
+            'apiVersion'           => $this->credential?->apiVersion,
+            'clientId'             => $this->credential?->clientId,
+            'clientSecret'         => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -344,12 +344,12 @@ class Importer extends AbstractImporter
                 ];
 
                 $this->credentialArray = [
-                    'credentialId' => $this->credential?->id,
-                    'shopUrl'     => $this->credential?->shopUrl,
-                    'accessToken' => $this->credential?->accessToken,
-                    'apiVersion'  => $this->credential?->apiVersion,
-                    'clientId'    => $this->credential?->clientId,
-                    'clientSecret'=> $this->credential?->clientSecret,
+                    'credentialId'         => $this->credential?->id,
+                    'shopUrl'              => $this->credential?->shopUrl,
+                    'accessToken'          => $this->credential?->accessToken,
+                    'apiVersion'           => $this->credential?->apiVersion,
+                    'clientId'             => $this->credential?->clientId,
+                    'clientSecret'         => $this->credential?->clientSecret,
                     'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
                 ];
 
@@ -545,10 +545,10 @@ class Importer extends AbstractImporter
 
         $mappedImageAttr = null;
 
-        if (!empty($mediaMapping)) {
-            $title  = $rowData['node']['title']  ?? '';
+        if (! empty($mediaMapping)) {
+            $title = $rowData['node']['title'] ?? '';
             $handle = $rowData['node']['handle'] ?? '';
-            $id     = $rowData['node']['id']     ?? null;
+            $id = $rowData['node']['id'] ?? null;
 
             if ($mediaMapping['mediaType'] === 'image') {
                 $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
@@ -571,7 +571,7 @@ class Importer extends AbstractImporter
             'values'  => [
                 'common'           => array_merge($common, $mcommon ?? []),
                 'channel_specific' => [
-                    $this->channel => array_merge($channelSpecific, $mchannel_specific ?? [] ),
+                    $this->channel => array_merge($channelSpecific, $mchannel_specific ?? []),
                 ],
 
                 'locale_specific'  => [
@@ -890,11 +890,13 @@ class Importer extends AbstractImporter
 
         if ($sku && $this->shouldSkipProduct($sku, $barcode)) {
             $this->jobLogger->warning("Product update skipped due to duplicate SKU: {$sku}");
+
             return false;
         }
 
         if ($barcode && $this->isProductNumberExist($barcode, $simpleId ?? null)) {
             $this->jobLogger->warning("Product update skipped due to duplicate Product Number: {$barcode}");
+
             return false;
         }
 
@@ -916,6 +918,7 @@ class Importer extends AbstractImporter
         if (! $productExist) {
             if ($barcode && $this->isBarcodeExist($barcode, $simpleId ?? null)) {
                 $this->jobLogger->warning("Product creation skipped due to duplicate Product Number: {$barcode}, for SKU: {$sku}");
+
                 return false;
             }
 
@@ -1424,7 +1427,7 @@ class Importer extends AbstractImporter
 
     protected function isBarcodeExist(string $barcode, ?int $excludeProductId = null): bool
     {
-        if (!$barcode) {
+        if (! $barcode) {
             return false;
         }
 
@@ -1443,7 +1446,7 @@ class Importer extends AbstractImporter
         $barcode = $barcode ?? '';
 
         $keys = [
-            'barcode:' . $barcode,
+            'barcode:'.$barcode,
         ];
 
         foreach ($keys as $key) {
@@ -1460,9 +1463,9 @@ class Importer extends AbstractImporter
         $barcode = $barcode ?? '';
 
         $keys = [
-            'sku:' . $sku,
-            'barcode:' . $barcode,
-            'combo:' . $sku . '-' . $barcode,
+            'sku:'.$sku,
+            'barcode:'.$barcode,
+            'combo:'.$sku.'-'.$barcode,
         ];
 
         foreach ($keys as $key) {
@@ -1482,12 +1485,12 @@ class Importer extends AbstractImporter
     {
         $barcode = $barcode ?? '';
 
-        $this->processedProducts['sku:' . $sku] = true;
+        $this->processedProducts['sku:'.$sku] = true;
 
         if ($barcode !== '') {
-            $this->processedProducts['barcode:' . $barcode] = true;
+            $this->processedProducts['barcode:'.$barcode] = true;
         }
 
-        $this->processedProducts['combo:' . $sku . '-' . $barcode] = true;
+        $this->processedProducts['combo:'.$sku.'-'.$barcode] = true;
     }
 }

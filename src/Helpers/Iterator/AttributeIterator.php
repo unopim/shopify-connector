@@ -164,7 +164,7 @@ class AttributeIterator implements \Iterator
 
                 $name = trim(preg_replace('/[^A-Za-z0-9]+/', '_', $productOption['name'] ?? ''));
 
-                if (!isset($optionsArray[$name])) {
+                if (! isset($optionsArray[$name])) {
                     $optionsArray[$name] = [
                         'name'   => $name,
                         'label'  => $optionLabel,

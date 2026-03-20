@@ -1,7 +1,7 @@
 <?php
 
-use Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator;
 use Illuminate\Support\Facades\Validator;
+use Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator;
 
 beforeEach(function () {
     $this->validator = new ShopifyProductValidator();

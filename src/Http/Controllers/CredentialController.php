@@ -164,6 +164,7 @@ class CredentialController extends Controller
 
         $credential->accessToken = str_repeat('*', strlen($credential->accessToken));
         $credential->clientSecret = str_repeat('*', strlen($credential->clientSecret ?? ''));
+
         return view('shopify::credential.edit', compact('credential', 'shopLocales', 'publishingChannel', 'locationAll', 'apiVersion'));
     }
 
@@ -257,7 +258,7 @@ class CredentialController extends Controller
         return redirect()->route('shopify.credentials.edit', $id);
     }
 
-    protected function prepareCredentialToken(array $requestData, ShopifyCredentialsConfig|null $credential = null): array
+    protected function prepareCredentialToken(array $requestData, ?ShopifyCredentialsConfig $credential = null): array
     {
         $requestData['shopUrl'] = rtrim((string) ($requestData['shopUrl'] ?? ''), '/');
 
@@ -284,7 +285,7 @@ class CredentialController extends Controller
         return $requestData;
     }
 
-    protected function resolveMaskedValue(string $incomingValue, string|null $existingValue): string
+    protected function resolveMaskedValue(string $incomingValue, ?string $existingValue): string
     {
         if (empty($existingValue)) {
             return $incomingValue;
