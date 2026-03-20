@@ -64,6 +64,9 @@ return [
             'invalid'        => 'अमान्य प्रमाण पत्र',
             'invalidurl'     => 'अमान्य URL',
             'already_taken'  => 'शॉप यूआरएल पहले ही लिया जा चुका है।',
+            'auto_refresh_not_configured' => 'इस क्रेडेंशियल के लिए ऑटो-रिफ्रेश कॉन्फ़िगर नहीं है।',
+            'unable_to_refresh_access_token' => 'Shopify एक्सेस टोकन को रिफ्रेश नहीं किया जा सका।',
+            'invalid_access_token_response' => 'Shopify ने मान्य एक्सेस टोकन वापस नहीं किया।',
             'index'          => [
                 'title'                 => 'Shopify प्रमाण पत्र',
                 'create'                => 'प्रमाण पत्र बनाएं',

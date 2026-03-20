@@ -63,6 +63,9 @@ return [
             'invalid'        => '无效凭据',
             'invalidurl'     => '无效的 URL',
             'already_taken'  => '商店网址已被占用',
+            'auto_refresh_not_configured' => '此凭据未配置自动刷新。',
+            'unable_to_refresh_access_token' => '无法刷新 Shopify 访问令牌。',
+            'invalid_access_token_response' => 'Shopify 未返回有效的访问令牌。',
             'index'          => [
                 'title'                 => 'Shopify 凭据',
                 'create'                => '创建凭据',

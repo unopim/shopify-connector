@@ -63,6 +63,9 @@ return [
             'invalid'        => 'Identifiant invalide',
             'invalidurl'     => 'URL invalide',
             'already_taken'  => 'L URL de la boutique a déjà été prise.',
+            'auto_refresh_not_configured' => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
+            'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
+            'invalid_access_token_response' => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
             'index'          => [
                 'title'                 => 'Identifiants Shopify',
                 'create'                => 'Créer un identifiant',

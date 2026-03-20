@@ -51,7 +51,7 @@ class ShopifyAccessTokenManager
         $credential = $this->resolveCredential($credential);
 
         if (! $this->canAutoGenerateAccessToken($credential)) {
-            throw new \RuntimeException('Auto-refresh is not configured for this credential.');
+            throw new \RuntimeException(trans('shopify::app.shopify.credential.auto_refresh_not_configured'));
         }
 
         $response = Http::asForm()
@@ -66,7 +66,7 @@ class ShopifyAccessTokenManager
         if (! $response->ok()) {
             $message = $response->json('error_description')
                 ?? $response->json('error')
-                ?? 'Unable to refresh Shopify access token.';
+                ?? trans('shopify::app.shopify.credential.unable_to_refresh_access_token');
 
             throw new \RuntimeException($message);
         }
@@ -74,7 +74,7 @@ class ShopifyAccessTokenManager
         $accessToken = $response->json('access_token');
 
         if (empty($accessToken)) {
-            throw new \RuntimeException('Shopify did not return a valid access token.');
+            throw new \RuntimeException(trans('shopify::app.shopify.credential.invalid_access_token_response'));
         }
 
         $expiresIn = (int) ($response->json('expires_in') ?? 0);

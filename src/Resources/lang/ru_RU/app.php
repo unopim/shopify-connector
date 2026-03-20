@@ -63,6 +63,9 @@ return [
             'invalid'        => 'Неверные учетные данные',
             'invalidurl'     => 'Неверный URL',
             'already_taken'  => 'URL магазина уже занят.',
+            'auto_refresh_not_configured' => 'Автообновление не настроено для этих учетных данных.',
+            'unable_to_refresh_access_token' => 'Не удалось обновить токен доступа Shopify.',
+            'invalid_access_token_response' => 'Shopify не вернул действительный токен доступа.',
             'index'          => [
                 'title'                 => 'Учетные данные Shopify',
                 'create'                => 'Создать учетные данные',

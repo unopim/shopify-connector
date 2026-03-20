@@ -63,6 +63,9 @@ return [
             'invalid'        => 'Ungültige Anmeldeinformationen',
             'invalidurl'     => 'Ungültige URL',
             'already_taken'  => 'Die Shop-URL wurde bereits verwendet.',
+            'auto_refresh_not_configured' => 'Die automatische Aktualisierung ist für diese Anmeldedaten nicht konfiguriert.',
+            'unable_to_refresh_access_token' => 'Shopify-Zugriffstoken konnte nicht aktualisiert werden.',
+            'invalid_access_token_response' => 'Shopify hat keinen gültigen Zugriffstoken zurückgegeben.',
             'index'          => [
                 'title'                 => 'Shopify-Anmeldeinformationen',
                 'create'                => 'Anmeldeinformationen erstellen',

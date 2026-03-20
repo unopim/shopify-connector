@@ -63,6 +63,9 @@ return [
             'invalid'        => 'بيانات الاعتماد غير صالحة',
             'invalidurl'     => 'رابط غير صالح',
             'already_taken'  => 'تم استخدام عنوان URL للمتجر بالفعل.',
+            'auto_refresh_not_configured' => 'لم يتم إعداد التحديث التلقائي لبيانات الاعتماد هذه.',
+            'unable_to_refresh_access_token' => 'تعذر تحديث رمز وصول Shopify.',
+            'invalid_access_token_response' => 'لم تُرجِع Shopify رمز وصول صالحًا.',
             'index'          => [
                 'title'                 => 'بيانات اعتماد شوبفاي',
                 'create'                => 'إنشاء بيانات اعتماد',
