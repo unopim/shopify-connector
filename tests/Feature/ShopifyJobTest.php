@@ -46,7 +46,7 @@ it('should create the shopify product export job', function () {
     ]);
 });
 
-it('should create the shopify Metafield Defintion export job', function () {
+it('should create the shopify Metafield Definition export job', function () {
     $this->loginAsAdmin();
     $exportJob = [
         'code'            => fake()->unique()->word,

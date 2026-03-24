@@ -118,16 +118,12 @@ class OptionController extends Controller
 
         $currencyRepository = $this->currencyRepository->where('status', 1);
 
-        if (! empty($selectedChannel)) {
+        if (! is_null($selectedChannel) && $selectedChannel !== '') {
             $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
 
             $currencyRepository = $currencyRepository->whereHas('channel', function ($query) use ($selectedChannels) {
                 $query->whereIn('code', $selectedChannels);
             });
-        } elseif (empty($searchIdentifiers)) {
-            return new JsonResponse([
-                'options' => [],
-            ]);
         }
 
         if (! empty($searchIdentifiers)) {
@@ -139,14 +135,12 @@ class OptionController extends Controller
             );
         }
 
-        $allActivateCurrency = $currencyRepository->get()->toArray();
-
-        $allCurrency = array_map(function ($item) {
+        $allCurrency = $currencyRepository->get()->map(function ($item) {
             return [
-                'id'    => $item['code'],
-                'label' => $item['name'],
+                'id'    => $item->code,
+                'label' => $item->name,
             ];
-        }, $allActivateCurrency);
+        });
 
         return new JsonResponse([
             'options' => $allCurrency,

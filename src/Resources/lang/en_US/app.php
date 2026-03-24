@@ -110,6 +110,7 @@ return [
                 'filed-shopify' => 'Field in Shopify',
                 'attribute'     => 'UnoPim Attribute',
                 'fixed-value'   => 'Fixed Value',
+                'save_failed'   => 'Export mapping save failed. Please run the Shopify install command.',
                 'images'        => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -127,7 +128,8 @@ return [
             ],
 
             'settings' => [
-                'created' => 'Export Settings saved successfully',
+                'created'     => 'Export Settings saved successfully',
+                'save_failed' => 'Export settings save failed. Please run the Shopify install command.',
             ],
 
             'setting' => [
@@ -158,6 +160,7 @@ return [
                 'back-btn'             => 'Back',
                 'save'                 => 'Save',
                 'created'              => 'Import Mapping saved successfully',
+                'save_failed'          => 'Import mapping save failed. Please run the Shopify install command.',
                 'image'                => 'Attribute to used as image',
                 'gallery'              => 'Attribute to used as gallery',
                 'filed-shopify'        => 'Field in Shopify',

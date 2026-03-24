@@ -120,7 +120,8 @@ class JsonDataPresenter extends JsonDataPresenters
 
         foreach ($values as $key => $value) {
             if (is_array($value)) {
-                $flattened += static::flattenForHistory($value);
+                $childFlattened = static::flattenForHistory($value);
+                $flattened = array_merge($flattened, $childFlattened);
 
                 continue;
             }

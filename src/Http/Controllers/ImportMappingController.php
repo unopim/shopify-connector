@@ -90,7 +90,7 @@ class ImportMappingController extends Controller
 
         if (is_null($shopifyMapping)) {
 
-            session()->flash('error', 'Import mapping save failed. Please run the Shopify install command.');
+            session()->flash('error', trans('shopify::app.shopify.import.mapping.save_failed'));
 
             return redirect()->back();
         }

@@ -63,6 +63,7 @@ return [
             'invalid'                        => 'Credencial Inválida',
             'invalidurl'                     => 'URL Inválida',
             'already_taken'                  => 'La URL de la tienda ya ha sido tomada.',
+            'token_refresh_failed'           => 'ID de cliente/Secreto no válidos.',
             'auto_refresh_not_configured'    => 'La actualización automática no está configurada para esta credencial.',
             'unable_to_refresh_access_token' => 'No se pudo actualizar el token de acceso de Shopify.',
             'invalid_access_token_response'  => 'Shopify no devolvió un token de acceso válido.',
@@ -102,7 +103,13 @@ return [
                 'filed-shopify' => 'Campo en Shopify',
                 'attribute'     => 'Atributo',
                 'fixed-value'   => 'Valor Fijo',
+                'save_failed'   => 'Error al guardar el mapeo de exportación. Por favor, ejecute el comando de instalación de Shopify.',
             ],
+            'settings' => [
+                'created'     => 'Configuración de exportación guardada correctamente',
+                'save_failed' => 'Error al guardar la configuración de exportación. Por favor, ejecute el comando de instalación de Shopify.',
+            ],
+
             'setting' => [
                 'title'                        => 'Configuración',
                 'tags'                         => 'Configuración de Exportación de Etiquetas',
@@ -130,6 +137,7 @@ return [
                 'back-btn'             => 'Volver',
                 'save'                 => 'Guardar',
                 'created'              => 'El mapeo de importación se guardó correctamente',
+                'save_failed'          => 'Error al guardar el mapeo de importación. Por favor, ejecute el comando de instalación de Shopify.',
                 'image'                => 'Atributo utilizado como imagen',
                 'filed-shopify'        => 'Campo en Shopify',
                 'attribute'            => 'Atributo de UnoPim',

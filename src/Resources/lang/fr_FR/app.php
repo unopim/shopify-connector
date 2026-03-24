@@ -63,6 +63,7 @@ return [
             'invalid'                        => 'Identifiant invalide',
             'invalidurl'                     => 'URL invalide',
             'already_taken'                  => 'L URL de la boutique a déjà été prise.',
+            'token_refresh_failed'           => 'Identifiant/Secret de client invalide.',
             'auto_refresh_not_configured'    => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
             'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
             'invalid_access_token_response'  => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
@@ -102,7 +103,13 @@ return [
                 'filed-shopify' => 'Champ dans Shopify',
                 'attribute'     => 'Attribut',
                 'fixed-value'   => 'Valeur fixe',
+                'save_failed'   => 'Échec de l\'enregistrement du mappage d\'exportation. Veuillez exécuter la commande d\'installation Shopify.',
             ],
+            'settings' => [
+                'created'     => 'Paramètres d\'exportation enregistrés avec succès',
+                'save_failed' => 'Échec de l\'enregistrement des paramètres d\'exportation. Veuillez exécuter la commande d\'installation Shopify.',
+            ],
+
             'setting' => [
                 'title'                        => 'Paramètre',
                 'tags'                         => 'Paramètres d\'exportation des étiquettes',
@@ -129,6 +136,7 @@ return [
                 'back-btn'             => 'Retour',
                 'save'                 => 'Enregistrer',
                 'created'              => 'Mapping d’importation enregistré avec succès',
+                'save_failed'          => 'Échec de l\'enregistrement du mappage d\'importation. Veuillez exécuter la commande d\'installation Shopify.',
                 'image'                => 'Attribut utilisé comme image',
                 'filed-shopify'        => 'Champ dans Shopify',
                 'attribute'            => 'Attribut UnoPim',

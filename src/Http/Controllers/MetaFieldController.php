@@ -90,14 +90,14 @@ class MetaFieldController extends Controller
 
         $attributeCode = $this->shopifyMetaFieldRepository->where('code', $data['code'])->where('ownerType', $data['ownerType'])->get()->first();
         if ($attributeCode) {
-            $defintionType = ($attributeCode?->ownerType == 'PRODUCT') ? 'Product Defintion' : 'Product variant Definition';
+            $defintionType = ($attributeCode?->ownerType == 'PRODUCT') ? 'Product Definition' : 'Product variant Definition';
             $errors['code'] = [trans('Definition already created in '.$defintionType)];
         }
         if (isset($data['name_space_key'])) {
             $nameSpaceAndKeyExist = $this->shopifyMetaFieldRepository->where('name_space_key', $data['name_space_key'])
                 ->where('ownerType', $data['ownerType'])->get()->first();
             if ($nameSpaceAndKeyExist) {
-                $defintionType = ($nameSpaceAndKeyExist?->ownerType == 'PRODUCT') ? 'Product Defintion' : 'Product variant Definition';
+                $defintionType = ($nameSpaceAndKeyExist?->ownerType == 'PRODUCT') ? 'Product Definition' : 'Product variant Definition';
                 $errors['name_space_key'] = [trans('Namespace and key are already taken for '.$defintionType)];
             }
             $nameSpaceAndKey = explode('.', $data['name_space_key']);

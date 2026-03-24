@@ -41,7 +41,7 @@ class SettingController extends Controller
 
         if (is_null($shopifySettings)) {
 
-            session()->flash('error', 'Export settings save failed. Please run the Shopify install command.');
+            session()->flash('error', trans('shopify::app.shopify.export.settings.save_failed'));
 
             return redirect()->back();
         }

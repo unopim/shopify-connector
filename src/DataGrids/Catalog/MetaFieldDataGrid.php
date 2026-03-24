@@ -115,7 +115,7 @@ class MetaFieldDataGrid extends DataGrid
     }
 
     /**
-     * Prepare mass actions for delete MetaField Defintion.
+     * Prepare mass actions for delete MetaField Definition.
      *
      * @return void
      */

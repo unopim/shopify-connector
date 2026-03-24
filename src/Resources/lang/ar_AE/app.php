@@ -63,6 +63,7 @@ return [
             'invalid'                        => 'بيانات الاعتماد غير صالحة',
             'invalidurl'                     => 'رابط غير صالح',
             'already_taken'                  => 'تم استخدام عنوان URL للمتجر بالفعل.',
+            'token_refresh_failed'           => 'معرف العميل / السر غير صالح.',
             'auto_refresh_not_configured'    => 'لم يتم إعداد التحديث التلقائي لبيانات الاعتماد هذه.',
             'unable_to_refresh_access_token' => 'تعذر تحديث رمز وصول Shopify.',
             'invalid_access_token_response'  => 'لم تُرجِع Shopify رمز وصول صالحًا.',
@@ -102,7 +103,13 @@ return [
                 'filed-shopify' => 'حقل في شوبفاي',
                 'attribute'     => 'خاصية',
                 'fixed-value'   => 'قيمة ثابتة',
+                'save_failed'   => 'فشل حفظ تعيين التصدير. يرجى تشغيل أمر تثبيت Shopify.',
             ],
+            'settings' => [
+                'created'     => 'تم حفظ إعدادات التصدير بنجاح',
+                'save_failed' => 'فشل حفظ إعدادات التصدير. يرجى تشغيل أمر تثبيت Shopify.',
+            ],
+
             'setting' => [
                 'title'                        => 'الإعدادات',
                 'tags'                         => 'إعدادات تصدير العلامات',
@@ -128,6 +135,7 @@ return [
                 'back-btn'             => 'رجوع',
                 'save'                 => 'حفظ',
                 'created'              => 'تم حفظ خريطة الاستيراد بنجاح',
+                'save_failed'          => 'فشل حفظ تعيين الاستيراد. يرجى تشغيل أمر تثبيت Shopify.',
                 'image'                => 'السمة المستخدمة كصورة',
                 'filed-shopify'        => 'الحقل في Shopify',
                 'attribute'            => 'سمة UnoPim',

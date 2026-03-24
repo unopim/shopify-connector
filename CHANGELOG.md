@@ -1,7 +1,7 @@
 # 1.3.0
 
 ## Features
-- Automatic Access token generation from at the time of Credential add which requires Shopify Shop URL, Clinet ID and Client Secret.
+- Automatic Access token generation from at the time of Credential add which requires Shopify Shop URL, Client ID and Client Secret.
 - Compatibility with latest Shopify Admin API version 2026-01.
 
 ## Bug fixes

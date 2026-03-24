@@ -7,7 +7,7 @@ beforeEach(function () {
     $this->validator = new ShopifyCategoryAndMetafieldValidator();
 });
 
-it('should passes validation with valid data', function () {
+it('should pass validation with valid data', function () {
     $data = [
         'filters' => [
             'credentials' => 1,
@@ -18,7 +18,7 @@ it('should passes validation with valid data', function () {
     expect($validator->passes())->toBeTrue();
 });
 
-it('should fails when credentials are missing', function () {
+it('should fail when credentials are missing', function () {
     $data = [
         'filters' => [
         ],
@@ -30,7 +30,7 @@ it('should fails when credentials are missing', function () {
         ->and($validator->errors()->keys())->toContain('filters.credentials');
 });
 
-it('should fails when credentials is not integer', function () {
+it('should fail when credentials is not integer', function () {
     $data = [
         'filters' => [
             'credentials' => 'abc',
@@ -43,7 +43,7 @@ it('should fails when credentials is not integer', function () {
         ->and($validator->errors()->keys())->toContain('filters.credentials');
 });
 
-it('should fails when credentials is less than zero', function () {
+it('should fail when credentials is less than zero', function () {
     $data = [
         'filters' => [
             'credentials' => -1,

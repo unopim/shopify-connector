@@ -63,6 +63,7 @@ return [
             'invalid'                        => '无效凭据',
             'invalidurl'                     => '无效的 URL',
             'already_taken'                  => '商店网址已被占用',
+            'token_refresh_failed'           => '无效的客户端 ID/密钥。',
             'auto_refresh_not_configured'    => '此凭据未配置自动刷新。',
             'unable_to_refresh_access_token' => '无法刷新 Shopify 访问令牌。',
             'invalid_access_token_response'  => 'Shopify 未返回有效的访问令牌。',
@@ -103,7 +104,13 @@ return [
                 'filed-shopify' => 'Shopify 字段',
                 'attribute'     => '属性',
                 'fixed-value'   => '固定值',
+                'save_failed'   => '导出映射保存失败。 请运行 Shopify 安装命令。',
             ],
+            'settings' => [
+                'created'     => '导出设置保存成功',
+                'save_failed' => '导出设置保存失败。 请运行 Shopify 安装命令。',
+            ],
+
             'setting' => [
                 'title'                        => '设置',
                 'tags'                         => '标签导出设置',
@@ -130,6 +137,7 @@ return [
                 'back-btn'             => '返回',
                 'save'                 => '保存',
                 'created'              => '导入映射已成功保存',
+                'save_failed'          => '导入映射保存失败。 请运行 Shopify 安装命令。',
                 'image'                => '用于图片的属性',
                 'filed-shopify'        => 'Shopify 字段',
                 'attribute'            => 'UnoPim 属性',

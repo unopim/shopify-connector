@@ -64,6 +64,7 @@ return [
             'invalid'                        => 'अमान्य प्रमाण पत्र',
             'invalidurl'                     => 'अमान्य URL',
             'already_taken'                  => 'शॉप यूआरएल पहले ही लिया जा चुका है।',
+            'token_refresh_failed'           => 'अमान्य क्लाइंट आईडी/गुप्त।',
             'auto_refresh_not_configured'    => 'इस क्रेडेंशियल के लिए ऑटो-रिफ्रेश कॉन्फ़िगर नहीं है।',
             'unable_to_refresh_access_token' => 'Shopify एक्सेस टोकन को रिफ्रेश नहीं किया जा सका।',
             'invalid_access_token_response'  => 'Shopify ने मान्य एक्सेस टोकन वापस नहीं किया।',
@@ -103,7 +104,13 @@ return [
                 'filed-shopify' => 'Shopify में फ़ील्ड',
                 'attribute'     => 'विशेषता',
                 'fixed-value'   => 'स्थिर मान',
+                'save_failed'   => 'निर्यात मानचित्रण सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
             ],
+            'settings' => [
+                'created'     => 'निर्यात सेटिंग्स सफलतापूर्वक सहेजी गईं',
+                'save_failed' => 'निर्यात सेटिंग्स सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
+            ],
+
             'setting' => [
                 'title'                        => 'सेटिंग',
                 'tags'                         => 'टैग निर्यात सेटिंग',
@@ -129,6 +136,7 @@ return [
                 'back-btn'             => 'वापस',
                 'save'                 => 'सहेजें',
                 'created'              => 'आयात मैपिंग सफलतापूर्वक सहेजा गया',
+                'save_failed'          => 'आयात मानचित्रण सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
                 'image'                => 'चित्र के रूप में उपयोग करने के लिए गुण',
                 'filed-shopify'        => 'Shopify में फ़ील्ड',
                 'attribute'            => 'UnoPim गुण',

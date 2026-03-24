@@ -63,6 +63,7 @@ return [
             'invalid'                        => 'Ungültige Anmeldeinformationen',
             'invalidurl'                     => 'Ungültige URL',
             'already_taken'                  => 'Die Shop-URL wurde bereits verwendet.',
+            'token_refresh_failed'           => 'Ungültige Client-ID/Secret.',
             'auto_refresh_not_configured'    => 'Die automatische Aktualisierung ist für diese Anmeldedaten nicht konfiguriert.',
             'unable_to_refresh_access_token' => 'Shopify-Zugriffstoken konnte nicht aktualisiert werden.',
             'invalid_access_token_response'  => 'Shopify hat keinen gültigen Zugriffstoken zurückgegeben.',
@@ -102,7 +103,13 @@ return [
                 'filed-shopify' => 'Feld in Shopify',
                 'attribute'     => 'Attribut',
                 'fixed-value'   => 'Fester Wert',
+                'save_failed'   => 'Speichern der Exportzuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
             ],
+            'settings' => [
+                'created'     => 'Exporteinstellungen erfolgreich gespeichert',
+                'save_failed' => 'Speichern der Exporteinstellungen fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+            ],
+
             'setting' => [
                 'title'                        => 'Einstellungen',
                 'tags'                         => 'Tag-Export-Einstellungen',
@@ -129,6 +136,7 @@ return [
                 'back-btn'             => 'Zurück',
                 'save'                 => 'Speichern',
                 'created'              => 'Importzuordnung erfolgreich gespeichert',
+                'save_failed'          => 'Speichern der Importzuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
                 'image'                => 'Attribut, das als Bild verwendet wird',
                 'filed-shopify'        => 'Feld in Shopify',
                 'attribute'            => 'UnoPim-Attribut',

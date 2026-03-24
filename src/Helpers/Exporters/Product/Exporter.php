@@ -694,7 +694,11 @@ class Exporter extends AbstractExporter
                     $this->deleteProductMediaMapping($deleteIds);
                 }
             }
-            $this->prepareProductCollectionsToLeave($formattedGraphqlData, $productId);
+
+            if (! empty($formattedGraphqlData['collectionsToJoin'] ?? null)) {
+                $this->prepareProductCollectionsToLeave($formattedGraphqlData, $productId);
+            }
+
             $result = $this->updateProductWithMetafields($formattedGraphqlData, $this->credentialAsArray, $productId, $parentMapping, $mapping, $parentData, $rowData);
 
             $productOptionExist = $result['body']['data']['productUpdate']['product']['options'] ?? [];

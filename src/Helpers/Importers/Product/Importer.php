@@ -644,19 +644,68 @@ class Importer extends AbstractImporter
                 continue;
             }
             $variantSkus[] = $vsku;
+
             $variantMapping = $this->checkMappingInDb(['code' => $vsku]);
-            if (! $variantMapping) {
-                $this->parentMapping($vsku, $productVariant['node']['id'], $this->import->id, $shopifyProductId);
+            $variantMappingRow = $variantMapping[0] ?? null;
+
+            $shopifyVariantId = $productVariant['node']['id'] ?? null;
+            if (! $shopifyVariantId) {
+                $this->jobLogger->warning('Shopify variant id not found for SKU '.$vsku.' in product '.$shopifyProductId);
+
+                continue;
             }
 
             $variantProductExist = $this->productRepository->findOneByField('sku', $vsku);
-            if ($variantProductExist && $variantProductExist?->parent?->id !== $configId) {
-                if ($variantProductExist?->id) {
-                    $this->productRepository->delete($variantProductExist?->id);
+            if ($variantProductExist && $variantProductExist?->parent?->id !== $configId && ! $variantMappingRow) {
+                $this->jobLogger->warning(sprintf(
+                    'SKU conflict: %s already exists in UnoPIM under a different parent (current parentId: %s, expected parentId: %s). No Shopify mapping found, skipping to avoid data loss.',
+                    $vsku,
+                    $variantProductExist?->parent?->id ?? 'null',
+                    $configId
+                ));
+
+                continue;
+            }
+
+            if ($variantMappingRow) {
+                $mappedExternalId = $variantMappingRow['externalId'] ?? null;
+                $mappedRelatedId = $variantMappingRow['relatedId'] ?? null;
+
+                $isCorrectVariantMapping = $mappedExternalId === $shopifyVariantId && $mappedRelatedId === $shopifyProductId;
+                $isSimpleProductMapping = $mappedExternalId === $shopifyProductId && empty($mappedRelatedId);
+
+                if (! $isCorrectVariantMapping) {
+                    if ($isSimpleProductMapping) {
+                        $this->shopifyMappingRepository->update([
+                            'entityType'    => self::UNOPIM_ENTITY_NAME,
+                            'code'          => $vsku,
+                            'externalId'    => $shopifyVariantId,
+                            'relatedId'     => $shopifyProductId,
+                            'jobInstanceId' => $this->import->id,
+                            'apiUrl'        => $this->credential->shopUrl,
+                        ], $variantMappingRow['id']);
+
+                        $variantMappingRow['externalId'] = $shopifyVariantId;
+                        $variantMappingRow['relatedId'] = $shopifyProductId;
+                    } else {
+                        $this->jobLogger->warning(sprintf(
+                            'SKU conflict: %s is already mapped to Shopify externalId %s (relatedId %s). Skipping variant %s for product %s.',
+                            $vsku,
+                            $mappedExternalId ?? 'null',
+                            $mappedRelatedId ?? 'null',
+                            $shopifyVariantId,
+                            $shopifyProductId
+                        ));
+
+                        continue;
+                    }
                 }
-                $this->deleteProductVariantMappingIfSimple($shopifyProductId, $vsku);
-                $variantProductExist = $this->productRepository->findOneByField('sku', $vsku);
-                $this->parentMapping($vsku, $productVariant['node']['id'], $this->import->id, $shopifyProductId);
+            } else {
+                $this->parentMapping($vsku, $shopifyVariantId, $this->import->id, $shopifyProductId);
+                $variantMappingRow = [
+                    'externalId' => $shopifyVariantId,
+                    'relatedId'  => $shopifyProductId,
+                ];
             }
 
             $imageValue = null;
@@ -894,7 +943,7 @@ class Importer extends AbstractImporter
             return false;
         }
 
-        if ($barcode && $this->isProductNumberExist($barcode, $simpleId ?? null)) {
+        if ($barcode && $this->isProductNumberProcessed($barcode)) {
             $this->jobLogger->warning("Product update skipped due to duplicate Product Number: {$barcode}");
 
             return false;
@@ -1441,7 +1490,7 @@ class Importer extends AbstractImporter
         return $query->exists();
     }
 
-    protected function isProductNumberExist(string $barcode, ?int $excludeProductId = null): bool
+    protected function isProductNumberProcessed(string $barcode): bool
     {
         $barcode = $barcode ?? '';
 
