@@ -67,6 +67,7 @@ return [
             'auto_refresh_not_configured'    => 'La actualización automática no está configurada para esta credencial.',
             'unable_to_refresh_access_token' => 'No se pudo actualizar el token de acceso de Shopify.',
             'invalid_access_token_response'  => 'Shopify no devolvió un token de acceso válido.',
+            'system_update_required'         => 'Se requiere una actualización del sistema. Por favor, ejecute php artisan migrate.',
             'index'                          => [
                 'title'                 => 'Credenciales de Shopify',
                 'create'                => 'Crear Credencial',

@@ -108,6 +108,12 @@ class CredentialController extends Controller
 
             session()->flash('success', trans('shopify::app.shopify.credential.created'));
         } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'clientId')) {
+                return response()->json([
+                    'message' => trans('shopify::app.shopify.credential.system_update_required'),
+                ], 422);
+            }
+
             return new JsonResponse([
                 'errors' => [
                     'shopUrl'     => [$e->getMessage()],

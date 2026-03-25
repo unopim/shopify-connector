@@ -67,6 +67,7 @@ return [
             'auto_refresh_not_configured'    => 'Автообновление не настроено для этих учетных данных.',
             'unable_to_refresh_access_token' => 'Не удалось обновить токен доступа Shopify.',
             'invalid_access_token_response'  => 'Shopify не вернул действительный токен доступа.',
+            'system_update_required'         => 'Требуется обновление системы. Пожалуйста, выполните php artisan migrate.',
             'index'                          => [
                 'title'                 => 'Учетные данные Shopify',
                 'create'                => 'Создать учетные данные',

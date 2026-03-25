@@ -70,6 +70,7 @@ return [
             'auto_refresh_not_configured'    => 'Auto-refresh is not configured for this credential.',
             'unable_to_refresh_access_token' => 'Unable to refresh Shopify access token.',
             'invalid_access_token_response'  => 'Shopify did not return a valid access token.',
+            'system_update_required'         => 'System update required. Please run php artisan migrate.',
             'index'                          => [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',

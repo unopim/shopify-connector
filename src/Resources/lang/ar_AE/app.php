@@ -67,6 +67,7 @@ return [
             'auto_refresh_not_configured'    => 'لم يتم إعداد التحديث التلقائي لبيانات الاعتماد هذه.',
             'unable_to_refresh_access_token' => 'تعذر تحديث رمز وصول Shopify.',
             'invalid_access_token_response'  => 'لم تُرجِع Shopify رمز وصول صالحًا.',
+            'system_update_required'         => 'مطلوب تحديث للنظام. يرجى تشغيل php artisan migrate.',
             'index'                          => [
                 'title'                 => 'بيانات اعتماد شوبفاي',
                 'create'                => 'إنشاء بيانات اعتماد',

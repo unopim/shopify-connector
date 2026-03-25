@@ -161,3 +161,37 @@ This ensures that the latest updates to the module are reflected in all backgrou
    ./vendor/bin/pest ./packages/Webkul/Shopify/tests/Feature
    ```
 ---
+
+## 🚀 Upgrade Guide
+
+Follow the steps below to upgrade the Shopify module to the latest version:
+
+### 1. Update Module Files
+Replace the existing Shopify module with the latest version:
+
+---
+
+### 2. Run Database Migration
+Execute the following command to update your database:
+
+   ```bash
+   php artisan migrate
+   ```
+> This step is mandatory to apply new database changes (e.g., added columns like `clientId`, `clientSecret`).
+
+---
+
+### 3. Clear Cache (Recommended)
+
+   ```bash
+   php artisan optimize:clear
+   ```
+---
+
+### ⚠️ Important Notes
+
+- Skipping migration may result in errors like:
+  SQLSTATE[42S22]: Column not found: Unknown column 'clientId'
+- Always take a database backup before upgrading.
+
+--- 

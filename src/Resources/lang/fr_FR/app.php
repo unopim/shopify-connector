@@ -67,6 +67,7 @@ return [
             'auto_refresh_not_configured'    => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
             'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
             'invalid_access_token_response'  => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
+            'system_update_required'         => 'Mise à jour du système requise. Veuillez exécuter php artisan migrate.',
             'index'                          => [
                 'title'                 => 'Identifiants Shopify',
                 'create'                => 'Créer un identifiant',
