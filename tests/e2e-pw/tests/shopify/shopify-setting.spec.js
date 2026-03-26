@@ -5,6 +5,33 @@ test.use({ storageState: 'storage/auth.json' }); // Reuse login session
 
 
 test.describe('UnoPim Shopify setting tab Navigation', () => {
+    const toggleById = (page, inputId) => {
+        const input = page.locator(`input#${inputId}`);
+        const label = page.locator(`label:has(input#${inputId})`).first();
+        const container = label.count().then(c => (c ? label : input.locator('..')));
+        const clickTarget = async () => {
+            const resolvedContainer = await container;
+            const track = resolvedContainer.locator('.rounded-full').first();
+            if ((await track.count()) > 0) return track;
+            return resolvedContainer;
+        };
+
+        return { input, clickTarget };
+    };
+
+    const setToggle = async ({ input, clickTarget }, value) => {
+        const current = await input.isChecked();
+        if (current === value) return;
+
+        await (await clickTarget()).click({ force: true });
+
+        if (value) {
+            await expect(input).toBeChecked();
+        } else {
+            await expect(input).not.toBeChecked();
+        }
+    };
+
     test.beforeEach(async ({ page }) => {
         // Navigate to the Shopify Credentials Page
         await page.goto('admin/shopify/credentials');
@@ -15,31 +42,25 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
     });
 
     test('Toggle Named Tags Export setting', async ({ page }) => {
-        const toggle = await page.locator('.relative > .rounded-full').first();
-        await toggle.check();
-        await expect(toggle).toBeChecked();
-        await toggle.uncheck();
-        await expect(toggle).not.toBeChecked();
+        const toggle = toggleById(page, 'enable_named_tags_attribute');
+        await setToggle(toggle, true);
+        await setToggle(toggle, false);
     });
 
     test('Toggle Attribute Name in Tags Export setting', async ({ page }) => {
-        const toggle = await page.locator('div:nth-child(3) > .relative > .rounded-full');
-        await toggle.check();
-        await expect(toggle).toBeChecked();
-        await toggle.uncheck();
-        await expect(toggle).not.toBeChecked();
+        const toggle = toggleById(page, 'enable_tags_attribute');
+        await setToggle(toggle, true);
+        await setToggle(toggle, false);
     });
 
 
     test('Enable toggle and select option from dependent dropdown', async ({ page }) => {
 
         // Toggle: "Do you want to pull through the attribute name as well in tags?"
-        const toggle = await page.locator('div:nth-child(3) > .relative > .rounded-full');
+        const toggle = toggleById(page, 'enable_tags_attribute');
 
         // Enable the toggle if not already enabled
-        if (!(await toggle.isChecked())) {
-            await toggle.click();
-        }
+        await setToggle(toggle, true);
 
         // Wait for the dropdown to be visible
         const dropdown = page.locator('#tagSeprator .multiselect__select');
@@ -48,12 +69,12 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         // Click the dropdown to reveal options
         await dropdown.click();
 
-        // Get all options in the dropdown
+        // Wait for options to load (the list is populated dynamically)
         const options = page.locator('#tagSeprator .multiselect__content li');
-        const optionsCount = await options.count();
-        expect(optionsCount).toBeGreaterThan(0);
+        await expect(options.first()).toBeVisible();
 
         console.log('Available options:');
+        const optionsCount = await options.count();
         for (let i = 0; i < optionsCount; i++) {
             const text = await options.nth(i).textContent();
             console.log(`- ${text}`);
@@ -61,11 +82,12 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
 
         // Select the desired option, e.g., "( ) Space"
         const optionToSelect = page.locator('#tagSeprator .multiselect__option', { hasText: '( ) Space' });
+        await expect(optionToSelect).toBeVisible();
         await optionToSelect.click();
 
         // Verify the selected option
+        await expect(page.locator('#tagSeprator .multiselect__single')).toHaveText('( ) Space');
         const selected = await page.locator('#tagSeprator .multiselect__single').textContent();
-        expect(selected).toBe('( ) Space');
         console.log(`Selected option: ${selected}`);
     });
 
@@ -96,11 +118,9 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
 
 
     test('Toggle value of option name in other setting', async ({ page }) => {
-        const toggle = await page.locator('div:nth-child(3) .relative .rounded-full');
-        await toggle.check();
-        await expect(toggle).toBeChecked();
-        await toggle.uncheck();
-        await expect(toggle).not.toBeChecked();
+        const toggle = toggleById(page, 'option_name_label');
+        await setToggle(toggle, true);
+        await setToggle(toggle, false);
     });
 
     test('Back button should navigate to credentials page', async ({ page }) => {
@@ -109,4 +129,3 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
     });
 
 });
-

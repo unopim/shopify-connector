@@ -48,7 +48,7 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await page.locator('div').filter({ hasText: /^Choose Family$/ }).click();
         await page.getByText('Default', { exact: true }).click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Mapping saved successfully')).toBeVisible();
+        await expect(page.getByText('Import Mapping saved successfully')).toBeVisible();
 
     });
 
