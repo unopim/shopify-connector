@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
             'invalid_access_token_response'  => 'Shopify n\'a pas renvoyé de jeton d\'accès valide.',
             'system_update_required'         => 'Mise à jour du système requise. Veuillez exécuter php artisan migrate.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'Identifiants Shopify invalides fournis.',
+                'invalid-credential'           => 'Identifiants invalides. Les identifiants sont désactivés, incorrects ou inexistants.',
+                'disabled-credential'          => 'Les identifiants Shopify sont désactivés.',
+            ],
             'index'                          => [
                 'title'                 => 'Identifiants Shopify',
                 'create'                => 'Créer un identifiant',

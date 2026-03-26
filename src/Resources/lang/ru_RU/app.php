@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => 'Не удалось обновить токен доступа Shopify.',
             'invalid_access_token_response'  => 'Shopify не вернул действительный токен доступа.',
             'system_update_required'         => 'Требуется обновление системы. Пожалуйста, выполните php artisan migrate.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'Указаны недействительные учетные данные Shopify.',
+                'invalid-credential'           => 'Недействительные учетные данные. Учетные данные отключены, неверны или не существуют.',
+                'disabled-credential'          => 'Учетные данные Shopify отключены.',
+            ],
             'index'                          => [
                 'title'                 => 'Учетные данные Shopify',
                 'create'                => 'Создать учетные данные',

@@ -71,6 +71,11 @@ return [
             'unable_to_refresh_access_token' => 'Unable to refresh Shopify access token.',
             'invalid_access_token_response'  => 'Shopify did not return a valid access token.',
             'system_update_required'         => 'System update required. Please run php artisan migrate.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'Invalid Shopify credentials provided.',
+                'invalid-credential'           => 'Invalid credential. The credential is disabled, incorrect, or does not exist.',
+                'disabled-credential'          => 'Shopify credential is disabled.',
+            ],
             'index'                          => [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',

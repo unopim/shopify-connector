@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => 'No se pudo actualizar el token de acceso de Shopify.',
             'invalid_access_token_response'  => 'Shopify no devolvió un token de acceso válido.',
             'system_update_required'         => 'Se requiere una actualización del sistema. Por favor, ejecute php artisan migrate.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'Se proporcionaron credenciales de Shopify no válidas.',
+                'invalid-credential'           => 'Credenciales no válidas. Las credenciales están deshabilitadas, son incorrectas o no existen.',
+                'disabled-credential'          => 'Las credenciales de Shopify están deshabilitadas.',
+            ],
             'index'                          => [
                 'title'                 => 'Credenciales de Shopify',
                 'create'                => 'Crear Credencial',

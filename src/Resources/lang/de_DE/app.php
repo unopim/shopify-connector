@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => 'Shopify-Zugriffstoken konnte nicht aktualisiert werden.',
             'invalid_access_token_response'  => 'Shopify hat keinen gültigen Zugriffstoken zurückgegeben.',
             'system_update_required'         => 'Systemaktualisierung erforderlich. Bitte führen Sie php artisan migrate aus.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'Ungültige Shopify-Zugangsdaten angegeben.',
+                'invalid-credential'           => 'Ungültige Zugangsdaten. Die Zugangsdaten sind deaktiviert, falsch oder existieren nicht.',
+                'disabled-credential'          => 'Shopify-Zugangsdaten sind deaktiviert.',
+            ],
             'index'                          => [
                 'title'                 => 'Shopify-Anmeldeinformationen',
                 'create'                => 'Anmeldeinformationen erstellen',

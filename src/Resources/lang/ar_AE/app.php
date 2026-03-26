@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => 'تعذر تحديث رمز وصول Shopify.',
             'invalid_access_token_response'  => 'لم تُرجِع Shopify رمز وصول صالحًا.',
             'system_update_required'         => 'مطلوب تحديث للنظام. يرجى تشغيل php artisan migrate.',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'تم توفير بيانات اعتماد Shopify غير صالحة.',
+                'invalid-credential'           => 'بيانات اعتماد غير صالحة. بيانات الاعتماد معطلة أو غير صحيحة أو غير موجودة.',
+                'disabled-credential'          => 'بيانات اعتماد Shopify معطلة.',
+            ],
             'index'                          => [
                 'title'                 => 'بيانات اعتماد شوبفاي',
                 'create'                => 'إنشاء بيانات اعتماد',
@@ -128,6 +133,7 @@ return [
 
             'errors' => [
                 'invalid-credential' => 'بيانات الاعتماد غير صالحة. بيانات الاعتماد معطلة أو غير صحيحة',
+                'invalid-locale'     => 'لغة غير صالحة. يرجى تعيين اللغة في قسم تعديل بيانات الاعتماد.',
             ],
         ],
         'import' => [

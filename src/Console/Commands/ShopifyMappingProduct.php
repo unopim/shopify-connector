@@ -68,7 +68,7 @@ class ShopifyMappingProduct extends Command
         $this->jobinstanceId = $jobTrackHighestId->id + 1;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $shopUrl = $input->getArgument('shopUrl');
         $onlyNew = filter_var($input->getOption('onlynew'), FILTER_VALIDATE_BOOLEAN);

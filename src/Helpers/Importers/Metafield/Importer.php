@@ -113,7 +113,7 @@ class Importer extends AbstractImporter
     {
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
         $this->credentialArray = [
             'credentialId'         => $this->credential?->id,

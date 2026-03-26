@@ -242,7 +242,7 @@ class Importer extends AbstractImporter
 
         $this->credential = $this->shopifyRepository->find($filters['credentials'] ?? null);
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
         $this->locale = $filters['locale'] ?? null;
         $this->shopifyLocale = $this->resolveShopifyLocale($this->locale);
@@ -273,7 +273,7 @@ class Importer extends AbstractImporter
     {
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Disabled Shopify credential');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.disabled-credential'));
         }
 
         $this->credentialArray = [

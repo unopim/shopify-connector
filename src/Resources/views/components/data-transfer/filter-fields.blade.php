@@ -57,7 +57,7 @@
 @endphp
 
 <v-filter-fields
-    entityType="{{ $entityType }}"
+    entity-type="{{ $entityType }}"
     exporters="{{ $exporterConfig }}"
     values="{{ json_encode($values) }}"
     old="{{ json_encode(old()) }}"

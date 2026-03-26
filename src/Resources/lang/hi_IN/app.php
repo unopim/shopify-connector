@@ -69,6 +69,11 @@ return [
             'unable_to_refresh_access_token' => 'Shopify एक्सेस टोकन को रिफ्रेश नहीं किया जा सका।',
             'invalid_access_token_response'  => 'Shopify ने मान्य एक्सेस टोकन वापस नहीं किया।',
             'system_update_required'         => 'सिस्टम अपडेट आवश्यक है। कृपया php artisan migrate चलाएँ।',
+            'errors'                         => [
+                'invalid-credentials-provided' => 'अमान्य Shopify क्रेडेंशियल प्रदान किए गए।',
+                'invalid-credential'           => 'अमान्य क्रेडेंशियल। क्रेडेंशियल निष्क्रिय है, गलत है या मौजूद नहीं है।',
+                'disabled-credential'          => 'Shopify क्रेडेंशियल निष्क्रिय है।',
+            ],
             'index'                          => [
                 'title'                 => 'Shopify प्रमाण पत्र',
                 'create'                => 'प्रमाण पत्र बनाएं',
@@ -129,6 +134,7 @@ return [
 
             'errors' => [
                 'invalid-credential' => 'अमान्य क्रेडेंशियल। क्रेडेंशियल या तो अक्षम है या गलत है',
+                'invalid-locale'     => 'अमान्य लोकेल। कृपया क्रेडेंशियल एडिट सेक्शन में लोकेल मैप करें।',
             ],
         ],
         'import' => [

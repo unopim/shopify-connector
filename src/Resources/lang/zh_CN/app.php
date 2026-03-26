@@ -68,6 +68,11 @@ return [
             'unable_to_refresh_access_token' => '无法刷新 Shopify 访问令牌。',
             'invalid_access_token_response'  => 'Shopify 未返回有效的访问令牌。',
             'system_update_required'         => '需要进行系统更新。请运行 php artisan migrate。',
+            'errors'                         => [
+                'invalid-credentials-provided' => '提供的 Shopify 凭证无效。',
+                'invalid-credential'           => '凭证无效。凭证已禁用、不正确或不存在。',
+                'disabled-credential'          => 'Shopify 凭证已禁用。',
+            ],
             'index'                          => [
                 'title'                 => 'Shopify 凭据',
                 'create'                => '创建凭据',
