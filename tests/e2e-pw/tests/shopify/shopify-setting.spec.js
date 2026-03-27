@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.use({ storageState: 'storage/auth.json' }); // Reuse login session
 // test.use({ launchOptions: { slowMo: 1000 } }); // Slow down actions by 1 second
 
+const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
 
 test.describe('UnoPim Shopify setting tab Navigation', () => {
     const toggleById = (page, inputId) => {
@@ -38,7 +39,7 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         await page.getByRole('link', { name: 'Settings', exact: true }).click()
     });
     test('Verify page loads correctly', async ({ page }) => {
-        await expect(page).toHaveURL('http://localhost:8000/admin/shopify/export/settings/2');
+        await expect(page).toHaveURL(new URL('/admin/shopify/export/settings/2', baseUrl).toString());
     });
 
     test('Toggle Named Tags Export setting', async ({ page }) => {
@@ -52,7 +53,6 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         await setToggle(toggle, true);
         await setToggle(toggle, false);
     });
-
 
     test('Enable toggle and select option from dependent dropdown', async ({ page }) => {
 

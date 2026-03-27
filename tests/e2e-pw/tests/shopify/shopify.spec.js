@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.use({ storageState: 'storage/auth.json' }); // Reuse login session
 
+const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
+
 test.describe('UnoPim Shopify Plugin Navigation', () => {
     test('should navigate to Shopify credentials page', async ({ page }) => {
         // Go directly to the admin dashboard (User is already logged in)
@@ -11,7 +13,7 @@ test.describe('UnoPim Shopify Plugin Navigation', () => {
         const shopifyLink = page.getByRole('link', { name: /Shopify/i });
         await shopifyLink.click();
         // Verify navigation to the Shopify credentials page
-        await expect(page).toHaveURL('http://localhost:8000/admin/shopify/credentials');
+        await expect(page).toHaveURL(new URL('/admin/shopify/credentials', baseUrl).toString());
 
         // Verify the Shopify icon and text are visible
         await expect(page.locator('.icon-shopify')).toBeVisible();
