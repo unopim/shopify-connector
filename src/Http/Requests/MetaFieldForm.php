@@ -14,8 +14,8 @@ class MetaFieldForm extends FormRequest
     public function rules()
     {
         return [
-            'ownerType'   => 'required',
-            'code'        => 'required',
+            'ownerType' => 'required',
+            'code'      => 'required',
         ];
     }
 }

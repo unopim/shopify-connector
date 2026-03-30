@@ -73,7 +73,7 @@ return [
                 'invalid-credential'           => '凭证无效。凭证已禁用、不正确或不存在。',
                 'disabled-credential'          => 'Shopify 凭证已禁用。',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'Shopify 凭据',
                 'create'                => '创建凭据',
                 'url'                   => 'Shopify URL',

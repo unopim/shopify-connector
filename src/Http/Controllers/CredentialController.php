@@ -30,7 +30,7 @@ class CredentialController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -116,7 +116,7 @@ class CredentialController extends Controller
 
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [$e->getMessage()],
+                    'shopUrl' => [$e->getMessage()],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }

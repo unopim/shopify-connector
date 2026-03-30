@@ -13,8 +13,10 @@ use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\FieldProcessor;
 use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
+use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Product\Repositories\ProductRepository;
+use Webkul\Shopify\Helpers\Iterator\ProductIterator;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
@@ -267,7 +269,7 @@ class Importer extends AbstractImporter
     /**
      * Import instance.
      *
-     * @return \Webkul\DataTransfer\Helpers\Source
+     * @return Source
      */
     public function getSource()
     {
@@ -286,7 +288,7 @@ class Importer extends AbstractImporter
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
-        $products = new \Webkul\Shopify\Helpers\Iterator\ProductIterator($this->credentialArray, $this->shopifyLocale);
+        $products = new ProductIterator($this->credentialArray, $this->shopifyLocale);
 
         return $products;
     }
@@ -574,7 +576,7 @@ class Importer extends AbstractImporter
                     $this->channel => array_merge($channelSpecific, $mchannel_specific ?? []),
                 ],
 
-                'locale_specific'  => [
+                'locale_specific' => [
                     $this->locale => array_merge($localeSpecific, $mlocale_specific ?? []),
                 ],
 
@@ -797,7 +799,7 @@ class Importer extends AbstractImporter
                     'channel_specific' => [
                         $this->channel => array_merge($vchannel_specific, $vMdchannel_specific),
                     ],
-                    'locale_specific'  => [
+                    'locale_specific' => [
                         $this->locale => array_merge($vlocale_specific, $vMdlocale_specific),
                     ],
                     'channel_locale_specific' => [
@@ -1021,7 +1023,7 @@ class Importer extends AbstractImporter
                 'channel_specific' => [
                     $this->channel => array_merge($channelSpecific, $vchannel_specific, $mchannel_specific, $metaFieldChannelSpecific),
                 ],
-                'locale_specific'  => [
+                'locale_specific' => [
                     $this->locale => array_merge($localeSpecific, $vlocale_specific, $mlocale_specific, $metaFieldLocaleSpecific),
                 ],
                 'channel_locale_specific' => [

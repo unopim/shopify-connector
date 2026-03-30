@@ -19,8 +19,8 @@ class ShopifyFamilyValidator extends JobValidator
      * Names to be used for attributes during generation of error message
      */
     protected array $attributeNames = [
-        'filters.credentials'       => 'Credentials',
-        'filters.locale'            => 'Locale',
-        'filters.attributegroupid'  => 'AttributeGroupId',
+        'filters.credentials'      => 'Credentials',
+        'filters.locale'           => 'Locale',
+        'filters.attributegroupid' => 'AttributeGroupId',
     ];
 }

@@ -76,7 +76,7 @@ return [
                 'invalid-credential'           => 'Invalid credential. The credential is disabled, incorrect, or does not exist.',
                 'disabled-credential'          => 'Shopify credential is disabled.',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'Shopify Credentials',
                 'create'                => 'Create Credential',
                 'url'                   => 'Shopify URL',
@@ -125,7 +125,7 @@ return [
                     ],
                 ],
 
-                'unit'          => [
+                'unit' => [
                     'title'     => 'Shopify unit Mapping',
                     'weight'    => 'Unit Weight',
                     'volume'    => 'Unit Volume',
@@ -231,31 +231,31 @@ return [
         ],
         'metafield' => [
             'datagrid' => [
-                'definitiontype'   => 'Used For',
-                'attribute-label'  => 'Unopim Attribute',
-                'definitionName'   => 'Definition name',
-                'contentTypeName'  => 'Type',
-                'pin'              => 'Pin',
+                'definitiontype'  => 'Used For',
+                'attribute-label' => 'Unopim Attribute',
+                'definitionName'  => 'Definition name',
+                'contentTypeName' => 'Type',
+                'pin'             => 'Pin',
             ],
-            'index'    => [
-                'title'                     => 'Metafield definitions',
-                'create'                    => 'Add definition',
-                'definitiontype'            => 'Used For',
-                'attribute'                 => 'UnoPim Attribute',
-                'ContentTypeName'           => 'Type',
-                'attributes'                => 'Definition Name',
-                'urlvalidation'             => 'Validation',
-                'urlvalidationdata'         => 'Values must be prefixed with: “HTTPS”, “HTTP”, “mailto:”, “sms:”, or “tel:”',
-                'name_space_key'            => 'Namespace and key',
-                'description'               => 'Description',
-                'onevalue'                  => 'One Value',
-                'listvalue'                 => 'List of Values',
-                'validation'                => 'Validations',
-                'maxvalue'                  => 'Max value',
-                'adminFilterable'           => 'Filtering for products',
-                'smartCollectionCondition'  => 'Smart collections',
-                'storefronts'               => 'Storefronts access',
-                'unit'                      => [
+            'index' => [
+                'title'                    => 'Metafield definitions',
+                'create'                   => 'Add definition',
+                'definitiontype'           => 'Used For',
+                'attribute'                => 'UnoPim Attribute',
+                'ContentTypeName'          => 'Type',
+                'attributes'               => 'Definition Name',
+                'urlvalidation'            => 'Validation',
+                'urlvalidationdata'        => 'Values must be prefixed with: “HTTPS”, “HTTP”, “mailto:”, “sms:”, or “tel:”',
+                'name_space_key'           => 'Namespace and key',
+                'description'              => 'Description',
+                'onevalue'                 => 'One Value',
+                'listvalue'                => 'List of Values',
+                'validation'               => 'Validations',
+                'maxvalue'                 => 'Max value',
+                'adminFilterable'          => 'Filtering for products',
+                'smartCollectionCondition' => 'Smart collections',
+                'storefronts'              => 'Storefronts access',
+                'unit'                     => [
                     'minvalue' => '',
                     'maxvalue' => '',
                 ],
@@ -277,11 +277,11 @@ return [
                 'volume'                 => 'Volume',
             ],
 
-            'edit'     => [
-                'title'           => 'Edit Metafield Definition',
-                'back-btn'        => 'Back',
-                'update'          => 'Update',
-                'save'            => 'Save',
+            'edit' => [
+                'title'    => 'Edit Metafield Definition',
+                'back-btn' => 'Back',
+                'update'   => 'Update',
+                'save'     => 'Save',
             ],
             'delete-success'      => 'Metafield Definition Deleted successfully',
             'update-success'      => 'MetaField Definition Updated successfully',

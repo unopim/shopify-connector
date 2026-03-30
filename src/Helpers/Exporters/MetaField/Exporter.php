@@ -270,7 +270,7 @@ class Exporter extends AbstractExporter
             'access' => [
                 'storefront' => $rowData['storefronts'] ? 'PUBLIC_READ' : 'NONE',
             ],
-            'ownerType'  => $rowData['ownerType'] == 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
+            'ownerType' => $rowData['ownerType'] == 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
         ];
 
         if (! empty($rowData['name_space_key'])) {

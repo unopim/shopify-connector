@@ -64,10 +64,10 @@ it('should update the export mapping with metafield mapping', function () {
     $weight = Attribute::factory()->create(['type' => 'text']);
 
     $exportMapping = [
-        'title'               => $name->code,
-        'descriptionHtml'     => $description->code,
-        'price'               => $price->code,
-        'weight'              => $weight->code,
+        'title'           => $name->code,
+        'descriptionHtml' => $description->code,
+        'price'           => $price->code,
+        'weight'          => $weight->code,
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)

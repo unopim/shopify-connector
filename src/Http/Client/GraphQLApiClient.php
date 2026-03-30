@@ -384,7 +384,7 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
-        'getTotalProductCount'  => [
+        'getTotalProductCount' => [
             'query'  => 'query { productsCount(query: "id:>=1") { count } }',
             'method' => 'POST',
         ],

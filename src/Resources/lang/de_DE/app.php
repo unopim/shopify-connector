@@ -37,7 +37,7 @@ return [
                 'delete' => 'Löschen',
             ],
 
-            'metafield'  => [
+            'metafield' => [
                 'create'      => 'Metafeld erstellen',
                 'edit'        => 'Metafeld bearbeiten',
                 'delete'      => 'Metafeld löschen',
@@ -73,7 +73,7 @@ return [
                 'invalid-credential'           => 'Ungültige Zugangsdaten. Die Zugangsdaten sind deaktiviert, falsch oder existieren nicht.',
                 'disabled-credential'          => 'Shopify-Zugangsdaten sind deaktiviert.',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'Shopify-Anmeldeinformationen',
                 'create'                => 'Anmeldeinformationen erstellen',
                 'url'                   => 'Shopify-URL',
@@ -197,32 +197,32 @@ return [
             'attribute-groups' => 'Attributgruppen',
         ],
 
-        'metafield'     => [
+        'metafield' => [
             'datagrid' => [
-                'definitiontype'   => 'Verwendet für',
-                'attribute-label'  => 'Unopim-Attribut',
-                'definitionName'   => 'Definitionsname',
-                'contentTypeName'  => 'Typ',
-                'pin'              => 'Pin',
+                'definitiontype'  => 'Verwendet für',
+                'attribute-label' => 'Unopim-Attribut',
+                'definitionName'  => 'Definitionsname',
+                'contentTypeName' => 'Typ',
+                'pin'             => 'Pin',
             ],
-            'index'    => [
-                'title'                     => 'Metafeldd Definitionen',
-                'create'                    => 'Definition hinzufügen',
-                'definitiontype'            => 'Verwendet für',
-                'attribute'                 => 'UnoPim-Attribut',
-                'ContentTypeName'           => 'Typ',
-                'attributes'                => 'Definitionsname',
-                'urlvalidation'             => 'Validierung',
-                'urlvalidationdata'         => 'Werte müssen mit „HTTPS“, „HTTP“, „mailto:“, „sms:“ oder „tel:“ beginnen',
-                'name_space_key'            => 'Namensraum und Schlüssel',
-                'description'               => 'Beschreibung',
-                'onevalue'                  => 'Einzelwert',
-                'listvalue'                 => 'Liste von Werten',
-                'validation'                => 'Validierungen',
-                'maxvalue'                  => 'Maximalwert',
-                'adminFilterable'           => 'Filterung für Produkte',
-                'smartCollectionCondition'  => 'Intelligente Sammlungen',
-                'storefronts'               => 'Storefront-Zugriff',
+            'index' => [
+                'title'                    => 'Metafeldd Definitionen',
+                'create'                   => 'Definition hinzufügen',
+                'definitiontype'           => 'Verwendet für',
+                'attribute'                => 'UnoPim-Attribut',
+                'ContentTypeName'          => 'Typ',
+                'attributes'               => 'Definitionsname',
+                'urlvalidation'            => 'Validierung',
+                'urlvalidationdata'        => 'Werte müssen mit „HTTPS“, „HTTP“, „mailto:“, „sms:“ oder „tel:“ beginnen',
+                'name_space_key'           => 'Namensraum und Schlüssel',
+                'description'              => 'Beschreibung',
+                'onevalue'                 => 'Einzelwert',
+                'listvalue'                => 'Liste von Werten',
+                'validation'               => 'Validierungen',
+                'maxvalue'                 => 'Maximalwert',
+                'adminFilterable'          => 'Filterung für Produkte',
+                'smartCollectionCondition' => 'Intelligente Sammlungen',
+                'storefronts'              => 'Storefront-Zugriff',
             ],
 
             'type' => [
@@ -241,11 +241,11 @@ return [
                 'volume'                 => 'Volumen',
             ],
 
-            'edit'     => [
-                'title'           => 'Metafeldd Definition bearbeiten',
-                'back-btn'        => 'Zurück',
-                'update'          => 'Aktualisieren',
-                'save'            => 'Speichern',
+            'edit' => [
+                'title'    => 'Metafeldd Definition bearbeiten',
+                'back-btn' => 'Zurück',
+                'update'   => 'Aktualisieren',
+                'save'     => 'Speichern',
             ],
             'delete-success'      => 'Metafeldd Definition erfolgreich gelöscht',
             'update-success'      => 'Metafeldd Definition erfolgreich aktualisiert',

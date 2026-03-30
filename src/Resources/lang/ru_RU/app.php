@@ -73,7 +73,7 @@ return [
                 'invalid-credential'           => 'Недействительные учетные данные. Учетные данные отключены, неверны или не существуют.',
                 'disabled-credential'          => 'Учетные данные Shopify отключены.',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'Учетные данные Shopify',
                 'create'                => 'Создать учетные данные',
                 'url'                   => 'Shopify URL',

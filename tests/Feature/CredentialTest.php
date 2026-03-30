@@ -105,13 +105,13 @@ it('should update the shopify credential successfully', function () {
     ]);
 
     $updatedData = [
-        'shopUrl'       => 'https://test.myshopify.com',
-        'clientId'      => 'test_client_id',
-        'clientSecret'  => 'test_client_secret',
-        'storeLocales'  => json_encode([['locale' => 'en', 'primary' => true]]),
-        'salesChannel'  => 'online',
-        'locations'     => 'location1',
-        'apiVersion'    => '2023-04',
+        'shopUrl'      => 'https://test.myshopify.com',
+        'clientId'     => 'test_client_id',
+        'clientSecret' => 'test_client_secret',
+        'storeLocales' => json_encode([['locale' => 'en', 'primary' => true]]),
+        'salesChannel' => 'online',
+        'locations'    => 'location1',
+        'apiVersion'   => '2023-04',
     ];
 
     $response = $this->put(route('shopify.credentials.update', ['id' => $credential->id]), $updatedData);
@@ -130,13 +130,13 @@ it('should returns the shopify credential edit page, with validation', function 
 
     $shopifyCredential = ShopifyCredentialsConfig::factory()->create();
     $updatedCredential = [
-        'id'            => $shopifyCredential->id,
-        'clientId'      => '',
-        'clientSecret'  => '',
-        'apiVersion'    => '',
-        'shopUrl'       => '',
-        'storeLocales'  => [],
-        'active'        => 0,
+        'id'           => $shopifyCredential->id,
+        'clientId'     => '',
+        'clientSecret' => '',
+        'apiVersion'   => '',
+        'shopUrl'      => '',
+        'storeLocales' => [],
+        'active'       => 0,
     ];
 
     put(route('shopify.credentials.update', $shopifyCredential->id), $updatedCredential)

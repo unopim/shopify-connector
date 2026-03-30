@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Validator;
 use Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator;
 
 beforeEach(function () {
-    $this->validator = new ShopifyCategoryAndMetafieldValidator();
+    $this->validator = new ShopifyCategoryAndMetafieldValidator;
 });
 
 it('should pass validation with valid data', function () {

@@ -162,7 +162,7 @@ class MetaFieldController extends Controller
         } catch (\Exception $e) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [$e->getMessage()],
+                    'shopUrl' => [$e->getMessage()],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }

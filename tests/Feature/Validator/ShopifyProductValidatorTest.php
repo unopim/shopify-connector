@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Validator;
 use Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator;
 
 beforeEach(function () {
-    $this->validator = new ShopifyProductValidator();
+    $this->validator = new ShopifyProductValidator;
 });
 
 it('should pass validation with valid data', function () {

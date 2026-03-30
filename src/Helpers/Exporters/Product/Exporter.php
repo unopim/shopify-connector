@@ -1519,16 +1519,16 @@ class Exporter extends AbstractExporter
             if (! $url) {
                 $endPoint = 'productMetafields';
                 $variable = [
-                    'id'     => $productId,
-                    'first'  => $first,
+                    'id'    => $productId,
+                    'first' => $first,
                 ];
                 $productType = 'product';
 
                 if ($variantId) {
                     $endPoint = 'productVariantMetafield';
                     $variable = [
-                        'id'     => $variantId,
-                        'first'  => $first,
+                        'id'    => $variantId,
+                        'first' => $first,
                     ];
                     $productType = 'productVariant';
                 }
@@ -1686,10 +1686,10 @@ class Exporter extends AbstractExporter
             return [];
         }
         $fileCreateForMp4 = [
-            'filename'  => $asset['file_name'],
-            'mimeType'  => $asset['mime_type'],
-            'resource'  => strtoupper($asset['file_type']),
-            'fileSize'  => (string) $asset['file_size'],
+            'filename' => $asset['file_name'],
+            'mimeType' => $asset['mime_type'],
+            'resource' => strtoupper($asset['file_type']),
+            'fileSize' => (string) $asset['file_size'],
         ];
 
         $videoResponse = $this->requestGraphQlApiAction('stagedUploadsCreate', $this->credentialAsArray, [

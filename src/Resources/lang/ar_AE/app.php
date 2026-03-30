@@ -37,7 +37,7 @@ return [
                 'edit'   => 'تحرير',
                 'delete' => 'حذف',
             ],
-            'metafield'  => [
+            'metafield' => [
                 'create'      => 'إنشاء ميتافيلد',
                 'edit'        => 'تحرير ميتافيلد',
                 'delete'      => 'حذف ميتافيلد',
@@ -73,7 +73,7 @@ return [
                 'invalid-credential'           => 'بيانات اعتماد غير صالحة. بيانات الاعتماد معطلة أو غير صحيحة أو غير موجودة.',
                 'disabled-credential'          => 'بيانات اعتماد Shopify معطلة.',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'بيانات اعتماد شوبفاي',
                 'create'                => 'إنشاء بيانات اعتماد',
                 'url'                   => 'رابط شوبفاي',
@@ -196,32 +196,32 @@ return [
             'locale'           => 'اللغة',
             'attribute-groups' => 'مجموعات السمات',
         ],
-        'metafield'     => [
+        'metafield' => [
             'datagrid' => [
-                'definitiontype'   => 'تستخدم لـ',
-                'attribute-label'  => 'سمة Unopim',
-                'definitionName'   => 'اسم التعريف',
-                'contentTypeName'  => 'نوع',
-                'pin'              => 'دبوس',
+                'definitiontype'  => 'تستخدم لـ',
+                'attribute-label' => 'سمة Unopim',
+                'definitionName'  => 'اسم التعريف',
+                'contentTypeName' => 'نوع',
+                'pin'             => 'دبوس',
             ],
-            'index'    => [
-                'title'                     => 'تعريفات الحقول الوصفية',
-                'create'                    => 'إضافة تعريف',
-                'definitiontype'            => 'تستخدم لـ',
-                'attribute'                 => 'سمة UnoPim',
-                'ContentTypeName'           => 'نوع',
-                'attributes'                => 'اسم التعريف',
-                'urlvalidation'             => 'التحقق من صحة URL',
-                'urlvalidationdata'         => 'يجب أن تكون القيم مسبوقة بـ: "HTTPS"، "HTTP"، "mailto:"، "sms:"، أو "tel:"',
-                'name_space_key'            => 'المجال والمفتاح',
-                'description'               => 'وصف',
-                'onevalue'                  => 'قيمة واحدة',
-                'listvalue'                 => 'قائمة القيم',
-                'validation'                => 'التحقق',
-                'maxvalue'                  => 'القيمة القصوى',
-                'adminFilterable'           => 'التصفية للمنتجات',
-                'smartCollectionCondition'  => 'مجموعات ذكية',
-                'storefronts'               => 'الوصول إلى الواجهات الأمامية',
+            'index' => [
+                'title'                    => 'تعريفات الحقول الوصفية',
+                'create'                   => 'إضافة تعريف',
+                'definitiontype'           => 'تستخدم لـ',
+                'attribute'                => 'سمة UnoPim',
+                'ContentTypeName'          => 'نوع',
+                'attributes'               => 'اسم التعريف',
+                'urlvalidation'            => 'التحقق من صحة URL',
+                'urlvalidationdata'        => 'يجب أن تكون القيم مسبوقة بـ: "HTTPS"، "HTTP"، "mailto:"، "sms:"، أو "tel:"',
+                'name_space_key'           => 'المجال والمفتاح',
+                'description'              => 'وصف',
+                'onevalue'                 => 'قيمة واحدة',
+                'listvalue'                => 'قائمة القيم',
+                'validation'               => 'التحقق',
+                'maxvalue'                 => 'القيمة القصوى',
+                'adminFilterable'          => 'التصفية للمنتجات',
+                'smartCollectionCondition' => 'مجموعات ذكية',
+                'storefronts'              => 'الوصول إلى الواجهات الأمامية',
             ],
 
             'type' => [
@@ -240,11 +240,11 @@ return [
                 'volume'                 => 'حجم',
             ],
 
-            'edit'     => [
-                'title'           => 'تحرير تعريف الحقل الوصفي',
-                'back-btn'        => 'رجوع',
-                'update'          => 'تحديث',
-                'save'            => 'حفظ',
+            'edit' => [
+                'title'    => 'تحرير تعريف الحقل الوصفي',
+                'back-btn' => 'رجوع',
+                'update'   => 'تحديث',
+                'save'     => 'حفظ',
             ],
             'delete-success'      => 'تم حذف تعريف الحقل الوصفي بنجاح',
             'update-success'      => 'تم تحديث تعريف الحقل الوصفي بنجاح',

@@ -6,7 +6,7 @@ return [
         'importer'  => 'Webkul\Shopify\Helpers\Importers\Category\Importer',
         'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyCategoryAndAttrValidator',
         'filters'   => [
-            'fields'  => [
+            'fields' => [
                 [
                     'name'       => 'credentials',
                     'title'      => 'shopify::app.shopify.job.credentials',

@@ -74,7 +74,7 @@ return [
                 'invalid-credential'           => 'अमान्य क्रेडेंशियल। क्रेडेंशियल निष्क्रिय है, गलत है या मौजूद नहीं है।',
                 'disabled-credential'          => 'Shopify क्रेडेंशियल निष्क्रिय है।',
             ],
-            'index'                          => [
+            'index' => [
                 'title'                 => 'Shopify प्रमाण पत्र',
                 'create'                => 'प्रमाण पत्र बनाएं',
                 'url'                   => 'Shopify URL',
