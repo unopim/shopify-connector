@@ -27,7 +27,7 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
     steps:
-      - name: Checkout
+      - name: Checkout Shopify Package
         uses: actions/checkout@v4
 
       - name: Setup PHP
@@ -35,13 +35,30 @@ jobs:
         with:
           php-version: ${{ matrix.php-versions }}
           extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
-          ini-values: error_reporting=E_ALL
           tools: composer:v2
 
-      - name: Running Composer Install
-        run: composer install
+      - name: Clone UnoPim
+        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
 
-      - name: Setting Environment
+      - name: Move Package to UnoPim
+        run: |
+          mkdir -p core/packages/Webkul/Shopify
+          rsync -av ./ core/packages/Webkul/Shopify --exclude core
+
+      - name: Install UnoPim Dependencies
+        working-directory: core
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Register Local Package
+        working-directory: core
+        run: composer config repositories.shopify path packages/Webkul/Shopify
+
+      - name: Require Shopify Package (local)
+        working-directory: core
+        run: composer require unopim/shopify-connector:@dev --no-interaction --prefer-source
+
+      - name: Setup Environment
+        working-directory: core
         run: |
           cp .env.example .env
           sed -i "s|^\(APP_ENV=\s*\).*$|\1testing|" .env
@@ -50,10 +67,22 @@ jobs:
           sed -i "s|^\(DB_DATABASE=\s*\).*$|\1unopim|" .env
           sed -i "s|^\(DB_USERNAME=\s*\).*$|\1root|" .env
           sed -i "s|^\(DB_PASSWORD=\s*\).*$|\1root|" .env
-          cat .env
 
-      - name: Running UnoPim Installer
+      - name: Install UnoPim
+        working-directory: core
         run: php artisan unopim:install --skip-env-check --skip-admin-creation
 
-      - name: Running Pest Test
-        run: vendor/bin/pest --parallel --colors=always
+      - name: Bind Shopify Tests to Pest
+        working-directory: core
+        run: |
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
+            
+      - name: Install Shopify Package
+        working-directory: core
+        run: |
+          php artisan shopify-package:install
+          php artisan optimize:clear
+
+      - name: Run Shopify Tests
+        working-directory: core
+        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
