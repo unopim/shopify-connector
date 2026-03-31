@@ -87,12 +87,12 @@ class ShopifyMappingProduct extends Command
         }
         $output->writeln('<info>Mapping migration process start </info>');
         $this->credentialArray = [
-            'credentialId'         => $this->credential?->id,
-            'shopUrl'              => $this->credential?->shopUrl,
-            'accessToken'          => $this->credential?->accessToken,
-            'apiVersion'           => $this->credential?->apiVersion,
-            'clientId'             => $this->credential?->clientId,
-            'clientSecret'         => $this->credential?->clientSecret,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => $this->credential?->accessTokenExpiresAt,
         ];
 
@@ -137,7 +137,7 @@ class ShopifyMappingProduct extends Command
         if ($page) {
             $mutationType = 'productAllvalueGettingByCursor';
             $variable = [
-                'first'       => 10,
+                'first' => 10,
                 'afterCursor' => $page,
             ];
         }

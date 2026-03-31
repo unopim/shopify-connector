@@ -22,10 +22,10 @@ it('should update the import mapping', function () {
     $weight = Attribute::factory()->create(['type' => 'text']);
 
     $importMapping = [
-        'title'           => $name->code,
+        'title' => $name->code,
         'descriptionHtml' => $description->code,
-        'price'           => $price->code,
-        'weight'          => $weight->code,
+        'price' => $price->code,
+        'weight' => $weight->code,
     ];
 
     post(route('shopify.import-mappings.create'), $importMapping)

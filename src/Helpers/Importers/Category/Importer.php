@@ -120,12 +120,12 @@ class Importer extends AbstractImporter
         $this->importMapping = $this->shopifyExportmapping->find(3);
 
         $this->credentialArray = [
-            'credentialId'         => $this->credential?->id,
-            'shopUrl'              => $this->credential?->shopUrl,
-            'accessToken'          => $this->credential?->accessToken,
-            'apiVersion'           => $this->credential?->apiVersion,
-            'clientId'             => $this->credential?->clientId,
-            'clientSecret'         => $this->credential?->clientSecret,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
@@ -220,7 +220,7 @@ class Importer extends AbstractImporter
          * Update import batch summary
          */
         $batch = $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
+            'state' => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),
@@ -239,8 +239,8 @@ class Importer extends AbstractImporter
         $categ = $this->categoryRepository->findOneByField('code', $collection['node']['handle']);
 
         $data = [
-            'code'            => $collection['node']['handle'],
-            'parent_id'       => $categ?->parent_id ?? $this->rootCategoryId,
+            'code' => $collection['node']['handle'],
+            'parent_id' => $categ?->parent_id ?? $this->rootCategoryId,
             'additional_data' => $categ ? $categ->toArray()['additional_data'] : [],
         ];
 
@@ -260,7 +260,7 @@ class Importer extends AbstractImporter
             try {
                 $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credentialArray, [
                     'resourceId' => $collection['node']['id'],
-                    'locale'     => $shopifyLocaleForCurrent,
+                    'locale' => $shopifyLocaleForCurrent,
                 ]);
 
                 $translations = collect($response['body']['data']['translatableResource']['translations'] ?? []);

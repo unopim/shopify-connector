@@ -11,7 +11,7 @@ class ShopifyCategoryAndAttrValidator extends JobValidator
      */
     protected array $rules = [
         'filters.credentials' => 'required|integer|min:0',
-        'filters.locale'      => 'required',
+        'filters.locale' => 'required',
     ];
 
     /**
@@ -19,6 +19,6 @@ class ShopifyCategoryAndAttrValidator extends JobValidator
      */
     protected array $attributeNames = [
         'filters.credentials' => 'Credentials',
-        'filters.locale'      => 'Locale',
+        'filters.locale' => 'Locale',
     ];
 }

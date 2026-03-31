@@ -82,7 +82,7 @@ class AttributeIterator implements \Iterator
             $variables = [];
             if ($this->cursor) {
                 $variables = [
-                    'first'       => 50,
+                    'first' => 50,
                     'afterCursor' => $this->cursor,
                 ];
             }
@@ -166,10 +166,10 @@ class AttributeIterator implements \Iterator
 
                 if (! isset($optionsArray[$name])) {
                     $optionsArray[$name] = [
-                        'name'   => $name,
-                        'label'  => $optionLabel,
-                        'type'   => 'select',
-                        'code'   => array_values(array_unique($modifiedArray)),
+                        'name' => $name,
+                        'label' => $optionLabel,
+                        'type' => 'select',
+                        'code' => array_values(array_unique($modifiedArray)),
                         'labels' => $optionValueLabels,
                     ];
                 } else {
@@ -203,7 +203,7 @@ class AttributeIterator implements \Iterator
         try {
             $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credential, [
                 'resourceId' => $resourceId,
-                'locale'     => $this->shopifyLocale,
+                'locale' => $this->shopifyLocale,
             ]);
 
             $translations = $response['body']['data']['translatableResource']['translations'] ?? [];

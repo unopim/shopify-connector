@@ -14,11 +14,11 @@ class CredentialForm extends FormRequest
     public function rules()
     {
         return [
-            'shopUrl'     => 'required|url:http,https|unique:wk_shopify_credentials_config',
+            'shopUrl' => 'required|url:http,https|unique:wk_shopify_credentials_config',
             'accessToken' => 'nullable',
-            'clientId'    => 'required',
-            'clientSecret'=> 'required',
-            'apiVersion'  => 'required',
+            'clientId' => 'required',
+            'clientSecret' => 'required',
+            'apiVersion' => 'required',
         ];
     }
 }

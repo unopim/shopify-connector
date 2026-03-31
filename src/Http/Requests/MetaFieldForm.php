@@ -15,7 +15,7 @@ class MetaFieldForm extends FormRequest
     {
         return [
             'ownerType' => 'required',
-            'code'      => 'required',
+            'code' => 'required',
         ];
     }
 }

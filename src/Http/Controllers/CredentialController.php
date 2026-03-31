@@ -77,7 +77,7 @@ class CredentialController extends Controller
         } catch (\RuntimeException $exception) {
             return new JsonResponse([
                 'errors' => [
-                    'clientId'     => [trans('shopify::app.shopify.credential.token_refresh_failed')],
+                    'clientId' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
                     'clientSecret' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -86,7 +86,7 @@ class CredentialController extends Controller
         if (empty($data['accessToken'])) {
             return new JsonResponse([
                 'errors' => [
-                    'clientId'     => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
+                    'clientId' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
                     'clientSecret' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -97,7 +97,7 @@ class CredentialController extends Controller
         if ($response['code'] != JsonResponse::HTTP_OK) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [trans('shopify::app.shopify.credential.invalid')],
+                    'shopUrl' => [trans('shopify::app.shopify.credential.invalid')],
                     'accessToken' => [trans('shopify::app.shopify.credential.invalid')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -184,10 +184,10 @@ class CredentialController extends Controller
         $requestData = request()->except(['code']);
 
         $this->validate(request(), [
-            'shopUrl'      => 'required|url:http,https',
-            'apiVersion'   => 'required',
-            'accessToken'  => 'nullable',
-            'clientId'     => 'nullable',
+            'shopUrl' => 'required|url:http,https',
+            'apiVersion' => 'required',
+            'accessToken' => 'nullable',
+            'clientId' => 'nullable',
             'clientSecret' => 'nullable',
         ]);
 
@@ -222,7 +222,7 @@ class CredentialController extends Controller
         if ($response['code'] != 200) {
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
-                    'shopUrl'     => trans('shopify::app.shopify.credential.invalid'),
+                    'shopUrl' => trans('shopify::app.shopify.credential.invalid'),
                     'accessToken' => trans('shopify::app.shopify.credential.invalid'),
                 ])
                 ->withInput();

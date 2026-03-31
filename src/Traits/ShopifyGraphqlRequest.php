@@ -54,11 +54,11 @@ trait ShopifyGraphqlRequest
                 $response = $apiClient->request($mutationType, $formatedVariable);
             } catch (\Throwable $e) {
                 Log::error('Shopify token regeneration failed', [
-                    'message'    => $e->getMessage(),
+                    'message' => $e->getMessage(),
                     'credential' => [
                         'credentialId' => $credential['credentialId'] ?? null,
-                        'shopUrl'      => $credential['shopUrl'] ?? null,
-                        'apiVersion'   => $credential['apiVersion'] ?? null,
+                        'shopUrl' => $credential['shopUrl'] ?? null,
+                        'apiVersion' => $credential['apiVersion'] ?? null,
                     ],
                 ]);
             }

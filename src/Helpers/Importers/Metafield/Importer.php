@@ -41,18 +41,18 @@ class Importer extends AbstractImporter
 
     protected $attributeType = [
         'single_line_text_field' => 'text',
-        'json'                   => 'textarea',
-        'number_integer'         => 'text',
-        'multi_line_text_field'  => 'textarea',
-        'color'                  => 'text',
-        'rating'                 => 'text',
-        'url'                    => 'text',
-        'boolean'                => 'boolean',
-        'number_decimal'         => 'text',
-        'dimension'              => 'text',
-        'weight'                 => 'text',
-        'volume'                 => 'text',
-        'date'                   => 'date',
+        'json' => 'textarea',
+        'number_integer' => 'text',
+        'multi_line_text_field' => 'textarea',
+        'color' => 'text',
+        'rating' => 'text',
+        'url' => 'text',
+        'boolean' => 'boolean',
+        'number_decimal' => 'text',
+        'dimension' => 'text',
+        'weight' => 'text',
+        'volume' => 'text',
+        'date' => 'date',
     ];
 
     protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
@@ -117,12 +117,12 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
         $this->credentialArray = [
-            'credentialId'         => $this->credential?->id,
-            'shopUrl'              => $this->credential?->shopUrl,
-            'accessToken'          => $this->credential?->accessToken,
-            'apiVersion'           => $this->credential?->apiVersion,
-            'clientId'             => $this->credential?->clientId,
-            'clientSecret'         => $this->credential?->clientSecret,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -230,9 +230,9 @@ class Importer extends AbstractImporter
             }
 
             $attributeFormate = [
-                'code'        => $attribute['node']['key'],
-                'type'        => $this->attributeType[$metafieldType],
-                'namespace'   => $attribute['node']['namespace'],
+                'code' => $attribute['node']['key'],
+                'type' => $this->attributeType[$metafieldType],
+                'namespace' => $attribute['node']['namespace'],
                 $this->locale => [
                     'name' => $attribute['node']['name'],
                 ],
@@ -269,15 +269,15 @@ class Importer extends AbstractImporter
         $nameSpaceKey = "{$node['namespace']}.{$node['key']}";
 
         $data = [
-            'ownerType'       => $node['ownerType'],
-            'type'            => $typeName,
-            'name_space_key'  => $nameSpaceKey,
-            'code'            => $node['key'],
-            'attribute'       => $node['name'],
-            'pin'             => ! empty($node['pinnedPosition']),
-            'listvalue'       => str_contains($typeName, 'list'),
+            'ownerType' => $node['ownerType'],
+            'type' => $typeName,
+            'name_space_key' => $nameSpaceKey,
+            'code' => $node['key'],
+            'attribute' => $node['name'],
+            'pin' => ! empty($node['pinnedPosition']),
+            'listvalue' => str_contains($typeName, 'list'),
             'ContentTypeName' => $typeName,
-            'apiUrl'          => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+            'apiUrl' => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
         ];
 
         // Handle rating validations efficiently
@@ -330,7 +330,7 @@ class Importer extends AbstractImporter
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
+                    'data' => $batchRows,
                 ]);
 
                 $batchRows = [];
@@ -382,7 +382,7 @@ class Importer extends AbstractImporter
         }
 
         $batch = $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
+            'state' => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),

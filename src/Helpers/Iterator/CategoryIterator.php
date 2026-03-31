@@ -82,7 +82,7 @@ class CategoryIterator implements \Iterator
             ];
             if ($this->cursor) {
                 $variables = [
-                    'first'       => 10,
+                    'first' => 10,
                     'afterCursor' => $this->cursor,
                 ];
 

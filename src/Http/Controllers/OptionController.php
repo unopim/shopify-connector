@@ -61,7 +61,7 @@ class OptionController extends Controller
 
         foreach ($allActivateCredntial as $credentialArray) {
             $allCredential[] = [
-                'id'    => $credentialArray['id'],
+                'id' => $credentialArray['id'],
                 'label' => $credentialArray['shopUrl'],
             ];
         }
@@ -96,7 +96,7 @@ class OptionController extends Controller
 
         foreach ($allActivateChannel as $channel) {
             $allChannel[] = [
-                'id'    => $channel['code'],
+                'id' => $channel['code'],
                 'label' => $channel['name'] ?? $channel['code'],
             ];
         }
@@ -137,7 +137,7 @@ class OptionController extends Controller
 
         $allCurrency = $currencyRepository->get()->map(function ($item) {
             return [
-                'id'    => $item->code,
+                'id' => $item->code,
                 'label' => $item->name,
             ];
         });
@@ -209,7 +209,7 @@ class OptionController extends Controller
 
         $allLocale = array_map(function ($item) {
             return [
-                'id'    => $item['code'],
+                'id' => $item['code'],
                 'label' => $item['name'],
             ];
         }, $allActivateLocale);
@@ -279,17 +279,17 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'         => $attribute->id,
-                'code'       => $attribute->code,
-                'type'       => $attribute?->type,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
+                'type' => $attribute?->type,
                 'validation' => $attribute->validation,
-                'label'      => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
 
         return new JsonResponse([
-            'options'  => $formattedoptions,
-            'page'     => $attributes->currentPage(),
+            'options' => $formattedoptions,
+            'page' => $attributes->currentPage(),
             'lastPage' => $attributes->lastPage(),
         ]);
     }
@@ -331,8 +331,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -377,8 +377,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -427,8 +427,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -454,8 +454,8 @@ class OptionController extends Controller
                 $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
 
                 $formattedoptions[$key][] = [
-                    'id'    => $attribute->id,
-                    'code'  => $attribute->code,
+                    'id' => $attribute->id,
+                    'code' => $attribute->code,
                     'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
                 ];
             }
@@ -486,7 +486,7 @@ class OptionController extends Controller
 
         $attrGroupList = array_map(function ($item) {
             return [
-                'id'    => $item['id'],
+                'id' => $item['id'],
                 'label' => $item['name'] ?? $item['code'],
             ];
         }, $allAttributegroup);
@@ -531,8 +531,8 @@ class OptionController extends Controller
         foreach ($attributesFamilies as $attributesFamily) {
             $translatedLabel = $attributesFamily->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attributesFamily->id,
-                'code'  => $attributesFamily->code,
+                'id' => $attributesFamily->id,
+                'code' => $attributesFamily->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attributesFamily->code}]",
             ];
         }

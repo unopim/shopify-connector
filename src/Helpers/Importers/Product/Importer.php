@@ -254,12 +254,12 @@ class Importer extends AbstractImporter
         $this->currency = $filters['currency'] ?? null;
 
         $this->credentialArray = [
-            'credentialId'         => $this->credential?->id,
-            'shopUrl'              => $this->credential?->shopUrl,
-            'accessToken'          => $this->credential?->accessToken,
-            'apiVersion'           => $this->credential?->apiVersion,
-            'clientId'             => $this->credential?->clientId,
-            'clientSecret'         => $this->credential?->clientSecret,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -279,12 +279,12 @@ class Importer extends AbstractImporter
         }
 
         $this->credentialArray = [
-            'credentialId'         => $this->credential?->id,
-            'shopUrl'              => $this->credential?->shopUrl,
-            'accessToken'          => $this->credential?->accessToken,
-            'apiVersion'           => $this->credential?->apiVersion,
-            'clientId'             => $this->credential?->clientId,
-            'clientSecret'         => $this->credential?->clientSecret,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
@@ -342,16 +342,16 @@ class Importer extends AbstractImporter
                 $cursorVariant = $lastVariant['cursor'];
                 $variables = [
                     'productId' => $productId,
-                    'after'     => $cursorVariant,
+                    'after' => $cursorVariant,
                 ];
 
                 $this->credentialArray = [
-                    'credentialId'         => $this->credential?->id,
-                    'shopUrl'              => $this->credential?->shopUrl,
-                    'accessToken'          => $this->credential?->accessToken,
-                    'apiVersion'           => $this->credential?->apiVersion,
-                    'clientId'             => $this->credential?->clientId,
-                    'clientSecret'         => $this->credential?->clientSecret,
+                    'credentialId' => $this->credential?->id,
+                    'shopUrl' => $this->credential?->shopUrl,
+                    'accessToken' => $this->credential?->accessToken,
+                    'apiVersion' => $this->credential?->apiVersion,
+                    'clientId' => $this->credential?->clientId,
+                    'clientSecret' => $this->credential?->clientSecret,
                     'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
                 ];
 
@@ -507,7 +507,7 @@ class Importer extends AbstractImporter
             $configurableAttributes[] = [
                 'code' => $attribute->code,
                 'name' => $attribute->name,
-                'id'   => $attribute->id,
+                'id' => $attribute->id,
             ];
         }
 
@@ -566,12 +566,12 @@ class Importer extends AbstractImporter
         [$mcommon, $mlocale_specific, $mchannel_specific, $mchannelAndLocaleSpecific] = $mappedImageAttr;
 
         $dataToUpdate = [
-            'sku'     => $parentSkuFromUnopim ?? $rowData['node']['handle'],
-            'status'  => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
+            'sku' => $parentSkuFromUnopim ?? $rowData['node']['handle'],
+            'status' => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
             'channel' => $this->channel,
-            'locale'  => $this->locale,
-            'values'  => [
-                'common'           => array_merge($common, $mcommon ?? []),
+            'locale' => $this->locale,
+            'values' => [
+                'common' => array_merge($common, $mcommon ?? []),
                 'channel_specific' => [
                     $this->channel => array_merge($channelSpecific, $mchannel_specific ?? []),
                 ],
@@ -586,7 +586,7 @@ class Importer extends AbstractImporter
                     ],
                 ],
             ],
-            'variants'   => $variantProductData,
+            'variants' => $variantProductData,
             'categories' => $unopimCategory,
         ];
 
@@ -679,12 +679,12 @@ class Importer extends AbstractImporter
                 if (! $isCorrectVariantMapping) {
                     if ($isSimpleProductMapping) {
                         $this->shopifyMappingRepository->update([
-                            'entityType'    => self::UNOPIM_ENTITY_NAME,
-                            'code'          => $vsku,
-                            'externalId'    => $shopifyVariantId,
-                            'relatedId'     => $shopifyProductId,
+                            'entityType' => self::UNOPIM_ENTITY_NAME,
+                            'code' => $vsku,
+                            'externalId' => $shopifyVariantId,
+                            'relatedId' => $shopifyProductId,
                             'jobInstanceId' => $this->import->id,
-                            'apiUrl'        => $this->credential->shopUrl,
+                            'apiUrl' => $this->credential->shopUrl,
                         ], $variantMappingRow['id']);
 
                         $variantMappingRow['externalId'] = $shopifyVariantId;
@@ -706,7 +706,7 @@ class Importer extends AbstractImporter
                 $this->parentMapping($vsku, $shopifyVariantId, $this->import->id, $shopifyProductId);
                 $variantMappingRow = [
                     'externalId' => $shopifyVariantId,
-                    'relatedId'  => $shopifyProductId,
+                    'relatedId' => $shopifyProductId,
                 ];
             }
 
@@ -792,10 +792,10 @@ class Importer extends AbstractImporter
             }
 
             $variantProductData[$vkey] = [
-                'sku'    => $vsku ?? '',
+                'sku' => $vsku ?? '',
                 'status' => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
                 'values' => [
-                    'common'           => array_merge($vcommon, $vMdcommon),
+                    'common' => array_merge($vcommon, $vMdcommon),
                     'channel_specific' => [
                         $this->channel => array_merge($vchannel_specific, $vMdchannel_specific),
                     ],
@@ -823,7 +823,7 @@ class Importer extends AbstractImporter
     {
         foreach ($leftChildProduct ?? [] as $key => $productIds) {
             $variantProductData[$productIds] = [
-                'sku'    => $this->allChildInUnopim[$key]['sku'],
+                'sku' => $this->allChildInUnopim[$key]['sku'],
                 'status' => $this->allChildInUnopim[$key]['status'],
                 'values' => $this->allChildInUnopim[$key]['values'],
             ];
@@ -855,11 +855,11 @@ class Importer extends AbstractImporter
             }
             $this->updateVarint = false;
             $data[$rowData['node']['handle']] = [
-                'type'                => 'configurable',
-                'sku'                 => $rowData['node']['handle'],
-                'status'              => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
+                'type' => 'configurable',
+                'sku' => $rowData['node']['handle'],
+                'status' => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
                 'attribute_family_id' => $familyModel->id,
-                'super_attributes'    => $attributes,
+                'super_attributes' => $attributes,
             ];
 
             $createdConfigProduct = $this->productRepository->create($data[$rowData['node']['handle']]);
@@ -982,9 +982,9 @@ class Importer extends AbstractImporter
             }
 
             $data[$vcommon['sku']] = [
-                'type'                => 'simple',
-                'sku'                 => $vcommon['sku'],
-                'status'              => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
+                'type' => 'simple',
+                'sku' => $vcommon['sku'],
+                'status' => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
                 'attribute_family_id' => $simpleProductFamilyId,
             ];
             $this->update = false;
@@ -1014,12 +1014,12 @@ class Importer extends AbstractImporter
         [$mcommon, $mlocale_specific, $mchannel_specific, $mchannelAndLocaleSpecific] = $mappedImageAttr;
 
         $dataToUpdate = [
-            'sku'     => $vcommon['sku'],
+            'sku' => $vcommon['sku'],
             'channel' => $this->channel,
-            'status'  => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
-            'locale'  => $this->locale,
-            'values'  => [
-                'common'           => array_merge($common, $vcommon, $mcommon, $metaFieldCommon),
+            'status' => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
+            'locale' => $this->locale,
+            'values' => [
+                'common' => array_merge($common, $vcommon, $mcommon, $metaFieldCommon),
                 'channel_specific' => [
                     $this->channel => array_merge($channelSpecific, $vchannel_specific, $mchannel_specific, $metaFieldChannelSpecific),
                 ],
@@ -1045,7 +1045,7 @@ class Importer extends AbstractImporter
     public function requestJobLocaleAndChannel()
     {
         request()->merge([
-            'locale'  => $this->locale,
+            'locale' => $this->locale,
             'channel' => $this->channel,
         ]);
     }
@@ -1101,7 +1101,7 @@ class Importer extends AbstractImporter
     public function updateBatchtate(JobTrackBatchContract $batch): void
     {
         $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
+            'state' => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),

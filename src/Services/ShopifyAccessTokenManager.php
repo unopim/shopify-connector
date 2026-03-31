@@ -57,9 +57,9 @@ class ShopifyAccessTokenManager
             ->acceptJson()
             ->timeout(30)
             ->post($this->tokenEndpoint($credential['shopUrl']), [
-                'client_id'     => $credential['clientId'],
+                'client_id' => $credential['clientId'],
                 'client_secret' => $credential['clientSecret'],
-                'grant_type'    => 'client_credentials',
+                'grant_type' => 'client_credentials',
             ]);
 
         if (! $response->ok()) {
@@ -86,7 +86,7 @@ class ShopifyAccessTokenManager
 
         if (! empty($credential['credentialId'])) {
             $this->shopifyCredentialRepository->update([
-                'accessToken'          => $accessToken,
+                'accessToken' => $accessToken,
                 'accessTokenExpiresAt' => $accessTokenExpiresAt,
             ], $credential['credentialId']);
         }
@@ -117,12 +117,12 @@ class ShopifyAccessTokenManager
         }
 
         $resolved = array_merge($credential, [
-            'credentialId'         => $credentialModel->id,
-            'shopUrl'              => $credentialModel->shopUrl,
-            'accessToken'          => $credentialModel->accessToken,
-            'apiVersion'           => $credential['apiVersion'] ?? $credentialModel->apiVersion,
-            'clientId'             => $credentialModel->clientId,
-            'clientSecret'         => $credentialModel->clientSecret,
+            'credentialId' => $credentialModel->id,
+            'shopUrl' => $credentialModel->shopUrl,
+            'accessToken' => $credentialModel->accessToken,
+            'apiVersion' => $credential['apiVersion'] ?? $credentialModel->apiVersion,
+            'clientId' => $credentialModel->clientId,
+            'clientSecret' => $credentialModel->clientSecret,
             'accessTokenExpiresAt' => optional($credentialModel->accessTokenExpiresAt)?->toDateTimeString(),
         ]);
 

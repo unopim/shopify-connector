@@ -7,9 +7,9 @@ use function Pest\Laravel\postJson;
 it('should create the shopify category export job', function () {
     $this->loginAsAdmin();
     $exportJob = [
-        'code'        => fake()->unique()->word,
+        'code' => fake()->unique()->word,
         'entity_type' => 'shopifyCategories',
-        'filters'     => [
+        'filters' => [
             'credentials' => 1,
         ],
     ];
@@ -19,7 +19,7 @@ it('should create the shopify category export job', function () {
         ->assertSessionHas('success');
 
     $this->assertDatabaseHas($this->getFullTableName(JobInstances::class), [
-        'code'        => $exportJob['code'],
+        'code' => $exportJob['code'],
         'entity_type' => 'shopifyCategories',
     ]);
 });
@@ -27,12 +27,12 @@ it('should create the shopify category export job', function () {
 it('should create the shopify product export job', function () {
     $this->loginAsAdmin();
     $exportJob = [
-        'code'        => fake()->unique()->word,
+        'code' => fake()->unique()->word,
         'entity_type' => 'shopifyProduct',
-        'filters'     => [
+        'filters' => [
             'credentials' => '1',
-            'channel'     => 'default',
-            'currency'    => 'USD',
+            'channel' => 'default',
+            'currency' => 'USD',
         ],
     ];
 
@@ -41,7 +41,7 @@ it('should create the shopify product export job', function () {
         ->assertSessionHas('success');
 
     $this->assertDatabaseHas($this->getFullTableName(JobInstances::class), [
-        'code'        => $exportJob['code'],
+        'code' => $exportJob['code'],
         'entity_type' => 'shopifyProduct',
     ]);
 });
@@ -49,9 +49,9 @@ it('should create the shopify product export job', function () {
 it('should create the shopify Metafield Definition export job', function () {
     $this->loginAsAdmin();
     $exportJob = [
-        'code'        => fake()->unique()->word,
+        'code' => fake()->unique()->word,
         'entity_type' => 'shopifyMetafield',
-        'filters'     => [
+        'filters' => [
             'credentials' => 1,
         ],
     ];
@@ -61,7 +61,7 @@ it('should create the shopify Metafield Definition export job', function () {
         ->assertSessionHas('success');
 
     $this->assertDatabaseHas($this->getFullTableName(JobInstances::class), [
-        'code'        => $exportJob['code'],
+        'code' => $exportJob['code'],
         'entity_type' => 'shopifyMetafield',
     ]);
 });

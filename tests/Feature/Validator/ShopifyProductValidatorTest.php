@@ -11,8 +11,8 @@ it('should pass validation with valid data', function () {
     $data = [
         'filters' => [
             'credentials' => 1,
-            'channel'     => 'shopify_default',
-            'currency'    => 'USD',
+            'channel' => 'shopify_default',
+            'currency' => 'USD',
         ],
     ];
 
@@ -23,7 +23,7 @@ it('should pass validation with valid data', function () {
 it('should fail when credentials are missing', function () {
     $data = [
         'filters' => [
-            'channel'  => 'shopify_default',
+            'channel' => 'shopify_default',
             'currency' => 'USD',
         ],
     ];
@@ -37,7 +37,7 @@ it('should fail when channel is missing', function () {
     $data = [
         'filters' => [
             'credentials' => 1,
-            'currency'    => 'USD',
+            'currency' => 'USD',
         ],
     ];
 
@@ -50,7 +50,7 @@ it('should fail when currency is missing', function () {
     $data = [
         'filters' => [
             'credentials' => 1,
-            'channel'     => 'shopify_default',
+            'channel' => 'shopify_default',
         ],
     ];
 
@@ -63,8 +63,8 @@ it('should fail when credentials is not integer', function () {
     $data = [
         'filters' => [
             'credentials' => 'abc',
-            'channel'     => 'shopify_default',
-            'currency'    => 'USD',
+            'channel' => 'shopify_default',
+            'currency' => 'USD',
         ],
     ];
 

@@ -84,7 +84,7 @@ class ProductIterator implements \Iterator
             $variables = [];
             if ($this->cursor) {
                 $variables = [
-                    'first'       => 20,
+                    'first' => 20,
                     'afterCursor' => $this->cursor,
                 ];
             }
@@ -158,7 +158,7 @@ class ProductIterator implements \Iterator
         try {
             $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credential, [
                 'resourceId' => $resourceId,
-                'locale'     => $this->shopifyLocale,
+                'locale' => $this->shopifyLocale,
             ]);
 
             $translations = $response['body']['data']['translatableResource']['translations'] ?? [];

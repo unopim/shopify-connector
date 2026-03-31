@@ -16,7 +16,7 @@ class ShopifyGraphQLDataFormatter
 
     protected $separators = [
         'colon' => ': ',
-        'dash'  => '- ',
+        'dash' => '- ',
         'space' => ' ',
     ];
 
@@ -38,7 +38,7 @@ class ShopifyGraphQLDataFormatter
         $status = $this->getStatus($rawData, $parentData);
 
         $formatted = [
-            'title'  => $parentData['sku'] ?? $rawData['sku'],
+            'title' => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
         ];
 
@@ -112,21 +112,21 @@ class ShopifyGraphQLDataFormatter
                     case 'weight':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit'  => $units['weight'] ?? 'GRAMS',
+                            'unit' => $units['weight'] ?? 'GRAMS',
                         ]);
                         break;
 
                     case 'volume':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit'  => $units['volume'] ?? 'MILLILITERS',
+                            'unit' => $units['volume'] ?? 'MILLILITERS',
                         ]);
                         break;
 
                     case 'dimension':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit'  => $units['dimension'] ?? 'MILLIMETERS',
+                            'unit' => $units['dimension'] ?? 'MILLIMETERS',
                         ]);
                         break;
 
@@ -143,9 +143,9 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 $formatted[] = [
-                    'key'       => $nameSpaceAndKey[1],
-                    'value'     => $metafieldValue,
-                    'type'      => $type,
+                    'key' => $nameSpaceAndKey[1],
+                    'value' => $metafieldValue,
+                    'type' => $type,
                     'namespace' => $nameSpaceAndKey[0],
                 ];
             }
@@ -296,7 +296,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) ($rawData[$unopimField] ?? 0),
-                    'unit'  => $units['weight'] ?? 'GRAMS',
+                    'unit' => $units['weight'] ?? 'GRAMS',
                 ];
 
                 break;
@@ -435,7 +435,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) $defaultValue,
-                    'unit'  => 'GRAMS',
+                    'unit' => 'GRAMS',
                 ];
                 break;
         }
