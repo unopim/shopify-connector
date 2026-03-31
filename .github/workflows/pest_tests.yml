@@ -1,4 +1,4 @@
-name: Shopify Package Tests
+name: Pest Tests
 
 on: [push, pull_request]
 
@@ -72,6 +72,11 @@ jobs:
         working-directory: core
         run: php artisan unopim:install --skip-env-check --skip-admin-creation
 
+      - name: Bind Shopify Tests to Pest
+        working-directory: core
+        run: |
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
+            
       - name: Install Shopify Package
         working-directory: core
         run: |
