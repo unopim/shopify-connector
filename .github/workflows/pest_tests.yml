@@ -38,7 +38,7 @@ jobs:
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone https://github.com/unopim/unopim.git core
+        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |
