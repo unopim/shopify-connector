@@ -38,10 +38,21 @@ jobs:
           ini-values: error_reporting=E_ALL
           tools: composer:v2
 
-      - name: Running Composer Install
+      - name: Clone UnoPim Core
+        run: |
+          git clone https://github.com/unopim/unopim.git core
+
+      - name: Copy Package into UnoPim
+        run: |
+          mkdir -p core/packages/Webkul
+          cp -R packages/Webkul/Shopify core/packages/Webkul/
+
+      - name: Install Dependencies
+        working-directory: core
         run: composer install
 
-      - name: Setting Environment
+      - name: Setup Environment
+        working-directory: core
         run: |
           cp .env.example .env
           sed -i "s|^\(APP_ENV=\s*\).*$|\1testing|" .env
@@ -50,10 +61,15 @@ jobs:
           sed -i "s|^\(DB_DATABASE=\s*\).*$|\1unopim|" .env
           sed -i "s|^\(DB_USERNAME=\s*\).*$|\1root|" .env
           sed -i "s|^\(DB_PASSWORD=\s*\).*$|\1root|" .env
-          cat .env
 
-      - name: Running UnoPim Installer
+      - name: Dump Autoload
+        working-directory: core
+        run: composer dump-autoload
+
+      - name: Install UnoPim
+        working-directory: core
         run: php artisan unopim:install --skip-env-check --skip-admin-creation
 
-      - name: Running Pest Test
+      - name: Run Pest Tests
+        working-directory: core
         run: vendor/bin/pest --parallel --colors=always
