@@ -1,12 +1,6 @@
 name: Shopify Connector Playwright Tests
 
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+on: [push, pull_request]
 
 jobs:
   test:
@@ -51,7 +45,7 @@ jobs:
 
       - name: Install UnoPIM
         run: |
-          git clone https://github.com/unopim/unopim.git
+          git clone -b 1.0 https://github.com/unopim/unopim.git
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env
@@ -102,6 +96,16 @@ jobs:
           cd unopim/packages/Webkul/Shopify/tests/e2e-pw
           npm install
           npx playwright install --with-deps
+
+      - name: Configure Playwright env
+        run: |
+          cat > unopim/packages/Webkul/Shopify/tests/e2e-pw/.env <<EOF
+          E2E_ADMIN_EMAIL=admin@example.com
+          E2E_ADMIN_PASSWORD=admin123
+          E2E_SHOPIFY_URL=${{ secrets.E2E_SHOPIFY_URL }}
+          E2E_SHOPIFY_CLIENT_ID=${{ secrets.E2E_SHOPIFY_CLIENT_ID }}
+          E2E_SHOPIFY_CLIENT_SECRET=${{ secrets.E2E_SHOPIFY_CLIENT_SECRET }}
+          EOF
 
       - name: Run Playwright tests
         run: |

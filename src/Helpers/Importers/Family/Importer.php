@@ -12,6 +12,7 @@ use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
+use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
@@ -111,19 +112,23 @@ class Importer extends AbstractImporter
     /**
      * Import instance.
      *
-     * @return \Webkul\DataTransfer\Helpers\Source
+     * @return Source
      */
     public function getSource()
     {
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
 
         $this->credentialArray = [
-            'shopUrl'     => $this->credential?->shopUrl,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
         $attributeAndOption = new \ArrayIterator($this->productOptionByCursor());
@@ -145,7 +150,7 @@ class Importer extends AbstractImporter
             $mutationType = 'productGettingOptions';
             if ($cursor) {
                 $variables = [
-                    'first'       => 50,
+                    'first' => 50,
                     'afterCursor' => $cursor,
                 ];
                 $mutationType = 'productOptionByCursor';
@@ -199,7 +204,7 @@ class Importer extends AbstractImporter
             $allIds = $this->attributeFamilyGroupMappingRepository->whereIn('attribute_family_id', [$simpleProductFamilyId])->pluck('id')->toArray();
 
             $groupMappingId = $this->attributeFamilyGroupMappingRepository->findWhere([
-                'attribute_group_id'  => $this->attributeGroupId,
+                'attribute_group_id' => $this->attributeGroupId,
                 'attribute_family_id' => $simpleProductFamilyId,
             ])->first()?->id;
 
@@ -218,18 +223,20 @@ class Importer extends AbstractImporter
             if (! empty($notInMetafields)) {
                 if (! $groupMappingId) {
                     $groupMappingId = $this->attributeFamilyGroupMappingRepository->insertGetId([
-                        'attribute_group_id'  => $this->attributeGroupId,
+                        'attribute_group_id' => $this->attributeGroupId,
                         'attribute_family_id' => $simpleProductFamilyId,
                     ]);
+                    $this->updatedItemsCount++;
                 }
                 $data = array_map(function ($notInMetafield) use ($groupMappingId) {
                     return [
-                        'attribute_id'              => $notInMetafield,
+                        'attribute_id' => $notInMetafield,
                         'attribute_family_group_id' => $groupMappingId,
                     ];
                 }, $notInMetafields);
 
-                DB::table('attribute_group_mappings')->insertOrIgnore($data);
+                $inserted = DB::table('attribute_group_mappings')->insertOrIgnore($data);
+                $this->updatedItemsCount += (int) $inserted;
             }
         }
     }
@@ -275,18 +282,18 @@ class Importer extends AbstractImporter
                     continue;
                 }
                 $attrId[] = [
-                    'id'       => (string) $attributeModel?->id,
+                    'id' => (string) $attributeModel?->id,
                     'position' => (string) $key,
                 ];
             }
             $family[] = [
-                'code'        => $family_code,
+                'code' => $family_code,
                 $this->locale => [
                     'name' => $family_code,
                 ],
                 'attribute_groups' => [
                     $this->attributeGroupId => [
-                        'position'          => 1,
+                        'position' => 1,
                         'custom_attributes' => $attrId,
                     ],
                 ],
@@ -330,7 +337,11 @@ class Importer extends AbstractImporter
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
+                    'data' => $batchRows,
+                    'summary' => [
+                        'created' => $this->getCreatedItemsCount(),
+                        'updated' => $this->getUpdatedItemsCount(),
+                    ],
                 ]);
 
                 $batchRows = [];
@@ -368,11 +379,7 @@ class Importer extends AbstractImporter
     public function saveFamilyData(JobTrackBatchContract $batch): bool
     {
         $batch = $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
-            'summary' => [
-                'created' => 1,
-                'updated' => 1,
-            ],
+            'state' => Import::STATE_PROCESSED,
         ], $batch->id);
 
         return true;

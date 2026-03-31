@@ -37,7 +37,7 @@ trait TranslationTrait
             foreach ($addedmetafields as $keydMeta => $addedMetaField) {
 
                 $formatedVariable = [
-                    'id'           => $addedMetaField['node']['id'],
+                    'id' => $addedMetaField['node']['id'],
                     'translations' => [],
                 ];
                 $namespaceKey = $addedMetaField['node']['namespace'].'.'.$addedMetaField['node']['key'];
@@ -63,9 +63,9 @@ trait TranslationTrait
                     }
 
                     $formatedVariable['translations'][] = [
-                        'key'                       => 'value',
-                        'value'                     => $value,
-                        'locale'                    => $shopifyLocaleCode,
+                        'key' => 'value',
+                        'value' => $value,
+                        'locale' => $shopifyLocaleCode,
                         'translatableContentDigest' => hash('sha256', $jsonData),
                     ];
                 }
@@ -91,7 +91,7 @@ trait TranslationTrait
         array $matchAttribute
     ): void {
         $formatedVariable = [
-            'id'           => $productId,
+            'id' => $productId,
             'translations' => [],
         ];
 
@@ -129,9 +129,9 @@ trait TranslationTrait
                     $allData = array_merge($localeSpecificFields, $channelLocaleSpecificFields, $commonFields);
 
                     $formatedVariable['translations'][] = [
-                        'key'                       => $shopifyField,
-                        'value'                     => $allData[$unopimField] ?? '',
-                        'locale'                    => $shopifyLocaleCode,
+                        'key' => $shopifyField,
+                        'value' => $allData[$unopimField] ?? '',
+                        'locale' => $shopifyLocaleCode,
                         'translatableContentDigest' => hash('sha256', $defaultValue),
                     ];
                 }
@@ -158,7 +158,7 @@ trait TranslationTrait
             foreach ($optionResult as $key => $option) {
 
                 $formatedVariable = [
-                    'id'           => $option['id'],
+                    'id' => $option['id'],
                     'translations' => [],
                 ];
 
@@ -179,9 +179,9 @@ trait TranslationTrait
                     $attrLabel = reset($filtered)['name'];
 
                     $formatedVariable['translations'][] = [
-                        'key'                       => 'name',
-                        'value'                     => $attrLabel,
-                        'locale'                    => $shopifyLocaleCode,
+                        'key' => 'name',
+                        'value' => $attrLabel,
+                        'locale' => $shopifyLocaleCode,
                         'translatableContentDigest' => hash('sha256', $defaultValue),
                     ];
                 }
@@ -213,7 +213,7 @@ trait TranslationTrait
                 $defaultValue = $data[$index]['name'];
                 $id = $data[$index]['id'];
                 $formatedVariable = [
-                    'id'           => $id,
+                    'id' => $id,
                     'translations' => [],
                 ];
                 $allData = $optionValuesTranslation[$defaultValue];
@@ -231,9 +231,9 @@ trait TranslationTrait
                     }
                     $label = reset($result)['label'] ?? '';
                     $formatedVariable['translations'][] = [
-                        'key'                       => 'name',
-                        'value'                     => $label ?? '',
-                        'locale'                    => $shopifyLocaleCode,
+                        'key' => 'name',
+                        'value' => $label ?? '',
+                        'locale' => $shopifyLocaleCode,
                         'translatableContentDigest' => hash('sha256', $defaultValue),
                     ];
                 }
@@ -256,7 +256,7 @@ trait TranslationTrait
         if (! empty($collectionResult)) {
             $storeloacleMapping = $credential->storelocaleMapping;
             $formatedVariable = [
-                'id'           => $collectionResult['id'],
+                'id' => $collectionResult['id'],
                 'translations' => [],
             ];
             foreach ($storeloacleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
@@ -265,12 +265,23 @@ trait TranslationTrait
                 }
 
                 $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $unopimLocaleCode);
+                $descriptionValue = $localeSpecificFields['description'] ?? '';
+                if ($descriptionValue === '') {
+                    $descriptionValue = '<p></p>';
+                }
 
                 $formatedVariable['translations'][] = [
-                    'key'                       => 'title',
-                    'value'                     => $localeSpecificFields['name'] ?? $rawData['code'] ?? '',
-                    'locale'                    => $shopifyLocaleCode,
+                    'key' => 'title',
+                    'value' => $localeSpecificFields['name'] ?? $rawData['code'] ?? '',
+                    'locale' => $shopifyLocaleCode,
                     'translatableContentDigest' => hash('sha256', $collectionResult['title']),
+                ];
+
+                $formatedVariable['translations'][] = [
+                    'key' => 'body_html',
+                    'value' => $descriptionValue,
+                    'locale' => $shopifyLocaleCode,
+                    'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
                 ];
             }
             $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);

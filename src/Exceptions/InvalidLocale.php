@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Exceptions;
 
 use Exception;
+use Throwable;
 
 /**
  * Class Invalidlocale
@@ -12,8 +13,12 @@ use Exception;
  */
 class InvalidLocale extends Exception
 {
-    /**
-     * @var string The error message for the exception.
-     */
-    protected $message = 'Invalid Locale: The Locale is not mapped to a valid';
+    public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null)
+    {
+        parent::__construct(
+            $message !== '' ? $message : trans('shopify::app.shopify.export.errors.invalid-locale'),
+            $code,
+            $previous
+        );
+    }
 }

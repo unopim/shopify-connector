@@ -16,7 +16,7 @@ class ShopifyGraphQLDataFormatter
 
     protected $separators = [
         'colon' => ': ',
-        'dash'  => '- ',
+        'dash' => '- ',
         'space' => ' ',
     ];
 
@@ -38,7 +38,7 @@ class ShopifyGraphQLDataFormatter
         $status = $this->getStatus($rawData, $parentData);
 
         $formatted = [
-            'title'  => $parentData['sku'] ?? $rawData['sku'],
+            'title' => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
         ];
 
@@ -101,7 +101,7 @@ class ShopifyGraphQLDataFormatter
                         if (isset($field['validations'])) {
                             $ratingValidation = json_decode($field['validations'], true);
                             $updatedData = array_combine(
-                                array_map(fn ($key) => 'scale_' . $key, array_keys($ratingValidation)),
+                                array_map(fn ($key) => 'scale_'.$key, array_keys($ratingValidation)),
                                 $ratingValidation
                             );
                             $updatedData['value'] = @$rawData[$unoAttribute];
@@ -112,41 +112,40 @@ class ShopifyGraphQLDataFormatter
                     case 'weight':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit' => $units['weight'] ?? 'GRAMS'
+                            'unit' => $units['weight'] ?? 'GRAMS',
                         ]);
                         break;
 
                     case 'volume':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit' => $units['volume'] ?? 'MILLILITERS'
+                            'unit' => $units['volume'] ?? 'MILLILITERS',
                         ]);
                         break;
 
                     case 'dimension':
                         $metafieldValue = json_encode([
                             'value' => @$rawData[$unoAttribute],
-                            'unit' => $units['dimension'] ?? 'MILLIMETERS'
+                            'unit' => $units['dimension'] ?? 'MILLIMETERS',
                         ]);
                         break;
 
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? @$rawData[$unoAttribute][$this->currency]
-                            : $this->stripTagMetafield(@$rawData[$unoAttribute]);
+                            : $this->stripTagMetafield(@$rawData[$unoAttribute], $locale, $attribute);
                         break;
                 }
 
-
                 if (! empty($field['listvalue'])) {
                     $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue($metafieldValue, $attribute, $locale);
+                    $metafieldValue = $this->formatMetafieldValue(@$rawData[$unoAttribute], $attribute, $locale);
                 }
 
                 $formatted[] = [
-                    'key'       => $nameSpaceAndKey[1],
-                    'value'     => $metafieldValue,
-                    'type'      => $type,
+                    'key' => $nameSpaceAndKey[1],
+                    'value' => $metafieldValue,
+                    'type' => $type,
                     'namespace' => $nameSpaceAndKey[0],
                 ];
             }
@@ -235,7 +234,7 @@ class ShopifyGraphQLDataFormatter
             }
         }
 
-        $formatted['variant']['inventoryItem']['sku'] = (string)$rawData['sku'] ?? '';
+        $formatted['variant']['inventoryItem']['sku'] = (string) $rawData['sku'] ?? '';
 
         return $formatted;
     }
@@ -297,7 +296,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) ($rawData[$unopimField] ?? 0),
-                    'unit'  => $units['weight'] ?? 'GRAMS',
+                    'unit' => $units['weight'] ?? 'GRAMS',
                 ];
 
                 break;
@@ -428,7 +427,7 @@ class ShopifyGraphQLDataFormatter
                 }
                 break;
             case 'sku':
-                $formatted['variant']['inventoryItem']['sku'] = (string)$defaultValue;
+                $formatted['variant']['inventoryItem']['sku'] = (string) $defaultValue;
                 break;
             case 'cost':
                 $formatted['variant']['inventoryItem']['cost'] = (float) $defaultValue;
@@ -436,7 +435,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) $defaultValue,
-                    'unit'  => 'GRAMS',
+                    'unit' => 'GRAMS',
                 ];
                 break;
         }
@@ -447,8 +446,15 @@ class ShopifyGraphQLDataFormatter
     /**
      * striptag metafields value remove html entities and code and new line
      */
-    protected function stripTagMetafield(string $metafieldValue): string
+    protected function stripTagMetafield(string $metafieldValue, ?string $locale, ?object $attributes): string
     {
+        if (in_array($attributes?->type, ['multiselect', 'select'])) {
+
+            $value = $this->getTranslatedOptionLabels($attributes, $metafieldValue, $locale);
+
+            return implode(', ', $value);
+        }
+
         $metafieldValue = strip_tags($metafieldValue);
         $metafieldValue = preg_replace('/&#?[a-z0-9]{2,8};/i', '', $metafieldValue);
         $metafieldValue = str_replace(["\r\n", "\r", "\n"], PHP_EOL, $metafieldValue);

@@ -6,14 +6,24 @@ async function globalSetup() {
     const context = await browser.newContext();
     const page = await context.newPage();
 
+    const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
+    const adminEmail = process.env.E2E_ADMIN_EMAIL;
+    const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+        throw new Error(
+            'Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD in tests/e2e-pw/.env to run global setup.',
+        );
+    }
+
     // Perform login
-    await page.goto('http://localhost:8000');
-    await page.fill('input[name="email"]', 'admin@example.com'); // Replace with actual credentials
-    await page.fill('input[name="password"]', 'admin123');
+    await page.goto(baseUrl);
+    await page.fill('input[name="email"]', adminEmail);
+    await page.fill('input[name="password"]', adminPassword);
     await page.click('.primary-button');
 
     // Wait for successful login (Adjust selector based on actual dashboard page)
-    await page.waitForURL('http://localhost:8000/admin/dashboard');
+    await page.waitForURL(new URL('/admin/dashboard', baseUrl).toString());
 
     // Save authentication state
     await context.storageState({ path: 'storage/auth.json' });

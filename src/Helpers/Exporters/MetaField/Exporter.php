@@ -98,9 +98,13 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialArray = [
-            'shopUrl'     => $this->credential->shopUrl,
+            'credentialId' => $this->credential->id,
+            'shopUrl' => $this->credential->shopUrl,
             'accessToken' => $this->credential->accessToken,
-            'apiVersion'  => $this->credential->apiVersion,
+            'apiVersion' => $this->credential->apiVersion,
+            'clientId' => $this->credential->clientId,
+            'clientSecret' => $this->credential->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
 
@@ -266,7 +270,7 @@ class Exporter extends AbstractExporter
             'access' => [
                 'storefront' => $rowData['storefronts'] ? 'PUBLIC_READ' : 'NONE',
             ],
-            'ownerType'  => $rowData['ownerType'] == 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
+            'ownerType' => $rowData['ownerType'] == 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
         ];
 
         if (! empty($rowData['name_space_key'])) {
@@ -296,18 +300,18 @@ class Exporter extends AbstractExporter
                 if ($maxunit && $key == 'max') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit'  => $maxunit,
+                        'unit' => $maxunit,
                     ], true);
                 } elseif ($minunit && $key == 'min') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit'  => $minunit,
+                        'unit' => $minunit,
                     ], true);
                 }
                 $key = in_array($type, ['list.rating', 'rating']) ? 'scale_'.$key : $key;
 
                 $validations[] = [
-                    'name'  => $key,
+                    'name' => $key,
                     'value' => $validationData ?? 0,
                 ];
             }

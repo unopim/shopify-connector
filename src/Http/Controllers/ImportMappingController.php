@@ -68,9 +68,16 @@ class ImportMappingController extends Controller
 
             $keysAsArray = array_fill_keys($duplicateKeys, 'Duplicate attribute mapping');
 
+            $input = $request->except(['_token', '_method']);
+            foreach ($duplicateKeys as $duplicateKey) {
+                $field = str_replace('default_', '', $duplicateKey);
+                $input[$field] = null;
+                $input[$duplicateKey] = null;
+            }
+
             return redirect()->route('admin.shopify.import-mappings', 3)
                 ->withErrors($keysAsArray)
-                ->withInput();
+                ->withInput($input);
         }
 
         foreach ($filteredData as $row => $value) {
@@ -80,6 +87,13 @@ class ImportMappingController extends Controller
         }
 
         $shopifyMapping = $this->shopifyExportMappingRepository->find(3);
+
+        if (is_null($shopifyMapping)) {
+
+            session()->flash('error', trans('shopify::app.shopify.import.mapping.save_failed'));
+
+            return redirect()->back();
+        }
 
         if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFieldss['mapping']) {
             $shopifyMapping = $this->shopifyExportMappingRepository->update($mappingFieldss, 3);

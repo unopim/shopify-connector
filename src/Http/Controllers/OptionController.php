@@ -61,7 +61,7 @@ class OptionController extends Controller
 
         foreach ($allActivateCredntial as $credentialArray) {
             $allCredential[] = [
-                'id'    => $credentialArray['id'],
+                'id' => $credentialArray['id'],
                 'label' => $credentialArray['shopUrl'],
             ];
         }
@@ -96,7 +96,7 @@ class OptionController extends Controller
 
         foreach ($allActivateChannel as $channel) {
             $allChannel[] = [
-                'id'    => $channel['code'],
+                'id' => $channel['code'],
                 'label' => $channel['name'] ?? $channel['code'],
             ];
         }
@@ -114,8 +114,17 @@ class OptionController extends Controller
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
 
         $searchIdentifiers = isset($queryParams['identifiers']['columnName']) ? $queryParams['identifiers'] : [];
+        $selectedChannel = request()->get('channel');
 
         $currencyRepository = $this->currencyRepository->where('status', 1);
+
+        if (! is_null($selectedChannel) && $selectedChannel !== '') {
+            $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
+
+            $currencyRepository = $currencyRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+                $query->whereIn('code', $selectedChannels);
+            });
+        }
 
         if (! empty($searchIdentifiers)) {
             $values = $searchIdentifiers['values'] ?? [];
@@ -126,14 +135,12 @@ class OptionController extends Controller
             );
         }
 
-        $allActivateCurrency = $currencyRepository->get()->toArray();
-
-        $allCurrency = array_map(function ($item) {
+        $allCurrency = $currencyRepository->get()->map(function ($item) {
             return [
-                'id'    => $item['code'],
-                'label' => $item['name'],
+                'id' => $item->code,
+                'label' => $item->name,
             ];
-        }, $allActivateCurrency);
+        });
 
         return new JsonResponse([
             'options' => $allCurrency,
@@ -148,8 +155,41 @@ class OptionController extends Controller
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
         $localeRepository = $this->localeRepository;
         $query = request()->get('query');
+        $credentialId = request()->get('credentials');
+        $selectedChannel = request()->get('channel');
+
+        $credential = null;
+
+        if (! empty($credentialId)) {
+            $credential = $this->shopifyRepository->find($credentialId);
+        }
+
+        $mappedLocales = array_values(array_filter((array) ($credential?->storelocaleMapping ?? [])));
+
+        if (! empty($mappedLocales)) {
+            $localeRepository = $localeRepository->whereIn('code', $mappedLocales);
+        }
+
+        if (request()->has('channel') && empty($selectedChannel)) {
+            return new JsonResponse([
+                'options' => [],
+            ]);
+        }
+
+        if (! empty($selectedChannel)) {
+            $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
+
+            $localeRepository = $localeRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+                $query->whereIn('code', $selectedChannels);
+            });
+        }
+
         if ($query) {
-            $localeRepository = $localeRepository->where('code', 'LIKE', '%'.$query.'%');
+            $localeRepository = $localeRepository
+                ->where(function ($builder) use ($query) {
+                    $builder->where('code', 'LIKE', '%'.$query.'%')
+                        ->orWhere('name', 'LIKE', '%'.$query.'%');
+                });
         }
 
         $searchIdentifiers = isset($queryParams['identifiers']['columnName']) ? $queryParams['identifiers'] : [];
@@ -169,7 +209,7 @@ class OptionController extends Controller
 
         $allLocale = array_map(function ($item) {
             return [
-                'id'    => $item['code'],
+                'id' => $item['code'],
                 'label' => $item['name'],
             ];
         }, $allActivateLocale);
@@ -211,13 +251,22 @@ class OptionController extends Controller
                 is_array($values) ? $values : [$values]
             );
             if (! empty($notInclude)) {
-                $notIncludeValues = array_values(array_diff(array_values($notInclude), $values));
+                $notIncludeValues = array_values(array_filter(
+                    array_diff(array_values($notInclude), is_array($values) ? $values : [$values]),
+                    fn ($value) => $value !== null && $value !== ''
+                ));
+
                 $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
             }
         } else {
             if (! empty($notInclude)) {
                 unset($notInclude[$fieldName]);
-                $attributeRepository = $attributeRepository->whereNotIn('code', array_values($notInclude));
+                $notIncludeValues = array_values(array_filter(
+                    array_values($notInclude),
+                    fn ($value) => $value !== null && $value !== ''
+                ));
+
+                $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
             }
         }
 
@@ -230,17 +279,17 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'         => $attribute->id,
-                'code'       => $attribute->code,
-                'type'       => $attribute?->type,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
+                'type' => $attribute?->type,
                 'validation' => $attribute->validation,
-                'label'      => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
 
         return new JsonResponse([
-            'options'  => $formattedoptions,
-            'page'     => $attributes->currentPage(),
+            'options' => $formattedoptions,
+            'page' => $attributes->currentPage(),
             'lastPage' => $attributes->lastPage(),
         ]);
     }
@@ -282,8 +331,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -328,8 +377,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -378,8 +427,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attribute->id,
-                'code'  => $attribute->code,
+                'id' => $attribute->id,
+                'code' => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -405,8 +454,8 @@ class OptionController extends Controller
                 $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
 
                 $formattedoptions[$key][] = [
-                    'id'    => $attribute->id,
-                    'code'  => $attribute->code,
+                    'id' => $attribute->id,
+                    'code' => $attribute->code,
                     'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
                 ];
             }
@@ -437,7 +486,7 @@ class OptionController extends Controller
 
         $attrGroupList = array_map(function ($item) {
             return [
-                'id'    => $item['id'],
+                'id' => $item['id'],
                 'label' => $item['name'] ?? $item['code'],
             ];
         }, $allAttributegroup);
@@ -482,8 +531,8 @@ class OptionController extends Controller
         foreach ($attributesFamilies as $attributesFamily) {
             $translatedLabel = $attributesFamily->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id'    => $attributesFamily->id,
-                'code'  => $attributesFamily->code,
+                'id' => $attributesFamily->id,
+                'code' => $attributesFamily->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attributesFamily->code}]",
             ];
         }

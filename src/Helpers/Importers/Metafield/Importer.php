@@ -8,8 +8,10 @@ use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
+use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class Importer extends AbstractImporter
@@ -39,10 +41,23 @@ class Importer extends AbstractImporter
 
     protected $attributeType = [
         'single_line_text_field' => 'text',
-        'json'                   => 'textarea',
-        'number_integer'         => 'text',
-        'multi_line_text_field'  => 'textarea',
+        'json' => 'textarea',
+        'number_integer' => 'text',
+        'multi_line_text_field' => 'textarea',
+        'color' => 'text',
+        'rating' => 'text',
+        'url' => 'text',
+        'boolean' => 'boolean',
+        'number_decimal' => 'text',
+        'dimension' => 'text',
+        'weight' => 'text',
+        'volume' => 'text',
+        'date' => 'date',
     ];
+
+    protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
+
+    protected $decimalType = ['number_decimal'];
 
     /**
      * Shopify credential.
@@ -63,6 +78,7 @@ class Importer extends AbstractImporter
         protected AttributeRepository $attributeRepository,
         protected LocaleRepository $localeRepository,
         protected ShopifyCredentialRepository $shopifyRepository,
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
     ) {
         parent::__construct($importBatchRepository);
 
@@ -92,18 +108,22 @@ class Importer extends AbstractImporter
     /**
      * Import instance.
      *
-     * @return \Webkul\DataTransfer\Helpers\Source
+     * @return Source
      */
     public function getSource()
     {
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
         $this->credentialArray = [
-            'shopUrl'     => $this->credential?->shopUrl,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
         $productMetafieldDefinition = $this->metaFieldAttrByCursor();
@@ -135,8 +155,8 @@ class Importer extends AbstractImporter
             $variables = [];
             $mutationType = 'metafieldDefinitionsProductVariantType';
             $variables = [
-                'first'       => 20,
-                'after'       => $cursor,
+                'first' => 20,
+                'after' => $cursor,
             ];
             $graphResponse = $this->requestGraphQlApiAction($mutationType, $this->credentialArray, $variables);
 
@@ -172,8 +192,8 @@ class Importer extends AbstractImporter
             $variables = [];
             $mutationType = 'metafieldDefinitionsProductType';
             $variables = [
-                'first'       => 20,
-                'after'       => $cursor,
+                'first' => 20,
+                'after' => $cursor,
             ];
             $graphResponse = $this->requestGraphQlApiAction($mutationType, $this->credentialArray, $variables);
 
@@ -210,22 +230,69 @@ class Importer extends AbstractImporter
             }
 
             $attributeFormate = [
-                'code'        => $attribute['node']['key'],
-                'type'        => $this->attributeType[$metafieldType],
-                'namespace'   => $attribute['node']['namespace'],
+                'code' => $attribute['node']['key'],
+                'type' => $this->attributeType[$metafieldType],
+                'namespace' => $attribute['node']['namespace'],
                 $this->locale => [
                     'name' => $attribute['node']['name'],
                 ],
             ];
 
-            if ($metafieldType == 'number_integer') {
+            if (in_array($metafieldType, $this->numberType)) {
                 $attributeFormate['validation'] = 'number';
+            } elseif (in_array($metafieldType, $this->decimalType)) {
+                $attributeFormate['validation'] = 'decimal';
+            }
+
+            $data = $this->formatDataForMetafield($attribute);
+
+            $existing = $this->shopifyMetaFieldRepository
+                ->findOneWhere([
+                    ['name_space_key', '=', $data['name_space_key']],
+                    ['ownerType', '=', $data['ownerType']],
+                ]);
+
+            if (! $existing) {
+                $this->shopifyMetaFieldRepository->create($data);
             }
 
             $attributesArray[] = $attributeFormate;
         }
 
         return $attributesArray;
+    }
+
+    public function formatDataForMetafield(array $metafieldDefinition): array
+    {
+        $node = $metafieldDefinition['node'];
+        $typeName = $node['type']['name'];
+        $nameSpaceKey = "{$node['namespace']}.{$node['key']}";
+
+        $data = [
+            'ownerType' => $node['ownerType'],
+            'type' => $typeName,
+            'name_space_key' => $nameSpaceKey,
+            'code' => $node['key'],
+            'attribute' => $node['name'],
+            'pin' => ! empty($node['pinnedPosition']),
+            'listvalue' => str_contains($typeName, 'list'),
+            'ContentTypeName' => $typeName,
+            'apiUrl' => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+        ];
+
+        // Handle rating validations efficiently
+        if ($typeName === 'rating') {
+            $validations = collect($node['validations']);
+            $scaleMin = $validations->firstWhere('name', 'scale_min')['value'] ?? 0;
+            $scaleMax = $validations->firstWhere('name', 'scale_max')['value'] ?? 0;
+
+            $data['validations'] = json_encode([
+                'min' => (string) $scaleMin,
+                'max' => (string) $scaleMax,
+            ]);
+        }
+
+        return $data;
     }
 
     /**
@@ -263,7 +330,7 @@ class Importer extends AbstractImporter
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
+                    'data' => $batchRows,
                 ]);
 
                 $batchRows = [];
@@ -315,7 +382,7 @@ class Importer extends AbstractImporter
         }
 
         $batch = $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
+            'state' => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),

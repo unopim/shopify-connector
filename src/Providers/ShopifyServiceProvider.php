@@ -26,6 +26,7 @@ class ShopifyServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'shopify');
 
         $this->app->register(ModuleServiceProvider::class);
+        app('view')->prependNamespace('admin', __DIR__.'/../Resources/views');
 
         if ($this->app->runningInConsole()) {
             $this->commands([

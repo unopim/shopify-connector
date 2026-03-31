@@ -20,11 +20,14 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
 
     protected $historyTags = ['shopify_credentials'];
 
-    protected $auditExclude = ['storeLocales', 'accessToken'];
+    protected $auditExclude = ['storeLocales', 'accessToken', 'clientSecret'];
 
     protected $fillable = [
         'shopUrl',
         'accessToken',
+        'clientId',
+        'clientSecret',
+        'accessTokenExpiresAt',
         'active',
         'apiVersion',
         'storelocaleMapping',
@@ -37,8 +40,9 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
 
     protected $casts = [
         'storelocaleMapping' => 'array',
-        'storeLocales'       => 'array',
-        'extras'             => 'array',
+        'storeLocales' => 'array',
+        'extras' => 'array',
+        'accessTokenExpiresAt' => 'datetime',
     ];
 
     /**
@@ -48,7 +52,7 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     {
         return [
             'storelocaleMapping' => JsonDataPresenter::class,
-            'extras'             => JsonDataPresenter::class,
+            'extras' => JsonDataPresenter::class,
         ];
     }
 

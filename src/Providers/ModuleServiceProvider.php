@@ -3,13 +3,17 @@
 namespace Webkul\Shopify\Providers;
 
 use Webkul\Core\Providers\CoreModuleServiceProvider;
+use Webkul\Shopify\Models\ShopifyCredentialsConfig;
+use Webkul\Shopify\Models\ShopifyExportMappingConfig;
+use Webkul\Shopify\Models\ShopifyMappingConfig;
+use Webkul\Shopify\Models\ShopifyMetaFieldsConfig;
 
 class ModuleServiceProvider extends CoreModuleServiceProvider
 {
     protected $models = [
-        \Webkul\Shopify\Models\ShopifyCredentialsConfig::class,
-        \Webkul\Shopify\Models\ShopifyExportMappingConfig::class,
-        \Webkul\Shopify\Models\ShopifyMappingConfig::class,
-        \Webkul\Shopify\Models\ShopifyMetaFieldsConfig::class,
+        ShopifyCredentialsConfig::class,
+        ShopifyExportMappingConfig::class,
+        ShopifyMappingConfig::class,
+        ShopifyMetaFieldsConfig::class,
     ];
 }

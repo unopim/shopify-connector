@@ -8,7 +8,9 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shopify\DataGrids\Catalog\CredentialDataGrid;
 use Webkul\Shopify\Helpers\ShoifyApiVersion;
 use Webkul\Shopify\Http\Requests\CredentialForm;
+use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Services\ShopifyAccessTokenManager;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class CredentialController extends Controller
@@ -20,12 +22,15 @@ class CredentialController extends Controller
      *
      * @return void
      */
-    public function __construct(protected ShopifyCredentialRepository $shopifyRepository) {}
+    public function __construct(
+        protected ShopifyCredentialRepository $shopifyRepository,
+        protected ShopifyAccessTokenManager $shopifyAccessTokenManager
+    ) {}
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -67,12 +72,32 @@ class CredentialController extends Controller
 
         $data['active'] = 1;
 
+        try {
+            $data = $this->prepareCredentialToken($data);
+        } catch (\RuntimeException $exception) {
+            return new JsonResponse([
+                'errors' => [
+                    'clientId' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
+                    'clientSecret' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
+                ],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (empty($data['accessToken'])) {
+            return new JsonResponse([
+                'errors' => [
+                    'clientId' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
+                    'clientSecret' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
+                ],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $response = $this->requestGraphQlApiAction('getOneProduct', $data);
 
         if ($response['code'] != JsonResponse::HTTP_OK) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [trans('shopify::app.shopify.credential.invalid')],
+                    'shopUrl' => [trans('shopify::app.shopify.credential.invalid')],
                     'accessToken' => [trans('shopify::app.shopify.credential.invalid')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -83,9 +108,15 @@ class CredentialController extends Controller
 
             session()->flash('success', trans('shopify::app.shopify.credential.created'));
         } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'clientId')) {
+                return response()->json([
+                    'message' => trans('shopify::app.shopify.credential.system_update_required'),
+                ], 422);
+            }
+
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [$e->getMessage()],
+                    'shopUrl' => [$e->getMessage()],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -121,6 +152,7 @@ class CredentialController extends Controller
         }
 
         $credentialData = $credential->getAttributes();
+        $credentialData['credentialId'] = $credential->id;
 
         $response = $this->requestGraphQlApiAction('getShopPublishedLocales', $credentialData);
 
@@ -137,6 +169,7 @@ class CredentialController extends Controller
         $apiVersion = (new ShoifyApiVersion)->getApiVersion();
 
         $credential->accessToken = str_repeat('*', strlen($credential->accessToken));
+        $credential->clientSecret = str_repeat('*', strlen($credential->clientSecret ?? ''));
 
         return view('shopify::credential.edit', compact('credential', 'shopLocales', 'publishingChannel', 'locationAll', 'apiVersion'));
     }
@@ -149,29 +182,47 @@ class CredentialController extends Controller
     public function update(int $id)
     {
         $requestData = request()->except(['code']);
+
+        $this->validate(request(), [
+            'shopUrl' => 'required|url:http,https',
+            'apiVersion' => 'required',
+            'accessToken' => 'nullable',
+            'clientId' => 'nullable',
+            'clientSecret' => 'nullable',
+        ]);
+
+        $requestData['apiVersion'] = request()->input('apiVersion');
+
         $credential = $this->shopifyRepository->find($id);
 
         if (! $credential) {
             abort(404);
         }
 
-        $token = str_repeat('*', strlen($credential->accessToken));
-
-        if (str_contains($requestData['accessToken'], $token)) {
-            $requestData['accessToken'] = $credential->accessToken;
+        try {
+            $requestData = $this->prepareCredentialToken($requestData, $credential);
+        } catch (\RuntimeException) {
+            return redirect()->route('shopify.credentials.edit', $id)
+                ->withErrors([
+                    'accessToken' => trans('shopify::app.shopify.credential.token_refresh_failed'),
+                ])
+                ->withInput();
         }
 
-        $params = $this->validate(request(), [
-            'shopUrl'     => 'required|url',
-            'accessToken' => 'required',
-        ]);
+        if (empty($requestData['accessToken'])) {
+            return redirect()->route('shopify.credentials.edit', $id)
+                ->withErrors([
+                    'accessToken' => trans('shopify::app.shopify.credential.token_required_or_oauth'),
+                ])
+                ->withInput();
+        }
 
         $response = $this->requestGraphQlApiAction('getOneProduct', $requestData);
 
         if ($response['code'] != 200) {
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
-                    'shopUrl'     => trans('shopify::app.shopify.credential.invalid'),
+                    'shopUrl' => trans('shopify::app.shopify.credential.invalid'),
                     'accessToken' => trans('shopify::app.shopify.credential.invalid'),
                 ])
                 ->withInput();
@@ -195,11 +246,11 @@ class CredentialController extends Controller
 
         $requestData['storeLocales'] = $languages;
 
-        $extras = $credential->extras;
+        $extras = is_array($credential->extras) ? $credential->extras : [];
 
-        $extras['locations'] = $requestData['locations'];
+        $extras['locations'] = $requestData['locations'] ?? null;
 
-        $extras['salesChannel'] = $requestData['salesChannel'];
+        $extras['salesChannel'] = $requestData['salesChannel'] ?? null;
 
         $requestData['extras'] = $extras;
 
@@ -211,5 +262,47 @@ class CredentialController extends Controller
         session()->flash('success', trans('shopify::app.shopify.credential.update-success'));
 
         return redirect()->route('shopify.credentials.edit', $id);
+    }
+
+    protected function prepareCredentialToken(array $requestData, ?ShopifyCredentialsConfig $credential = null): array
+    {
+        $requestData['shopUrl'] = rtrim((string) ($requestData['shopUrl'] ?? ''), '/');
+
+        $requestData['accessToken'] = $this->resolveMaskedValue(
+            (string) ($requestData['accessToken'] ?? ''),
+            $credential?->accessToken
+        );
+        $requestData['clientSecret'] = $this->resolveMaskedValue(
+            (string) ($requestData['clientSecret'] ?? ''),
+            $credential?->clientSecret
+        );
+        if (! empty($credential?->id)) {
+            $requestData['credentialId'] = $credential->id;
+        }
+
+        if (! empty($credential?->accessTokenExpiresAt)) {
+            $requestData['accessTokenExpiresAt'] = $credential->accessTokenExpiresAt->toDateTimeString();
+        }
+
+        if ($this->shopifyAccessTokenManager->canAutoGenerateAccessToken($requestData)) {
+            $requestData = $this->shopifyAccessTokenManager->ensureValidAccessToken($requestData);
+        }
+
+        return $requestData;
+    }
+
+    protected function resolveMaskedValue(string $incomingValue, ?string $existingValue): string
+    {
+        if (empty($existingValue)) {
+            return $incomingValue;
+        }
+
+        $maskedValue = str_repeat('*', strlen($existingValue));
+
+        if ($incomingValue === $maskedValue) {
+            return $existingValue;
+        }
+
+        return $incomingValue;
     }
 }

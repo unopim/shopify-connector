@@ -34,7 +34,7 @@ trait ValidatedBatched
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data'         => $batchRows,
+                    'data' => $batchRows,
                 ]);
 
                 $batchRows = [];
