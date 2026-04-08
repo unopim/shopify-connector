@@ -50,7 +50,7 @@
             type="text/x-template"
             id="v-metafield-template"
         >
-                            <!-- Defintion Type -->
+                            <!-- Definition Type -->
                 <x-admin::form.control-group class="w-[525px]">
                     <x-admin::form.control-group.label class="required">
                         @lang('shopify::app.shopify.metafield.index.definitiontype')

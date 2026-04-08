@@ -8,159 +8,159 @@ class ShoifyMetaFieldType
      * Shopify MetaField Type.
      */
     public array $metaFieldType = [
-        'text'    => [
+        'text' => [
             [
-                'id'   => 'single_line_text_field',
+                'id' => 'single_line_text_field',
                 'name' => 'Single line text',
             ],
             [
-                'id'   => 'color',
+                'id' => 'color',
                 'name' => 'Color',
             ],
             [
-                'id'   => 'rating',
+                'id' => 'rating',
                 'name' => 'Rating',
             ],
             [
-                'id'   => 'url',
+                'id' => 'url',
                 'name' => 'Url',
             ],
             [
-                'id'   => 'multi_line_text_field',
+                'id' => 'multi_line_text_field',
                 'name' => 'Multi-line text',
             ],
             [
-                'id'   => 'json',
+                'id' => 'json',
                 'name' => 'JSON',
             ],
         ],
 
         'textarea' => [
             [
-                'id'         => 'multi_line_text_field',
-                'name'       => 'Multi-line text',
+                'id' => 'multi_line_text_field',
+                'name' => 'Multi-line text',
             ],
             [
-                'id'         => 'json',
-                'name'       => 'JSON',
+                'id' => 'json',
+                'name' => 'JSON',
             ],
         ],
 
         'boolean' => [
             [
-                'id'   => 'boolean',
+                'id' => 'boolean',
                 'name' => 'True and False',
             ],
             [
-                'id'         => 'multi_line_text_field',
-                'name'       => 'Multi-line text',
+                'id' => 'multi_line_text_field',
+                'name' => 'Multi-line text',
             ],
             [
-                'id'   => 'single_line_text_field',
+                'id' => 'single_line_text_field',
                 'name' => 'Single line text',
             ],
         ],
 
         'select' => [
             [
-                'id'         => 'single_line_text_field',
-                'name'       => 'Single line text',
+                'id' => 'single_line_text_field',
+                'name' => 'Single line text',
             ],
             [
-                'id'         => 'multi_line_text_field',
-                'name'       => 'Multi-line text',
+                'id' => 'multi_line_text_field',
+                'name' => 'Multi-line text',
             ],
         ],
 
         'multiselect' => [
             [
-                'id'         => 'multi_line_text_field',
-                'name'       => 'Multi-line text',
+                'id' => 'multi_line_text_field',
+                'name' => 'Multi-line text',
             ],
             [
-                'id'         => 'single_line_text_field',
-                'name'       => 'Single line text',
+                'id' => 'single_line_text_field',
+                'name' => 'Single line text',
             ],
         ],
 
         'date' => [
             [
-                'id'         => 'date',
-                'name'       => 'Date',
+                'id' => 'date',
+                'name' => 'Date',
             ],
             [
-                'id'         => 'multi_line_text_field',
-                'name'       => 'Multi-line text',
+                'id' => 'multi_line_text_field',
+                'name' => 'Multi-line text',
             ],
             [
-                'id'         => 'single_line_text_field',
-                'name'       => 'Single line text',
+                'id' => 'single_line_text_field',
+                'name' => 'Single line text',
             ],
         ],
 
         'decimal' => [
             [
-                'id'         => 'number_decimal',
-                'name'       => 'Decimal',
+                'id' => 'number_decimal',
+                'name' => 'Decimal',
             ],
             [
-                'id'         => 'number_integer',
-                'name'       => 'Number',
+                'id' => 'number_integer',
+                'name' => 'Number',
             ],
             [
-                'id'         => 'dimension',
-                'name'       => 'Dimension',
+                'id' => 'dimension',
+                'name' => 'Dimension',
             ],
             [
-                'id'         => 'weight',
-                'name'       => 'Weight',
+                'id' => 'weight',
+                'name' => 'Weight',
             ],
             [
-                'id'         => 'volume',
-                'name'       => 'Volume',
+                'id' => 'volume',
+                'name' => 'Volume',
             ],
             [
-                'id'         => 'single_line_text_field',
-                'name'       => 'Single line text',
+                'id' => 'single_line_text_field',
+                'name' => 'Single line text',
             ],
         ],
 
         'number' => [
             [
-                'id'         => 'number_integer',
-                'name'       => 'Number',
+                'id' => 'number_integer',
+                'name' => 'Number',
             ],
             [
-                'id'         => 'number_decimal',
-                'name'       => 'Decimal',
+                'id' => 'number_decimal',
+                'name' => 'Decimal',
             ],
             [
-                'id'         => 'dimension',
-                'name'       => 'Dimension',
+                'id' => 'dimension',
+                'name' => 'Dimension',
             ],
             [
-                'id'         => 'weight',
-                'name'       => 'Weight',
+                'id' => 'weight',
+                'name' => 'Weight',
             ],
             [
-                'id'         => 'volume',
-                'name'       => 'Volume',
+                'id' => 'volume',
+                'name' => 'Volume',
             ],
             [
-                'id'         => 'single_line_text_field',
-                'name'       => 'Single line text',
+                'id' => 'single_line_text_field',
+                'name' => 'Single line text',
             ],
         ],
     ];
 
     protected $metaFieldValidation = [
         'single_line_text_field' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum character count',
                 'max' => 'Maximum character count',
             ],
-            'adminFilterable'          => true,
+            'adminFilterable' => true,
             'smartCollectionCondition' => true,
         ],
 
@@ -169,13 +169,13 @@ class ShoifyMetaFieldType
         ],
 
         'rating' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum rating',
                 'max' => 'Maximum rating',
             ],
             'smartCollectionCondition' => true,
-            'listvalue'                => [
+            'listvalue' => [
                 'smartCollectionCondition' => true,
             ],
 
@@ -185,7 +185,7 @@ class ShoifyMetaFieldType
         ],
 
         'multi_line_text_field' => [
-            'list'       => false,
+            'list' => false,
             'validation' => [
                 'min' => 'Minimum character count',
                 'max' => 'Maximum character count',
@@ -197,13 +197,13 @@ class ShoifyMetaFieldType
         ],
 
         'boolean' => [
-            'list'                     => false,
-            'adminFilterable'          => true,
+            'list' => false,
+            'adminFilterable' => true,
             'smartCollectionCondition' => true,
         ],
 
         'date' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum date',
                 'max' => 'Maximum date',
@@ -211,143 +211,143 @@ class ShoifyMetaFieldType
         ],
 
         'number_decimal' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum value',
                 'max' => 'Maximum value',
             ],
             'smartCollectionCondition' => true,
-            'listvalue'                => [
+            'listvalue' => [
                 'smartCollectionCondition' => true,
             ],
 
         ],
 
         'number_integer' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum value',
                 'max' => 'Maximum value',
             ],
             'smartCollectionCondition' => true,
-            'listvalue'                => [
+            'listvalue' => [
                 'smartCollectionCondition' => true,
             ],
         ],
 
         'dimension' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum dimension',
                 'max' => 'Maximum dimension',
             ],
             'unitoptions' => [
                 [
-                    'id'   => 'MILLIMETERS',
+                    'id' => 'MILLIMETERS',
                     'name' => 'mm',
                 ],
                 [
-                    'id'   => 'CENTIMETERS',
+                    'id' => 'CENTIMETERS',
                     'name' => 'cm',
                 ],
                 [
-                    'id'   => 'METERS',
+                    'id' => 'METERS',
                     'name' => 'm',
                 ],
                 [
-                    'id'   => 'INCHES',
+                    'id' => 'INCHES',
                     'name' => 'in',
                 ],
                 [
-                    'id'   => 'FEET',
+                    'id' => 'FEET',
                     'name' => 'ft',
                 ],
                 [
-                    'id'   => 'YARDS',
+                    'id' => 'YARDS',
                     'name' => 'yd',
                 ],
             ],
         ],
 
         'volume' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum volume',
                 'max' => 'Maximum volume',
             ],
             'unitoptions' => [
                 [
-                    'id'   => 'MILLILITERS',
+                    'id' => 'MILLILITERS',
                     'name' => 'ml',
                 ],
                 [
-                    'id'   => 'CENTILITERS',
+                    'id' => 'CENTILITERS',
                     'name' => 'cl',
                 ],
                 [
-                    'id'   => 'LITERS',
+                    'id' => 'LITERS',
                     'name' => 'L',
                 ],
                 [
-                    'id'   => 'CUBIC_METERS',
+                    'id' => 'CUBIC_METERS',
                     'name' => 'm³',
                 ],
                 [
-                    'id'   => 'FLUID_OUNCES',
+                    'id' => 'FLUID_OUNCES',
                     'name' => 'fl oz',
                 ],
                 [
-                    'id'   => 'PINTS',
+                    'id' => 'PINTS',
                     'name' => 'pt',
                 ],
                 [
-                    'id'   => 'QUARTS',
+                    'id' => 'QUARTS',
                     'name' => 'qt',
                 ],
                 [
-                    'id'   => 'GALLONS',
+                    'id' => 'GALLONS',
                     'name' => 'gal',
                 ],
                 [
-                    'id'   => 'IMPERIAL_FLUID_OUNCES',
+                    'id' => 'IMPERIAL_FLUID_OUNCES',
                     'name' => 'imp fl oz',
                 ],
                 [
-                    'id'   => 'IMPERIAL_PINTS',
+                    'id' => 'IMPERIAL_PINTS',
                     'name' => 'imp pt',
                 ],
                 [
-                    'id'   => 'IMPERIAL_QUARTS',
+                    'id' => 'IMPERIAL_QUARTS',
                     'name' => 'imp qt',
                 ],
                 [
-                    'id'   => 'IMPERIAL_GALLONS',
+                    'id' => 'IMPERIAL_GALLONS',
                     'name' => 'imp gal',
                 ],
             ],
         ],
 
         'weight' => [
-            'list'       => true,
+            'list' => true,
             'validation' => [
                 'min' => 'Minimum weight',
                 'max' => 'Maximum weight',
             ],
             'unitoptions' => [
                 [
-                    'id'   => 'KILOGRAMS',
+                    'id' => 'KILOGRAMS',
                     'name' => 'kg',
                 ],
                 [
-                    'id'   => 'GRAMS',
+                    'id' => 'GRAMS',
                     'name' => 'g',
                 ],
                 [
-                    'id'   => 'POUNDS',
+                    'id' => 'POUNDS',
                     'name' => 'lb',
                 ],
                 [
-                    'id'   => 'OUNCES',
+                    'id' => 'OUNCES',
                     'name' => 'oz',
                 ],
             ],
@@ -362,147 +362,158 @@ class ShoifyMetaFieldType
     public function getMetaFieldType(): array
     {
         return [
-            'text'    => [
+            'text' => [
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
                 [
-                    'id'         => 'color',
-                    'name'       => trans('shopify::app.shopify.metafield.type.color'),
+                    'id' => 'color',
+                    'name' => trans('shopify::app.shopify.metafield.type.color'),
                 ],
                 [
-                    'id'         => 'rating',
-                    'name'       => trans('shopify::app.shopify.metafield.type.rating'),
+                    'id' => 'rating',
+                    'name' => trans('shopify::app.shopify.metafield.type.rating'),
                 ],
                 [
-                    'id'         => 'url',
-                    'name'       => trans('shopify::app.shopify.metafield.type.url'),
+                    'id' => 'url',
+                    'name' => trans('shopify::app.shopify.metafield.type.url'),
                 ],
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
-                    'id'         => 'json',
-                    'name'       => trans('shopify::app.shopify.metafield.type.json'),
+                    'id' => 'json',
+                    'name' => trans('shopify::app.shopify.metafield.type.json'),
                 ],
             ],
 
             'textarea' => [
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
-                    'id'         => 'json',
-                    'name'       => trans('shopify::app.shopify.metafield.type.json'),
+                    'id' => 'json',
+                    'name' => trans('shopify::app.shopify.metafield.type.json'),
                 ],
             ],
 
             'boolean' => [
                 [
-                    'id'         => 'boolean',
-                    'name'       => trans('shopify::app.shopify.metafield.type.boolean'),
+                    'id' => 'boolean',
+                    'name' => trans('shopify::app.shopify.metafield.type.boolean'),
                 ],
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
             ],
 
             'select' => [
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
             ],
 
             'multiselect' => [
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
             ],
 
             'date' => [
                 [
-                    'id'         => 'date',
-                    'name'       => trans('shopify::app.shopify.metafield.type.date'),
+                    'id' => 'date',
+                    'name' => trans('shopify::app.shopify.metafield.type.date'),
                 ],
                 [
-                    'id'         => 'multi_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
             ],
 
             'decimal' => [
                 [
-                    'id'         => 'number_decimal',
-                    'name'       => trans('shopify::app.shopify.metafield.type.number_decimal'),
+                    'id' => 'number_decimal',
+                    'name' => trans('shopify::app.shopify.metafield.type.number_decimal'),
                 ],
                 [
-                    'id'         => 'number_integer',
-                    'name'       => trans('shopify::app.shopify.metafield.type.number_integer'),
+                    'id' => 'number_integer',
+                    'name' => trans('shopify::app.shopify.metafield.type.number_integer'),
                 ],
                 [
-                    'id'         => 'dimension',
-                    'name'       => trans('shopify::app.shopify.metafield.type.dimension'),
+                    'id' => 'dimension',
+                    'name' => trans('shopify::app.shopify.metafield.type.dimension'),
                 ],
                 [
-                    'id'         => 'weight',
-                    'name'       => trans('shopify::app.shopify.metafield.type.weight'),
+                    'id' => 'weight',
+                    'name' => trans('shopify::app.shopify.metafield.type.weight'),
                 ],
                 [
-                    'id'         => 'volume',
-                    'name'       => trans('shopify::app.shopify.metafield.type.volume'),
+                    'id' => 'volume',
+                    'name' => trans('shopify::app.shopify.metafield.type.volume'),
                 ],
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
             ],
 
             'number' => [
                 [
-                    'id'         => 'number_integer',
-                    'name'       => trans('shopify::app.shopify.metafield.type.number_integer'),
+                    'id' => 'number_integer',
+                    'name' => trans('shopify::app.shopify.metafield.type.number_integer'),
                 ],
                 [
-                    'id'         => 'number_decimal',
-                    'name'       => trans('shopify::app.shopify.metafield.type.number_decimal'),
+                    'id' => 'number_decimal',
+                    'name' => trans('shopify::app.shopify.metafield.type.number_decimal'),
                 ],
                 [
-                    'id'         => 'dimension',
-                    'name'       => trans('shopify::app.shopify.metafield.type.dimension'),
+                    'id' => 'dimension',
+                    'name' => trans('shopify::app.shopify.metafield.type.dimension'),
                 ],
                 [
-                    'id'         => 'weight',
-                    'name'       => trans('shopify::app.shopify.metafield.type.weight'),
+                    'id' => 'weight',
+                    'name' => trans('shopify::app.shopify.metafield.type.weight'),
                 ],
                 [
-                    'id'         => 'volume',
-                    'name'       => trans('shopify::app.shopify.metafield.type.volume'),
+                    'id' => 'volume',
+                    'name' => trans('shopify::app.shopify.metafield.type.volume'),
                 ],
                 [
-                    'id'         => 'single_line_text_field',
-                    'name'       => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'url' => [
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id' => 'url',
+                    'name' => trans('shopify::app.shopify.metafield.type.url'),
                 ],
             ],
         ];

@@ -3,11 +3,13 @@
 namespace Webkul\Shopify\Traits;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Models\JobTrack;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Http\Client\GraphQLApiClient;
+use Webkul\Shopify\Services\ShopifyAccessTokenManager;
 
 /**
  * Trait for making GraphQL API requests to Shopify.
@@ -24,13 +26,43 @@ trait ShopifyGraphqlRequest
      */
     protected function requestGraphQlApiAction(string $mutationType, ?array $credential = [], ?array $formatedVariable = []): array
     {
-        if (! $credential || ! isset($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion'])) {
-            throw new \InvalidArgumentException('Invalid Shopify credentials provided.');
+        if (! $credential || ! isset($credential['shopUrl'], $credential['apiVersion'])) {
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
         }
 
-        $credential = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
+        $accessTokenManager = app(ShopifyAccessTokenManager::class);
 
-        $response = $credential->request($mutationType, $formatedVariable);
+        $credential = $accessTokenManager->ensureValidAccessToken($credential);
+
+        if (empty($credential['accessToken'])) {
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
+        }
+
+        $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
+
+        $response = $apiClient->request($mutationType, $formatedVariable);
+
+        if (
+            isset($response['code'])
+            && (int) $response['code'] === 401
+            && $accessTokenManager->canAutoGenerateAccessToken($credential)
+        ) {
+            try {
+                $credential = $accessTokenManager->regenerateAccessToken($credential);
+
+                $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
+                $response = $apiClient->request($mutationType, $formatedVariable);
+            } catch (\Throwable $e) {
+                Log::error('Shopify token regeneration failed', [
+                    'message' => $e->getMessage(),
+                    'credential' => [
+                        'credentialId' => $credential['credentialId'] ?? null,
+                        'shopUrl' => $credential['shopUrl'] ?? null,
+                        'apiVersion' => $credential['apiVersion'] ?? null,
+                    ],
+                ]);
+            }
+        }
 
         if (
             (! $response['code'] || in_array($response['code'], [401, 404]))

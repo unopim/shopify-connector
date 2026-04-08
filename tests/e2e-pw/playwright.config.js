@@ -1,5 +1,9 @@
 // @ts-check
+const path = require('path');
 const { defineConfig, devices } = require('@playwright/test');
+
+// Load env vars from tests/e2e-pw/.env for local runs
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -20,9 +24,8 @@ module.exports = defineConfig({
   /* Shared settings for all projects */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    // baseURL: 'http://127.0.0.1:3000',
     headless: true,
-    baseURL: 'http://localhost:8000',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:8000',
 
     /* Load saved authentication state */
     storageState: 'storage/auth.json',

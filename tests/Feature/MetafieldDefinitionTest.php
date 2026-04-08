@@ -26,12 +26,12 @@ it('should create the shopify Metafield Definitions with valid input', function 
     $this->loginAsAdmin();
 
     $shopifyMetaField = [
-        'ownerType'          => 'test_ownerType',
-        'code'               => 'test_code',
-        'type'               => 'test_type',
-        'name_space_key'     => 'test_name.space_key',
-        'pin'                => '1',
-        'attribute'          => 'test_attribute',
+        'ownerType' => 'test_ownerType',
+        'code' => 'test_code',
+        'type' => 'test_type',
+        'name_space_key' => 'test_name.space_key',
+        'pin' => '1',
+        'attribute' => 'test_attribute',
     ];
 
     post(route('shopify.metafield.store'), $shopifyMetaField)
@@ -41,18 +41,18 @@ it('should create the shopify Metafield Definitions with valid input', function 
 it('should update the shopify Metafield Definitions with valid input', function () {
     $this->loginAsAdmin();
     $metaField = ShopifyMetaFieldsConfig::factory()->create([
-        'ownerType'          => 'test_ownerType',
-        'code'               => 'test_code',
-        'type'               => 'test_type',
-        'name_space_key'     => 'test_name.space_key',
-        'pin'                => '0',
-        'attribute'          => 'test_attribute',
+        'ownerType' => 'test_ownerType',
+        'code' => 'test_code',
+        'type' => 'test_type',
+        'name_space_key' => 'test_name.space_key',
+        'pin' => '0',
+        'attribute' => 'test_attribute',
     ]);
 
     $updatedData = [
-        'pin'                => '0',
-        'type'               => 'test_type',
-        'storefronts'        => '1',
+        'pin' => '0',
+        'type' => 'test_type',
+        'storefronts' => '1',
     ];
 
     $response = $this->put(route('shopify.metafield.update', ['id' => $metaField->id]), $updatedData);

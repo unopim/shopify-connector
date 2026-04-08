@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Exceptions;
 
 use Exception;
+use Throwable;
 
 /**
  * Class InvalidCredential
@@ -12,8 +13,12 @@ use Exception;
  */
 class InvalidCredential extends Exception
 {
-    /**
-     * @var string The error message for the exception.
-     */
-    protected $message = 'Invalid Credential: The credential is either disabled, incorrect, or does not exist';
+    public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null)
+    {
+        parent::__construct(
+            $message !== '' ? $message : trans('shopify::app.shopify.credential.errors.invalid-credential'),
+            $code,
+            $previous
+        );
+    }
 }

@@ -23,12 +23,12 @@ class ShopifyMetaFieldFactory extends Factory
     public function definition()
     {
         return [
-            'code'           => 'testing',
-            'attribute'      => 'testing',
-            'name_space'     => 'testingnamespace',
+            'code' => 'testing',
+            'attribute' => 'testing',
+            'name_space' => 'testingnamespace',
             'name_space_key' => 'testingnamespacekey',
-            'type'           => 'testingtype',
-            'ownerType'      => 'testingowner',
+            'type' => 'testingtype',
+            'ownerType' => 'testingowner',
         ];
     }
 }

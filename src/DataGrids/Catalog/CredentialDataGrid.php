@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\DataGrids\Catalog;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Webkul\DataGrid\DataGrid;
 
@@ -10,7 +11,7 @@ class CredentialDataGrid extends DataGrid
     /**
      * Prepare query builder.
      *
-     * @return \Illuminate\Database\Query\Builder
+     * @return Builder
      */
     public function prepareQueryBuilder()
     {
@@ -33,31 +34,31 @@ class CredentialDataGrid extends DataGrid
     public function prepareColumns()
     {
         $this->addColumn([
-            'index'      => 'shopUrl',
-            'label'      => trans('shopify::app.shopify.credential.datagrid.shopUrl'),
-            'type'       => 'string',
+            'index' => 'shopUrl',
+            'label' => trans('shopify::app.shopify.credential.datagrid.shopUrl'),
+            'type' => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
         ]);
 
         $this->addColumn([
-            'index'      => 'apiVersion',
-            'label'      => trans('shopify::app.shopify.credential.datagrid.apiVersion'),
-            'type'       => 'string',
+            'index' => 'apiVersion',
+            'label' => trans('shopify::app.shopify.credential.datagrid.apiVersion'),
+            'type' => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
+            'sortable' => true,
         ]);
 
         $this->addColumn([
-            'index'      => 'active',
-            'label'      => trans('shopify::app.shopify.credential.datagrid.enabled'),
-            'type'       => 'boolean',
+            'index' => 'active',
+            'label' => trans('shopify::app.shopify.credential.datagrid.enabled'),
+            'type' => 'boolean',
             'searchable' => true,
             'filterable' => true,
-            'sortable'   => true,
-            'closure'    => fn ($row) => $row->active ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
+            'sortable' => true,
+            'closure' => fn ($row) => $row->active ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
         ]);
     }
 
@@ -70,10 +71,10 @@ class CredentialDataGrid extends DataGrid
     {
         if (bouncer()->hasPermission('shopify.credentials.edit')) {
             $this->addAction([
-                'icon'   => 'icon-edit',
-                'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
+                'icon' => 'icon-edit',
+                'title' => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url'    => function ($row) {
+                'url' => function ($row) {
                     return route('shopify.credentials.edit', $row->id);
                 },
             ]);
@@ -81,10 +82,10 @@ class CredentialDataGrid extends DataGrid
 
         if (bouncer()->hasPermission('shopify.credentials.delete')) {
             $this->addAction([
-                'icon'   => 'icon-delete',
-                'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
+                'icon' => 'icon-delete',
+                'title' => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url'    => function ($row) {
+                'url' => function ($row) {
                     return route('shopify.credentials.delete', $row->id);
                 },
             ]);

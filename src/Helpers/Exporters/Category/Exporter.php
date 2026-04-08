@@ -109,9 +109,13 @@ class Exporter extends AbstractExporter
         }
 
         $this->credentialArray = [
-            'shopUrl'     => $this->credential->shopUrl,
+            'credentialId' => $this->credential->id,
+            'shopUrl' => $this->credential->shopUrl,
             'accessToken' => $this->credential->accessToken,
-            'apiVersion'  => $this->credential->apiVersion,
+            'apiVersion' => $this->credential->apiVersion,
+            'clientId' => $this->credential->clientId,
+            'clientSecret' => $this->credential->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
         ];
     }
 
@@ -194,7 +198,8 @@ class Exporter extends AbstractExporter
 
             $category = [
                 'handle' => $rawData['code'] ?? '',
-                'title'  => $localeSpecificFields['name'] ?? $rawData['code'],
+                'title' => $localeSpecificFields['name'] ?? $rawData['code'],
+                'descriptionHtml' => $localeSpecificFields['description'] ?? '',
             ];
 
             if (empty($mapping)) {
@@ -253,14 +258,14 @@ class Exporter extends AbstractExporter
         if ($existingIds !== $newIds) {
             $this->requestGraphQlApiAction(self::UPDATE_PUBLISH_CHANNEL, $this->credentialArray, [
                 'collectionId' => $collectionId,
-                'input'        => $publicationIds,
+                'input' => $publicationIds,
             ]);
 
             $removePublication = array_values(array_diff($existingIds, $newIds));
             if (! empty($removePublication)) {
                 $this->requestGraphQlApiAction(self::UPDATE_UNPUBLISH_CHANNEL, $this->credentialArray, [
                     'collectionId' => $collectionId,
-                    'input'        => array_map(fn ($id) => ['publicationId' => $id], $removePublication),
+                    'input' => array_map(fn ($id) => ['publicationId' => $id], $removePublication),
                 ]);
             }
         }

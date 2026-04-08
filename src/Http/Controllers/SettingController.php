@@ -39,6 +39,13 @@ class SettingController extends Controller
 
         $shopifySettings = $this->shopifyExportMappingRepository->find(2);
 
+        if (is_null($shopifySettings)) {
+
+            session()->flash('error', trans('shopify::app.shopify.export.settings.save_failed'));
+
+            return redirect()->back();
+        }
+
         if ($shopifySettings) {
             if (isset($filteredData['enable_named_tags_attribute']) || ! isset($filteredData['enable_tags_attribute'])) {
                 unset($filteredData['tagSeprator']);

@@ -33,10 +33,10 @@ it('should return the selected attribute', function () {
 
     $attribute = Attribute::factory()->create();
     $queryParams = http_build_query([
-        'entityName'  => json_encode([$attribute->type]),
+        'entityName' => json_encode([$attribute->type]),
         'identifiers' => [
             'columnName' => 'code',
-            'values'     => [$attribute->code],
+            'values' => [$attribute->code],
         ],
     ]);
     $response = get(route('admin.shopify.get-attribute').'?'.$queryParams)
@@ -78,8 +78,8 @@ it('should return a list of image attributes', function () {
         ]);
 
     $attributeData = [
-        'id'    => $imageAttribute->id,
-        'code'  => $imageAttribute->code,
+        'id' => $imageAttribute->id,
+        'code' => $imageAttribute->code,
         'label' => "[{$imageAttribute->code}]",
     ];
 
@@ -102,11 +102,11 @@ it('should return the list of active Shopify credentials', function () {
     $response->assertStatus(200);
 
     $response->assertJsonFragment([
-        'id'    => $activeCredential1->id,
+        'id' => $activeCredential1->id,
         'label' => $activeCredential1->shopUrl,
     ]);
     $response->assertJsonFragment([
-        'id'    => $activeCredential2->id,
+        'id' => $activeCredential2->id,
         'label' => $activeCredential2->shopUrl,
     ]);
 });
@@ -138,7 +138,7 @@ it('should return the list of channels', function () {
     $response->assertStatus(200);
 
     $response->assertJsonFragment([
-        'id'    => $channel->code,
+        'id' => $channel->code,
         'label' => $channel->name,
     ]);
 });
@@ -149,10 +149,10 @@ it('should return the selected channel', function () {
     $channel = Channel::factory()->create();
 
     $queryParams = http_build_query([
-        'page'                    => 1,
-        'locale'                  => 'en_US',
+        'page' => 1,
+        'locale' => 'en_US',
         'identifiers[columnName]' => 'id',
-        'identifiers[values][0]'  => $channel->code,
+        'identifiers[values][0]' => $channel->code,
     ]);
 
     $response = get(route('shopify.channel.fetch-all').'?'.$queryParams);
@@ -160,7 +160,7 @@ it('should return the selected channel', function () {
     $response->assertStatus(200);
 
     $response->assertJsonFragment([
-        'id'    => $channel->code,
+        'id' => $channel->code,
         'label' => $channel->name,
     ]);
 });
@@ -169,7 +169,7 @@ it('should return the list of currencies', function () {
     $this->loginAsAdmin();
 
     $currency = Currency::factory()->create([
-        'code'   => 'DOP',
+        'code' => 'DOP',
         'symbol' => '$',
     ]);
 
@@ -184,10 +184,10 @@ it('should return the selected currency', function () {
     Currency::whereIn('code', ['INR', 'EUR', 'USD'])->update(['status' => 1]);
 
     $queryParams = http_build_query([
-        'page'                    => 1,
-        'locale'                  => 'en_US',
+        'page' => 1,
+        'locale' => 'en_US',
         'identifiers[columnName]' => 'id',
-        'identifiers[values][0]'  => 'INR',
+        'identifiers[values][0]' => 'INR',
     ]);
 
     $response = get(route('shopify.currency.fetch-all').'?'.$queryParams);

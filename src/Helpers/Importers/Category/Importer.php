@@ -11,8 +11,11 @@ use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
+use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
+use Webkul\Shopify\Helpers\Iterator\CategoryIterator;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
@@ -65,6 +68,10 @@ class Importer extends AbstractImporter
 
     protected ?array $nonDeletableCategories = null;
 
+    protected ?int $rootCategoryId = null;
+
+    protected $importMapping;
+
     public function __construct(
         protected JobTrackBatchRepository $importBatchRepository,
         protected CategoryRepository $categoryRepository,
@@ -73,6 +80,7 @@ class Importer extends AbstractImporter
         protected LocaleRepository $localeRepository,
         protected ChannelRepository $channelRepository,
         protected ShopifyCredentialRepository $shopifyRepository,
+        protected ShopifyExportMappingRepository $shopifyExportmapping,
         protected ShopifyMappingRepository $shopifyMappingRepository,
     ) {
         parent::__construct($importBatchRepository);
@@ -98,27 +106,44 @@ class Importer extends AbstractImporter
         $this->credential = $this->shopifyRepository->find($filters['credentials'] ?? null);
 
         $this->locale = $filters['locale'] ?? null;
+
+        $this->rootCategoryId = core()->getDefaultChannel()?->root_category_id;
+
+        if (! $this->rootCategoryId) {
+            $channelWithRoot = $this->channelRepository
+                ->all()
+                ->first(fn ($channel) => ! empty($channel->root_category_id));
+
+            $this->rootCategoryId = $channelWithRoot?->root_category_id;
+        }
+
+        $this->importMapping = $this->shopifyExportmapping->find(3);
+
+        $this->credentialArray = [
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
+            'accessToken' => $this->credential?->accessToken,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
+        ];
     }
 
     /**
      * Import instance.
      *
-     * @return \Webkul\DataTransfer\Helpers\Source
+     * @return Source
      */
     public function getSource()
     {
         $this->categoryStorage->init();
         $this->initFilters();
         if (! $this->credential?->active) {
-            throw new \InvalidArgumentException('Invalid Credential: The credential is either disabled, incorrect, or does not exist');
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
-        $this->credentialArray = [
-            'shopUrl'     => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
-        ];
 
-        $collections = new \Webkul\Shopify\Helpers\Iterator\CategoryIterator($this->credentialArray);
+        $collections = new CategoryIterator($this->credentialArray);
 
         return $collections;
     }
@@ -132,7 +157,20 @@ class Importer extends AbstractImporter
         if (! empty($categories['update'])) {
             $this->updatedItemsCount += count($categories['update']);
             foreach ($categories['update'] as $code => $category) {
-                $this->categoryRepository->update($category, $this->categoryStorage->get($code), withoutFormattingValues: true);
+                $categoryId = $this->categoryStorage->get($code);
+
+                if (! $categoryId) {
+                    $existing = $this->categoryRepository->findOneByField('code', $code);
+                    $categoryId = $existing?->id;
+                }
+
+                if (! $categoryId) {
+                    continue;
+                }
+
+                unset($category['parent_id']);
+
+                $this->categoryRepository->update($category, $categoryId, withoutFormattingValues: true);
             }
         }
 
@@ -182,7 +220,7 @@ class Importer extends AbstractImporter
          * Update import batch summary
          */
         $batch = $this->importBatchRepository->update([
-            'state'   => Import::STATE_PROCESSED,
+            'state' => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),
@@ -198,28 +236,84 @@ class Importer extends AbstractImporter
      */
     public function prepareCategories(array $collection, &$category)
     {
-        $categ = $this->categoryRepository->where('code', $collection['node']['handle'])->first();
+        $categ = $this->categoryRepository->findOneByField('code', $collection['node']['handle']);
 
         $data = [
-            'code'               => $collection['node']['handle'],
-            'parent_id'          => $categ?->parent_id,
-            'additional_data'    => $categ ? $categ->toArray()['additional_data'] : [],
+            'code' => $collection['node']['handle'],
+            'parent_id' => $categ?->parent_id ?? $this->rootCategoryId,
+            'additional_data' => $categ ? $categ->toArray()['additional_data'] : [],
         ];
+
+        $localizedTitles = [
+            $this->locale => $collection['node']['title'] ?? '',
+        ];
+
+        $localizedDescriptions = [
+            $this->locale => $collection['node']['descriptionHtml'] ?? '',
+        ];
+        $shopifyLocaleForCurrent = array_search($this->locale, (array) ($this->credential?->storelocaleMapping ?? []), true);
+        $defaultShopifyLocale = collect((array) ($this->credential?->storeLocales ?? []))
+            ->firstWhere('defaultlocale', true)['locale'] ?? null;
+        $isDefaultShopifyLocale = ! empty($shopifyLocaleForCurrent) && $shopifyLocaleForCurrent === $defaultShopifyLocale;
+
+        if (! empty($collection['node']['id']) && ! empty($shopifyLocaleForCurrent)) {
+            try {
+                $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credentialArray, [
+                    'resourceId' => $collection['node']['id'],
+                    'locale' => $shopifyLocaleForCurrent,
+                ]);
+
+                $translations = collect($response['body']['data']['translatableResource']['translations'] ?? []);
+                $title = $translations->firstWhere('key', 'title')['value'] ?? null;
+
+                if (! empty($title)) {
+                    $localizedTitles[$this->locale] = $title;
+                }
+
+                $descriptionTranslation = $translations->firstWhere('key', 'body_html');
+
+                if ($descriptionTranslation !== null) {
+                    $localizedDescriptions[$this->locale] = (string) ($descriptionTranslation['value'] ?? '');
+                } elseif (! $isDefaultShopifyLocale) {
+                    $localizedDescriptions[$this->locale] = '';
+                }
+            } catch (\Throwable $e) {
+                // Keep default title fallback.
+            }
+        }
+
+        $this->mapCollectionImage($collection, $data);
 
         $categoryMapping = $this->checkMappingInDb(['code' => $collection['node']['handle']]);
         if (! $categoryMapping) {
             $this->parentMapping($collection['node']['handle'], $collection['node']['id'], $this->import->id);
         }
 
+        $this->setLocalizedCategoryContent($data, $localizedTitles, $localizedDescriptions);
+
         if ($categ) {
             $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'] ?? [], $category['update'][$collection['node']['handle']]['additional_data'] ?? []);
-            $data['additional_data']['locale_specific'][$this->locale]['name'] = $collection['node']['title'] ?? $data['additional_data']['locale_specific'][$this->locale]['name'];
             $category['update'][$collection['node']['handle']] = array_merge($category['update'][$collection['node']['handle']] ?? [], $data);
         } else {
-            $data['additional_data']['locale_specific'][$this->locale]['name'] = $collection['node']['title'];
             $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'], $category['insert'][$collection['node']['handle']]['additional_data'] ?? []);
 
             $category['insert'][$collection['node']['handle']] = array_merge($category['insert'][$collection['node']['handle']] ?? [], $data);
+        }
+    }
+
+    /**
+     * Set localized category fields from Shopify payload.
+     */
+    protected function setLocalizedCategoryContent(array &$data, array $localizedTitles, array $localizedDescriptions): void
+    {
+        foreach ($localizedTitles as $localeCode => $title) {
+            if ($title !== '') {
+                $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$localeCode]['name'] = $title;
+            }
+        }
+
+        foreach ($localizedDescriptions as $localeCode => $description) {
+            $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$localeCode]['description'] = $description;
         }
     }
 
@@ -256,6 +350,115 @@ class Importer extends AbstractImporter
         }
 
         return $this->categoryFields;
+    }
+
+    /**
+     * Map Shopify collection image to category additional data.
+     */
+    protected function mapCollectionImage(array $collection, array &$data): void
+    {
+        $imageUrl = $collection['node']['image']['url'] ?? null;
+
+        $targetFields = $this->resolveCategoryMediaFields();
+
+        if (empty($targetFields)) {
+            return;
+        }
+
+        if (empty($imageUrl)) {
+            $this->clearMappedCollectionImage($data, $targetFields);
+
+            return;
+        }
+
+        foreach ($targetFields as $fieldCode) {
+            $field = $this->getCategoryFieldByCode($fieldCode);
+
+            if (! $field || ! in_array($field->type, ['image', 'file'], true)) {
+                continue;
+            }
+
+            $imagePath = 'category'.DIRECTORY_SEPARATOR.($collection['node']['handle'] ?? 'shopify').DIRECTORY_SEPARATOR.$fieldCode.DIRECTORY_SEPARATOR;
+            $storedPath = $this->handleUrlField($imageUrl, $imagePath);
+
+            if (! $storedPath) {
+                continue;
+            }
+
+            if ($field->value_per_locale) {
+                $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$this->locale][$fieldCode] = $storedPath;
+            } else {
+                $data['additional_data'][CategoryRepository::COMMON_VALUES_KEY][$fieldCode] = $storedPath;
+            }
+
+            break;
+        }
+    }
+
+    /**
+     * Clear mapped category image fields when Shopify collection has no image.
+     */
+    protected function clearMappedCollectionImage(array &$data, array $targetFields): void
+    {
+        foreach ($targetFields as $fieldCode) {
+            $field = $this->getCategoryFieldByCode($fieldCode);
+
+            if (! $field || ! in_array($field->type, ['image', 'file'], true)) {
+                continue;
+            }
+
+            if ($field->value_per_locale) {
+                unset($data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$this->locale][$fieldCode]);
+
+                if (empty($data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$this->locale] ?? [])) {
+                    unset($data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$this->locale]);
+                }
+
+                if (empty($data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY] ?? [])) {
+                    unset($data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY]);
+                }
+            } else {
+                unset($data['additional_data'][CategoryRepository::COMMON_VALUES_KEY][$fieldCode]);
+
+                if (empty($data['additional_data'][CategoryRepository::COMMON_VALUES_KEY] ?? [])) {
+                    unset($data['additional_data'][CategoryRepository::COMMON_VALUES_KEY]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolve target category media fields from import mapping.
+     */
+    protected function resolveCategoryMediaFields(): array
+    {
+        $mediaAttributes = [];
+
+        $newMapping = $this->importMapping?->mapping['mediaMapping']['mediaAttributes'] ?? [];
+        if (! is_array($newMapping)) {
+            $newMapping = explode(',', (string) $newMapping);
+        }
+        $mediaAttributes = array_merge($mediaAttributes, $newMapping);
+
+        $legacyMapping = $this->importMapping?->mapping['shopify_connector_settings']['images'] ?? [];
+        if (! is_array($legacyMapping)) {
+            $legacyMapping = explode(',', (string) $legacyMapping);
+        }
+        $mediaAttributes = array_merge($mediaAttributes, $legacyMapping);
+
+        $mediaAttributes = array_values(array_filter(array_map('trim', $mediaAttributes)));
+
+        return array_values(array_unique($mediaAttributes));
+    }
+
+    /**
+     * Get active category field by code.
+     */
+    protected function getCategoryFieldByCode(string $code): mixed
+    {
+        $this->getCategoryFields();
+
+        return $this->cachedCategoryFields->firstWhere('code', $code);
     }
 
     /**

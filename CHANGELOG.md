@@ -1,3 +1,17 @@
+# 1.3.0
+
+## Features
+- Automatic Access token generation from at the time of Credential add which requires Shopify Shop URL, Client ID and Client Secret.
+- Compatibility with latest Shopify Admin API version 2026-01.
+
+## Bug fixes
+- Added validation error for incorrect Shop URL format without requiring the Save button click.
+- Fixed category description export.
+- Fixed currency fetching based on the mapped channel in the export job.
+- Fixed multi-locale category content import.
+- Fixed category update during product export.
+- Fixed product import duplicacy by validating unique product number and SKU.
+
 # 1.2.0 ( 28 July 2025 )
 
 - Added Playwright end-to-end testing.

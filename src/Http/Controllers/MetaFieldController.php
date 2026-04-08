@@ -15,34 +15,34 @@ class MetaFieldController extends Controller
 {
     public const SMALLESTUNIT = [
         'weight' => [
-            'GRAMS'     => 1,
+            'GRAMS' => 1,
             'KILOGRAMS' => 1000,
-            'POUNDS'    => 453.592,
-            'OUNCES'    => 28.3495,
+            'POUNDS' => 453.592,
+            'OUNCES' => 28.3495,
         ],
 
         'volume' => [
-            'MILLILITERS'           => 1,
-            'CENTILITERS'           => 10,
-            'LITERS'                => 1000,
-            'CUBIC_METERS'          => 1000000,
-            'FLUID_OUNCES'          => 29.5735,
-            'PINTS'                 => 473.176,
-            'QUARTS'                => 946.353,
-            'GALLONS'               => 3785.41,
+            'MILLILITERS' => 1,
+            'CENTILITERS' => 10,
+            'LITERS' => 1000,
+            'CUBIC_METERS' => 1000000,
+            'FLUID_OUNCES' => 29.5735,
+            'PINTS' => 473.176,
+            'QUARTS' => 946.353,
+            'GALLONS' => 3785.41,
             'IMPERIAL_FLUID_OUNCES' => 28.4131,
-            'IMPERIAL_PINTS'        => 568.261,
-            'IMPERIAL_QUARTS'       => 1136.52,
-            'IMPERIAL_GALLONS'      => 4546.09,
+            'IMPERIAL_PINTS' => 568.261,
+            'IMPERIAL_QUARTS' => 1136.52,
+            'IMPERIAL_GALLONS' => 4546.09,
         ],
 
         'dimension' => [
             'MILLIMETERS' => 1,
             'CENTIMETERS' => 10,
-            'METERS'      => 1000,
-            'INCHES'      => 25.4,
-            'FEET'        => 304.8,
-            'YARDS'       => 914.4,
+            'METERS' => 1000,
+            'INCHES' => 25.4,
+            'FEET' => 304.8,
+            'YARDS' => 914.4,
         ],
     ];
 
@@ -90,14 +90,14 @@ class MetaFieldController extends Controller
 
         $attributeCode = $this->shopifyMetaFieldRepository->where('code', $data['code'])->where('ownerType', $data['ownerType'])->get()->first();
         if ($attributeCode) {
-            $defintionType = ($attributeCode?->ownerType == 'PRODUCT') ? 'Product Defintion' : 'Product variant Definition';
+            $defintionType = ($attributeCode?->ownerType == 'PRODUCT') ? 'Product Definition' : 'Product variant Definition';
             $errors['code'] = [trans('Definition already created in '.$defintionType)];
         }
         if (isset($data['name_space_key'])) {
             $nameSpaceAndKeyExist = $this->shopifyMetaFieldRepository->where('name_space_key', $data['name_space_key'])
                 ->where('ownerType', $data['ownerType'])->get()->first();
             if ($nameSpaceAndKeyExist) {
-                $defintionType = ($nameSpaceAndKeyExist?->ownerType == 'PRODUCT') ? 'Product Defintion' : 'Product variant Definition';
+                $defintionType = ($nameSpaceAndKeyExist?->ownerType == 'PRODUCT') ? 'Product Definition' : 'Product variant Definition';
                 $errors['name_space_key'] = [trans('Namespace and key are already taken for '.$defintionType)];
             }
             $nameSpaceAndKey = explode('.', $data['name_space_key']);
@@ -144,7 +144,7 @@ class MetaFieldController extends Controller
 
         if (isset($data['adminFilterable']) || isset($data['smartCollectionCondition'])) {
             $data['options'] = json_encode([
-                'adminFilterable'          => $data['adminFilterable'] ?? null,
+                'adminFilterable' => $data['adminFilterable'] ?? null,
                 'smartCollectionCondition' => $data['smartCollectionCondition'] ?? null,
             ], true);
         }
@@ -162,7 +162,7 @@ class MetaFieldController extends Controller
         } catch (\Exception $e) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl'     => [$e->getMessage()],
+                    'shopUrl' => [$e->getMessage()],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -201,12 +201,12 @@ class MetaFieldController extends Controller
 
         if ($minvalue && $maxvalue) {
             $unitData = self::SMALLESTUNIT[$data['type']] ?? null;
-            if (! ctype_digit($minvalue)) {
+            if (! ctype_digit($minvalue) && $data['type'] != 'date') {
                 $errors['minvalue'] = [trans('Only Number Allowed')];
 
                 return null;
             }
-            if (! ctype_digit($maxvalue)) {
+            if (! ctype_digit($maxvalue) && $data['type'] != 'date') {
                 $errors['maxvalue'] = [trans('Only Number Allowed')];
 
                 return null;
@@ -327,7 +327,7 @@ class MetaFieldController extends Controller
         if (isset($requestData['adminFilterable']) || isset($requestData['smartCollectionCondition'])) {
             // Encode with pretty formatting
             $formatted = json_encode([
-                'adminFilterable'          => $requestData['adminFilterable'] ?? null,
+                'adminFilterable' => $requestData['adminFilterable'] ?? null,
                 'smartCollectionCondition' => $requestData['smartCollectionCondition'] ?? null,
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             $formatted = preg_replace('/:/', ': ', $formatted);

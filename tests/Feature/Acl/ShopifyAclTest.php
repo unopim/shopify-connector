@@ -29,13 +29,18 @@ it('should display the create shopify credentials form if has permission', funct
     $this->loginWithPermissions(permissions: ['shopify.credentials.create']);
 
     Http::fake([
+        'https://test.myshopify.com/admin/oauth/access_token' => Http::response([
+            'access_token' => 'generated_access_token',
+            'expires_in' => 3600,
+        ], 200),
         'https://test.myshopify.com/admin/api/2023-04/graphql.json' => Http::response(['code' => 200], 200),
     ]);
 
     $shopifyCredential = [
-        'accessToken' => 'test_access_token',
-        'apiVersion'  => '2023-04',
-        'shopUrl'     => 'https://test.myshopify.com',
+        'clientId' => 'test_client_id',
+        'clientSecret' => 'test_client_secret',
+        'apiVersion' => '2023-04',
+        'shopUrl' => 'https://test.myshopify.com',
     ];
 
     $this->post(route('shopify.credentials.store'), $shopifyCredential)

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 test.use({ storageState: 'storage/auth.json' }); // Reuse login session
 // test.use({ launchOptions: { slowMo: 1000 } }); // Slow down actions by 1 second
 
+const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
+
 test.describe('UnoPim Shopify setting tab Navigation', () => {
     test.beforeEach(async ({ page }) => {
         // Navigate to the Shopify Credentials Page
@@ -17,7 +19,7 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
         await page.click('a.primary-button[href$="/exports/create"]');
 
         // Expect URL to change after clicking the button
-        await expect(page).toHaveURL('http://localhost:8000/admin/settings/data-transfer/exports/create');
+        await expect(page).toHaveURL(new URL('/admin/settings/data-transfer/exports/create', baseUrl).toString());
         // await page.click('button[type="submit"]');
 
         await page.click('#export-type .multiselect__select');

@@ -19,21 +19,21 @@ class ShopifySettingConfigurationValuesSeeder extends Seeder
 
         $records = [
             [
-                'id'         => 1,
-                'mapping'    => null,
-                'extras'     => null,
+                'id' => 1,
+                'mapping' => null,
+                'extras' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], [
-                'id'         => 2,
-                'mapping'    => null,
-                'extras'     => null,
+                'id' => 2,
+                'mapping' => null,
+                'extras' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], [
-                'id'         => 3,
-                'mapping'    => null,
-                'extras'     => null,
+                'id' => 3,
+                'mapping' => null,
+                'extras' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

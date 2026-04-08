@@ -68,7 +68,7 @@ class ShopifyMappingProduct extends Command
         $this->jobinstanceId = $jobTrackHighestId->id + 1;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $shopUrl = $input->getArgument('shopUrl');
         $onlyNew = filter_var($input->getOption('onlynew'), FILTER_VALIDATE_BOOLEAN);
@@ -87,9 +87,13 @@ class ShopifyMappingProduct extends Command
         }
         $output->writeln('<info>Mapping migration process start </info>');
         $this->credentialArray = [
-            'shopUrl'     => $this->credential?->shopUrl,
+            'credentialId' => $this->credential?->id,
+            'shopUrl' => $this->credential?->shopUrl,
             'accessToken' => $this->credential?->accessToken,
-            'apiVersion'  => $this->credential?->apiVersion,
+            'apiVersion' => $this->credential?->apiVersion,
+            'clientId' => $this->credential?->clientId,
+            'clientSecret' => $this->credential?->clientSecret,
+            'accessTokenExpiresAt' => $this->credential?->accessTokenExpiresAt,
         ];
 
         $totalProduct = $this->getTotalProduct();
@@ -133,7 +137,7 @@ class ShopifyMappingProduct extends Command
         if ($page) {
             $mutationType = 'productAllvalueGettingByCursor';
             $variable = [
-                'first'       => 10,
+                'first' => 10,
                 'afterCursor' => $page,
             ];
         }

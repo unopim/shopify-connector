@@ -71,7 +71,7 @@
 
                         <!-- Modal Content -->
                         <x-slot:content>
-                            <!-- Defintion Type -->
+                            <!-- Definition Type -->
                             <x-admin::form.control-group>
                                 <x-admin::form.control-group.label class="required">
                                     @lang('shopify::app.shopify.metafield.index.definitiontype')

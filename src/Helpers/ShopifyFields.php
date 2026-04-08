@@ -11,14 +11,14 @@ class ShopifyFields
      */
     public $mappingFields = [
         [
-            'name'  => 'title',
+            'name' => 'title',
             'label' => 'shopify::app.shopify.fields.name',
             'types' => [
                 'text',
             ],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name'  => 'descriptionHtml',
+            'name' => 'descriptionHtml',
             'label' => 'shopify::app.shopify.fields.description',
             'types' => [
                 'textarea',
@@ -26,14 +26,14 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name'  => 'price',
+            'name' => 'price',
             'label' => 'shopify::app.shopify.fields.price',
             'types' => [
                 'price',
             ],
             'tooltip' => 'supported attributes types: price',
         ], [
-            'name'  => 'weight',
+            'name' => 'weight',
             'label' => 'shopify::app.shopify.fields.weight',
             'types' => [
                 'number',
@@ -41,28 +41,28 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: number, metric',
         ], [
-            'name'  => 'inventoryQuantity',
+            'name' => 'inventoryQuantity',
             'label' => 'shopify::app.shopify.fields.quantity',
             'types' => [
                 'number',
             ],
             'tooltip' => 'supported attributes types: number (Default value will export in case of product creation only**)',
         ], [
-            'name'  => 'inventoryTracked',
+            'name' => 'inventoryTracked',
             'label' => 'shopify::app.shopify.fields.inventory_tracked',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: boolean',
         ], [
-            'name'  => 'inventoryPolicy',
+            'name' => 'inventoryPolicy',
             'label' => 'shopify::app.shopify.fields.allow_purchase_out_of_stock',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: yes/no',
         ], [
-            'name'  => 'vendor',
+            'name' => 'vendor',
             'label' => 'shopify::app.shopify.fields.vendor',
             'types' => [
                 'text',
@@ -70,7 +70,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, simple select',
         ], [
-            'name'  => 'productType',
+            'name' => 'productType',
             'label' => 'shopify::app.shopify.fields.product_type',
             'types' => [
                 'text',
@@ -78,7 +78,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, simple select',
         ], [
-            'name'  => 'tags',
+            'name' => 'tags',
             'label' => 'shopify::app.shopify.fields.tags',
             'types' => [
                 'text',
@@ -88,7 +88,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: textarea, text, select, multiselect',
         ], [
-            'name'  => 'barcode',
+            'name' => 'barcode',
             'label' => 'shopify::app.shopify.fields.barcode',
             'types' => [
                 'text',
@@ -96,42 +96,42 @@ class ShopifyFields
             'tooltip' => 'supported attributes types: text',
 
         ], [
-            'name'  => 'compareAtPrice',
+            'name' => 'compareAtPrice',
             'label' => 'shopify::app.shopify.fields.compare_at_price',
             'types' => [
                 'price',
             ],
             'tooltip' => 'supported attributes types: price',
         ], [
-            'name'  => 'metafields_global_title_tag',
+            'name' => 'metafields_global_title_tag',
             'label' => 'shopify::app.shopify.fields.seo_title',
             'types' => [
                 'textarea',
             ],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name'  => 'metafields_global_description_tag',
+            'name' => 'metafields_global_description_tag',
             'label' => 'shopify::app.shopify.fields.seo_description',
             'types' => [
                 'textarea',
             ],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name'  => 'handle',
+            'name' => 'handle',
             'label' => 'shopify::app.shopify.fields.handle',
             'types' => [
                 'text',
             ],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name'  => 'taxable',
+            'name' => 'taxable',
             'label' => 'shopify::app.shopify.fields.taxable',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: yes/no',
         ], [
-            'name'  => 'cost',
+            'name' => 'cost',
             'label' => 'shopify::app.shopify.fields.inventory_cost',
             'types' => [
                 'price',
