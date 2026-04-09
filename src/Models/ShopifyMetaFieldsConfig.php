@@ -22,9 +22,12 @@ class ShopifyMetaFieldsConfig extends Model implements HistoryContract, Presenta
 
     protected $fillable = [
         'ownerType',
+        'ownerTypeName',
         'code',
         'type',
         'attribute',
+        'attributeLabel',
+        'name_space',
         'name_space_key',
         'description',
         'validations',
