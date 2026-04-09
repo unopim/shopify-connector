@@ -80,6 +80,16 @@ class MetaFieldController extends Controller
     public function store(MetaFieldForm $request): JsonResponse
     {
         $data = $request->all();
+        $nameSpaceAndKey = ! empty($data['name_space_key']) ? explode('.', $data['name_space_key'], 2) : [];
+
+        if (count($nameSpaceAndKey) === 2) {
+            $data['name_space'] = $nameSpaceAndKey[0];
+        }
+
+        $data['description'] = $data['description'] ?? '';
+        $data['ContentTypeName'] = $data['ContentTypeName'] ?? ($data['type'] ?? '');
+        $data['ownerTypeName'] = $data['ownerTypeName'] ?? ($data['ownerType'] ?? '');
+        $data['attributeLabel'] = $data['attributeLabel'] ?? ($data['attribute'] ?? '');
         $errors = [];
         if ((bool) $data['pin']) {
             $allPined = $this->shopifyMetaFieldRepository->where('pin', 1)->where('ownerType', $data['ownerType'])->get()->toArray();
