@@ -159,20 +159,46 @@ jobs:
 
       - name: Generate Shopify auth state for merged tests
         run: |
-          cd unopim/packages/Webkul/Shopify/tests/e2e-pw
+          cd unopim/tests/e2e-pw
           mkdir -p storage
-          node -e "import('./tests/setup/global-setup.js').then((m) => m.default())"
-          mkdir -p ../../../../tests/e2e-pw/storage
-          cp storage/auth.json ../../../../tests/e2e-pw/storage/auth.json
+          node <<'NODE'
+          const { chromium } = require('@playwright/test');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
+            const adminEmail = process.env.E2E_ADMIN_EMAIL;
+            const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+            await page.goto(baseUrl);
+            await page.fill('input[name="email"]', adminEmail);
+            await page.fill('input[name="password"]', adminPassword);
+            await page.click('.primary-button');
+            await page.waitForURL(new URL('/admin/dashboard', baseUrl).toString());
+            await context.storageState({ path: 'storage/auth.json' });
+
+            if (!fs.existsSync('storage/auth.json')) {
+              throw new Error('Auth storage file was not created.');
+            }
+
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
 
       - name: Run full Playwright tests
         working-directory: unopim/tests/e2e-pw
-        # run: npx playwright test --reporter=list,html
-        run: |
-          npx playwright test \
-            tests/02-configuration/magicAI.spec.js \
-            tests/shopify \
-            --reporter=list,html
+        run: npx playwright test --reporter=list,html
+        # run: |
+        #   npx playwright test \
+        #     tests/02-configuration/magicAI.spec.js \
+        #     tests/shopify \
+        #     --reporter=list,html
 
       - name: Upload full Playwright report
         if: failure()
