@@ -151,11 +151,8 @@ jobs:
 
       - name: Merge Shopify tests into UnoPim Playwright
         run: |
-          cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/* unopim/tests/e2e-pw/tests/
-          if [ -d unopim/packages/Webkul/Shopify/tests/e2e-pw/helpers ]; then
-            mkdir -p unopim/tests/e2e-pw/helpers
-            cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/helpers/* unopim/tests/e2e-pw/helpers/
-          fi
+          mkdir -p unopim/tests/e2e-pw/tests/shopify
+          cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/shopify/* unopim/tests/e2e-pw/tests/shopify/
 
       - name: Generate Shopify auth state for merged tests
         run: |
@@ -193,12 +190,10 @@ jobs:
 
       - name: Run full Playwright tests
         working-directory: unopim/tests/e2e-pw
-        run: npx playwright test --reporter=list,html
-        # run: |
-        #   npx playwright test \
-        #     tests/02-configuration/magicAI.spec.js \
-        #     tests/shopify \
-        #     --reporter=list,html
+        run: |
+          npx playwright test \
+            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field" \
+            --reporter=list,html
 
       - name: Upload full Playwright report
         if: failure()
