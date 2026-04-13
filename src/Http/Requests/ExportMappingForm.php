@@ -15,14 +15,14 @@ class ExportMappingForm extends FormRequest
     public function rules()
     {
         return [
-            'default_taxable' => new BooleanString,
-            'default_inventoryPolicy' => new BooleanString,
-            'default_inventoryTracked' => new BooleanString,
-            'default_price' => 'numeric',
-            'default_weight' => 'numeric',
-            'default_inventoryQuantity' => 'numeric',
-            'default_compareAtPrice' => 'numeric',
-            'default_cost' => 'numeric',
+            'default_taxable' => ['sometimes', 'nullable', new BooleanString],
+            'default_inventoryPolicy' => ['sometimes', 'nullable', new BooleanString],
+            'default_inventoryTracked' => ['sometimes', 'nullable', new BooleanString],
+            'default_price' => 'sometimes|nullable|numeric',
+            'default_weight' => 'sometimes|nullable|numeric',
+            'default_inventoryQuantity' => 'sometimes|nullable|numeric',
+            'default_compareAtPrice' => 'sometimes|nullable|numeric',
+            'default_cost' => 'sometimes|nullable|numeric',
         ];
     }
 }
