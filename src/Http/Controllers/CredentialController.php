@@ -49,6 +49,7 @@ class CredentialController extends Controller
     public function store(CredentialForm $request): JsonResponse
     {
         $data = $request->all();
+        $data['storelocaleMapping'] = $this->normalizeStoreLocaleMapping($data['storelocaleMapping'] ?? []);
         $url = $data['shopUrl'];
         $url = $data['shopUrl'] = rtrim($url, '/');
 
@@ -182,6 +183,7 @@ class CredentialController extends Controller
     public function update(int $id)
     {
         $requestData = request()->except(['code']);
+        $requestData['storelocaleMapping'] = $this->normalizeStoreLocaleMapping($requestData['storelocaleMapping'] ?? []);
 
         $this->validate(request(), [
             'shopUrl' => 'required|url:http,https',
@@ -289,6 +291,18 @@ class CredentialController extends Controller
         }
 
         return $requestData;
+    }
+
+    /**
+     * Preserve blank locale mappings as empty strings instead of null.
+     */
+    protected function normalizeStoreLocaleMapping(array $storelocaleMapping): array
+    {
+        foreach ($storelocaleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
+            $storelocaleMapping[$shopifyLocaleCode] = $unopimLocaleCode ?? '';
+        }
+
+        return $storelocaleMapping;
     }
 
     protected function resolveMaskedValue(string $incomingValue, ?string $existingValue): string
