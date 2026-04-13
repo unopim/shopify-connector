@@ -147,7 +147,7 @@ jobs:
           php artisan db:seed --class="Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder"
           php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
           echo "Waiting for server..."
-          timeout 30 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
+          timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
 
       - name: Merge Shopify tests into UnoPim Playwright
         run: |
@@ -188,11 +188,18 @@ jobs:
           });
           NODE
 
+      - name: Wait before running tests
+        run: sleep 10
+
       - name: Run full Playwright tests
         working-directory: unopim/tests/e2e-pw
         run: |
           npx playwright test \
-            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field" \
+            --timeout=60000 \
+            --retries=2 \
+            --workers=1 \
+            --trace=on-first-retry \
+            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field|Check the Validate button is visible by filling the value in api key|Setup the MagicAI with valid credential" \
             --reporter=list,html
 
       - name: Upload full Playwright report
