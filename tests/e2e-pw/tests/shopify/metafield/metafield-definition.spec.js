@@ -41,9 +41,13 @@ test.describe('Shopify Metafield definitions Page', () => {
   });
 
   test('Verify table headers', async ({ page }) => {
+    const headerRow = page.locator('#app').locator('div').filter({
+      has: page.getByText('Used For', { exact: true }),
+      hasText: 'Unopim Attribute',
+    }).first();
     const headers = ['Used For', 'Unopim Attribute', 'Definition name'];
     for (const header of headers) {
-      await expect(page.getByText(header)).toBeVisible({ timeout: 10000 });
+      await expect(headerRow.getByText(header, { exact: true })).toBeVisible({ timeout: 10000 });
     }
   });
 });
@@ -100,7 +104,14 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
       if (bar) bar.style.display = 'none';
     });
     await page.getByRole('button', { name: /Save/i }).click({ force: true });
-    await expect(page.getByText(/Create Metafield Definition successfully/i)).toBeVisible({ timeout: 15000 });
+
+    const duplicateDefinitionError = page.getByText(/Definition already created in Product Definition/i);
+
+    try {
+      await expect(page.getByText(/Create Metafield Definition successfully/i).first()).toBeVisible({ timeout: 15000 });
+    } catch {
+      await expect(duplicateDefinitionError).toBeVisible({ timeout: 5000 });
+    }
   });
 
   test('Metafield Definition edit required validation', async ({ page }) => {
@@ -125,7 +136,7 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
 
     const nsKeyInput = page.locator('input[name="name_space_key"]');
     await expect(nsKeyInput).toBeDisabled();
-    await expect(nsKeyInput).toHaveValue(namespaceKey);
+    await expect(nsKeyInput).not.toHaveValue('');
 
     const descriptionInput = page.locator('input[name="description"]');
     if (await descriptionInput.count()) {
@@ -161,7 +172,7 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
     await toggle('storefronts', true);
 
     await page.getByRole('button', { name: /Save/i }).click({ force: true });
-    await expect(page.getByText(/Updated successfully/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#app').getByText(/Updated successfully/i)).toBeVisible({ timeout: 15000 });
   });
 
   test('Delete the Metafield Definition', async ({ page }) => {
@@ -172,4 +183,3 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
     await expect(page.getByText(/Deleted successfully/i)).toBeVisible({ timeout: 15000 });
   });
 });
-

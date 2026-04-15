@@ -64,7 +64,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
             await page.getByRole('button', { name: 'Save' }).click();
         }
 
-        await expect(page.getByText(/Mapping saved successfully|Export Mapping saved successfully/i)).toBeVisible({
+        await expect(page.locator('#app').getByText(/Mapping saved successfully|Export Mapping saved successfully/i)).toBeVisible({
             timeout: 10000,
         });
 
@@ -76,12 +76,12 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
+        await expect(page.locator('#app').getByText('Export Mapping saved successfully', { exact: true })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
-        await page.locator('div').filter({ hasText: /^Name$/ }).click();
+        await page.locator('input[aria-label="title-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
         await page.getByText('Name', { exact: true }).click();
         await page.getByText('Description', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Price$/ }).click();
+        await page.locator('input[aria-label="price-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
         await page.locator('#default_productType').click();
         await page.locator('#default_productType').clear();
         await page.locator('#default_productType').fill('unopim');
@@ -97,8 +97,9 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
         expect(hasDisabledClass).toBe(false);
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
         await page.getByRole('link', { name: 'Export Mappings' }).click();
+        await expect(page.locator('#default_productType')).toHaveValue('unopim');
+        await expect(page.locator('#default_tags')).toHaveValue('shopify');
     });
 });

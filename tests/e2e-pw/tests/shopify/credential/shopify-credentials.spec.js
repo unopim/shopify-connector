@@ -75,9 +75,14 @@ test.describe('Shopify Credentials Page', () => {
   });
 
   test('Verify table headers', async ({ page }) => {
+    const headerRow = page.locator('#app').locator('div').filter({
+      has: page.getByText('Shopify URL', { exact: true }),
+      hasText: 'API Version',
+    }).first();
     const headers = ['Shopify URL', 'API Version', 'Enable', 'Actions'];
+
     for (const header of headers) {
-      await expect(page.getByText(header)).toBeVisible({ timeout: 10000 });
+      await expect(headerRow.getByText(header, { exact: true })).toBeVisible({ timeout: 10000 });
     }
   });
 

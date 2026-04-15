@@ -45,10 +45,10 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await saveButton.click();
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app')).toContainText('The Choose Family field is required');
-        await page.locator('div').filter({ hasText: /^Choose Family$/ }).click();
+        await page.getByRole('combobox').filter({ hasText: 'Choose Family' }).first().click();
         await page.getByText('Default', { exact: true }).click();
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Import Mapping saved successfully')).toBeVisible();
+        await expect(page.locator('#app').getByText('Import Mapping saved successfully', { exact: true })).toBeVisible();
 
     });
 
@@ -58,12 +58,17 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await expect(page.getByRole('paragraph').filter({ hasText: 'Import Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Import Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Import Mapping saved successfully')).toBeVisible();
+        if (await page.getByText('The Choose Family field is required').isVisible({ timeout: 1000 }).catch(() => false)) {
+            await page.getByRole('combobox').filter({ hasText: 'Choose Family' }).first().click();
+            await page.getByText('Default', { exact: true }).click();
+        }
+        await page.getByRole('button', { name: 'Save' }).click();
+        await expect(page.locator('#app').getByText('Import Mapping saved successfully', { exact: true })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Import Mapping saved successfully');
-        await page.locator('div').filter({ hasText: /^Name$/ }).click();
+        await page.locator('input[aria-label="title-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
         await page.getByText('Name', { exact: true }).click();
         await page.getByText('Description', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Price$/ }).click();
+        await page.locator('input[aria-label="price-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
         await page.getByText('Price', { exact: true }).click();
         const mediaTypeDropdown = page.locator('#type .multiselect__select');
         await mediaTypeDropdown.click();
