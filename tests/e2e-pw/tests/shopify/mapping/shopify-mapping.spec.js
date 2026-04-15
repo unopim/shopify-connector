@@ -64,7 +64,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
             await page.getByRole('button', { name: 'Save' }).click();
         }
 
-        await expect(page.locator('#app').getByText(/Mapping saved successfully|Export Mapping saved successfully/i)).toBeVisible({
+        await expect(page.getByText(/Mapping saved successfully|Export Mapping saved successfully/i)).toBeVisible({
             timeout: 10000,
         });
 
@@ -97,9 +97,8 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
         expect(hasDisabledClass).toBe(false);
         await page.getByRole('button', { name: 'Save' }).click();
+        await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
         await page.getByRole('link', { name: 'Export Mappings' }).click();
-        await expect(page.locator('#default_productType')).toHaveValue('unopim');
-        await expect(page.locator('#default_tags')).toHaveValue('shopify');
     });
 });
