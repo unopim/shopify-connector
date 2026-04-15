@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.2']
+        php-versions: ['8.3']
 
     name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
 
@@ -38,7 +38,7 @@ jobs:
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
+        run: git clone -b 2.0 https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |
@@ -94,7 +94,7 @@ jobs:
   pest_tests_elasticsearch:
     runs-on: ubuntu-latest
 
-    name: PHP 8.2 test on MySQL + Elasticsearch
+    name: PHP 8.3 test on MySQL + Elasticsearch
 
     services:
       mysql:
@@ -126,12 +126,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.2
+          php-version: 8.3
           extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
+        run: git clone -b 2.0 https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |

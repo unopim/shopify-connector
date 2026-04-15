@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.2']
+        php-versions: ['8.3']
 
     services:
       mysql:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Install UnoPIM
         run: |
-          git clone -b 1.0 https://github.com/unopim/unopim.git
+          git clone -b 2.0 https://github.com/unopim/unopim.git
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env

@@ -9,7 +9,7 @@ jobs:
   pest_tests_pgsql:
     runs-on: ubuntu-latest
 
-    name: PHP 8.2 test on PostgreSQL
+    name: PHP 8.3 test on PostgreSQL
 
     services:
       postgres:
@@ -29,12 +29,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.2
+          php-version: 8.3
           extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_pgsql, tokenizer, zip
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
+        run: git clone -b 2.0 https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |
@@ -90,7 +90,7 @@ jobs:
   pest_tests_pgsql_elasticsearch:
     runs-on: ubuntu-latest
 
-    name: PHP 8.2 test on PostgreSQL + Elasticsearch
+    name: PHP 8.3 test on PostgreSQL + Elasticsearch
 
     services:
       postgres:
@@ -123,12 +123,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.2
+          php-version: 8.3
           extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_pgsql, tokenizer, zip
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
+        run: git clone -b 2.0 https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |
