@@ -133,8 +133,12 @@ jobs:
       - name: Register Shopify Connector Package
         working-directory: unopim
         run: |
-          sed -i "/Webkul\\\\User\\\\Providers\\\\UserServiceProvider::class,/a \        Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," config/app.php
+          grep -q 'Webkul\\\\Shopify' composer.json || \
           sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
+
+          # Register provider
+          grep -q "ShopifyServiceProvider" bootstrap/providers.php || \
+          sed -i "/return \[/a \    Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," bootstrap/providers.php
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear
@@ -199,7 +203,7 @@ jobs:
             --retries=2 \
             --workers=1 \
             --trace=on-first-retry \
-            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field|Check the Validate button is visible by filling the value in api key|Setup the MagicAI with valid credential" \
+            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field|Check the Validate button is visible by filling the value in api key|Setup the MagicAI with valid credential|Delete Default Channel|Delete Enable Locale|Verify Product Completeness Status Displays N/A When No Attributes Are Configured as Required for a Channel|Verify product grid shows N/A for completeness when no required channel configured" \
             --reporter=list,html
 
       - name: Upload full Playwright report
