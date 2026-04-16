@@ -195,7 +195,7 @@ jobs:
       - name: Wait before running tests
         run: sleep 10
 
-      - name: Run full Playwright tests
+      - name: Run Playwright tests
         working-directory: unopim/tests/e2e-pw
         run: |
           npx playwright test \
