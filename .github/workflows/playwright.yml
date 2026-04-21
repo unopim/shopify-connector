@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.2']
+        php-versions: ['8.3']
 
     services:
       mysql:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Install UnoPIM
         run: |
-          git clone -b 1.0 https://github.com/unopim/unopim.git
+          git clone --branch v2.0.0 --single-branch https://github.com/unopim/unopim.git
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env
@@ -66,11 +66,12 @@ jobs:
       - name: Register Shopify Connector Package
         run: |
           cd unopim
-          sed -i "/Webkul\\\\User\\\\Providers\\\\UserServiceProvider::class,/a \        Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," config/app.php
+          grep -q 'Webkul\\\\Shopify' composer.json || \
           sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
-          ls -la
-          cat config/app.php
-          cat composer.json
+
+          # Register provider
+          grep -q "ShopifyServiceProvider" bootstrap/providers.php || \
+          sed -i "/return \[/a \    Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," bootstrap/providers.php
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear

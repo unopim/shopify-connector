@@ -1,0 +1,218 @@
+name: Shopify Connector Full Playwright Tests
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  playwright_tests:
+    name: Full Playwright UI Test Cases
+    runs-on: ubuntu-24.04
+    environment: Shopify
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: unopim
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=3
+          --tmpfs /var/lib/mysql:rw,noexec,nosuid,size=600m
+          --tmpfs /tmp:rw,noexec,nosuid,size=100m
+
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_INVALID_KEY: ${{ secrets.GROQ_INVALID_KEY }}
+      E2E_BASE_URL: http://127.0.0.1:8000
+      E2E_ADMIN_EMAIL: admin@example.com
+      E2E_ADMIN_PASSWORD: admin123
+      E2E_SHOPIFY_URL: ${{ secrets.E2E_SHOPIFY_URL }}
+      E2E_SHOPIFY_CLIENT_ID: ${{ secrets.E2E_SHOPIFY_CLIENT_ID }}
+      E2E_SHOPIFY_CLIENT_SECRET: ${{ secrets.E2E_SHOPIFY_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout Shopify Connector
+        uses: actions/checkout@v5
+        with:
+          path: shopify-connector
+
+      - name: Checkout UnoPim
+        uses: actions/checkout@v5
+        with:
+          repository: unopim/unopim
+          ref: 'v2.0.0'
+          path: unopim
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
+          ini-values: error_reporting=E_ALL
+          tools: composer:v2
+          coverage: none
+
+      - name: Sync Shopify into UnoPim packages
+        run: |
+          mkdir -p unopim/packages/Webkul/Shopify
+          cp -r shopify-connector/src unopim/packages/Webkul/Shopify/src
+          cp -r shopify-connector/tests unopim/packages/Webkul/Shopify/tests
+          cp -r shopify-connector/publishable unopim/packages/Webkul/Shopify/publishable
+          cp shopify-connector/composer.json unopim/packages/Webkul/Shopify/composer.json
+          cp shopify-connector/package.json unopim/packages/Webkul/Shopify/package.json
+          cp shopify-connector/vite.config.js unopim/packages/Webkul/Shopify/vite.config.js
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            unopim/vendor
+            ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-shopify-full-${{ hashFiles('unopim/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-shopify-full-
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: unopim/tests/e2e-pw/node_modules
+          key: ${{ runner.os }}-npm-unopim-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-unopim-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-unopim-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
+
+      - name: Install Composer dependencies
+        working-directory: unopim
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+
+      - name: Install Playwright dependencies
+        working-directory: unopim/tests/e2e-pw
+        run: |
+          npm install --no-progress --prefer-offline
+          npx playwright install --with-deps chromium
+
+      - name: Configure UnoPim environment
+        working-directory: unopim
+        run: |
+          cp .env.example .env
+          sed -i "s|^\(APP_ENV=\s*\).*$|\1testing|" .env
+          sed -i "s|^\(APP_DEBUG=\s*\).*$|\1false|" .env
+          sed -i "s|^\(APP_URL=\s*\).*$|\1http://127.0.0.1:8000|" .env
+          sed -i "s|^\(DB_HOST=\s*\).*$|\1127.0.0.1|" .env
+          sed -i "s|^\(DB_PORT=\s*\).*$|\13306|" .env
+          sed -i "s|^\(DB_DATABASE=\s*\).*$|\1unopim|" .env
+          sed -i "s|^\(DB_USERNAME=\s*\).*$|\1root|" .env
+          sed -i "s|^\(DB_PASSWORD=\s*\).*$|\1root|" .env
+
+      - name: Register Shopify Connector Package
+        working-directory: unopim
+        run: |
+          grep -q 'Webkul\\\\Shopify' composer.json || \
+          sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
+
+          # Register provider
+          grep -q "ShopifyServiceProvider" bootstrap/providers.php || \
+          sed -i "/return \[/a \    Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," bootstrap/providers.php
+          composer dump-autoload
+          php artisan shopify-package:install
+          php artisan optimize:clear
+
+      - name: Install UnoPim and start services
+        working-directory: unopim
+        run: |
+          php artisan unopim:install --skip-env-check --skip-admin-creation
+          php artisan migrate:fresh --seed
+          php artisan db:seed --class="Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder"
+          php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
+          echo "Waiting for server..."
+          timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
+
+      - name: Merge Shopify tests into UnoPim Playwright
+        run: |
+          mkdir -p unopim/tests/e2e-pw/tests/shopify
+          cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/shopify/* unopim/tests/e2e-pw/tests/shopify/
+
+      - name: Generate Shopify auth state for merged tests
+        run: |
+          cd unopim/tests/e2e-pw
+          mkdir -p storage
+          node <<'NODE'
+          const { chromium } = require('@playwright/test');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
+            const adminEmail = process.env.E2E_ADMIN_EMAIL;
+            const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+            await page.goto(baseUrl);
+            await page.fill('input[name="email"]', adminEmail);
+            await page.fill('input[name="password"]', adminPassword);
+            await page.click('.primary-button');
+            await page.waitForURL(new URL('/admin/dashboard', baseUrl).toString());
+            await context.storageState({ path: 'storage/auth.json' });
+
+            if (!fs.existsSync('storage/auth.json')) {
+              throw new Error('Auth storage file was not created.');
+            }
+
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Wait before running tests
+        run: sleep 10
+
+      - name: Run Playwright tests
+        working-directory: unopim/tests/e2e-pw
+        run: |
+          npx playwright test \
+            --timeout=60000 \
+            --retries=2 \
+            --workers=1 \
+            --trace=on-first-retry \
+            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field|Check the Validate button is visible by filling the value in api key|Setup the MagicAI with valid credential|Delete Default Channel|Delete Enable Locale|Verify Product Completeness Status Displays N/A When No Attributes Are Configured as Required for a Channel|Verify product grid shows N/A for completeness when no required channel configured" \
+            --reporter=list,html
+
+      - name: Upload full Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-playwright-report-${{ github.run_id }}
+          path: |
+            unopim/tests/e2e-pw/playwright-report
+            unopim/tests/e2e-pw/test-results
+            /tmp/server.log
+          retention-days: 1

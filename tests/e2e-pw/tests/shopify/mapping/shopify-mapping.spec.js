@@ -55,12 +55,30 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         }
 
         if (hasUnitValidation) {
-            await page.locator('div').filter({ hasText: /^Unit Weight$/ }).click();
-            await page.getByText('kg', { exact: true }).click();
-            await page.locator('div').filter({ hasText: /^Unit Volume$/ }).click();
-            await page.getByText('L', { exact: true }).click();
-            await page.locator('div').filter({ hasText: /^Unit Dimension$/ }).click();
-            await page.getByText('cm', { exact: true }).click();
+            const weightDropdown = page.locator('p:has-text("Unit Weight")')
+                .locator('xpath=ancestor::div[contains(@class,"grid")]')
+                .locator('.multiselect');
+
+            await weightDropdown.click();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await page.locator('.multiselect__content').last().getByText('kg', { exact: true }).click();
+
+            const volumeDropdown = page.locator('p:has-text("Unit Volume")')
+                .locator('xpath=ancestor::div[contains(@class,"grid")]')
+                .locator('.multiselect');
+
+            await volumeDropdown.click();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await page.locator('.multiselect__content').last().getByText('L', { exact: true }).click();
+
+            const dimensionDropdown = page.locator('p:has-text("Unit Dimension")')
+                .locator('xpath=ancestor::div[contains(@class,"grid")]')
+                .locator('.multiselect');
+
+            await dimensionDropdown.click();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await page.locator('.multiselect__content').last().getByText('cm', { exact: true }).click();
+
             await page.getByRole('button', { name: 'Save' }).click();
         }
 
@@ -75,13 +93,10 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(page.locator('#app')).toContainText('General');
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('Export Mappings');
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.getByText('Export Mapping saved successfully')).toBeVisible();
-        await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
-        await page.locator('div').filter({ hasText: /^Name$/ }).click();
+        await page.locator('input[aria-label="title-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
         await page.getByText('Name', { exact: true }).click();
         await page.getByText('Description', { exact: true }).click();
-        await page.locator('div').filter({ hasText: /^Price$/ }).click();
+        await page.getByText('Price', { exact: true }).click();
         await page.locator('#default_productType').click();
         await page.locator('#default_productType').clear();
         await page.locator('#default_productType').fill('unopim');

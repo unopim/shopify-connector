@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.2']
+        php-versions: ['8.3']
 
     name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
 
@@ -38,7 +38,7 @@ jobs:
           tools: composer:v2
 
       - name: Clone UnoPim
-        run: git clone -b 1.0 https://github.com/unopim/unopim.git core
+        run: git clone --branch v2.0.0 --single-branch https://github.com/unopim/unopim.git core
 
       - name: Move Package to UnoPim
         run: |
@@ -77,6 +77,113 @@ jobs:
         run: |
           echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
             
+      - name: Install Shopify Package
+        working-directory: core
+        run: |
+          php artisan shopify-package:install
+          php artisan optimize:clear
+
+      - name: Run Shopify Tests
+        working-directory: core
+        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
+
+
+  # =========================
+  # MySQL + Elasticsearch
+  # =========================
+  pest_tests_elasticsearch:
+    runs-on: ubuntu-latest
+
+    name: PHP 8.3 test on MySQL + Elasticsearch
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: unopim
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd="curl -f http://localhost:9200 || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout Shopify Package
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
+          tools: composer:v2
+
+      - name: Clone UnoPim
+        run: git clone --branch v2.0.0 --single-branch https://github.com/unopim/unopim.git core
+
+      - name: Move Package to UnoPim
+        run: |
+          mkdir -p core/packages/Webkul/Shopify
+          rsync -av ./ core/packages/Webkul/Shopify --exclude core
+
+      - name: Install UnoPim Dependencies
+        working-directory: core
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Register Local Package
+        working-directory: core
+        run: composer config repositories.shopify path packages/Webkul/Shopify
+
+      - name: Require Shopify Package (local)
+        working-directory: core
+        run: composer require unopim/shopify-connector:@dev --no-interaction --prefer-source
+
+      - name: Setup Environment (MySQL + ES)
+        working-directory: core
+        run: |
+          cp .env.example .env
+          sed -i "s|^\(APP_ENV=\s*\).*$|\1testing|" .env
+
+          # MySQL
+          sed -i "s|^\(DB_CONNECTION=\s*\).*$|\1mysql|" .env
+          sed -i "s|^\(DB_HOST=\s*\).*$|\1127.0.0.1|" .env
+          sed -i "s|^\(DB_PORT=\s*\).*$|\1${{ job.services.mysql.ports['3306'] }}|" .env
+          sed -i "s|^\(DB_DATABASE=\s*\).*$|\1unopim|" .env
+          sed -i "s|^\(DB_USERNAME=\s*\).*$|\1root|" .env
+          sed -i "s|^\(DB_PASSWORD=\s*\).*$|\1root|" .env
+
+          # Elasticsearch
+          sed -i "s|^\(SCOUT_DRIVER=\s*\).*$|\1elasticsearch|" .env
+          echo "ELASTICSEARCH_HOST=http://127.0.0.1:9200" >> .env
+
+      - name: Wait for Elasticsearch
+        run: |
+          for i in {1..30}; do
+            curl -s http://localhost:9200 && break
+            sleep 2
+          done
+
+      - name: Install UnoPim
+        working-directory: core
+        run: php artisan unopim:install --skip-env-check --skip-admin-creation
+
+      - name: Bind Shopify Tests to Pest
+        working-directory: core
+        run: |
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
+
       - name: Install Shopify Package
         working-directory: core
         run: |
