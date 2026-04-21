@@ -105,10 +105,16 @@ This ensures that the latest updates to the module are reflected in all backgrou
 Download and unzip the respective extension zip. Rename the folder to `Shopify` and move into the `packages/Webkul` directory of the project's root directory.
 
 1. **Regsiter the package provider**
-   In the `config/app.php` file add the below provider class under the `providers` key
+   Add the following to `bootstrap/providers.php` at the top, add the use statement
 
    ```php
-      Webkul\Shopify\Providers\ShopifyServiceProvider::class,
+      use Webkul\Shopify\Providers\ShopifyServiceProvider;
+   ``` 
+
+   In the return array, in the Webkul package service providers section, add:
+
+   ```php
+      ShopifyServiceProvider::class,
    ``` 
 2. In the `composer.json` file register the test directory under the `autoload` `psr-4` section
 
