@@ -14,9 +14,15 @@ env:
 
 jobs:
   playwright_tests:
-    name: Playwright E2E Tests
+    name: Playwright E2E | Shard ${{ matrix.shard-index }}/${{ matrix.shard-total }}
     runs-on: ubuntu-24.04
     environment: Shopify
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard-index: [1, 2, 3, 4]
+        shard-total: [4]
 
     services:
       mysql:
@@ -54,13 +60,13 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: unopim/unopim
-          ref: 'master'
+          ref: master
           path: unopim
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: '22'
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -70,6 +76,32 @@ jobs:
           ini-values: error_reporting=E_ALL
           tools: composer:v2
           coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            unopim/vendor
+            ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-shopify-${{ hashFiles('unopim/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-shopify-
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v5
+        with:
+          path: unopim/tests/e2e-pw/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
 
       - name: Sync Shopify into UnoPim packages
         run: |
@@ -81,41 +113,15 @@ jobs:
           cp shopify-connector/package.json unopim/packages/Webkul/Shopify/package.json
           cp shopify-connector/vite.config.js unopim/packages/Webkul/Shopify/vite.config.js
 
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            unopim/vendor
-            ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-shopify-full-${{ hashFiles('unopim/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-shopify-full-
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: unopim/tests/e2e-pw/node_modules
-          key: ${{ runner.os }}-npm-unopim-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-npm-unopim-
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-unopim-${{ hashFiles('unopim/tests/e2e-pw/package-lock.json') }}
+      - name: Install npm & Playwright browsers
+        run: |
+          cd unopim/tests/e2e-pw
+          npm install --no-progress --prefer-offline
+          npx playwright install --with-deps chromium
 
       - name: Install Composer dependencies
         working-directory: unopim
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
-
-      - name: Install Playwright dependencies
-        working-directory: unopim/tests/e2e-pw
-        run: |
-          npm install --no-progress --prefer-offline
-          npx playwright install --with-deps chromium
 
       - name: Configure UnoPim environment
         working-directory: unopim
@@ -136,9 +142,9 @@ jobs:
           grep -q 'Webkul\\\\Shopify' composer.json || \
           sed -i '/"psr-4": {/a \        "Webkul\\\\Shopify\\\\": "packages/Webkul/Shopify/src",' composer.json
 
-          # Register provider
           grep -q "ShopifyServiceProvider" bootstrap/providers.php || \
           sed -i "/return \[/a \    Webkul\\\\Shopify\\\\Providers\\\\ShopifyServiceProvider::class," bootstrap/providers.php
+
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear
@@ -146,10 +152,13 @@ jobs:
       - name: Install UnoPim and start services
         working-directory: unopim
         run: |
-          php artisan unopim:install --skip-env-check --skip-admin-creation
-          php artisan migrate:fresh --seed
-          php artisan db:seed --class="Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder"
+          php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
+
+          php artisan db:seed --class="Webkul\\Shopify\\Database\\Seeders\\ShopifySettingConfigurationValuesSeeder"
+
           php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
+          php artisan queue:work --queue=default,system,completeness > /tmp/queue.log 2>&1 &
+
           echo "Waiting for server..."
           timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
 
@@ -158,59 +167,18 @@ jobs:
           mkdir -p unopim/tests/e2e-pw/tests/shopify
           cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/shopify/* unopim/tests/e2e-pw/tests/shopify/
 
-      - name: Generate Shopify auth state for merged tests
-        run: |
-          cd unopim/tests/e2e-pw
-          mkdir -p storage
-          node <<'NODE'
-          const { chromium } = require('@playwright/test');
-          const fs = require('fs');
-
-          (async () => {
-            const browser = await chromium.launch();
-            const context = await browser.newContext();
-            const page = await context.newPage();
-            const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
-            const adminEmail = process.env.E2E_ADMIN_EMAIL;
-            const adminPassword = process.env.E2E_ADMIN_PASSWORD;
-
-            await page.goto(baseUrl);
-            await page.fill('input[name="email"]', adminEmail);
-            await page.fill('input[name="password"]', adminPassword);
-            await page.click('.primary-button');
-            await page.waitForURL(new URL('/admin/dashboard', baseUrl).toString());
-            await context.storageState({ path: 'storage/auth.json' });
-
-            if (!fs.existsSync('storage/auth.json')) {
-              throw new Error('Auth storage file was not created.');
-            }
-
-            await browser.close();
-          })().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          NODE
-
-      - name: Wait before running tests
-        run: sleep 10
-
       - name: Run Playwright tests
         working-directory: unopim/tests/e2e-pw
         run: |
           npx playwright test \
-            --timeout=60000 \
-            --retries=2 \
-            --workers=1 \
-            --trace=on-first-retry \
-            --grep-invert "Check Type field in prompt section should have Product and Category option|Click on save prompt with empty fields|Create a Prompt with all the field for Product|Create product and Generate the content from the MagicAI|Check that AI Translate is visible on Short-Description|Check more option and translate is visible|Click on Translate and verify the fields|Click on next and verify the step 2 fields|Verify the fields in translated content after click on Translate button|click on Save System Prompt with empty field|Check the Validate button is visible by filling the value in api key|Setup the MagicAI with valid credential|Delete Default Channel|Delete Enable Locale|Verify Product Completeness Status Displays N/A When No Attributes Are Configured as Required for a Channel|Verify product grid shows N/A for completeness when no required channel configured" \
+            --shard=${{ matrix.shard-index }}/${{ matrix.shard-total }} \
             --reporter=list,html
 
-      - name: Upload full Playwright report
+      - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: full-playwright-report-${{ github.run_id }}
+          name: playwright-report-shard-${{ matrix.shard-index }}-${{ github.run_id }}
           path: |
             unopim/tests/e2e-pw/playwright-report
             unopim/tests/e2e-pw/test-results
