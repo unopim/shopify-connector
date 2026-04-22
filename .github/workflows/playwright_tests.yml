@@ -153,7 +153,6 @@ jobs:
         working-directory: unopim
         run: |
           php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
-
           php artisan db:seed --class="Webkul\\Shopify\\Database\\Seeders\\ShopifySettingConfigurationValuesSeeder"
 
           php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
@@ -167,11 +166,52 @@ jobs:
           mkdir -p unopim/tests/e2e-pw/tests/shopify
           cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/shopify/* unopim/tests/e2e-pw/tests/shopify/
 
+      - name: Generate Shopify auth state
+        run: |
+          cd unopim/tests/e2e-pw
+          mkdir -p storage
+          node <<'NODE'
+          const { chromium } = require('@playwright/test');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            const baseUrl = process.env.E2E_BASE_URL;
+            const adminEmail = process.env.E2E_ADMIN_EMAIL;
+            const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+            await page.goto(baseUrl);
+            await page.fill('input[name="email"]', adminEmail);
+            await page.fill('input[name="password"]', adminPassword);
+            await page.click('.primary-button');
+            await page.waitForURL(new URL('/admin/dashboard', baseUrl).toString());
+
+            await context.storageState({ path: 'storage/auth.json' });
+
+            if (!fs.existsSync('storage/auth.json')) {
+              throw new Error('Auth file not created');
+            }
+
+            await browser.close();
+          })().catch((e) => {
+            console.error(e);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Wait before running tests
+        run: sleep 10
+
       - name: Run Playwright tests
         working-directory: unopim/tests/e2e-pw
         run: |
           npx playwright test \
             --shard=${{ matrix.shard-index }}/${{ matrix.shard-total }} \
+            --retries=2 \
+            --trace=on-first-retry \
             --reporter=list,html
 
       - name: Upload test results
