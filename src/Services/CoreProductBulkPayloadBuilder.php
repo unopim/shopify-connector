@@ -253,6 +253,7 @@ class CoreProductBulkPayloadBuilder
         $productMergedFields = $parentData ? $parentMergedFields : $this->getAllAttributeValues($firstVariant);
         $productOptions = $this->buildProductOptions($parentData, $group['variants']);
         $productCollections = $this->resolveCollectionIds($group);
+        $productIdentifierId = $productMapping[0]['relatedId'] ?? $productMapping[0]['externalId'] ?? null;
 
         $formattedProduct = $this->shopifyGraphQLDataFormatter->formatDataForGraphql(
             $this->getAllAttributeValues($firstVariant),
@@ -299,8 +300,8 @@ class CoreProductBulkPayloadBuilder
 
         return [
             'variables' => [
-                'identifier' => $productMapping
-                    ? ['id' => $productMapping[0]['externalId']]
+                'identifier' => $productIdentifierId
+                    ? ['id' => $productIdentifierId]
                     : ['handle' => $productInput['handle']],
                 'input' => $productInput,
             ],
@@ -351,7 +352,13 @@ class CoreProductBulkPayloadBuilder
     protected function buildProductOptions(?array $parentData, array $variants): array
     {
         if (empty($parentData['super_attributes'])) {
-            return [];
+            return [[
+                'name' => 'Title',
+                'position' => 1,
+                'values' => [[
+                    'name' => 'Default Title',
+                ]],
+            ]];
         }
 
         $options = [];
@@ -395,7 +402,10 @@ class CoreProductBulkPayloadBuilder
     protected function buildVariantOptionValues(?array $parentData, array $variantMergedFields): array
     {
         if (empty($parentData['super_attributes'])) {
-            return [];
+            return [[
+                'optionName' => 'Title',
+                'name' => 'Default Title',
+            ]];
         }
 
         $optionValues = [];

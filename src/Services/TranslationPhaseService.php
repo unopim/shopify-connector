@@ -59,12 +59,6 @@ class TranslationPhaseService
 
             $translations = [];
             $productData = $context['parent_data'] ?: $context['row_data'];
-            $commonFields = $this->productPhaseDataService->getAllAttributeValues(
-                $productData,
-                $manifest['channel'] ?? 'default',
-                $context['shopify_default_locale']
-            );
-
             foreach ($context['credential']->storelocaleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
                 if ($context['shopify_default_locale'] === $unopimLocaleCode) {
                     continue;
@@ -94,7 +88,7 @@ class TranslationPhaseService
 
                     $digest = $digests[$translationKey] ?? null;
 
-                    if ($digest === null || $value === '') {
+                    if ($digest === null) {
                         continue;
                     }
 
