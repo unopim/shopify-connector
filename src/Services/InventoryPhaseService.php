@@ -50,7 +50,12 @@ class InventoryPhaseService
                 }
 
                 $inventoryAttribute = $context['export_mapping']->mapping['shopify_connector_settings']['inventoryQuantity'] ?? null;
-                $quantity = $inventoryAttribute ? (int) ($context['merged_fields'][$inventoryAttribute] ?? 0) : 0;
+                if ($inventoryAttribute) {
+                    $quantity = (int) ($context['merged_fields'][$inventoryAttribute] ?? 0);
+                } else {
+                    $defaultInventory = $context['export_mapping']->mapping['shopify_connector_defaults']['inventoryQuantity'] ?? 0;
+                    $quantity = (int) $defaultInventory;
+                }
 
                 $quantities[] = [
                     'inventoryItemId' => $inventoryItemId,

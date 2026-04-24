@@ -306,7 +306,7 @@ class ShopifyGraphQLDataFormatter
                 break;
             case 'inventoryQuantity':
                 if ($this->locationId) {
-                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) @$rawData[$unopimField];
+                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
                 break;
