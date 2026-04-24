@@ -393,5 +393,45 @@ class GraphQLApiClient
             'query' => 'mutation stagedUploadsCreate($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }',
             'method' => 'POST',
         ],
+
+        'bulkOperationRunMutation' => [
+            'query' => 'mutation bulkOperationRunMutation($mutation: String!, $stagedUploadPath: String!) { bulkOperationRunMutation(mutation: $mutation, stagedUploadPath: $stagedUploadPath) { bulkOperation { id status url } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'bulkOperationStatus' => [
+            'query' => 'query bulkOperationStatus($id: ID!) { bulkOperation(id: $id) { id status errorCode createdAt completedAt objectCount fileSize url partialDataUrl } }',
+            'method' => 'POST',
+        ],
+
+        'publishablePublish' => [
+            'query' => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'publishableUnpublish' => [
+            'query' => 'mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) { publishableUnpublish(id: $id, input: $input) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'collectionAddProducts' => [
+            'query' => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'collectionRemoveProducts' => [
+            'query' => 'mutation collectionRemoveProducts($id: ID!, $productIds: [ID!]!) { collectionRemoveProducts(id: $id, productIds: $productIds) { job { id done } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'translatableResource' => [
+            'query' => 'query translatableResource($resourceId: ID!) { translatableResource(resourceId: $resourceId) { resourceId translatableContent { key value digest locale } } }',
+            'method' => 'POST',
+        ],
+
+        'inventorySetQuantities' => [
+            'query' => 'mutation InventorySet($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
+            'method' => 'POST',
+        ],
     ];
 }

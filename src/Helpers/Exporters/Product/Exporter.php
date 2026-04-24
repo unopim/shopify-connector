@@ -18,10 +18,14 @@ use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
+use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
+use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\BulkOperationService;
+use Webkul\Shopify\Services\CoreProductBulkPayloadBuilder;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -54,7 +58,7 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
-    public const BATCH_SIZE = 50;
+    public const BATCH_SIZE = 250;
 
     /**
      * @var array
@@ -138,6 +142,9 @@ class Exporter extends AbstractExporter
         protected AttributeFamilyGroupMappingRepository $attributeFamilyGroupMappingRepository,
         protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ShopifyBulkOperationRepository $shopifyBulkOperationRepository,
+        protected BulkOperationService $bulkOperationService,
+        protected CoreProductBulkPayloadBuilder $coreProductBulkPayloadBuilder,
         protected ?AssetRepository $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
@@ -251,6 +258,14 @@ class Exporter extends AbstractExporter
     {
         Event::dispatch('shopify.product.export.before', $batch);
 
+        if ($this->shouldUseBulkCorePath()) {
+            $this->exportCoreProductsInBulk($batch);
+
+            Event::dispatch('shopify.product.export.after', $batch);
+
+            return true;
+        }
+
         $this->initilize();
         $products = $this->prepareProductsForShopify($batch, $filePath);
 
@@ -262,6 +277,120 @@ class Exporter extends AbstractExporter
         Event::dispatch('shopify.product.export.after', $batch);
 
         return true;
+    }
+
+    /**
+     * Use the bulk operation path as the primary core export flow.
+     */
+    protected function shouldUseBulkCorePath(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Submit the current batch as a Shopify bulk core product sync.
+     */
+    protected function exportCoreProductsInBulk(JobTrackBatchContract $batch): void
+    {
+        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $batch->data, $this->export->id);
+
+        $this->createdItemsCount = $payload['summary']['created'] ?? 0;
+        $this->skippedItemsCount = $payload['summary']['skipped'] ?? 0;
+        $this->processedRowsCount = $payload['summary']['processed'] ?? 0;
+
+        if (empty($payload['lines'])) {
+            $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+            $this->updateSummary([
+                'processed' => $this->processedRowsCount,
+                'created' => $this->createdItemsCount,
+                'skipped' => $this->skippedItemsCount,
+            ]);
+
+            return;
+        }
+
+        $basePath = sprintf('shopify/bulk/%s/%s', $this->export->id, $batch->id);
+        $jsonlPath = $basePath.'/input.jsonl';
+        $manifestPath = $basePath.'/manifest.json';
+        $jsonlFileName = sprintf('shopify-products-%s-%s.jsonl', $this->export->id, $batch->id);
+
+        $jsonlAbsolutePath = $this->bulkOperationService->writeJsonl($jsonlPath, $payload['lines']);
+        $this->bulkOperationService->writeManifest($manifestPath, $payload['manifest']);
+
+        $uploadTargetResponse = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
+        $uploadTarget = $uploadTargetResponse['stagedTargets'][0] ?? null;
+        $uploadErrors = $uploadTargetResponse['userErrors'] ?? [];
+
+        if (! empty($uploadErrors) || empty($uploadTarget)) {
+            throw new \RuntimeException(json_encode($uploadErrors ?: [['message' => 'Unable to create Shopify bulk upload target.']]));
+        }
+
+        $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($uploadTarget, $jsonlAbsolutePath);
+        $mutation = <<<'GRAPHQL'
+mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetInput!) {
+  productSet(identifier: $identifier, input: $input) {
+    product {
+      id
+      handle
+      variants(first: 250) {
+        nodes {
+          id
+          sku
+          inventoryItem {
+            id
+          }
+        }
+      }
+    }
+    userErrors {
+      code
+      field
+      message
+    }
+  }
+}
+GRAPHQL;
+
+        $operationResponse = $this->bulkOperationService->runMutation($payload['credential'], $mutation, $stagedUploadPath);
+        $operationErrors = $operationResponse['userErrors'] ?? [];
+        $bulkOperationData = $operationResponse['bulkOperation'] ?? [];
+
+        if (! empty($operationErrors) || empty($bulkOperationData['id'])) {
+            throw new \RuntimeException(json_encode($operationErrors ?: [['message' => 'Unable to start Shopify bulk core sync.']]));
+        }
+
+        $bulkOperation = $this->shopifyBulkOperationRepository->create([
+            'job_track_id' => $this->export->id,
+            'job_track_batch_id' => $batch->id,
+            'credential_id' => $payload['manifest']['credential_id'] ?? $payload['credential']['credentialId'] ?? null,
+            'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
+            'status' => 'created',
+            'shopify_bulk_operation_id' => $bulkOperationData['id'],
+            'shopify_status' => strtolower($bulkOperationData['status'] ?? 'created'),
+            'input_file_path' => $manifestPath,
+            'staged_upload_path' => $stagedUploadPath,
+            'meta' => [
+                'jsonl_path' => $jsonlPath,
+                'summary' => $payload['summary'],
+            ],
+        ]);
+
+        PollBulkShopifyOperation::dispatch($bulkOperation->id)->delay(
+            now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
+        );
+
+        $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+        $this->updateSummary([
+            'processed' => $this->processedRowsCount,
+            'created' => $this->createdItemsCount,
+            'skipped' => $this->skippedItemsCount,
+        ]);
+
+        $this->jobLogger?->info(sprintf(
+            'Shopify bulk core sync submitted. Operation: %s. Batch: %s.',
+            $bulkOperationData['id'],
+            $batch->id
+        ));
     }
 
     protected function getResults()

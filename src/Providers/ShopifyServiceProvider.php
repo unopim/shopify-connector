@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
+use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -32,6 +33,7 @@ class ShopifyServiceProvider extends ServiceProvider
             $this->commands([
                 ShopifyInstaller::class,
                 ShopifyMappingProduct::class,
+                ShopifyPollBulkOperations::class,
             ]);
         }
 
@@ -73,6 +75,9 @@ class ShopifyServiceProvider extends ServiceProvider
         );
         $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/importers.php', 'importers'
+        );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/bulk_operations.php', 'shopify-bulk-operations'
         );
         $this->mergeConfigFrom(
             __DIR__.'/../Config/unopim-vite.php', 'unopim-vite.viters'
