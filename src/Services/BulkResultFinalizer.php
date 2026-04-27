@@ -4,6 +4,8 @@ namespace Webkul\Shopify\Services;
 
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Models\ShopifyBulkOperation;
+use Webkul\Shopify\Services\BulkOperationService;
 
 class BulkResultFinalizer
 {
@@ -13,11 +15,10 @@ class BulkResultFinalizer
     ) {}
 
     /**
-     * Finalize a completed Shopify bulk operation by syncing local mappings.
+     * Finalize a completed Shopify bulk operation by syncing local mappings or phase results.
      */
     public function finalize(object $bulkOperation, array $manifest): void
     {
-        $manifestLines = $manifest['lines'] ?? [];
         $resultPath = $bulkOperation->result_file_path;
 
         if (empty($resultPath) || ! Storage::disk('local')->exists($resultPath)) {
@@ -26,6 +27,23 @@ class BulkResultFinalizer
 
         $raw = trim(Storage::disk('local')->get($resultPath));
         $results = $raw === '' ? [] : preg_split("/\r\n|\n|\r/", $raw);
+
+        $phase = $bulkOperation->phase ?? null;
+
+        // For core product sync (phase = 'core_product_sync' or empty), perform mapping sync and dispatch follow-up phases
+        if (empty($phase) || $phase === BulkOperationService::CORE_PRODUCT_PHASE) {
+            $this->finalizeCoreProductSync($bulkOperation, $manifest, $results);
+        } else {
+            $this->finalizePhaseOperation($bulkOperation, $manifest, $results);
+        }
+    }
+
+    /**
+     * Finalize core productSet bulk operation: sync product/variant mappings.
+     */
+    protected function finalizeCoreProductSync(ShopifyBulkOperation $bulkOperation, array $manifest, array $results): void
+    {
+        $manifestLines = $manifest['lines'] ?? [];
         $success = 0;
         $failed = [];
 
@@ -81,8 +99,60 @@ class BulkResultFinalizer
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
 
+        // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    /**
+     * Finalize a phase-specific bulk operation (inventory, collections, publishing, translations).
+     */
+    protected function finalizePhaseOperation(ShopifyBulkOperation $bulkOperation, array $manifest, array $results): void
+    {
+        $mutation = $bulkOperation->meta['mutation'] ?? '';
+        $total = $bulkOperation->meta['line_count'] ?? count($results);
+        $successful = 0;
+        $errors = [];
+
+        foreach ($results as $index => $line) {
+            $decoded = json_decode($line, true);
+            $userErrors = $this->extractUserErrors($decoded, $mutation);
+
+            if (empty($userErrors)) {
+                $successful++;
+            } else {
+                $errors[] = [
+                    'line' => $index,
+                    'errors' => $userErrors,
+                ];
+            }
+        }
+
+        $meta = $bulkOperation->meta ?? [];
+        $meta['result_summary'] = [
+            'success' => $successful,
+            'failed' => count($errors),
+            'errors' => $errors,
+            'total_input_lines' => $total,
+        ];
+
+        $bulkOperation->status = $successful > 0 && count($errors) === 0 ? 'completed' : 'failed';
+        $bulkOperation->meta = $meta;
+        $bulkOperation->save();
+    }
+
+    /**
+     * Extract userErrors array from result line based on mutation type.
+     */
+    protected function extractUserErrors(array $decoded, string $mutation): array
+    {
+        return match ($mutation) {
+            'inventorySetOnHandQuantities' => $decoded['data']['inventorySetOnHandQuantities']['userErrors'] ?? [],
+            'collectionAddProducts' => $decoded['data']['collectionAddProducts']['userErrors'] ?? [],
+            'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
+            'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
+            default => [],
+        };
     }
 
     /**

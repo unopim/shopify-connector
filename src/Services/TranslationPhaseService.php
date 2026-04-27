@@ -3,130 +3,150 @@
 namespace Webkul\Shopify\Services;
 
 use Webkul\Shopify\Models\ShopifyBulkOperation;
+use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
+use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Services\BulkPayloadBuilders\TranslationsBulkPayloadBuilder;
+use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 
 class TranslationPhaseService
 {
     use ShopifyGraphqlRequest;
 
-    protected array $translationFieldMap = [
-        'title' => 'title',
-        'descriptionHtml' => 'body_html',
-        'handle' => 'handle',
-        'productType' => 'product_type',
-        'metafields_global_title_tag' => 'meta_title',
-        'metafields_global_description_tag' => 'meta_description',
-    ];
-
-    public function __construct(protected ProductPhaseDataService $productPhaseDataService) {}
+    public function __construct(
+        protected TranslationsBulkPayloadBuilder $payloadBuilder,
+        protected BulkOperationService $bulkOperationService,
+        protected ShopifyBulkOperationRepository $bulkOperationRepository,
+        protected ShopifyCredentialRepository $credentialRepository
+    ) {}
 
     /**
-     * Register product translations for secondary locales.
+     * Handle translations using bulk translationsRegister mutation.
+     *
+     * Creates a separate bulk operation and dispatches polling.
      */
-    public function handle(ShopifyBulkOperation $bulkOperation, array $operationData): array
+    public function handle(ShopifyBulkOperation $coreBulkOperation, array $operationData): array
     {
         $manifest = $operationData['manifest'];
-        $credentialArray = $this->buildCredentialArray($manifest);
-        $processed = 0;
-        $errors = [];
+        $credentialId = $manifest['credential_id'] ?? null;
 
-        foreach ($operationData['entries'] as $entry) {
-            if (! empty($entry['user_errors']) || empty($entry['product']['id'])) {
-                continue;
-            }
-
-            $context = $this->productPhaseDataService->getProductContext(
-                $entry['manifest']['product_sku'],
-                (int) ($manifest['credential_id'] ?? 0),
-                $manifest['channel'] ?? 'default',
-                $manifest['currency'] ?? 'USD'
-            );
-
-            if (! $context || count($context['credential']->storelocaleMapping ?? []) < 2) {
-                continue;
-            }
-
-            $digestResponse = $this->requestGraphQlApiAction('translatableResource', $credentialArray, [
-                'resourceId' => $entry['product']['id'],
-            ]);
-
-            $translatableContent = $digestResponse['body']['data']['translatableResource']['translatableContent'] ?? [];
-            $digests = [];
-
-            foreach ($translatableContent as $content) {
-                $digests[$content['key']] = $content['digest'];
-            }
-
-            $translations = [];
-            $productData = $context['parent_data'] ?: $context['row_data'];
-            foreach ($context['credential']->storelocaleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
-                if ($context['shopify_default_locale'] === $unopimLocaleCode) {
-                    continue;
-                }
-
-                $localeFields = $this->productPhaseDataService->getAllAttributeValues(
-                    $productData,
-                    $manifest['channel'] ?? 'default',
-                    $unopimLocaleCode
-                );
-
-                foreach (($context['export_mapping']->mapping['shopify_connector_settings'] ?? []) as $shopifyField => $unopimField) {
-                    if (! isset($this->translationFieldMap[$shopifyField])) {
-                        continue;
-                    }
-
-                    $translationKey = $this->translationFieldMap[$shopifyField];
-                    $value = $localeFields[$unopimField] ?? '';
-
-                    if ($translationKey === 'meta_title') {
-                        $value = $localeFields[$unopimField] ?? '';
-                    }
-
-                    if ($translationKey === 'meta_description') {
-                        $value = $localeFields[$unopimField] ?? '';
-                    }
-
-                    $digest = $digests[$translationKey] ?? null;
-
-                    if ($digest === null) {
-                        continue;
-                    }
-
-                    $translations[] = [
-                        'key' => $translationKey,
-                        'value' => $value,
-                        'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => $digest,
-                    ];
-                }
-            }
-
-            if (empty($translations)) {
-                continue;
-            }
-
-            $response = $this->requestGraphQlApiAction('createTranslation', $credentialArray, [
-                'id' => $entry['product']['id'],
-                'translations' => $translations,
-            ]);
-
-            $userErrors = $response['body']['data']['translationsRegister']['userErrors'] ?? [];
-
-            if (! empty($userErrors)) {
-                $errors[] = [
-                    'product_id' => $entry['product']['id'],
-                    'errors' => $userErrors,
-                ];
-
-                continue;
-            }
-
-            $processed++;
+        if (! $credentialId) {
+            return ['processed' => 0, 'errors' => ['Missing credential ID']];
         }
 
+        $credential = $this->credentialRepository->find($credentialId);
+
+        if (! $credential) {
+            return ['processed' => 0, 'errors' => ['Credential not found']];
+        }
+
+        $credentialArray = $this->buildCredentialArray($manifest);
+
+        // Check if multiple locales are configured
+        $storeLocaleMapping = $credential->storelocaleMapping ?? [];
+        $storeLocales = $credential->storeLocales ?? [];
+        if (count($storeLocaleMapping) < 2) {
+            return ['processed' => 0, 'errors' => []];
+        }
+
+        // Build JSONL payload using the translator builder
+        $lines = $this->payloadBuilder->build(
+            $operationData['entries'],
+            $credentialId,
+            $manifest['channel'] ?? 'default',
+            $manifest['currency'] ?? 'USD',
+            $storeLocaleMapping,
+            $storeLocales
+        );
+
+        if (empty($lines)) {
+            return ['processed' => 0, 'errors' => []];
+        }
+
+        // Write JSONL file and manifest
+        $phase = 'translations';
+        $dir = sprintf('shopify/bulk/%s/%s_%s_%s', $manifest['job_track_id'], $phase, $coreBulkOperation->id, time());
+        $jsonlPath = $dir.'/input.jsonl';
+        $manifestPath = $dir.'/manifest.json';
+
+        $this->bulkOperationService->writeJsonl($jsonlPath, $lines);
+
+        $phaseManifest = [
+            'job_track_id' => $manifest['job_track_id'],
+            'credential_id' => $credentialId,
+            'shop_url' => $credential->shopUrl,
+            'credential' => $credentialArray,
+            'channel' => $manifest['channel'] ?? 'default',
+            'currency' => $manifest['currency'] ?? 'USD',
+            'mutation' => 'translationsRegister',
+            'line_count' => count($lines),
+        ];
+
+        $this->bulkOperationService->writeManifest($manifestPath, $phaseManifest);
+
+        // Create staged upload target
+        $filename = basename($jsonlPath);
+        $target = $this->bulkOperationService->createJsonlUploadTarget($credentialArray, $filename);
+
+        if (empty($target)) {
+            return [
+                'processed' => 0,
+                'errors' => ['Failed to create Shopify staged upload target.'],
+            ];
+        }
+
+        // Upload JSONL file
+        $absolutePath = storage_path('app/' . $jsonlPath);
+        $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($target, $absolutePath);
+
+        // Run bulk mutation
+        $mutation = <<<'GRAPHQL'
+mutation translationsRegisterBulk($resourceId: ID!, $translations: [TranslationInput!]!) {
+  translationsRegister(resourceId: $resourceId, translations: $translations) {
+    userErrors { field message }
+  }
+}
+GRAPHQL;
+
+        $response = $this->bulkOperationService->runMutation(
+            $credentialArray,
+            $mutation,
+            $stagedUploadPath
+        );
+
+        $shopifyBulkOperationId = $response['bulkOperation']['id'] ?? $response['id'] ?? null;
+
+        if (! $shopifyBulkOperationId) {
+            return [
+                'processed' => 0,
+                'errors' => ['Failed to initiate bulk operation: ' . ($response['userErrors'][0]['message'] ?? 'Unknown error')],
+            ];
+        }
+
+        // Create phase bulk operation record
+        $phaseBulkOperation = $this->bulkOperationRepository->create([
+            'job_track_id' => $manifest['job_track_id'],
+            'credential_id' => $credentialId,
+            'phase' => 'translations',
+            'shopify_bulk_operation_id' => $shopifyBulkOperationId,
+            'input_file_path' => $manifestPath,
+            'staged_upload_path' => $stagedUploadPath,
+            'status' => 'created',
+            'meta' => [
+                'parent_bulk_operation_id' => $coreBulkOperation->id,
+                'mutation' => 'translationsRegister',
+                'line_count' => count($lines),
+            ],
+        ]);
+
+        // Dispatch poll job
+        PollBulkShopifyOperation::dispatch($phaseBulkOperation->id);
+
         return [
-            'processed' => $processed,
-            'errors' => $errors,
+            'processed' => count($lines),
+            'errors' => [],
+            'phase_bulk_operation_id' => $phaseBulkOperation->id,
         ];
     }
 

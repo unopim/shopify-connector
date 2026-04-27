@@ -3,89 +3,153 @@
 namespace Webkul\Shopify\Services;
 
 use Webkul\Shopify\Models\ShopifyBulkOperation;
+use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
+use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Services\BulkPayloadBuilders\InventoryBulkPayloadBuilder;
+use Webkul\Shopify\Services\BulkOperationService;
+use Webkul\Shopify\Services\ProductPhaseDataService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 
 class InventoryPhaseService
 {
     use ShopifyGraphqlRequest;
 
-    public function __construct(protected ProductPhaseDataService $productPhaseDataService) {}
+    public function __construct(
+        protected InventoryBulkPayloadBuilder $payloadBuilder,
+        protected BulkOperationService $bulkOperationService,
+        protected ShopifyBulkOperationRepository $bulkOperationRepository,
+        protected ShopifyCredentialRepository $credentialRepository,
+        protected ProductPhaseDataService $productPhaseDataService
+    ) {}
 
     /**
-     * Set inventory quantities in batched absolute updates.
+     * Handle inventory phase using bulk inventorySetOnHandQuantities operation.
+     *
+     * Creates a separate bulk operation and dispatches polling.
      */
-    public function handle(ShopifyBulkOperation $bulkOperation, array $operationData): array
+    public function handle(ShopifyBulkOperation $coreBulkOperation, array $operationData): array
     {
-        $credentialArray = $this->buildCredentialArray($operationData['manifest']);
-        $locationId = $operationData['manifest']['follow_up_context']['location_id'] ?? null;
-        $quantities = [];
-        $errors = [];
+        $manifest = $operationData['manifest'];
+        $credentialId = $manifest['credential_id'] ?? null;
+
+        if (! $credentialId) {
+            return ['processed' => 0, 'errors' => ['Missing credential ID']];
+        }
+
+        $credential = $this->credentialRepository->find($credentialId);
+
+        if (! $credential) {
+            return ['processed' => 0, 'errors' => ['Credential not found']];
+        }
+
+        $credentialArray = $this->buildCredentialArray($manifest);
+
+        // Get location ID from credential extras or follow_up_context
+        $locationId = $manifest['follow_up_context']['location_id'] ?? $credential->extras['locations'] ?? null;
 
         if (! $locationId) {
+            return ['processed' => 0, 'errors' => ['Missing location ID']];
+        }
+
+        // Build JSONL payload
+        $lines = $this->payloadBuilder->build(
+            $operationData['entries'],
+            $locationId,
+            0,
+            $credentialId,
+            $manifest['channel'] ?? 'default',
+            $manifest['currency'] ?? 'USD'
+        );
+
+        if (empty($lines)) {
             return ['processed' => 0, 'errors' => []];
         }
 
-        foreach ($operationData['entries'] as $entry) {
-            if (! empty($entry['user_errors'])) {
-                continue;
-            }
+        // Write JSONL file and manifest
+        $phase = 'inventory';
+        $dir = sprintf('shopify/bulk/%s/%s_%s_%s', $manifest['job_track_id'], $phase, $coreBulkOperation->id, time());
+        $jsonlPath = $dir.'/input.jsonl';
+        $manifestPath = $dir.'/manifest.json';
 
-            foreach ($entry['product']['variants']['nodes'] ?? [] as $variantNode) {
-                $variantSku = $variantNode['sku'] ?? null;
-                $inventoryItemId = $variantNode['inventoryItem']['id'] ?? null;
+        $this->bulkOperationService->writeJsonl($jsonlPath, $lines);
 
-                if (! $variantSku || ! $inventoryItemId) {
-                    continue;
-                }
+        $phaseManifest = [
+            'job_track_id' => $manifest['job_track_id'],
+            'credential_id' => $credentialId,
+            'shop_url' => $credential->shopUrl,
+            'credential' => $credentialArray,
+            'channel' => $manifest['channel'] ?? 'default',
+            'currency' => $manifest['currency'] ?? 'USD',
+            'mutation' => 'inventorySetOnHandQuantities',
+            'line_count' => count($lines),
+        ];
 
-                $context = $this->productPhaseDataService->getProductContext(
-                    $variantSku,
-                    (int) ($operationData['manifest']['credential_id'] ?? 0),
-                    $operationData['manifest']['channel'] ?? 'default',
-                    $operationData['manifest']['currency'] ?? 'USD'
-                );
+        $this->bulkOperationService->writeManifest($manifestPath, $phaseManifest);
 
-                if (! $context) {
-                    continue;
-                }
+        // Create staged upload target
+        $filename = basename($jsonlPath);
+        $target = $this->bulkOperationService->createJsonlUploadTarget($credentialArray, $filename);
 
-                $inventoryAttribute = $context['export_mapping']->mapping['shopify_connector_settings']['inventoryQuantity'] ?? null;
-                if ($inventoryAttribute) {
-                    $quantity = (int) ($context['merged_fields'][$inventoryAttribute] ?? 0);
-                } else {
-                    $defaultInventory = $context['export_mapping']->mapping['shopify_connector_defaults']['inventoryQuantity'] ?? 0;
-                    $quantity = (int) $defaultInventory;
-                }
-
-                $quantities[] = [
-                    'inventoryItemId' => $inventoryItemId,
-                    'locationId' => $locationId,
-                    'quantity' => $quantity,
-                ];
-            }
+        if (empty($target)) {
+            return [
+                'processed' => 0,
+                'errors' => ['Failed to create Shopify staged upload target.'],
+            ];
         }
 
-        foreach (array_chunk($quantities, 50) as $chunk) {
-            $response = $this->requestGraphQlApiAction('inventorySetQuantities', $credentialArray, [
-                'input' => [
-                    'name' => 'available',
-                    'reason' => 'correction',
-                    'ignoreCompareQuantity' => true,
-                    'referenceDocumentUri' => sprintf('gid://unopim/ShopifyBulkOperation/%s', $bulkOperation->id),
-                    'quantities' => $chunk,
-                ],
-            ]);
+        // Upload JSONL file
+        $absolutePath = storage_path('app/' . $jsonlPath);
+        $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($target, $absolutePath);
 
-            $userErrors = $response['body']['data']['inventorySetQuantities']['userErrors'] ?? [];
+        // Run bulk mutation
+        $mutation = <<<'GRAPHQL'
+mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesInput!) {
+  inventorySetOnHandQuantities(input: $input) {
+    userErrors { field message }
+    inventoryAdjustmentGroup { reason referenceDocumentUri }
+  }
+}
+GRAPHQL;
 
-            if (! empty($userErrors)) {
-                $errors[] = $userErrors;
-            }
+        $response = $this->bulkOperationService->runMutation(
+            $credentialArray,
+            $mutation,
+            $stagedUploadPath
+        );
+
+        $shopifyBulkOperationId = $response['bulkOperation']['id'] ?? $response['id'] ?? null;
+
+        if (! $shopifyBulkOperationId) {
+            return [
+                'processed' => 0,
+                'errors' => ['Failed to initiate bulk operation: ' . ($response['userErrors'][0]['message'] ?? 'Unknown error')],
+            ];
         }
+
+        // Create phase bulk operation record
+        $phaseBulkOperation = $this->bulkOperationRepository->create([
+            'job_track_id' => $manifest['job_track_id'],
+            'credential_id' => $credentialId,
+            'phase' => 'inventory',
+            'shopify_bulk_operation_id' => $shopifyBulkOperationId,
+            'input_file_path' => $manifestPath,
+            'staged_upload_path' => $stagedUploadPath,
+            'status' => 'created',
+            'meta' => [
+                'parent_bulk_operation_id' => $coreBulkOperation->id,
+                'mutation' => 'inventorySetOnHandQuantities',
+                'line_count' => count($lines),
+            ],
+        ]);
+
+        // Dispatch poll job
+        PollBulkShopifyOperation::dispatch($phaseBulkOperation->id);
 
         return [
-            'processed' => count($quantities),
-            'errors' => $errors,
+            'processed' => count($lines),
+            'errors' => [],
+            'phase_bulk_operation_id' => $phaseBulkOperation->id,
         ];
     }
 

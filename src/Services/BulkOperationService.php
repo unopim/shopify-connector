@@ -14,6 +14,8 @@ class BulkOperationService
 
     /**
      * Create a staged upload target for a JSONL bulk mutation file.
+     *
+     * Returns the first stagedTarget array containing 'url' and 'parameters'.
      */
     public function createJsonlUploadTarget(array $credential, string $filename): array
     {
@@ -26,7 +28,14 @@ class BulkOperationService
             ]],
         ]);
 
-        return $response['body']['data']['stagedUploadsCreate'] ?? [];
+        $stagedUploadsCreate = $response['body']['data']['stagedUploadsCreate'] ?? [];
+        $stagedTargets = $stagedUploadsCreate['stagedTargets'] ?? [];
+
+        if (empty($stagedTargets)) {
+            return [];
+        }
+
+        return $stagedTargets[0];
     }
 
     /**

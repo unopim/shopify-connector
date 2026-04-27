@@ -159,6 +159,7 @@ class Exporter extends AbstractExporter
     {
         $this->initCredential();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code');
+        $this->productId = [];
 
         $this->initPublications();
 
@@ -317,12 +318,10 @@ class Exporter extends AbstractExporter
         $jsonlAbsolutePath = $this->bulkOperationService->writeJsonl($jsonlPath, $payload['lines']);
         $this->bulkOperationService->writeManifest($manifestPath, $payload['manifest']);
 
-        $uploadTargetResponse = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
-        $uploadTarget = $uploadTargetResponse['stagedTargets'][0] ?? null;
-        $uploadErrors = $uploadTargetResponse['userErrors'] ?? [];
+        $uploadTarget = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
 
-        if (! empty($uploadErrors) || empty($uploadTarget)) {
-            throw new \RuntimeException(json_encode($uploadErrors ?: [['message' => 'Unable to create Shopify bulk upload target.']]));
+        if (empty($uploadTarget)) {
+            throw new \RuntimeException(json_encode([['message' => 'Unable to create Shopify bulk upload target.']]));
         }
 
         $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($uploadTarget, $jsonlAbsolutePath);
@@ -574,7 +573,7 @@ GRAPHQL;
         }
 
         if (! empty($imageData)) {
-            $this->imageData = array_merge($imageData[@$parentData['sku']] ?? [], $imageData[$rowData['sku']] ?? []);
+            $this->imageData = array_merge($imageData[$parentData['sku'] ?? ''] ?? [], $imageData[$rowData['sku']] ?? []);
         }
 
         $variantData = $formattedGraphqlData['variant'];
@@ -621,17 +620,17 @@ GRAPHQL;
                     $finalOption,
                 );
             }
+        }
 
-            if (count($this->credential?->storelocaleMapping) > 1) {
-                $this->handleProductProcessingForTranslation(
-                    $productId,
-                    $parentMergedFields,
-                    $mergedFields,
-                    $parentData,
-                    $rowData,
-                    $formattedGraphqlData
-                );
-            }
+        if (count($this->credential?->storelocaleMapping) > 1) {
+            $this->handleProductProcessingForTranslation(
+                $productId,
+                $parentMergedFields,
+                $mergedFields,
+                $parentData,
+                $rowData,
+                $formattedGraphqlData
+            );
         }
 
         if (count($this->credential?->storelocaleMapping) > 1) {
@@ -901,8 +900,8 @@ GRAPHQL;
             }
 
             $productOption = $this->updateProductOptions($parentData, $variableOption);
-            if (! empty($this->updateMedia) && empty($variantData['mediaId'])) {
-                $key = count($imageData[@$parentData['sku']] ?? []);
+            if (! empty($this->updateMedia) && empty($variantData['mediaId']) && !empty($parentData['sku'])) {
+                $key = count($imageData[$parentData['sku']] ?? []);
                 if (! empty($this->updateMedia[$key]['id'])) {
                     $variantData['mediaId'] = $this->updateMedia[$key]['id'];
                 }
@@ -1471,7 +1470,7 @@ GRAPHQL;
         array $parentData,
         string $productId
     ): void {
-        foreach ($imageData[@$parentData['sku']] ?? [] as $key => $imageUrl) {
+        foreach ($imageData[$parentData['sku'] ?? ''] ?? [] as $key => $imageUrl) {
             $this->imageMapping('productImage', $this->parentImageAttr[$key] ?? $this->imageAttributes[$key], $imageIds[$key]['id'], $this->export->id, $productId, $parentData['sku']);
 
             unset($imageIds[$key]['id']);
@@ -1698,7 +1697,7 @@ GRAPHQL;
                 break;
             }
 
-            $lastCursor = @end($gettingMetaFields)['cursor'];
+            $lastCursor = !empty($gettingMetaFields) ? end($gettingMetaFields)['cursor'] : null;
 
             if (isset($gettingMetaFields) && $url !== $lastCursor) {
                 $url = $lastCursor;
@@ -2005,8 +2004,9 @@ GRAPHQL;
         if ($assetPath) {
             $fullUrl = route('admin.dam.file.fetch', ['path' => $assetPath]);
         } else {
-            $urlPath = is_array(@$itemData[$imageAttr]) ? @$itemData[$imageAttr][0] : @$itemData[$imageAttr];
-            $fullUrl = Storage::url($urlPath);
+            $urlValue = $itemData[$imageAttr] ?? null;
+            $urlPath = is_array($urlValue) ? ($urlValue[0] ?? '') : (string)$urlValue;
+            $fullUrl = $urlPath ? Storage::url($urlPath) : '';
         }
 
         if (! empty($mappingImage)) {
