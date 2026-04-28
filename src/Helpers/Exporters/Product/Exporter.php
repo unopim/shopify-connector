@@ -25,7 +25,7 @@ use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\BulkOperationService;
-use Webkul\Shopify\Services\CoreProductBulkPayloadBuilder;
+use Webkul\Shopify\Services\Bulk\PayloadBuilders\Core\CoreProductBulkPayloadBuilder;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -325,30 +325,7 @@ class Exporter extends AbstractExporter
         }
 
         $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($uploadTarget, $jsonlAbsolutePath);
-        $mutation = <<<'GRAPHQL'
-mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetInput!) {
-  productSet(identifier: $identifier, input: $input) {
-    product {
-      id
-      handle
-      variants(first: 250) {
-        nodes {
-          id
-          sku
-          inventoryItem {
-            id
-          }
-        }
-      }
-    }
-    userErrors {
-      code
-      field
-      message
-    }
-  }
-}
-GRAPHQL;
+        $mutation = config('shopify_bulk_mutations.productSetBulk');
 
         $operationResponse = $this->bulkOperationService->runMutation($payload['credential'], $mutation, $stagedUploadPath);
         $operationErrors = $operationResponse['userErrors'] ?? [];

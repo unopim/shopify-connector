@@ -1,6 +1,6 @@
 <?php
 
-namespace Webkul\Shopify\Services\BulkPayloadBuilders;
+namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
 use Illuminate\Support\Facades\DB;
 

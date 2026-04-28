@@ -9,7 +9,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\BulkOperationResultReader;
-use Webkul\Shopify\Services\InventoryPhaseService;
+use Webkul\Shopify\Services\Bulk\Phases\Export\InventoryPhaseService;
 
 class RunInventoryPhase implements ShouldQueue
 {

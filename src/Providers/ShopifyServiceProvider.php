@@ -77,6 +77,9 @@ class ShopifyServiceProvider extends ServiceProvider
             dirname(__DIR__).'/Config/importers.php', 'importers'
         );
         $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/bulk_mutations.php', 'shopify_bulk_mutations'
+        );
+        $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/bulk_operations.php', 'shopify-bulk-operations'
         );
         $this->mergeConfigFrom(

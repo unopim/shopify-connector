@@ -433,5 +433,31 @@ class GraphQLApiClient
             'query' => 'mutation InventorySet($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
             'method' => 'POST',
         ],
+
+        // Bulk operation mutations
+        'productSetBulk' => [
+            'query' => 'mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { userErrors { field message } products { id handle title status resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'method' => 'POST',
+        ],
+
+        'publishablePublishBulk' => [
+            'query' => 'mutation publishablePublishBulk($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'collectionAddProductsBulk' => [
+            'query' => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'translationsRegisterBulk' => [
+            'query' => 'mutation translationsRegisterBulk($resourceId: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $resourceId, translations: $translations) { userErrors { field message } translations { locale key value } } }',
+            'method' => 'POST',
+        ],
+
+        'inventorySetOnHandQuantitiesBulk' => [
+            'query' => 'mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesInput!) { inventorySetOnHandQuantities(input: $input) { userErrors { field message } } }',
+            'method' => 'POST',
+        ],
     ];
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Webkul\Shopify\Services;
+namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -11,6 +11,7 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
 {
@@ -87,7 +88,7 @@ class CoreProductBulkPayloadBuilder
                 'credential' => $this->credentialAsArray,
                 'channel' => $this->jobChannel,
                 'currency' => $this->currency,
-                'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
+                'phase' => \Webkul\Shopify\Services\BulkOperationService::CORE_PRODUCT_PHASE,
                 'follow_up_context' => [
                     'publishing' => true,
                     'media' => true,
