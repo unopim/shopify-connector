@@ -2,7 +2,11 @@
 
 namespace Webkul\Shopify\Services;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Webkul\DataTransfer\Helpers\Export as ExportHelper;
+use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
+use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Services\BulkOperationService;
@@ -12,6 +16,8 @@ class BulkResultFinalizer
     public function __construct(
         protected ShopifyMappingRepository $shopifyMappingRepository,
         protected PhaseOrchestrator $phaseOrchestrator,
+        protected JobTrackBatchRepository $jobTrackBatchRepository,
+        protected JobTrackRepository $jobTrackRepository,
     ) {}
 
     /**
@@ -99,9 +105,56 @@ class BulkResultFinalizer
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
 
+        $this->markBatchProcessed($bulkOperation, $success, count($failed));
+
         // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    protected function markBatchProcessed(ShopifyBulkOperation $bulkOperation, int $success, int $failed): void
+    {
+        if (empty($bulkOperation->job_track_batch_id)) {
+            return;
+        }
+
+        $this->jobTrackBatchRepository->update([
+            'state'   => ExportHelper::STATE_PROCESSED,
+            'summary' => [
+                'processed' => $success,
+                'created'   => $success,
+                'skipped'   => $failed,
+            ],
+        ], $bulkOperation->job_track_batch_id);
+
+        $this->reAggregateJobTrackSummary((int) $bulkOperation->job_track_id);
+    }
+
+    protected function reAggregateJobTrackSummary(int $jobTrackId): void
+    {
+        $grammar = DB::rawQueryGrammar();
+
+        $row = $this->jobTrackBatchRepository
+            ->select(
+                DB::raw("SUM(CAST({$grammar->jsonExtract('summary', 'processed')} as DECIMAL)) AS processed"),
+                DB::raw("SUM(CAST({$grammar->jsonExtract('summary', 'created')} as DECIMAL)) AS created"),
+                DB::raw("SUM(CAST({$grammar->jsonExtract('summary', 'skipped')} as DECIMAL)) AS skipped"),
+            )
+            ->where('job_track_id', $jobTrackId)
+            ->groupBy('job_track_id')
+            ->first();
+
+        if (! $row) {
+            return;
+        }
+
+        $this->jobTrackRepository->update([
+            'summary' => [
+                'processed' => (int) $row->processed,
+                'created'   => (int) $row->created,
+                'skipped'   => (int) $row->skipped,
+            ],
+        ], $jobTrackId);
     }
 
     /**

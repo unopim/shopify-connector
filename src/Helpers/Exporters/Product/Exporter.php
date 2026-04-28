@@ -301,11 +301,6 @@ class Exporter extends AbstractExporter
 
         if (empty($payload['lines'])) {
             $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
-            $this->updateSummary([
-                'processed' => $this->processedRowsCount,
-                'created' => $this->createdItemsCount,
-                'skipped' => $this->skippedItemsCount,
-            ]);
 
             return;
         }
@@ -356,11 +351,6 @@ class Exporter extends AbstractExporter
         );
 
         $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
-        $this->updateSummary([
-            'processed' => $this->processedRowsCount,
-            'created' => $this->createdItemsCount,
-            'skipped' => $this->skippedItemsCount,
-        ]);
 
         $this->jobLogger?->info(sprintf(
             'Shopify bulk core sync submitted. Operation: %s. Batch: %s.',
@@ -373,18 +363,25 @@ class Exporter extends AbstractExporter
     {
         $filters = $this->getFilters();
 
-        $skus = null;
-
-        $query = $this->source->select('sku');
+        $query = DB::table('products')
+            ->select('sku')
+            ->where(function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
+            });
 
         if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
-            $skus = explode(',', $filters['productfilter']);
-            $skus = array_map('trim', $skus);
-
+            $skus = array_map('trim', explode(',', $filters['productfilter']));
             $query->whereIn('sku', $skus);
         }
 
-        return $query->get()?->getIterator();
+        $rows = $query->get();
+
+        $this->jobLogger?->info(sprintf(
+            'Shopify export iterator: %d product roots after filtering variants (parent_id IS NULL).',
+            $rows->count()
+        ));
+
+        return $rows->getIterator();
     }
 
     public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
