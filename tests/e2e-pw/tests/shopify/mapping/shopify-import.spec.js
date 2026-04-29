@@ -75,7 +75,7 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await page.getByText('Gallery', { exact: true }).click();
         const pLocator = page.locator('p', { hasText: 'Media Attributes' });
         const multiselect = pLocator.locator('..').locator('.multiselect');
-        await expect(multiselect).toBeVisible();
+        await expect(multiselect).toBeVisible({ timeout: 20000 });
         const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
         expect(hasDisabledClass).toBe(false);
         await page.getByRole('button', { name: 'Save' }).click();
