@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
+use Webkul\Shopify\Listeners\DeferJobTrackCompletion;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -40,6 +41,8 @@ class ShopifyServiceProvider extends ServiceProvider
         Event::listen('unopim.admin.layout.head', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::style');
         });
+
+        Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
 
         $this->publishes([
             __DIR__.'/../../publishable' => public_path('themes'),

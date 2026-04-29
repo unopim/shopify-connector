@@ -10,6 +10,7 @@ use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Services\BulkOperationService;
+use Webkul\Shopify\Services\PhaseProgressTracker;
 
 class BulkResultFinalizer
 {
@@ -18,6 +19,7 @@ class BulkResultFinalizer
         protected PhaseOrchestrator $phaseOrchestrator,
         protected JobTrackBatchRepository $jobTrackBatchRepository,
         protected JobTrackRepository $jobTrackRepository,
+        protected PhaseProgressTracker $phaseProgressTracker,
     ) {}
 
     /**
@@ -119,11 +121,11 @@ class BulkResultFinalizer
         }
 
         $this->jobTrackBatchRepository->update([
-            'state'   => ExportHelper::STATE_PROCESSED,
+            'state' => ExportHelper::STATE_PROCESSED,
             'summary' => [
                 'processed' => $success,
-                'created'   => $success,
-                'skipped'   => $failed,
+                'created' => $success,
+                'skipped' => $failed,
             ],
         ], $bulkOperation->job_track_batch_id);
 
@@ -151,8 +153,8 @@ class BulkResultFinalizer
         $this->jobTrackRepository->update([
             'summary' => [
                 'processed' => (int) $row->processed,
-                'created'   => (int) $row->created,
-                'skipped'   => (int) $row->skipped,
+                'created' => (int) $row->created,
+                'skipped' => (int) $row->skipped,
             ],
         ], $jobTrackId);
     }
@@ -192,6 +194,18 @@ class BulkResultFinalizer
         $bulkOperation->status = $successful > 0 && count($errors) === 0 ? 'completed' : 'failed';
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
+
+        if ($bulkOperation->job_track_id && $bulkOperation->phase) {
+            $parentCoreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
+
+            if ($parentCoreOpId > 0) {
+                $this->phaseProgressTracker->markFinishedForCore(
+                    $parentCoreOpId,
+                    (int) $bulkOperation->job_track_id,
+                    (string) $bulkOperation->phase,
+                );
+            }
+        }
     }
 
     /**

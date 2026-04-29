@@ -1,6 +1,15 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Shopify Product',

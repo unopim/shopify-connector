@@ -34,7 +34,7 @@ abstract class BasePhaseService
 {
     use ShopifyGraphqlRequest;
 
-    /** @var \Webkul\Shopify\Models\ShopifyCredential|null */
+    /** @var ShopifyCredential|null */
     protected $credential;
 
     /** @var array */
@@ -129,11 +129,11 @@ abstract class BasePhaseService
         }
 
         // Upload JSONL file
-        $absolutePath = storage_path('app/' . $jsonlPath);
+        $absolutePath = storage_path('app/'.$jsonlPath);
         $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($target, $absolutePath);
 
         // Run bulk mutation
-        $mutation = config('shopify_bulk_mutations.' . $this->getMutationKey());
+        $mutation = config('shopify_bulk_mutations.'.$this->getMutationKey());
 
         $response = $this->bulkOperationService->runMutation(
             $credentialArray,
@@ -146,24 +146,24 @@ abstract class BasePhaseService
         if (! $shopifyBulkOperationId) {
             return [
                 'processed' => 0,
-                'errors' => ['Failed to initiate bulk operation: ' . ($response['userErrors'][0]['message'] ?? 'Unknown error')],
+                'errors' => ['Failed to initiate bulk operation: '.($response['userErrors'][0]['message'] ?? 'Unknown error')],
                 'phase_bulk_operation_id' => null,
             ];
         }
 
         // Create phase bulk operation record
         $phaseBulkOperation = $this->bulkOperationRepository->create([
-            'job_track_id'          => $manifest['job_track_id'],
-            'credential_id'         => $credentialId,
-            'phase'                 => $phase,
+            'job_track_id' => $manifest['job_track_id'],
+            'credential_id' => $credentialId,
+            'phase' => $phase,
             'shopify_bulk_operation_id' => $shopifyBulkOperationId,
-            'input_file_path'       => $manifestPath,
-            'staged_upload_path'    => $stagedUploadPath,
-            'status'                => 'created',
-            'meta'                  => [
+            'input_file_path' => $manifestPath,
+            'staged_upload_path' => $stagedUploadPath,
+            'status' => 'created',
+            'meta' => [
                 'parent_bulk_operation_id' => $coreBulkOperation->id,
-                'mutation'                => $this->getManifestMutationName(),
-                'line_count'              => count($lines),
+                'mutation' => $this->getManifestMutationName(),
+                'line_count' => count($lines),
             ],
         ]);
 
@@ -171,9 +171,9 @@ abstract class BasePhaseService
         PollBulkShopifyOperation::dispatch($phaseBulkOperation->id);
 
         return [
-            'processed'                => count($lines),
-            'errors'                   => [],
-            'phase_bulk_operation_id'  => $phaseBulkOperation->id,
+            'processed' => count($lines),
+            'errors' => [],
+            'phase_bulk_operation_id' => $phaseBulkOperation->id,
         ];
     }
 
@@ -183,13 +183,13 @@ abstract class BasePhaseService
     protected function buildCredentialArray(array $manifest): array
     {
         return [
-            'credentialId'            => $manifest['credential_id'] ?? null,
-            'shopUrl'                 => $manifest['shop_url'] ?? null,
-            'accessToken'             => $manifest['credential']['accessToken'] ?? null,
-            'apiVersion'              => $manifest['credential']['apiVersion'] ?? null,
-            'clientId'                => $manifest['credential']['clientId'] ?? null,
-            'clientSecret'            => $manifest['credential']['clientSecret'] ?? null,
-            'accessTokenExpiresAt'    => $manifest['credential']['accessTokenExpiresAt'] ?? null,
+            'credentialId' => $manifest['credential_id'] ?? null,
+            'shopUrl' => $manifest['shop_url'] ?? null,
+            'accessToken' => $manifest['credential']['accessToken'] ?? null,
+            'apiVersion' => $manifest['credential']['apiVersion'] ?? null,
+            'clientId' => $manifest['credential']['clientId'] ?? null,
+            'clientSecret' => $manifest['credential']['clientSecret'] ?? null,
+            'accessTokenExpiresAt' => $manifest['credential']['accessTokenExpiresAt'] ?? null,
         ];
     }
 
@@ -197,7 +197,7 @@ abstract class BasePhaseService
      * Build the JSONL payload lines for this phase.
      *
      * @param  array  $operationData  Contains 'entries' and 'manifest'
-     * @return array  List of JSONL lines (strings)
+     * @return array List of JSONL lines (strings)
      */
     abstract protected function buildPayloadLines(array $operationData): array;
 

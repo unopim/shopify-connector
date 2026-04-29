@@ -52,7 +52,7 @@ class CollectionsBulkPayloadBuilder
             foreach ($chunks as $chunk) {
                 $line = [
                     'id' => $this->ensureGid($collectionId, 'Collection'),
-                    'productIds' => array_map(fn($id) => $this->ensureGid($id, 'Product'), $chunk),
+                    'productIds' => array_map(fn ($id) => $this->ensureGid($id, 'Product'), $chunk),
                 ];
 
                 $lines[] = json_encode($line, JSON_UNESCAPED_SLASHES);

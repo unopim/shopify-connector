@@ -37,7 +37,7 @@ class TranslationsBulkPayloadBuilder
      * @param  string  $currency  Currency code
      * @param  array  $storeLocaleMapping  Map: shopifyLocale => unopimLocale
      * @param  array  $storeLocales  Array of locale objects from credential
-     * @return array  JSONL lines
+     * @return array JSONL lines
      */
     public function build(
         array $entries,

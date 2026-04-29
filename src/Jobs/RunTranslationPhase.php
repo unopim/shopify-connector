@@ -8,12 +8,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
-use Webkul\Shopify\Services\BulkOperationResultReader;
 use Webkul\Shopify\Services\Bulk\Phases\Export\TranslationPhaseService;
+use Webkul\Shopify\Services\BulkOperationResultReader;
+use Webkul\Shopify\Services\PhaseProgressTracker;
 
 class RunTranslationPhase implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const PHASE = 'translations';
 
     public function __construct(protected int $bulkOperationId) {}
 
@@ -21,6 +24,7 @@ class RunTranslationPhase implements ShouldQueue
         ShopifyBulkOperationRepository $repository,
         BulkOperationResultReader $resultReader,
         TranslationPhaseService $phaseService,
+        PhaseProgressTracker $tracker,
     ): void {
         $bulkOperation = $repository->find($this->bulkOperationId);
 
@@ -28,8 +32,14 @@ class RunTranslationPhase implements ShouldQueue
             return;
         }
 
+        $tracker->markStarted($bulkOperation->job_track_id, self::PHASE);
+
         $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
         $this->storeResult($bulkOperation, $result);
+
+        if (empty($result['phase_bulk_operation_id'])) {
+            $tracker->markFinishedForCore((int) $bulkOperation->id, $bulkOperation->job_track_id, self::PHASE);
+        }
     }
 
     protected function storeResult(object $bulkOperation, array $result): void

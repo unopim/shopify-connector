@@ -10,6 +10,8 @@ use Webkul\Shopify\Models\ShopifyBulkOperation;
 
 class PhaseOrchestrator
 {
+    public function __construct(protected PhaseProgressTracker $phaseProgressTracker) {}
+
     /**
      * Register follow-up phase metadata after a core sync completes.
      */
@@ -36,6 +38,11 @@ class PhaseOrchestrator
 
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
+
+        $this->phaseProgressTracker->registerPhaseJobsForCore(
+            (int) $bulkOperation->id,
+            PhaseProgressTracker::PHASES_PER_BATCH,
+        );
 
         RunPublishingPhase::dispatch($bulkOperation->id);
         RunCollectionAssignmentPhase::dispatch($bulkOperation->id);

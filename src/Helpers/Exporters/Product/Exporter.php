@@ -24,8 +24,8 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
-use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Services\Bulk\PayloadBuilders\Core\CoreProductBulkPayloadBuilder;
+use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -58,7 +58,7 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
-    public const BATCH_SIZE = 250;
+    public const BATCH_SIZE = 500;
 
     /**
      * @var array
@@ -874,7 +874,7 @@ class Exporter extends AbstractExporter
             }
 
             $productOption = $this->updateProductOptions($parentData, $variableOption);
-            if (! empty($this->updateMedia) && empty($variantData['mediaId']) && !empty($parentData['sku'])) {
+            if (! empty($this->updateMedia) && empty($variantData['mediaId']) && ! empty($parentData['sku'])) {
                 $key = count($imageData[$parentData['sku']] ?? []);
                 if (! empty($this->updateMedia[$key]['id'])) {
                     $variantData['mediaId'] = $this->updateMedia[$key]['id'];
@@ -1671,7 +1671,7 @@ class Exporter extends AbstractExporter
                 break;
             }
 
-            $lastCursor = !empty($gettingMetaFields) ? end($gettingMetaFields)['cursor'] : null;
+            $lastCursor = ! empty($gettingMetaFields) ? end($gettingMetaFields)['cursor'] : null;
 
             if (isset($gettingMetaFields) && $url !== $lastCursor) {
                 $url = $lastCursor;
@@ -1979,7 +1979,7 @@ class Exporter extends AbstractExporter
             $fullUrl = route('admin.dam.file.fetch', ['path' => $assetPath]);
         } else {
             $urlValue = $itemData[$imageAttr] ?? null;
-            $urlPath = is_array($urlValue) ? ($urlValue[0] ?? '') : (string)$urlValue;
+            $urlPath = is_array($urlValue) ? ($urlValue[0] ?? '') : (string) $urlValue;
             $fullUrl = $urlPath ? Storage::url($urlPath) : '';
         }
 

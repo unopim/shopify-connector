@@ -33,7 +33,7 @@ class InventoryBulkPayloadBuilder
      * @param  int  $credentialId  Credential ID
      * @param  string  $channel  Channel key
      * @param  string  $currency  Currency code
-     * @return array  JSONL lines
+     * @return array JSONL lines
      */
     public function build(array $entries, ?string $locationId, int $defaultQuantity, int $credentialId, string $channel = 'default', string $currency = 'USD'): array
     {

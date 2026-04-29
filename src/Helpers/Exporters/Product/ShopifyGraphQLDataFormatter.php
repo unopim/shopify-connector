@@ -133,7 +133,7 @@ class ShopifyGraphQLDataFormatter
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
-                            : $this->stripTagMetafield((string)($rawData[$unoAttribute] ?? ''), $locale, $attribute);
+                            : $this->stripTagMetafield((string) ($rawData[$unoAttribute] ?? ''), $locale, $attribute);
                         break;
                 }
 
@@ -327,7 +327,7 @@ class ShopifyGraphQLDataFormatter
         foreach ($unopimAttr as $attributeCode) {
             $attribute = $this->attributeAll[$attributeCode] ?? null;
             $attributeLabel = empty($attribute?->translate($locale)->name) ? $attribute?->code : $attribute?->translate($locale)->name;
-            $value = strip_tags((string)($parentData[$attributeCode] ?? ($rawData[$attributeCode] ?? '')));
+            $value = strip_tags((string) ($parentData[$attributeCode] ?? ($rawData[$attributeCode] ?? '')));
             if (in_array($attribute?->type, ['multiselect', 'select'])) {
                 $value = $this->getTranslatedOptionLabels($attribute, $value, $locale);
                 $value = implode(' / ', $value);

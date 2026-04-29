@@ -17,7 +17,7 @@ class PublishingBulkPayloadBuilder
      *
      * @param  array  $entries  Successful productSet entries
      * @param  string|array  $publicationIds  Comma-separated or array of publication IDs
-     * @return array  JSONL lines
+     * @return array JSONL lines
      */
     public function build(array $entries, $publicationIds): array
     {
@@ -35,7 +35,7 @@ class PublishingBulkPayloadBuilder
         }
 
         // Ensure all are GIDs
-        $publicationIds = array_map(fn($id) => $this->ensureGid($id, 'Publication'), $publicationIds);
+        $publicationIds = array_map(fn ($id) => $this->ensureGid($id, 'Publication'), $publicationIds);
 
         $lines = [];
 
@@ -47,7 +47,7 @@ class PublishingBulkPayloadBuilder
             $productId = $entry['product']['id'];
 
             // Build input array: [ ['publicationId' => '...'], ... ]
-            $input = array_map(fn($pid) => ['publicationId' => $pid], $publicationIds);
+            $input = array_map(fn ($pid) => ['publicationId' => $pid], $publicationIds);
 
             $line = [
                 'id' => $this->ensureGid($productId, 'Product'),
