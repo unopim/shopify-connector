@@ -40,6 +40,6 @@ class CollectionAssignmentPhaseService extends BasePhaseService
 
     protected function getManifestMutationName(): string
     {
-        return 'collectionAddProducts';
+        return 'collectionAddProductsV2';
     }
 }

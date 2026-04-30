@@ -36,7 +36,8 @@ GRAPHQL,
 
     'collectionAddProductsBulk' => <<<'GRAPHQL'
 mutation collectionAddProductsBulk($id: ID!, $productIds: [ID!]!) {
-  collectionAddProducts(id: $id, productIds: $productIds) {
+  collectionAddProductsV2(id: $id, productIds: $productIds) {
+    job { id done }
     userErrors { field message }
   }
 }
