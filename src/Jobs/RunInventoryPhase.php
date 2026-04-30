@@ -11,12 +11,13 @@ use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\InventoryPhaseService;
 use Webkul\Shopify\Services\BulkOperationResultReader;
 use Webkul\Shopify\Services\PhaseProgressTracker;
+use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
 class RunInventoryPhase implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const PHASE = 'inventory';
+    protected const PHASE = 'inventory';
 
     public function __construct(protected int $bulkOperationId) {}
 

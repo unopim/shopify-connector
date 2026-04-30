@@ -81,7 +81,8 @@ class PhaseProgressTracker
     /**
      * Decrement a core op's counter when a phase work unit settles.
      *
-     * If the JobTrack-wide total reaches zero AND the listener has flagged
+     * If the JobTrack-wide total reaches zero AND no other core ops are still
+     * pending (about to register their own phases) AND the listener has flagged
      * finalize_pending, flip state back to completed.
      */
     public function markFinishedForCore(int $coreBulkOpId, ?int $jobTrackId, string $phase): void
@@ -101,6 +102,7 @@ class PhaseProgressTracker
             }
 
             $remainingTotal = $this->totalUnfinishedForJobTrack($jobTrackId);
+            $pendingCoreOps = $this->hasPendingCoreOps($jobTrackId);
 
             $jobTrack = $this->lockJobTrack($jobTrackId);
 
@@ -111,13 +113,15 @@ class PhaseProgressTracker
             $summary = $jobTrack->summary ?? [];
 
             if (($summary['current_phase'] ?? null) === $phase) {
-                $summary['current_phase'] = $remainingTotal > 0 ? $phase : null;
+                $summary['current_phase'] = ($remainingTotal > 0 || $pendingCoreOps) ? $phase : null;
             }
 
             $update = ['summary' => $summary];
 
             $finalizePending = ! empty($summary['follow_up_phases_finalize_pending']);
-            if ($remainingTotal === 0 && $finalizePending && $jobTrack->state !== ExportHelper::STATE_COMPLETED) {
+            $allWorkDone = $remainingTotal === 0 && ! $pendingCoreOps;
+
+            if ($allWorkDone && $finalizePending && $jobTrack->state !== ExportHelper::STATE_COMPLETED) {
                 $summary['follow_up_phases_finalize_pending'] = false;
                 $update['summary'] = $summary;
                 $update['state'] = ExportHelper::STATE_COMPLETED;
@@ -145,17 +149,53 @@ class PhaseProgressTracker
     }
 
     /**
-     * Whether any core bulk op for this JobTrack actually scheduled follow-ups.
+     * Whether the JobTrack still has follow-up work in flight or queued.
+     *
+     * Returns true when either:
+     *  - any core bulk op is still pending on Shopify (status created/running),
+     *    in which case follow-ups will be dispatched once it finalizes; or
+     *  - any core bulk op already has phase jobs registered with non-zero counter.
+     *
+     * Used by DeferJobTrackCompletion to decide whether to revert state back to
+     * processing when Export::completed() fires prematurely.
      */
     public function followUpsScheduled(int $jobTrackId): bool
+    {
+        $coreOps = ShopifyBulkOperation::query()
+            ->where('job_track_id', $jobTrackId)
+            ->where(function ($q) {
+                $q->where('phase', BulkOperationService::CORE_PRODUCT_PHASE)->orWhereNull('phase');
+            })
+            ->get(['status', 'meta']);
+
+        foreach ($coreOps as $op) {
+            if (in_array($op->status ?? '', ['created', 'running'], true)) {
+                return true;
+            }
+
+            if ((int) (($op->meta ?? [])['unfinished_phase_jobs'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether any core bulk op for the JobTrack is still pending on Shopify
+     * (status created/running) — i.e., its follow-up phases have not yet been
+     * registered. Used to avoid prematurely flipping state to completed when
+     * one batch's phases finish before another batch's bulk op even finalizes.
+     */
+    public function hasPendingCoreOps(int $jobTrackId): bool
     {
         return ShopifyBulkOperation::query()
             ->where('job_track_id', $jobTrackId)
             ->where(function ($q) {
                 $q->where('phase', BulkOperationService::CORE_PRODUCT_PHASE)->orWhereNull('phase');
             })
-            ->get(['meta'])
-            ->contains(fn ($op) => ! empty(($op->meta ?? [])['follow_up_phases_enabled']));
+            ->whereIn('status', ['created', 'running'])
+            ->exists();
     }
 
     protected function lockJobTrack(int $jobTrackId)

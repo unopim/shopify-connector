@@ -11,12 +11,13 @@ use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\PublishingPhaseService;
 use Webkul\Shopify\Services\BulkOperationResultReader;
 use Webkul\Shopify\Services\PhaseProgressTracker;
+use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
 class RunPublishingPhase implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const PHASE = 'publishing';
+    protected const PHASE = 'publishing';
 
     public function __construct(protected int $bulkOperationId) {}
 
