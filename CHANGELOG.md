@@ -6,7 +6,7 @@
 
 # 1.4.0 ( 15 April 2026 )
 
-## Features
+## Changed
 - Compatibility with UnoPIM v2.0.0.
 
 # 1.3.0
