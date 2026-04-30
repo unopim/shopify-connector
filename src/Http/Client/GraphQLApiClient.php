@@ -134,6 +134,11 @@ class GraphQLApiClient
             'query' => '{shopLocales (published: true) {locale name primary published } }',
             'method' => 'POST',
         ],
+
+        'productSet' => [
+            'query' => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle variants(first: 250) { nodes { id sku inventoryItem { id } } } } userErrors { code field message } } }',
+            'method' => 'POST',
+        ],
         'createTranslation' => [
             'query' => 'mutation CreateTranslation($id: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $id, translations: $translations) {  userErrors { message field }  translations {  locale key value }, }}',
             'method' => 'POST',

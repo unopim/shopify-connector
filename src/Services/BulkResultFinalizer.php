@@ -7,11 +7,15 @@ use Illuminate\Support\Facades\Storage;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
+use Webkul\DataTransfer\Services\JobLogger;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class BulkResultFinalizer
 {
+    use ShopifyGraphqlRequest;
+
     public function __construct(
         protected ShopifyMappingRepository $shopifyMappingRepository,
         protected PhaseOrchestrator $phaseOrchestrator,
@@ -50,8 +54,14 @@ class BulkResultFinalizer
     protected function finalizeCoreProductSync(ShopifyBulkOperation $bulkOperation, array $manifest, array $results): void
     {
         $manifestLines = $manifest['lines'] ?? [];
+        $shopUrl = $manifest['shop_url'] ?? null;
+        $credential = $manifest['credential'] ?? [];
+        $jobTrackId = $manifest['job_track_id'] ?? null;
+        $inputLines = $this->readInputJsonl($bulkOperation->input_file_path ?? null);
         $success = 0;
         $failed = [];
+        $clearedStaleSkus = [];
+        $recreatedSkus = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -61,9 +71,37 @@ class BulkResultFinalizer
             $product = $payload['product'] ?? [];
 
             if (! empty($userErrors) || empty($product['id'])) {
+                $sku = $manifestLine['product_sku'] ?? null;
+
+                if ($sku && $shopUrl && $this->isStaleProductMappingError($userErrors)) {
+                    $cleared = $this->clearStaleProductMappings($sku, $shopUrl);
+                    if (! empty($cleared)) {
+                        $clearedStaleSkus = array_values(array_unique(array_merge($clearedStaleSkus, $cleared)));
+                    }
+
+                    $retry = $this->recreateWithHandleIdentifier(
+                        $inputLines[$index] ?? null,
+                        $manifestLine,
+                        $credential,
+                        $jobTrackId,
+                        $shopUrl,
+                    );
+
+                    if ($retry['success']) {
+                        $recreatedSkus[] = $sku;
+                        $success++;
+
+                        continue;
+                    }
+
+                    if (! empty($retry['errors'])) {
+                        $userErrors = array_merge($userErrors, $retry['errors']);
+                    }
+                }
+
                 $failed[] = [
                     'line' => $index,
-                    'sku' => $manifestLine['product_sku'] ?? null,
+                    'sku' => $sku,
                     'errors' => $userErrors,
                 ];
 
@@ -73,8 +111,8 @@ class BulkResultFinalizer
             $this->syncProductMapping(
                 $manifestLine['product_sku'] ?? null,
                 $product['id'],
-                $manifest['job_track_id'] ?? null,
-                $manifest['shop_url'] ?? null
+                $jobTrackId,
+                $shopUrl
             );
 
             foreach ($product['variants']['nodes'] ?? [] as $variant) {
@@ -86,8 +124,8 @@ class BulkResultFinalizer
                     $variant['sku'],
                     $variant['id'],
                     $product['id'],
-                    $manifest['job_track_id'] ?? null,
-                    $manifest['shop_url'] ?? null
+                    $jobTrackId,
+                    $shopUrl
                 );
             }
 
@@ -99,17 +137,213 @@ class BulkResultFinalizer
             'success' => $success,
             'failed' => count($failed),
             'errors' => $failed,
+            'cleared_stale_mappings' => $clearedStaleSkus,
+            'recreated_after_stale_mapping' => $recreatedSkus,
         ];
 
         $bulkOperation->status = 'completed';
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
 
+        if (! empty($clearedStaleSkus) || ! empty($recreatedSkus)) {
+            $this->logStaleMappingCleanup((int) ($jobTrackId ?? 0), $clearedStaleSkus, $recreatedSkus);
+        }
+
         $this->markBatchProcessed($bulkOperation, $success, count($failed));
 
         // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    /**
+     * Detect Shopify productSet errors that indicate the local mapping points to a deleted product.
+     */
+    protected function isStaleProductMappingError(array $userErrors): bool
+    {
+        foreach ($userErrors as $error) {
+            $code = strtoupper((string) ($error['code'] ?? ''));
+
+            if ($code === 'PRODUCT_DOES_NOT_EXIST' || $code === 'NOT_FOUND') {
+                return true;
+            }
+
+            $message = strtolower((string) ($error['message'] ?? ''));
+            $field = strtolower(implode(',', array_map('strval', (array) ($error['field'] ?? []))));
+
+            $isIdentifierError = str_contains($field, 'identifier') || str_contains($field, 'id');
+            $hintsAtMissing = str_contains($message, 'does not exist')
+                || str_contains($message, 'not found')
+                || str_contains($message, 'no such product');
+
+            if ($isIdentifierError && $hintsAtMissing) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Delete the stale parent and variant mappings tied to the given SKU's Shopify product.
+     *
+     * @return array<string> SKUs whose mappings were deleted
+     */
+    protected function clearStaleProductMappings(string $sku, string $shopUrl): array
+    {
+        $direct = $this->shopifyMappingRepository->where('code', $sku)
+            ->where('entityType', 'product')
+            ->where('apiUrl', $shopUrl)
+            ->first();
+
+        if (! $direct) {
+            return [];
+        }
+
+        $parentProductId = $direct->relatedId ?: $direct->externalId;
+
+        if (empty($parentProductId)) {
+            return [];
+        }
+
+        $relatedMappings = $this->shopifyMappingRepository
+            ->where('apiUrl', $shopUrl)
+            ->where('entityType', 'product')
+            ->where(function ($query) use ($parentProductId) {
+                $query->where('relatedId', $parentProductId)
+                    ->orWhere('externalId', $parentProductId);
+            })
+            ->get();
+
+        $cleared = [];
+
+        foreach ($relatedMappings as $mapping) {
+            $cleared[] = $mapping->code;
+            $this->shopifyMappingRepository->delete($mapping->id);
+        }
+
+        return $cleared;
+    }
+
+    /**
+     * Recreate a product on Shopify by re-running productSet with a handle-based identifier.
+     *
+     * Used when the original bulk attempt failed because the local mapping pointed to a
+     * deleted Shopify product. Sync the new parent + variant mappings on success.
+     *
+     * @return array{success: bool, errors?: array}
+     */
+    protected function recreateWithHandleIdentifier(
+        ?array $variables,
+        array $manifestLine,
+        array $credential,
+        ?int $jobTrackId,
+        ?string $shopUrl,
+    ): array {
+        $handle = $manifestLine['product_handle'] ?? null;
+
+        if (empty($variables) || empty($variables['input']) || empty($credential) || empty($handle)) {
+            return ['success' => false];
+        }
+
+        $variables['identifier'] = ['handle' => $handle];
+
+        try {
+            $response = $this->requestGraphQlApiAction('productSet', $credential, $variables);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'errors' => [['message' => 'Recreation failed: '.$e->getMessage()]]];
+        }
+
+        $payload = $response['body']['data']['productSet'] ?? [];
+        $userErrors = $payload['userErrors'] ?? [];
+        $product = $payload['product'] ?? [];
+
+        if (! empty($userErrors) || empty($product['id'])) {
+            return ['success' => false, 'errors' => $userErrors];
+        }
+
+        $this->syncProductMapping(
+            $manifestLine['product_sku'] ?? null,
+            $product['id'],
+            $jobTrackId,
+            $shopUrl,
+        );
+
+        foreach ($product['variants']['nodes'] ?? [] as $variant) {
+            if (empty($variant['sku']) || empty($variant['id'])) {
+                continue;
+            }
+
+            $this->syncVariantMapping(
+                $variant['sku'],
+                $variant['id'],
+                $product['id'],
+                $jobTrackId,
+                $shopUrl,
+            );
+        }
+
+        return ['success' => true];
+    }
+
+    /**
+     * Read the bulk operation's input JSONL alongside the manifest file.
+     *
+     * @return array<int, array> Decoded variables keyed by line index
+     */
+    protected function readInputJsonl(?string $manifestPath): array
+    {
+        if (empty($manifestPath)) {
+            return [];
+        }
+
+        $jsonlPath = dirname($manifestPath).'/input.jsonl';
+
+        if (! Storage::disk('local')->exists($jsonlPath)) {
+            return [];
+        }
+
+        $raw = trim(Storage::disk('local')->get($jsonlPath));
+
+        if ($raw === '') {
+            return [];
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", $raw);
+
+        return array_map(fn ($line) => json_decode($line, true) ?: [], $lines);
+    }
+
+    /**
+     * Surface stale-mapping cleanups + recreations in the job-tracker log.
+     */
+    protected function logStaleMappingCleanup(int $jobTrackId, array $clearedSkus, array $recreatedSkus): void
+    {
+        if ($jobTrackId <= 0) {
+            return;
+        }
+
+        try {
+            $logger = JobLogger::make($jobTrackId);
+
+            if (! empty($recreatedSkus)) {
+                $logger->info(sprintf(
+                    'Recreated Shopify product(s) for SKU(s) after detecting stale local mapping: %s',
+                    implode(', ', $recreatedSkus)
+                ));
+            }
+
+            $unrecoveredCleared = array_values(array_diff($clearedSkus, $recreatedSkus));
+
+            if (! empty($unrecoveredCleared)) {
+                $logger->warning(sprintf(
+                    'Cleared stale Shopify mapping(s) for SKU(s): %s. Recreation could not complete in this run; re-run the export to recreate them.',
+                    implode(', ', $unrecoveredCleared)
+                ));
+            }
+        } catch (\Throwable $e) {
+            // Logging failures should never break finalization
+        }
     }
 
     protected function markBatchProcessed(ShopifyBulkOperation $bulkOperation, int $success, int $failed): void
