@@ -1,3 +1,9 @@
+# 1.5.0 ( 30 April 2026 )
+
+## Features
+- Bulk product export.
+- Bulk product import.
+
 # 1.4.0 ( 15 April 2026 )
 
 ## Features

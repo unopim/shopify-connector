@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Helpers\Importers\Product;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Repositories\CategoryRepository;
@@ -16,11 +17,13 @@ use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
 use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Product\Repositories\ProductRepository;
+use Webkul\Shopify\Helpers\Iterator\BulkOperationProductIterator;
 use Webkul\Shopify\Helpers\Iterator\ProductIterator;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -31,7 +34,7 @@ class Importer extends AbstractImporter
     use ShopifyGraphqlRequest;
     use ValidatedBatched;
 
-    public const BATCH_SIZE = 50;
+    public const BATCH_SIZE = 250;
 
     public const UNOPIM_ENTITY_NAME = 'product';
 
@@ -288,9 +291,22 @@ class Importer extends AbstractImporter
             'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
         ];
 
-        $products = new ProductIterator($this->credentialArray, $this->shopifyLocale);
+        if (config('shopify-bulk-operations.import_use_bulk_operation', true)) {
+            try {
+                return new BulkOperationProductIterator(
+                    app(BulkProductFetcher::class),
+                    $this->credentialArray,
+                    $this->shopifyLocale,
+                );
+            } catch (\Throwable $e) {
+                Log::warning(
+                    'Shopify bulk import iterator failed, falling back to paginated fetch.',
+                    ['message' => $e->getMessage()],
+                );
+            }
+        }
 
-        return $products;
+        return new ProductIterator($this->credentialArray, $this->shopifyLocale);
     }
 
     protected function resolveShopifyLocale(?string $locale): ?string
@@ -921,6 +937,7 @@ class Importer extends AbstractImporter
     ) {
         $shopifyProductId = $rowData['node']['id'];
         $storeForVariant = [];
+        $variantData = null;
         foreach ($variants as $key => $productVariant) {
             $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
             if (empty($productVariant['node']['sku'])) {

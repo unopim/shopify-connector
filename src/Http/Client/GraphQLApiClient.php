@@ -404,6 +404,16 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
+        'bulkOperationRunQuery' => [
+            'query' => 'mutation bulkOperationRunQuery($query: String!) { bulkOperationRunQuery(query: $query) { bulkOperation { id status url } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'bulkOperationCancel' => [
+            'query' => 'mutation bulkOperationCancel($id: ID!) { bulkOperationCancel(id: $id) { bulkOperation { id status } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
         'bulkOperationStatus' => [
             'query' => 'query bulkOperationStatus($id: ID!) { bulkOperation(id: $id) { id status errorCode createdAt completedAt objectCount fileSize url partialDataUrl } }',
             'method' => 'POST',
