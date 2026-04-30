@@ -7,6 +7,9 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
   
 ## ✨ Features
 
+- **Bulk Export & Import**  
+  Products can be exported and imported in bulk for faster syncing of large catalogs. See the **Bulk Product Export Guide** section below for queue worker recommendations.
+
 - **Sync Multiple Stores**  
   This feature exports products from UnoPim to Shopify and allows syncing multiple Shopify stores.
 
@@ -167,6 +170,16 @@ This ensures that the latest updates to the module are reflected in all backgrou
    ./vendor/bin/pest ./packages/Webkul/Shopify/tests/Feature
    ```
 ---
+
+### Bulk Product Export Guide
+
+> Note: Using multiple queue workers improves performance:
+> ```bash
+> php artisan queue:work --timeout=300 &
+> php artisan queue:work --timeout=300 &
+> php artisan queue:work --timeout=300 &
+> ```
+> Using a single worker will increase processing time due to multiple phase-based jobs.
 
 ## 🚀 Upgrade Guide
 

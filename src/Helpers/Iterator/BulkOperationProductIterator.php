@@ -21,10 +21,10 @@ class BulkOperationProductIterator implements \Iterator
 {
     /** Shopify-translation key -> path inside the assembled product node. */
     protected const TRANSLATION_TARGETS = [
-        'title'            => ['title'],
-        'body_html'        => ['descriptionHtml'],
-        'product_type'     => ['productType'],
-        'meta_title'       => ['seo', 'title'],
+        'title' => ['title'],
+        'body_html' => ['descriptionHtml'],
+        'product_type' => ['productType'],
+        'meta_title' => ['seo', 'title'],
         'meta_description' => ['seo', 'description'],
     ];
 
@@ -66,7 +66,7 @@ class BulkOperationProductIterator implements \Iterator
 
         return [
             'cursor' => null,
-            'node'   => $this->finalizeNode($id, $this->productRows[$id] ?? []),
+            'node' => $this->finalizeNode($id, $this->productRows[$id] ?? []),
         ];
     }
 
@@ -135,30 +135,30 @@ class BulkOperationProductIterator implements \Iterator
     protected function finalizeNode(string $productId, array $product): array
     {
         $node = [
-            'id'              => $productId,
-            'title'           => $product['title'] ?? '',
-            'description'     => $product['description'] ?? '',
+            'id' => $productId,
+            'title' => $product['title'] ?? '',
+            'description' => $product['description'] ?? '',
             'descriptionHtml' => $product['descriptionHtml'] ?? '',
-            'handle'          => $product['handle'] ?? '',
-            'status'          => $product['status'] ?? 'DRAFT',
-            'productType'     => $product['productType'] ?? '',
-            'vendor'          => $product['vendor'] ?? '',
-            'tags'            => $product['tags'] ?? [],
-            'publishedAt'     => $product['publishedAt'] ?? null,
-            'createdAt'       => $product['createdAt'] ?? null,
-            'updatedAt'       => $product['updatedAt'] ?? null,
-            'seo'             => [
-                'title'       => $product['seo']['title'] ?? null,
+            'handle' => $product['handle'] ?? '',
+            'status' => $product['status'] ?? 'DRAFT',
+            'productType' => $product['productType'] ?? '',
+            'vendor' => $product['vendor'] ?? '',
+            'tags' => $product['tags'] ?? [],
+            'publishedAt' => $product['publishedAt'] ?? null,
+            'createdAt' => $product['createdAt'] ?? null,
+            'updatedAt' => $product['updatedAt'] ?? null,
+            'seo' => [
+                'title' => $product['seo']['title'] ?? null,
                 'description' => $product['seo']['description'] ?? null,
             ],
-            'options'              => $product['options'] ?? [],
-            'collections'          => $this->wrapEdges($this->childrenOf($productId, 'Collection')),
-            'media'                => ['nodes' => $this->mediaNodes($productId)],
-            'metafields'           => $this->wrapEdges($this->childrenOf($productId, 'Metafield')),
+            'options' => $product['options'] ?? [],
+            'collections' => $this->wrapEdges($this->childrenOf($productId, 'Collection')),
+            'media' => ['nodes' => $this->mediaNodes($productId)],
+            'metafields' => $this->wrapEdges($this->childrenOf($productId, 'Metafield')),
             'resourcePublications' => ['nodes' => $this->childrenOf($productId, 'ResourcePublication')],
-            'variants'             => [
+            'variants' => [
                 'pageInfo' => ['hasNextPage' => false],
-                'edges'    => $this->variantEdges($productId),
+                'edges' => $this->variantEdges($productId),
             ],
         ];
 
@@ -190,31 +190,31 @@ class BulkOperationProductIterator implements \Iterator
             }
 
             $variantNode = [
-                'id'                => $variantId,
-                'title'             => $variant['title'] ?? '',
-                'sku'               => $variant['sku'] ?? '',
-                'price'             => $variant['price'] ?? null,
-                'compareAtPrice'    => $variant['compareAtPrice'] ?? null,
-                'barcode'           => $variant['barcode'] ?? null,
-                'taxable'           => $variant['taxable'] ?? false,
+                'id' => $variantId,
+                'title' => $variant['title'] ?? '',
+                'sku' => $variant['sku'] ?? '',
+                'price' => $variant['price'] ?? null,
+                'compareAtPrice' => $variant['compareAtPrice'] ?? null,
+                'barcode' => $variant['barcode'] ?? null,
+                'taxable' => $variant['taxable'] ?? false,
                 'inventoryQuantity' => $variant['inventoryQuantity'] ?? 0,
-                'inventoryPolicy'   => $variant['inventoryPolicy'] ?? null,
-                'selectedOptions'   => $variant['selectedOptions'] ?? [],
-                'metafields'        => $this->wrapEdges($this->childrenOf($variantId, 'Metafield')),
-                'media'             => ['nodes' => $this->mediaNodes($variantId)],
-                'inventoryItem'     => [
-                    'id'               => $inventoryItemId,
-                    'tracked'          => $inventoryItem['tracked'] ?? false,
+                'inventoryPolicy' => $variant['inventoryPolicy'] ?? null,
+                'selectedOptions' => $variant['selectedOptions'] ?? [],
+                'metafields' => $this->wrapEdges($this->childrenOf($variantId, 'Metafield')),
+                'media' => ['nodes' => $this->mediaNodes($variantId)],
+                'inventoryItem' => [
+                    'id' => $inventoryItemId,
+                    'tracked' => $inventoryItem['tracked'] ?? false,
                     'requiresShipping' => $inventoryItem['requiresShipping'] ?? true,
-                    'unitCost'         => $inventoryItem['unitCost'] ?? null,
-                    'measurement'      => $inventoryItem['measurement'] ?? null,
-                    'inventoryLevels'  => $this->wrapEdges($inventoryLevels),
+                    'unitCost' => $inventoryItem['unitCost'] ?? null,
+                    'measurement' => $inventoryItem['measurement'] ?? null,
+                    'inventoryLevels' => $this->wrapEdges($inventoryLevels),
                 ],
             ];
 
             $edges[] = [
                 'cursor' => null,
-                'node'   => $variantNode,
+                'node' => $variantNode,
             ];
         }
 
@@ -262,7 +262,7 @@ class BulkOperationProductIterator implements \Iterator
             return '';
         }
 
-        $rest  = substr($gid, strlen('gid://shopify/'));
+        $rest = substr($gid, strlen('gid://shopify/'));
         $parts = explode('/', $rest, 2);
 
         return $parts[0] ?? '';
@@ -290,7 +290,7 @@ class BulkOperationProductIterator implements \Iterator
         }
 
         foreach ($translations as $entry) {
-            $key   = $entry['key'] ?? null;
+            $key = $entry['key'] ?? null;
             $value = $entry['value'] ?? null;
 
             if ($key === null || $value === null) {

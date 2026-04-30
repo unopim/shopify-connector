@@ -112,7 +112,7 @@ class BulkProductFetcher
         }
 
         return [
-            'id'     => $bulkOperation['id'],
+            'id' => $bulkOperation['id'],
             'status' => $bulkOperation['status'] ?? 'CREATED',
         ];
     }
@@ -124,7 +124,7 @@ class BulkProductFetcher
      */
     protected function pollUntilComplete(array $credential, string $operationId): ?string
     {
-        $delay   = max(1, (int) config('shopify-bulk-operations.import_poll_delay_seconds', 5));
+        $delay = max(1, (int) config('shopify-bulk-operations.import_poll_delay_seconds', 5));
         $maxWait = max(60, (int) config('shopify-bulk-operations.import_max_wait_seconds', 1800));
         $deadline = time() + $maxWait;
 
@@ -172,7 +172,7 @@ class BulkProductFetcher
         } catch (\Throwable $e) {
             Log::warning('Shopify bulk import cancel failed', [
                 'operationId' => $operationId,
-                'message'     => $e->getMessage(),
+                'message' => $e->getMessage(),
             ]);
         }
     }
