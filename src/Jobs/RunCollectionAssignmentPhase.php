@@ -45,9 +45,6 @@ class RunCollectionAssignmentPhase implements ShouldQueue
 
     protected function storeResult(object $bulkOperation, array $result): void
     {
-        $meta = $bulkOperation->meta ?? [];
-        $meta['phase_results']['collections'] = $result;
-        $bulkOperation->meta = $meta;
-        $bulkOperation->save();
+        $this->storePhaseResultOnCore((int) $bulkOperation->id, self::PHASE, $result);
     }
 }

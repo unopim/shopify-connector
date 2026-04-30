@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
+use Webkul\DataTransfer\Models\JobTrackProxy;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\DataTransfer\Services\JobLogger;
@@ -352,16 +353,33 @@ class BulkResultFinalizer
             return;
         }
 
-        $this->jobTrackBatchRepository->update([
-            'state' => ExportHelper::STATE_PROCESSED,
-            'summary' => [
-                'processed' => $success,
-                'created' => $success,
-                'skipped' => $failed,
-            ],
-        ], $bulkOperation->job_track_batch_id);
+        // Serialize concurrent poll workers on the JobTrack row. Without the lock,
+        // two workers' SELECT-SUM-then-UPDATE on jobtracks.summary can interleave
+        // such that a stale read overwrites a fresh one (last-write-wins on a
+        // non-monotonic value), producing wrong product counts when more than one
+        // queue worker is running.
+        DB::transaction(function () use ($bulkOperation, $success, $failed) {
+            $jobTrackId = (int) $bulkOperation->job_track_id;
 
-        $this->reAggregateJobTrackSummary((int) $bulkOperation->job_track_id);
+            if ($jobTrackId > 0) {
+                $modelClass = JobTrackProxy::modelClass();
+                $modelClass::query()
+                    ->whereKey($jobTrackId)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            $this->jobTrackBatchRepository->update([
+                'state' => ExportHelper::STATE_PROCESSED,
+                'summary' => [
+                    'processed' => $success,
+                    'created' => $success,
+                    'skipped' => $failed,
+                ],
+            ], $bulkOperation->job_track_batch_id);
+
+            $this->reAggregateJobTrackSummary($jobTrackId);
+        });
     }
 
     protected function reAggregateJobTrackSummary(int $jobTrackId): void
@@ -382,13 +400,20 @@ class BulkResultFinalizer
             return;
         }
 
-        $this->jobTrackRepository->update([
-            'summary' => [
-                'processed' => (int) $row->processed,
-                'created' => (int) $row->created,
-                'skipped' => (int) $row->skipped,
-            ],
-        ], $jobTrackId);
+        $modelClass = JobTrackProxy::modelClass();
+        $jobTrack = $modelClass::query()->whereKey($jobTrackId)->first();
+
+        if (! $jobTrack) {
+            return;
+        }
+
+        $summary = array_merge((array) ($jobTrack->summary ?? []), [
+            'processed' => (int) $row->processed,
+            'created' => (int) $row->created,
+            'skipped' => (int) $row->skipped,
+        ]);
+
+        $this->jobTrackRepository->update(['summary' => $summary], $jobTrackId);
     }
 
     /**

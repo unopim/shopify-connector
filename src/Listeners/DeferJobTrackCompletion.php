@@ -48,9 +48,14 @@ class DeferJobTrackCompletion
                 return;
             }
 
-            $remaining = $this->phaseProgressTracker->totalUnfinishedForJobTrack((int) $jobTrackId);
-
-            if ($remaining <= 0) {
+            // Re-check under the JobTrack lock using the same predicate as the outer
+            // guard. totalUnfinishedForJobTrack only inspects the phase-job counter,
+            // which is still 0 in the common case where polls (delayed ~20s) have
+            // not yet dispatched any phase jobs — even though core bulk ops are
+            // still in 'created'/'running' on Shopify and follow-ups are coming.
+            // Bailing on counter alone would leave state=COMPLETED and the tracker
+            // would show completion before phase work has actually run.
+            if (! $this->phaseProgressTracker->followUpsScheduled((int) $jobTrackId)) {
                 return;
             }
 
