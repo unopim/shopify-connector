@@ -2,11 +2,11 @@
 
 namespace Webkul\Shopify\Services\Bulk\Phases;
 
+use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Services\BulkOperationService;
-use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 /**
@@ -60,7 +60,7 @@ abstract class BasePhaseService
      *
      * @param  ShopifyBulkOperation  $coreBulkOperation  The parent bulk operation
      * @param  array  $operationData  Contains 'manifest', 'entries' keys
-     * @return array  ['processed' => int, 'errors' => array, 'phase_bulk_operation_id' => ?int]
+     * @return array ['processed' => int, 'errors' => array, 'phase_bulk_operation_id' => ?int]
      */
     public function handle(ShopifyBulkOperation $coreBulkOperation, array $operationData): array
     {

@@ -2,12 +2,11 @@
 
 namespace Webkul\Shopify\Services\Bulk\Phases\Export;
 
-use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Services\Bulk\PayloadBuilders\PublishingBulkPayloadBuilder;
 use Webkul\Shopify\Services\Bulk\Phases\BasePhaseService;
 use Webkul\Shopify\Services\BulkOperationService;
-use Webkul\Shopify\Services\Bulk\PayloadBuilders\PublishingBulkPayloadBuilder;
 
 /**
  * Publishing phase service — publishes products to sales channels using bulk publishablePublish.

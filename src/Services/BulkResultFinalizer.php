@@ -7,10 +7,8 @@ use Illuminate\Support\Facades\Storage;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
-use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
-use Webkul\Shopify\Services\BulkOperationService;
-use Webkul\Shopify\Services\PhaseProgressTracker;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 
 class BulkResultFinalizer
 {

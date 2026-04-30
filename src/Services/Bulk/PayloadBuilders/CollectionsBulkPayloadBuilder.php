@@ -2,8 +2,6 @@
 
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
-use Illuminate\Support\Facades\DB;
-
 class CollectionsBulkPayloadBuilder
 {
     protected array $collectionProducts = [];
@@ -17,7 +15,7 @@ class CollectionsBulkPayloadBuilder
      *
      * @param  array  $entries  Successful productSet entries
      * @param  int  $chunkSize  Max products per collection batch (default 200)
-     * @return array  JSONL lines
+     * @return array JSONL lines
      */
     public function build(array $entries, int $chunkSize = 200): array
     {

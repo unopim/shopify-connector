@@ -88,7 +88,7 @@ class CoreProductBulkPayloadBuilder
                 'credential' => $this->credentialAsArray,
                 'channel' => $this->jobChannel,
                 'currency' => $this->currency,
-                'phase' => \Webkul\Shopify\Services\BulkOperationService::CORE_PRODUCT_PHASE,
+                'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
                 'follow_up_context' => [
                     'publishing' => true,
                     'media' => true,
@@ -460,8 +460,7 @@ class CoreProductBulkPayloadBuilder
         array $optionValues,
         ?string $variantId,
         bool $includeVariantMetafields
-    ): array
-    {
+    ): array {
         unset($variantPayload['inventoryQuantities']);
 
         $inventoryItem = $variantPayload['inventoryItem'] ?? [];
