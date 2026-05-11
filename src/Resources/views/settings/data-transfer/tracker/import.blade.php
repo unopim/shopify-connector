@@ -1005,6 +1005,7 @@
                 'collections'  => trans('shopify::app.tracker.phase.collections'),
                 'translations' => trans('shopify::app.tracker.phase.translations'),
                 'inventory'    => trans('shopify::app.tracker.phase.inventory'),
+                'media'        => trans('shopify::app.tracker.phase.media'),
             ];
             $shopifyDefaultExportInfo = trans('admin::app.settings.data-transfer.imports.import.exporting-info');
             $shopifyDefaultExportStep = trans('admin::app.settings.data-transfer.imports.import.pending-step-export');

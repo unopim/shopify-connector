@@ -476,6 +476,7 @@ class BulkResultFinalizer
             'collectionAddProducts' => $decoded['data']['collectionAddProducts']['userErrors'] ?? [],
             'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
             'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
+            'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
             default => [],
         };
     }

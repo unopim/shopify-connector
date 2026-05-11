@@ -8,6 +8,7 @@ return [
             'collections' => 'Collection Assigning',
             'translations' => 'Translation Adding',
             'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
         ],
     ],
     'exporters' => [

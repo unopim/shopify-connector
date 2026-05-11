@@ -4,9 +4,11 @@ namespace Webkul\Shopify\Helpers\Importers\Product;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage as StorageFacade;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Repositories\CategoryRepository;
+use Webkul\Completeness\Observers\Product;
 use Webkul\Core\Filesystem\FileStorer;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
@@ -20,6 +22,8 @@ use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shopify\Helpers\Iterator\BulkOperationProductIterator;
 use Webkul\Shopify\Helpers\Iterator\ProductIterator;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
+use Webkul\Shopify\Jobs\DownloadShopifyImage;
+use Webkul\Shopify\Jobs\RefreshImportedProducts;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
@@ -147,6 +151,33 @@ class Importer extends AbstractImporter
      * Track processed SKU & Barcode
      */
     protected array $processedProducts = [];
+
+    /**
+     * Per-batch lookup cache (categories, products, mappings, attribute options).
+     */
+    protected ?BatchImportCache $batchCache = null;
+
+    /**
+     * Buffered writer for wk_shopify_data_mapping inserts during the batch.
+     */
+    protected ?MappingBatchWriter $mappingWriter = null;
+
+    /**
+     * IDs of products created/updated in the current batch — used to fan out
+     * post-batch completeness + indexing in a single RefreshImportedProducts job.
+     */
+    protected array $touchedProductIds = [];
+
+    /**
+     * Was the Completeness observer disabled by this importer? Tracked so we
+     * always re-enable it in a finally{} even if the batch throws.
+     */
+    protected bool $disabledCompletenessObserver = false;
+
+    /**
+     * Was the ElasticSearch indexing observer disabled by this importer?
+     */
+    protected bool $disabledIndexingObserver = false;
 
     /**
      * Create a new helper instance.
@@ -349,6 +380,21 @@ class Importer extends AbstractImporter
     protected function saveProductsData(JobTrackBatchContract $batch): bool
     {
         $this->initFilters();
+        $this->bootBatchPerformanceHelpers($batch);
+
+        try {
+            return $this->doSaveProductsData($batch);
+        } finally {
+            $this->teardownBatchPerformanceHelpers();
+        }
+    }
+
+    /**
+     * Original per-batch loop. Kept as a distinct method so the try/finally in
+     * saveProductsData() always runs teardownBatchPerformanceHelpers().
+     */
+    protected function doSaveProductsData(JobTrackBatchContract $batch): bool
+    {
         foreach ($batch->data as $rowData) {
             $productId = $rowData['node']['id'];
             $isRemainingVariant = $rowData['node']['variants']['pageInfo']['hasNextPage'] ?? false;
@@ -509,7 +555,9 @@ class Importer extends AbstractImporter
         }
         $family_code = $simpleProductFamilyId;
 
-        $familyModel = $this->attributeFamilyRepository->where('id', $family_code)->first();
+        $familyModel = $this->batchCache
+            ? $this->batchCache->getFamilyById((int) $family_code)
+            : $this->attributeFamilyRepository->where('id', $family_code)->first();
 
         if (! $familyModel) {
             $this->jobLogger->warning('family not exist for the title:- ['.$rowData['node']['title'].'] 1st you need to import family');
@@ -607,8 +655,12 @@ class Importer extends AbstractImporter
         ];
 
         $product = $this->productRepository->update($dataToUpdate, $configId);
+        $this->trackTouchedProduct($configId);
         $allVariant = $product->variants?->toArray();
         $ids = array_column($allVariant, 'id');
+        foreach ($ids as $variantId) {
+            $this->trackTouchedProduct((int) $variantId);
+        }
         $skus = array_column($allVariant, 'sku');
         $formattedArray = array_combine($skus, $ids);
         $variantProductData = array_values($variantProductData);
@@ -626,6 +678,7 @@ class Importer extends AbstractImporter
             }
 
             $product = $this->productRepository->update($variantData, $formattedArray[$sku]);
+            $this->trackTouchedProduct($formattedArray[$sku]);
         }
 
         return true;
@@ -673,7 +726,7 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            $variantProductExist = $this->productRepository->findOneByField('sku', $vsku);
+            $variantProductExist = $this->findProductBySkuCached($vsku);
             if ($variantProductExist && $variantProductExist?->parent?->id !== $configId && ! $variantMappingRow) {
                 $this->jobLogger->warning(sprintf(
                     'SKU conflict: %s already exists in UnoPIM under a different parent (current parentId: %s, expected parentId: %s). No Shopify mapping found, skipping to avoid data loss.',
@@ -693,7 +746,44 @@ class Importer extends AbstractImporter
                 $isSimpleProductMapping = $mappedExternalId === $shopifyProductId && empty($mappedRelatedId);
 
                 if (! $isCorrectVariantMapping) {
+                    /*
+                     * A mapping row exists but does not match the incoming variant.
+                     * Three cases:
+                     *   (a) Existing mapping is a simple-product mapping that should
+                     *       be upgraded to a variant mapping (original behavior).
+                     *   (b) The variant product no longer exists in UnoPIM but the
+                     *       mapping is still around (left over from a products-table
+                     *       wipe / a deleted Shopify product re-created with new IDs).
+                     *       In that case the mapping is stale — refresh it instead of
+                     *       refusing to import the variant.
+                     *   (c) Genuine conflict — same SKU is already mapped to a
+                     *       different live variant in UnoPIM. Skip to avoid corruption.
+                     */
+                    $isStaleMapping = ! $variantProductExist
+                        && isset($variantMappingRow['id'])
+                        && $variantMappingRow['id'];
+
                     if ($isSimpleProductMapping) {
+                        $this->shopifyMappingRepository->update([
+                            'entityType' => self::UNOPIM_ENTITY_NAME,
+                            'code' => $vsku,
+                            'externalId' => $shopifyVariantId,
+                            'relatedId' => $shopifyProductId,
+                            'jobInstanceId' => $this->import->id,
+                            'apiUrl' => $this->credential->shopUrl,
+                        ], $variantMappingRow['id']);
+
+                        $variantMappingRow['externalId'] = $shopifyVariantId;
+                        $variantMappingRow['relatedId'] = $shopifyProductId;
+                    } elseif ($isStaleMapping) {
+                        $this->jobLogger->info(sprintf(
+                            'Stale mapping refreshed: %s previously mapped to %s but the variant product no longer exists in UnoPIM. Re-pointing to %s (product %s).',
+                            $vsku,
+                            $mappedExternalId ?? 'null',
+                            $shopifyVariantId,
+                            $shopifyProductId
+                        ));
+
                         $this->shopifyMappingRepository->update([
                             'entityType' => self::UNOPIM_ENTITY_NAME,
                             'code' => $vsku,
@@ -747,7 +837,7 @@ class Importer extends AbstractImporter
                 $variantImage = $variantProductExist->id ?? $configId;
                 if ($variantImageAttr) {
                     $imagePath = 'product'.DIRECTORY_SEPARATOR.$variantImage.DIRECTORY_SEPARATOR.$variantImageAttr.DIRECTORY_SEPARATOR;
-                    $imageValue = $this->handleUrlField($imageUrl, $imagePath);
+                    $imageValue = $this->fetchOrQueueImage($imageUrl, $imagePath);
                     $mappingMedia = $this->checkMappingInDbForImage($mappingAttr, 'productImage', $vsku);
                     $allMediaIdVariants[] = $mediaId;
                     if (empty($mappingMedia)) {
@@ -849,13 +939,13 @@ class Importer extends AbstractImporter
     private function processConfigurableProductData($rowData, $familyModel, $attributes, &$parentSkuFromUnopim)
     {
         $variantSku = $rowData['node']['variants']['edges'][0]['node']['sku'];
-        $variantData = $this->productRepository->findOneByField('sku', $variantSku);
+        $variantData = $this->findProductBySkuCached($variantSku);
         if ($variantData?->parent?->sku) {
             $parentSkuFromUnopim = $variantData?->parent?->sku;
-            $configProductExist = $this->productRepository->findOneByField('sku', $variantData?->parent?->sku);
+            $configProductExist = $this->findProductBySkuCached($variantData?->parent?->sku);
         } else {
             $parentSkuFromUnopim = $rowData['node']['handle'];
-            $configProductExist = $this->productRepository->findOneByField('sku', $rowData['node']['handle']);
+            $configProductExist = $this->findProductBySkuCached($rowData['node']['handle']);
         }
         $configId = $configProductExist?->id;
         $this->update = true;
@@ -880,6 +970,8 @@ class Importer extends AbstractImporter
 
             $createdConfigProduct = $this->productRepository->create($data[$rowData['node']['handle']]);
             $configId = $createdConfigProduct->id;
+            $this->batchCache?->rememberProduct($rowData['node']['handle'], $createdConfigProduct);
+            $this->trackTouchedProduct($configId);
             $this->update = false;
         }
 
@@ -972,7 +1064,7 @@ class Importer extends AbstractImporter
             $vcommon['sku'] = $rowData['node']['handle'];
         }
 
-        $productExist = $this->productRepository->findOneByField('sku', $vcommon['sku']);
+        $productExist = $this->findProductBySkuCached($vcommon['sku']);
         $simpleId = $productExist?->id;
         $this->update = true;
         $variantSku = $productVariant['node']['sku'] ?? $rowData['node']['handle'];
@@ -990,7 +1082,9 @@ class Importer extends AbstractImporter
                 return false;
             }
 
-            $familyModel = $this->attributeFamilyRepository->where('id', $simpleProductFamilyId)->first();
+            $familyModel = $this->batchCache
+                ? $this->batchCache->getFamilyById((int) $simpleProductFamilyId)
+                : $this->attributeFamilyRepository->where('id', $simpleProductFamilyId)->first();
 
             if (! $familyModel) {
                 $this->jobLogger->warning('family not mapping for the title:- ['.$rowData['node']['title'].']');
@@ -1007,6 +1101,8 @@ class Importer extends AbstractImporter
             $this->update = false;
             $createdProduct = $this->productRepository->create($data[$vcommon['sku']]);
             $simpleId = $createdProduct->id;
+            $this->batchCache?->rememberProduct($vcommon['sku'], $createdProduct);
+            $this->trackTouchedProduct($simpleId);
         }
 
         $mappedImageAttr = [
@@ -1053,6 +1149,7 @@ class Importer extends AbstractImporter
         ];
 
         $product = $this->productRepository->update($dataToUpdate, $simpleId);
+        $this->trackTouchedProduct($simpleId);
 
         $this->markProductProcessed($vcommon['sku'], $vcommon['product_number'] ?? null);
 
@@ -1135,12 +1232,16 @@ class Importer extends AbstractImporter
         $collectionCode = [];
 
         foreach ($collections as $collection) {
-            $categoryExist = $this->categoryRepository->where('code', $collection['node']['handle'])->first();
-            if (! $categoryExist) {
+            $handle = $collection['node']['handle'] ?? null;
+            if (! $handle) {
                 continue;
             }
 
-            $collectionCode[] = $categoryExist?->code;
+            if (! $this->categoryCodeExistsCached($handle)) {
+                continue;
+            }
+
+            $collectionCode[] = $handle;
         }
 
         return $collectionCode;
@@ -1171,7 +1272,7 @@ class Importer extends AbstractImporter
                 }
 
                 $imagePath = 'product'.DIRECTORY_SEPARATOR.$configId.DIRECTORY_SEPARATOR.$mappedImageAttr.DIRECTORY_SEPARATOR;
-                $imgStore = $this->handleUrlField($image[$index], $imagePath);
+                $imgStore = $this->fetchOrQueueImage($image[$index], $imagePath);
                 $mappingMedia = $this->checkMappingInDbForImage($mappedImageAttr, 'productImage', $mappingSku);
                 if (empty($mappingMedia)) {
                     $this->imageMapping('productImage', $mappedImageAttr, $imageMediaids[$index], $this->import->id, $productId, $mappingSku);
@@ -1246,7 +1347,7 @@ class Importer extends AbstractImporter
                         $this->imageMapping('productImage', $galleryAttr, $imageMediaids[$init], $this->import->id, $productId, $mappingSku);
                     }
                     $imagePath = 'product'.DIRECTORY_SEPARATOR.$configId.DIRECTORY_SEPARATOR.$mappedImageAttr.DIRECTORY_SEPARATOR;
-                    $imgStore[] = $this->handleUrlField($imageUrl, $imagePath);
+                    $imgStore[] = $this->fetchOrQueueImage($imageUrl, $imagePath);
                     $init++;
                 }
             }
@@ -1411,7 +1512,7 @@ class Importer extends AbstractImporter
             $attribute = $this->attributes[$name];
 
             $optionvalue = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']), '-');
-            $optionForShopify = $attribute->options()->where('code', $optionvalue)?->get()?->first();
+            $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
             if (! $optionForShopify) {
                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
@@ -1560,5 +1661,354 @@ class Importer extends AbstractImporter
         }
 
         $this->processedProducts['combo:'.$sku.'-'.$barcode] = true;
+    }
+
+    /**
+     * Boot the per-batch performance helpers: lookup cache, mapping writer,
+     * and observer suppression. All steps are independently feature-flagged
+     * via the shopify-bulk-operations config so any single one can be reverted.
+     */
+    protected function bootBatchPerformanceHelpers(JobTrackBatchContract $batch): void
+    {
+        $this->touchedProductIds = [];
+
+        if (config('shopify-bulk-operations.import_use_lookup_cache', true)) {
+            $this->batchCache = new BatchImportCache(
+                $this->productRepository,
+                $this->categoryRepository,
+                $this->shopifyMappingRepository,
+                $this->attributeFamilyRepository,
+            );
+
+            try {
+                $this->batchCache->prime(
+                    is_array($batch->data) ? $batch->data : [],
+                    $this->credential?->shopUrl,
+                    is_array($this->attributes) ? $this->attributes : $this->attributes->all(),
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Shopify import: lookup cache prime failed, falling back to per-row queries', [
+                    'message' => $e->getMessage(),
+                ]);
+                $this->batchCache = null;
+            }
+        }
+
+        $this->mappingWriter = new MappingBatchWriter(
+            $this->shopifyMappingRepository,
+            (int) config('shopify-bulk-operations.import_mapping_chunk_size', 200),
+        );
+
+        if (config('shopify-bulk-operations.import_suppress_observers', true)) {
+            if (class_exists(Product::class)
+                && method_exists(Product::class, 'isEnabled')
+                && Product::isEnabled()
+            ) {
+                Product::disable();
+                $this->disabledCompletenessObserver = true;
+            }
+
+            if (class_exists(\Webkul\ElasticSearch\Observers\Product::class)
+                && method_exists(\Webkul\ElasticSearch\Observers\Product::class, 'isEnabled')
+                && \Webkul\ElasticSearch\Observers\Product::isEnabled()
+            ) {
+                \Webkul\ElasticSearch\Observers\Product::disable();
+                $this->disabledIndexingObserver = true;
+            }
+        }
+    }
+
+    /**
+     * Flush buffered mappings, re-enable observers we suppressed, and dispatch
+     * the post-batch RefreshImportedProducts job for completeness + indexing.
+     */
+    protected function teardownBatchPerformanceHelpers(): void
+    {
+        try {
+            $this->mappingWriter?->flush();
+        } catch (\Throwable $e) {
+            Log::warning('Shopify import: mapping writer flush failed', ['message' => $e->getMessage()]);
+        }
+
+        if ($this->disabledCompletenessObserver) {
+            Product::enable();
+            $this->disabledCompletenessObserver = false;
+        }
+
+        if ($this->disabledIndexingObserver) {
+            \Webkul\ElasticSearch\Observers\Product::enable();
+            $this->disabledIndexingObserver = false;
+        }
+
+        $ids = array_values(array_unique(array_filter($this->touchedProductIds)));
+        $this->touchedProductIds = [];
+
+        $recompute = (bool) config('shopify-bulk-operations.import_post_batch_completeness', true);
+        $reindex = (bool) config('shopify-bulk-operations.import_post_batch_index', true);
+
+        if (! empty($ids) && ($recompute || $reindex)) {
+            try {
+                RefreshImportedProducts::dispatch($ids, $recompute, $reindex);
+            } catch (\Throwable $e) {
+                Log::warning('Shopify import: RefreshImportedProducts dispatch failed', [
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->batchCache = null;
+        $this->mappingWriter = null;
+    }
+
+    /**
+     * Record an imported product id so the post-batch refresh job sees it.
+     */
+    protected function trackTouchedProduct(?int $id): void
+    {
+        if ($id) {
+            $this->touchedProductIds[$id] = $id;
+        }
+    }
+
+    /**
+     * Cache-aware variant of $productRepository->findOneByField('sku', $sku).
+     *
+     * Accepts null/empty so callers do not need to gate before calling — the
+     * underlying $productRepository->findOneByField is similarly forgiving.
+     */
+    protected function findProductBySkuCached(?string $sku): mixed
+    {
+        if ($sku === null || $sku === '') {
+            return null;
+        }
+
+        if ($this->batchCache) {
+            return $this->batchCache->getProductBySku($sku);
+        }
+
+        return $this->productRepository->findOneByField('sku', $sku);
+    }
+
+    /**
+     * Cache-aware existence check for a category code.
+     */
+    protected function categoryCodeExistsCached(string $code): bool
+    {
+        if ($this->batchCache) {
+            return $this->batchCache->hasCategoryCode($code);
+        }
+
+        return (bool) $this->categoryRepository->where('code', $code)->first();
+    }
+
+    /**
+     * Cache-aware variant of $shopifyMappingRepository->where('code', $code)
+     * ->where('entityType', ...)->where('apiUrl', ...) ->get()->toArray().
+     */
+    protected function findMappingByCodeCached(string $code, string $entityType): array
+    {
+        if ($this->batchCache) {
+            return $this->batchCache->getMappingsByCode($code, $entityType);
+        }
+
+        return $this->shopifyMappingRepository
+            ->where('code', $code)
+            ->where('entityType', $entityType)
+            ->where('apiUrl', $this->credential?->shopUrl)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Cache-aware option lookup for a variant's selected option.
+     */
+    protected function findAttributeOptionCached(mixed $attribute, string $optionCode): mixed
+    {
+        if (! $attribute) {
+            return null;
+        }
+
+        if ($this->batchCache) {
+            $cached = $this->batchCache->getAttributeOption(
+                (int) $attribute->id,
+                $optionCode,
+                fn () => $attribute->options()->where('code', $optionCode)->first(),
+            );
+
+            return $cached;
+        }
+
+        return $attribute->options()->where('code', $optionCode)->first();
+    }
+
+    /**
+     * Compute the deterministic storage path for a Shopify image URL and queue
+     * the actual byte download asynchronously. Returns the path that will hold
+     * the file once the queued job completes (mirrors handleUrlField's contract).
+     */
+    protected function queueImageDownload(string $imageUrl, string $imagePath): string|bool
+    {
+        try {
+            $urlPath = parse_url($imageUrl, PHP_URL_PATH);
+            $fileName = $urlPath ? basename($urlPath) : null;
+            if (! $fileName) {
+                return false;
+            }
+
+            if (! preg_match('/\.[a-zA-Z0-9]+$/', $fileName)) {
+                $fileName .= '.png';
+            }
+
+            $storagePath = $imagePath.$fileName;
+
+            if (! StorageFacade::disk('public')->exists($storagePath)) {
+                DownloadShopifyImage::dispatch(
+                    $imageUrl,
+                    $storagePath,
+                    'public',
+                )->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
+            }
+
+            return $storagePath;
+        } catch (\Throwable $e) {
+            Log::warning('Shopify import: queueImageDownload failed', [
+                'url' => $imageUrl,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Wrapper for handleUrlField that respects the import_async_image_download
+     * config flag — when on, the download is deferred to a queued job.
+     */
+    protected function fetchOrQueueImage(string $imageUrl, string $imagePath): string|bool
+    {
+        if (config('shopify-bulk-operations.import_async_image_download', true)) {
+            return $this->queueImageDownload($imageUrl, $imagePath);
+        }
+
+        return $this->handleUrlField($imageUrl, $imagePath);
+    }
+
+    /**
+     * Buffered alternative to parentMapping(). Falls back to the original
+     * repository->create() path when the mapping writer is not initialized
+     * (e.g. unit tests that bypass saveProductsData).
+     */
+    protected function bufferedParentMapping(string $code, string $id, int $exportId, $productId = null): void
+    {
+        $row = [
+            'entityType' => self::UNOPIM_ENTITY_NAME,
+            'code' => $code,
+            'externalId' => $id,
+            'relatedId' => $productId,
+            'jobInstanceId' => $exportId,
+            'apiUrl' => $this->credential->shopUrl,
+        ];
+
+        if ($this->mappingWriter) {
+            // Intentionally do NOT call $this->batchCache->rememberMapping():
+            // a buffered row has no DB id yet, and the variant-upgrade path
+            // around `$variantMappingRow['id']` would crash on the missing id.
+            // The downside is purely additive: if the same SKU is processed
+            // twice in one batch, both iterations will buffer + insert (one
+            // duplicate row in wk_shopify_data_mapping, schema-allowed).
+            $this->mappingWriter->queue($row);
+
+            return;
+        }
+
+        $this->shopifyMappingRepository->create($row);
+    }
+
+    /**
+     * Buffered override of DataMappingTrait::parentMapping. Routes to the
+     * MappingBatchWriter so the per-row INSERTs become chunked INSERTs.
+     */
+    protected function parentMapping(string $code, string $id, int $exportId, $productId = null): void
+    {
+        $this->bufferedParentMapping($code, $id, $exportId, $productId);
+    }
+
+    /**
+     * Buffered override of DataMappingTrait::imageMapping. Routes to the
+     * MappingBatchWriter so the per-image INSERTs become chunked INSERTs.
+     */
+    protected function imageMapping(
+        string $entityType,
+        string $code,
+        string $externalId,
+        int $jobInstanceId,
+        string $productId,
+        string $productSku,
+        ?int $mappingId = null,
+    ): void {
+        $this->bufferedImageMapping(
+            $entityType,
+            $code,
+            $externalId,
+            $jobInstanceId,
+            $productId,
+            $productSku,
+        );
+    }
+
+    /**
+     * Cache-aware override of DataMappingTrait::checkMappingInDb for the product
+     * importer hot path. Falls back to the trait's behavior when the cache is off.
+     */
+    protected function checkMappingInDb(array $item, string $entity = self::UNOPIM_ENTITY_NAME): ?array
+    {
+        $code = $item['code'] ?? null;
+        if (! $code) {
+            return null;
+        }
+
+        if ($this->batchCache) {
+            return $this->findMappingByCodeCached($code, $entity);
+        }
+
+        return $this->shopifyMappingRepository
+            ->where('code', $code)
+            ->where('entityType', $entity)
+            ->where('apiUrl', $this?->credential?->shopUrl)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Buffered alternative to imageMapping(). Falls back to the original
+     * repository->create() path when the mapping writer is not initialized.
+     */
+    protected function bufferedImageMapping(
+        string $entityType,
+        string $code,
+        string $externalId,
+        int $jobInstanceId,
+        string $productId,
+        string $productSku,
+    ): void {
+        $row = [
+            'entityType' => $entityType,
+            'code' => $code,
+            'externalId' => $externalId,
+            'jobInstanceId' => $jobInstanceId,
+            'relatedId' => $productId,
+            'relatedSource' => $productSku,
+            'apiUrl' => $this->credential->shopUrl,
+        ];
+
+        if ($this->mappingWriter) {
+            // See note in bufferedParentMapping() about not caching the row —
+            // same reasoning applies for image mappings.
+            $this->mappingWriter->queue($row);
+
+            return;
+        }
+
+        $this->shopifyMappingRepository->create($row);
     }
 }

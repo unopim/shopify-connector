@@ -254,4 +254,14 @@ mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesIn
   }
 }
 GRAPHQL,
+
+    'productCreateMediaBulk' => <<<'GRAPHQL'
+mutation productCreateMediaBulk($productId: ID!, $media: [CreateMediaInput!]!) {
+  productCreateMedia(productId: $productId, media: $media) {
+    media { id alt mediaContentType status }
+    mediaUserErrors { field message }
+    product { id }
+  }
+}
+GRAPHQL,
 ];
