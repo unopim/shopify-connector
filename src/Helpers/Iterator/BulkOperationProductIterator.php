@@ -77,7 +77,43 @@ class BulkOperationProductIterator implements \Iterator
 
     public function next(): void
     {
+        if (config('shopify-bulk-operations.import_release_jsonl_memory', true)) {
+            $this->releaseProductAt($this->index);
+        }
+
         $this->index++;
+    }
+
+    /**
+     * Free the JSONL rows for the product we just yielded so peak memory does
+     * not grow with the size of the catalog. The product row and all child rows
+     * (variants, media, metafields, etc.) keyed under it are unset.
+     */
+    protected function releaseProductAt(int $index): void
+    {
+        $productId = $this->productIds[$index] ?? null;
+        if ($productId === null) {
+            return;
+        }
+
+        $product = $this->productRows[$productId] ?? null;
+        if ($product !== null) {
+            $variantRows = $this->childrenOf($productId, 'ProductVariant');
+
+            foreach ($variantRows as $variant) {
+                $vid = $variant['id'] ?? null;
+                if ($vid) {
+                    unset($this->rowsByParent[$vid]);
+
+                    $invItemId = $variant['inventoryItem']['id'] ?? null;
+                    if ($invItemId) {
+                        unset($this->rowsByParent[$invItemId]);
+                    }
+                }
+            }
+
+            unset($this->rowsByParent[$productId], $this->productRows[$productId]);
+        }
     }
 
     public function rewind(): void

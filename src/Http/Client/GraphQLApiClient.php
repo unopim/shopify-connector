@@ -163,6 +163,11 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
+        'getBulkTranslations' => [
+            'query' => 'query GetBulkTranslations($resourceIds: [ID!]!, $locale: String!) { translatableResourcesByIds(resourceIds: $resourceIds, first: 250) { nodes { resourceId translations(locale: $locale) { key value locale } } } }',
+            'method' => 'POST',
+        ],
+
         'updateCollection' => [
             'query' => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
