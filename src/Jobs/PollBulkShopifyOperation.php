@@ -41,15 +41,7 @@ class PollBulkShopifyOperation implements ShouldQueue
             return;
         }
 
-        $credentialArray = [
-            'credentialId' => $credential->id,
-            'shopUrl' => $credential->shopUrl,
-            'accessToken' => $credential->accessToken,
-            'apiVersion' => $credential->apiVersion,
-            'clientId' => $credential->clientId,
-            'clientSecret' => $credential->clientSecret,
-            'accessTokenExpiresAt' => optional($credential->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $credentialArray = $credential->toApiArray();
 
         $operationState = $bulkOperationService->getOperation($credentialArray, $bulkOperation->shopify_bulk_operation_id);
 

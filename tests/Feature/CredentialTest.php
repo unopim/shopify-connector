@@ -28,6 +28,10 @@ it('should returns the shopify credential edit page', function () {
 it('should create the shopify credential with valid input', function () {
     $this->loginAsAdmin();
 
+    // store() is SaaS-locked while any SaaS credential exists; clear them so
+    // this test exercises the standard create flow.
+    ShopifyCredentialsConfig::query()->delete();
+
     Http::fake([
         'https://test.myshopify.com/admin/oauth/access_token' => Http::response([
             'access_token' => 'generated_access_token',
@@ -65,6 +69,10 @@ it('should return error for invalid URL during credential create', function () {
 
 it('should return error for invalid credentials ', function () {
     $this->loginAsAdmin();
+
+    // store() is SaaS-locked while any SaaS credential exists; clear them so
+    // this test exercises the standard create flow.
+    ShopifyCredentialsConfig::query()->delete();
 
     Http::fake([
         'https://test.myshopify.com/admin/oauth/access_token' => Http::response([

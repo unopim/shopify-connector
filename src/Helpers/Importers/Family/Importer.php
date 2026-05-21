@@ -121,15 +121,7 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
 
-        $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $attributeAndOption = new \ArrayIterator($this->productOptionByCursor());
 
@@ -249,13 +241,21 @@ class Importer extends AbstractImporter
         $family = [];
         $family_codes = [];
         foreach ($options as $option) {
-            $optionName = array_column($option['node']['options'], 'name');
+            $productOptions = $option['node']['options'] ?? [];
+            $optionName = array_column($productOptions, 'name');
             $optionName = array_map(function ($value) {
                 return trim(preg_replace('/[^A-Za-z0-9]+/', '_', $value), '_');
             }, $optionName);
 
-            $optionValues = array_column($option['node']['options'], 'values');
-            $optionValues = array_merge(...array_map('array_values', $optionValues)); // Flatten the array
+            // Shopify exposes option values as `values`; the SaaS proxy's
+            // product list returns them only under `optionValues`.
+            $optionValues = [];
+            foreach ($productOptions as $productOption) {
+                $optionValues = array_merge(
+                    $optionValues,
+                    $productOption['values'] ?? array_column($productOption['optionValues'] ?? [], 'name')
+                );
+            }
             if (in_array('Title', $optionName) && in_array('Default Title', $optionValues)) {
                 continue;
             }

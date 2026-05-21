@@ -127,15 +127,7 @@ class CoreProductBulkPayloadBuilder
         }))[0] ?? null;
 
         $this->shopifyDefaultLocale = $this->credential?->storelocaleMapping[$defaultLanguage['locale'] ?? ''] ?? null;
-        $this->credentialAsArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
 
         $this->shopifyGraphQLDataFormatter->setInitialData(
             $this->locationId ?? '',
@@ -266,7 +258,7 @@ class CoreProductBulkPayloadBuilder
         );
 
         $productInput = $this->normalizeProductInput($formattedProduct, $productOptions);
-        $productInput['handle'] = $productInput['handle'] ?: Str::slug($productInput['title'] ?: $productSku);
+        $productInput['handle'] = ($productInput['handle'] ?? null) ?: Str::slug(($productInput['title'] ?? null) ?: $productSku);
 
         $variantManifest = [];
         $variants = [];

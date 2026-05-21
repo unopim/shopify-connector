@@ -32,8 +32,18 @@ class MediaPhaseService extends BasePhaseService
             (int) $credentialId,
             $this->manifest['shop_url'] ?? $this->credential->shopUrl ?? null,
             $this->manifest['channel'] ?? 'default',
-            $this->manifest['currency'] ?? 'USD'
+            $this->manifest['currency'] ?? 'USD',
+            $this->credentialArray
         );
+    }
+
+    /**
+     * Persist the media plan in the phase manifest so BulkResultFinalizer can map
+     * the created Shopify media IDs back to their (SKU, attribute) and store them.
+     */
+    protected function getExtraManifestData(array $operationData): array
+    {
+        return ['media_plan' => $this->payloadBuilder->getMediaPlan()];
     }
 
     protected function getPhaseName(): string

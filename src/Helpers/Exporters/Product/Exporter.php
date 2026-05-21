@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -200,15 +202,7 @@ class Exporter extends AbstractExporter
             throw new InvalidCredential;
         }
 
-        $this->credentialAsArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
     }
 
     /**
@@ -289,18 +283,106 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Submit the current batch as a Shopify bulk core product sync.
+     * Submit a Shopify bulk core product sync for the whole export.
+     *
+     * Shopify permits only one bulk mutation per app+shop at a time. A catalog
+     * larger than BATCH_SIZE is split into several export batches that run
+     * concurrently — if each submitted its own bulk op they would collide with
+     * "a bulk mutation operation for this app and shop is already in progress".
+     *
+     * Instead, the first batch to acquire the lock submits a single bulk op
+     * covering the entire export; every other batch finds that op already
+     * recorded and no-ops. Shopify bulk operations are designed to ingest a
+     * full catalog in one JSONL file, so one op per export is the correct unit.
      */
     protected function exportCoreProductsInBulk(JobTrackBatchContract $batch): void
     {
-        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $batch->data, $this->export->id);
+        $lock = Cache::lock('shopify-core-bulk-'.$this->export->id, 600);
 
-        $this->createdItemsCount = $payload['summary']['created'] ?? 0;
-        $this->skippedItemsCount = $payload['summary']['skipped'] ?? 0;
-        $this->processedRowsCount = $payload['summary']['processed'] ?? 0;
+        try {
+            $lock->block(90);
+        } catch (LockTimeoutException $e) {
+            // Another batch is still submitting the export-wide bulk op; its
+            // JSONL already covers this batch's products, so nothing to do.
+            $this->markBatchAsNoOp($batch->id);
 
+            return;
+        }
+
+        try {
+            $existingOperation = $this->shopifyBulkOperationRepository
+                ->where('job_track_id', $this->export->id)
+                ->where('phase', BulkOperationService::CORE_PRODUCT_PHASE)
+                ->first();
+
+            if ($existingOperation) {
+                $this->markBatchAsNoOp($batch->id);
+
+                return;
+            }
+
+            $this->submitCoreBulkOperation($batch);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Mark a batch processed, writing its own slice of the catalog as its summary.
+     *
+     * The Shopify connector uses one bulk op for the whole export (lock pattern),
+     * so only the winner batch does real submission work and the rest no-op. But
+     * for the tracker UI to show a climbing count as batches finish — the behaviour
+     * users expect from other framework exporters — every batch needs to "own" its
+     * slice of the catalog. Each batch carries its slice in its `data` field; we
+     * write that count as the batch's summary on completion. Across all batches:
+     *
+     *     SUM(summary.created) = total catalog rows  (10000 for a 10k export)
+     *
+     * Then `Export::stats()` SUMs batches with state='processed' to produce a
+     * climbing live count for the tracker (500, 1000, 1500, …, 10000).
+     *
+     * IMPORTANT: this is the "submitted to Shopify" count, NOT the
+     * "accepted by Shopify" count. `BulkResultFinalizer::markBatchProcessed`
+     * writes the real Shopify success count directly to `job_track.summary` once
+     * Shopify finishes the bulk op, so the final value reflects truth. The
+     * climbing UX is from per-batch slice counts; the truthful final count is
+     * from Shopify. Do NOT use `updateBatchState()` here — it derives `created`
+     * via `getCreatedItemsCount()` which pulls from `$this->export->summary` and
+     * would re-introduce the multiplication bug if BulkResultFinalizer has
+     * already aggregated.
+     */
+    protected function markBatchAsNoOp(int $batchId): void
+    {
+        $batch = $this->exportBatchRepository->find($batchId);
+        $rowCount = is_array($batch->data ?? null) ? count($batch->data) : 0;
+
+        $this->exportBatchRepository->update([
+            'state' => ExportHelper::STATE_PROCESSED,
+            'summary' => [
+                'processed' => $rowCount,
+                'created' => $rowCount,
+                'skipped' => 0,
+            ],
+        ], $batchId);
+    }
+
+    /**
+     * Build and submit the single export-wide core bulk operation.
+     */
+    protected function submitCoreBulkOperation(JobTrackBatchContract $batch): void
+    {
+        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export->id);
+
+        // Do NOT seed batch summary with the builder's line count — that's
+        // "submitted to Shopify", not "accepted by Shopify". For a 10k-product
+        // bulk op the gap is minutes, during which the UI would show 10000 as
+        // if the export were done. BulkResultFinalizer::markBatchProcessed
+        // writes the real success/failure counts once Shopify finishes; until
+        // then the count stays at 0 so the user sees actual progress, not
+        // optimistic intent.
         if (empty($payload['lines'])) {
-            $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+            $this->markBatchAsNoOp($batch->id);
 
             return;
         }
@@ -350,13 +432,47 @@ class Exporter extends AbstractExporter
             now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
         );
 
-        $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+        // Winner batch: mark state processed with zero summary. BulkResultFinalizer
+        // is the single source of truth for the real created/processed counts on
+        // this batch — going through updateBatchState() here would risk picking up
+        // a polluted cumulative count from job_track.summary (see markBatchAsNoOp
+        // for the loser-side reasoning; the race is symmetric).
+        $this->markBatchAsNoOp($batch->id);
 
         $this->jobLogger?->info(sprintf(
             'Shopify bulk core sync submitted. Operation: %s. Batch: %s.',
             $bulkOperationData['id'],
             $batch->id
         ));
+    }
+
+    /**
+     * Collect every root product row for this export as core batch rows.
+     *
+     * The export-wide bulk op covers the whole catalog regardless of how the
+     * framework split it into batches, so its payload is built from all root
+     * SKUs rather than a single batch's slice. Mirrors getResults()'s filter.
+     *
+     * @return array<int, array{sku: string}>
+     */
+    protected function getAllCoreBatchRows(): array
+    {
+        $filters = $this->getFilters();
+
+        $query = DB::table('products')
+            ->select('sku')
+            ->where(function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
+            });
+
+        if (! empty($filters['productfilter'])) {
+            $skus = array_map('trim', explode(',', $filters['productfilter']));
+            $query->whereIn('sku', $skus);
+        }
+
+        return $query->get()
+            ->map(fn ($row) => ['sku' => $row->sku])
+            ->all();
     }
 
     protected function getResults()

@@ -105,15 +105,7 @@ class ProductPhaseDataService
 
         return [
             'credential' => $credential,
-            'credential_array' => [
-                'credentialId' => $credential->id,
-                'shopUrl' => $credential->shopUrl,
-                'accessToken' => $credential->accessToken,
-                'apiVersion' => $credential->apiVersion,
-                'clientId' => $credential->clientId,
-                'clientSecret' => $credential->clientSecret,
-                'accessTokenExpiresAt' => optional($credential->accessTokenExpiresAt)?->toDateTimeString(),
-            ],
+            'credential_array' => $credential->toApiArray(),
             'shopify_default_locale' => $shopifyDefaultLocale,
             'channel' => $channel,
             'currency' => $currency,

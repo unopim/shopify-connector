@@ -287,15 +287,7 @@ class Importer extends AbstractImporter
 
         $this->currency = $filters['currency'] ?? null;
 
-        $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
     }
@@ -312,15 +304,7 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.disabled-credential'));
         }
 
-        $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         if (config('shopify-bulk-operations.import_use_bulk_operation', true)) {
             try {
@@ -407,15 +391,7 @@ class Importer extends AbstractImporter
                     'after' => $cursorVariant,
                 ];
 
-                $this->credentialArray = [
-                    'credentialId' => $this->credential?->id,
-                    'shopUrl' => $this->credential?->shopUrl,
-                    'accessToken' => $this->credential?->accessToken,
-                    'apiVersion' => $this->credential?->apiVersion,
-                    'clientId' => $this->credential?->clientId,
-                    'clientSecret' => $this->credential?->clientSecret,
-                    'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-                ];
+                $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
                 $data = $this->requestGraphQlApiAction('gettingRemaingVariant', $this->credentialArray, $variables);
                 $remainData = $data['body']['data']['product']['variants']['edges'];

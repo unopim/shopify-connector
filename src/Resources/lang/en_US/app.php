@@ -111,8 +111,18 @@ return [
                 'shopUrl' => 'Shopify URL',
                 'apiVersion' => 'API Version',
                 'enabled' => 'Enable',
-
+                'sync' => 'Sync',
+                'revoke' => 'Revoke',
             ],
+            'saas-locked' => 'A SaaS Shopify connection already exists. Manual credentials are disabled.',
+            'sync-success' => 'UnoPim credentials synced with Shopify successfully.',
+            'sync-failed' => 'Could not sync UnoPim credentials with Shopify. Please try again.',
+            'sync-missing-data' => 'Sync requires both a UnoPim client id and a shop domain on this credential.',
+            'sync-client-not-found' => 'No active UnoPim integration found for this credential\'s client id.',
+            'revoke-success' => 'Shopify connection revoked successfully.',
+            'revoke-failed' => 'Could not revoke the Shopify connection. Please try again.',
+            'secure-login-failed' => 'Secure login link is invalid or expired. Please sign in manually.',
+            'saas-readonly-note' => 'This is a SaaS Shopify connection. Connection details are read-only — you can only configure the Publishing (Sales channels), Location and Locale mapping below.',
         ],
         'export' => [
             'mapping' => [

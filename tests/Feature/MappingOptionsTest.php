@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Webkul\Attribute\Models\Attribute;
 use Webkul\Core\Models\Channel;
 use Webkul\Core\Models\Currency;
@@ -132,6 +133,10 @@ it('should return the list of channels', function () {
     $this->loginAsAdmin();
 
     $channel = Channel::factory()->create();
+
+    // The channel repository caches its result set; flush so the freshly
+    // created channel is included in the listing.
+    Cache::flush();
 
     $response = get(route('shopify.channel.fetch-all'));
 

@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Services\Bulk\Phases;
 
+use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
@@ -144,9 +145,17 @@ abstract class BasePhaseService
         $shopifyBulkOperationId = $response['bulkOperation']['id'] ?? $response['id'] ?? null;
 
         if (! $shopifyBulkOperationId) {
+            $message = $response['userErrors'][0]['message'] ?? 'Unknown error';
+
+            // A sibling phase still holds the single bulk-mutation slot. Signal
+            // the calling job to release & retry rather than dropping the phase.
+            if (stripos($message, 'already in progress') !== false) {
+                throw new BulkMutationInProgressException($message);
+            }
+
             return [
                 'processed' => 0,
-                'errors' => ['Failed to initiate bulk operation: '.($response['userErrors'][0]['message'] ?? 'Unknown error')],
+                'errors' => ['Failed to initiate bulk operation: '.$message],
                 'phase_bulk_operation_id' => null,
             ];
         }
@@ -190,6 +199,7 @@ abstract class BasePhaseService
             'clientId' => $manifest['credential']['clientId'] ?? null,
             'clientSecret' => $manifest['credential']['clientSecret'] ?? null,
             'accessTokenExpiresAt' => $manifest['credential']['accessTokenExpiresAt'] ?? null,
+            'extras' => $manifest['credential']['extras'] ?? null,
         ];
     }
 

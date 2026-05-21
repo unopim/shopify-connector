@@ -57,6 +57,29 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     }
 
     /**
+     * Represent the credential as the array shape consumed by the Shopify API
+     * clients, exporters, importers and bulk jobs.
+     *
+     * This is the single definition of that shape: callers must use it instead
+     * of hand-building the array, so a new field is added in exactly one place.
+     *
+     * @return array<string, mixed>
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'credentialId' => $this->id,
+            'shopUrl' => $this->shopUrl,
+            'accessToken' => $this->accessToken,
+            'apiVersion' => $this->apiVersion,
+            'clientId' => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+            'accessTokenExpiresAt' => optional($this->accessTokenExpiresAt)?->toDateTimeString(),
+            'extras' => $this->extras,
+        ];
+    }
+
+    /**
      * Create a new factory instance for the model.
      */
     protected static function newFactory(): Factory

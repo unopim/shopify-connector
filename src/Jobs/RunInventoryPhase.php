@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\InventoryPhaseService;
 use Webkul\Shopify\Services\BulkOperationResultReader;
@@ -35,7 +36,16 @@ class RunInventoryPhase implements ShouldQueue
 
         $tracker->markStarted($bulkOperation->job_track_id, self::PHASE);
 
-        $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
+        try {
+            $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
+        } catch (BulkMutationInProgressException $e) {
+            // A sibling phase still holds Shopify's single bulk-mutation slot.
+            // Release back to the queue and retry once it frees.
+            $this->release(random_int(20, 60));
+
+            return;
+        }
+
         $this->storeResult($bulkOperation, $result);
 
         if (empty($result['phase_bulk_operation_id'])) {

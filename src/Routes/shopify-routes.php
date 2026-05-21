@@ -6,7 +6,16 @@ use Webkul\Shopify\Http\Controllers\ImportMappingController;
 use Webkul\Shopify\Http\Controllers\MappingController;
 use Webkul\Shopify\Http\Controllers\MetaFieldController;
 use Webkul\Shopify\Http\Controllers\OptionController;
+use Webkul\Shopify\Http\Controllers\SaasAutoLoginController;
 use Webkul\Shopify\Http\Controllers\SettingController;
+
+/**
+ * Public Shopify-initiated auto-login. Lives outside the admin middleware so
+ * Shopify can land users here without an existing UnoPim session; the HMAC
+ * itself is what authenticates the request.
+ */
+Route::get('shopify/saas/secure-login', [SaasAutoLoginController::class, 'login'])
+    ->name('shopify.saas.secure-login');
 
 /**
  * Catalog routes.
@@ -24,6 +33,10 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::put('update/{id}', 'update')->name('shopify.credentials.update');
 
             Route::delete('delete/{id}', 'destroy')->name('shopify.credentials.delete');
+
+            Route::post('sync/{id}', 'sync')->name('shopify.credentials.sync');
+
+            Route::post('revoke/{id}', 'revoke')->name('shopify.credentials.revoke');
         });
 
         Route::controller(MetaFieldController::class)->prefix('metafields')->group(function () {

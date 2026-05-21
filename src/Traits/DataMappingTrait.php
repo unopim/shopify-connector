@@ -124,15 +124,7 @@ trait DataMappingTrait
         } elseif (isset($data[0]['userErrors'][0]['message']) && $data[0]['userErrors'][0]['message'] == 'Collection does not exist' && $mapping) {
             $this->shopifyMappingRepository->delete($mapping[0]['id']);
 
-            $credential = [
-                'credentialId' => $this->credential->id,
-                'shopUrl' => $this->credential->shopUrl,
-                'accessToken' => $this->credential->accessToken,
-                'apiVersion' => $this->credential->apiVersion,
-                'clientId' => $this->credential->clientId,
-                'clientSecret' => $this->credential->clientSecret,
-                'accessTokenExpiresAt' => optional($this->credential->accessTokenExpiresAt)?->toDateTimeString(),
-            ];
+            $credential = $this->credential->toApiArray();
 
             unset($formateItem['id']);
             $response = $this->requestGraphQlApiAction('createCollection', $credential, ['input' => $formateItem]);

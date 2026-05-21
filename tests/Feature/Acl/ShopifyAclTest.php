@@ -7,7 +7,7 @@ it('should not display the shopify credentials index if does not have permission
     $this->loginWithPermissions();
 
     $this->get(route('shopify.credentials.index'))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should display the shopify credentials index if has permission', function () {
@@ -22,11 +22,15 @@ it('should not display the create shopify credentials form if does not have perm
     $this->loginWithPermissions();
 
     $this->post(route('shopify.credentials.store'))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should display the create shopify credentials form if has permission', function () {
     $this->loginWithPermissions(permissions: ['shopify.credentials.create']);
+
+    // store() is SaaS-locked while any SaaS credential exists; clear them so
+    // this test exercises only the ACL check.
+    ShopifyCredentialsConfig::query()->delete();
 
     Http::fake([
         'https://test.myshopify.com/admin/oauth/access_token' => Http::response([
@@ -51,7 +55,7 @@ it('should not display the shopify credentials edit form if does not have permis
     $this->loginWithPermissions();
 
     $this->get(route('shopify.credentials.edit', ['id' => 1]))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should display the shopify credentials edit form if has permission', function () {
@@ -69,7 +73,7 @@ it('should not allow deleting shopify credentials if does not have permission', 
     $shopifyCredential = ShopifyCredentialsConfig::factory()->create();
 
     $this->delete(route('shopify.credentials.delete', ['id' => $shopifyCredential->id]))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should allow deleting shopify credentials if has permission', function () {
@@ -88,7 +92,7 @@ it('should not display the shopify export mappings if does not have permission',
     $this->loginWithPermissions();
 
     $this->get(route('admin.shopify.export-mappings', ['id' => 2]))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should display the shopify export mappings if has permission', function () {
@@ -103,7 +107,7 @@ it('should not display the shopify settings if does not have permission', functi
     $this->loginWithPermissions();
 
     $this->get(route('admin.shopify.settings', ['id' => 1]))
-        ->assertSeeText('Unauthorized');
+        ->assertUnauthorized();
 });
 
 it('should display the shopify settings if has permission', function () {

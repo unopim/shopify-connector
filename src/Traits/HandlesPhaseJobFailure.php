@@ -21,7 +21,14 @@ use Webkul\Shopify\Services\PhaseProgressTracker;
  */
 trait HandlesPhaseJobFailure
 {
-    public $tries = 3;
+    /**
+     * Allow many attempts: a phase that loses the single bulk-mutation slot
+     * releases & retries until it frees. Genuine errors still fail fast via
+     * $maxExceptions — releasing for contention does not raise an exception.
+     */
+    public $tries = 30;
+
+    public $maxExceptions = 3;
 
     public $backoff = [10, 30, 60];
 

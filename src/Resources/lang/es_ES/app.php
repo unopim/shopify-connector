@@ -1,10 +1,21 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Producto de Shopify',
             'category' => 'Categoría de Shopify',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
     'importers' => [
@@ -16,19 +27,19 @@ return [
             'metafield' => 'Definiciones de metacampos de Shopify',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => 'Configuraciones',
                 'shopify' => 'Shopify',
                 'credentials' => 'Credenciales',
                 'export-mappings' => 'Mapeos de Exportación',
                 'import-mappings' => 'Mapas de importación',
-                'settings' => 'Configuraciones',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -36,7 +47,6 @@ return [
                 'edit' => 'Editar',
                 'delete' => 'Eliminar',
             ],
-
             'metafield' => [
                 'create' => 'Crear Metafield',
                 'edit' => 'Editar Metafield',
@@ -44,9 +54,7 @@ return [
                 'mass_delete' => 'Eliminar Metafield en masa',
             ],
         ],
-
         'version' => 'Versión: 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => 'Mapeo de Locales',
@@ -63,6 +71,7 @@ return [
             'invalid' => 'Credencial Inválida',
             'invalidurl' => 'URL Inválida',
             'already_taken' => 'La URL de la tienda ya ha sido tomada.',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => 'ID de cliente/Secreto no válidos.',
             'auto_refresh_not_configured' => 'La actualización automática no está configurada para esta credencial.',
             'unable_to_refresh_access_token' => 'No se pudo actualizar el token de acceso de Shopify.',
@@ -79,6 +88,8 @@ return [
                 'url' => 'URL de Shopify',
                 'shopifyurlplaceholder' => 'URL de Shopify (ej. http://demo.myshopify.com)',
                 'accesstoken' => 'Token de acceso de Admin API',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'Versión de API',
                 'save' => 'Guardar',
                 'back-btn' => 'Volver',
@@ -96,7 +107,18 @@ return [
                 'shopUrl' => 'URL de Shopify',
                 'apiVersion' => 'Versión de API',
                 'enabled' => 'Habilitar',
+                'sync' => 'Sincronizar',
+                'revoke' => 'Revocar',
             ],
+            'saas-locked' => 'Ya existe una conexión SaaS de Shopify. Las credenciales manuales están deshabilitadas.',
+            'sync-success' => 'Las credenciales de UnoPim se han sincronizado correctamente con Shopify.',
+            'sync-failed' => 'No se pudieron sincronizar las credenciales de UnoPim con Shopify. Por favor, inténtelo de nuevo.',
+            'sync-missing-data' => 'La sincronización requiere tanto un ID de cliente de UnoPim como un dominio de tienda.',
+            'sync-client-not-found' => 'No se encontró una integración activa de UnoPim para el ID de cliente de estas credenciales.',
+            'revoke-success' => 'La conexión con Shopify se ha revocado correctamente.',
+            'revoke-failed' => 'No se pudo revocar la conexión con Shopify. Por favor, inténtelo de nuevo.',
+            'secure-login-failed' => 'El enlace de inicio de sesión seguro no es válido o ha expirado. Por favor, inicie sesión manualmente.',
+            'saas-readonly-note' => 'Esta es una conexión SaaS de Shopify. Los detalles de la conexión son de solo lectura — solo puede configurar la publicación (canales de venta), ubicación y configuración regional a continuación.',
         ],
         'export' => [
             'mapping' => [
@@ -105,17 +127,30 @@ return [
                 'save' => 'Guardar',
                 'created' => 'Mapeo de Exportación Creado',
                 'image' => 'Atributo usado como imagen',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => 'Atributos usados como Metafields',
                 'filed-shopify' => 'Campo en Shopify',
                 'attribute' => 'Atributo',
                 'fixed-value' => 'Valor Fijo',
                 'save_failed' => 'Error al guardar el mapeo de exportación. Por favor, ejecute el comando de instalación de Shopify.',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => 'Configuración de exportación guardada correctamente',
                 'save_failed' => 'Error al guardar la configuración de exportación. Por favor, ejecute el comando de instalación de Shopify.',
             ],
-
             'setting' => [
                 'title' => 'Configuración',
                 'tags' => 'Configuración de Exportación de Etiquetas',
@@ -126,12 +161,11 @@ return [
                 'metafields' => 'Configuración de Exportación de Meta Fields',
                 'metaFieldsKey' => 'Usar Clave para Meta Field como Código/Label del Atributo',
                 'metaFieldsNameSpace' => 'Usar Namespace para Meta Field como Código de Grupo de Atributo/global',
-                'crednetials' => 'Select Credentials',
+                'credentials' => 'Credentials Export',
                 'other-settings' => 'Otras Configuraciones',
                 'roundof-attribute-value' => 'Eliminar Decimales Extras de los Valores Métricos (ej. 201.2000 como 201.2)',
                 'option_name_label' => 'Valor para el Nombre de Opción como Label del Atributo (Por Defecto Código de Atributo)',
             ],
-
             'errors' => [
                 'invalid-credential' => 'Credencial no válida. La credencial está deshabilitada o es incorrecta.',
                 'invalid-locale' => 'Localización no válida. Por favor, mapea la localización en la sección de edición de credenciales',
@@ -145,12 +179,21 @@ return [
                 'created' => 'El mapeo de importación se guardó correctamente',
                 'save_failed' => 'Error al guardar el mapeo de importación. Por favor, ejecute el comando de instalación de Shopify.',
                 'image' => 'Atributo utilizado como imagen',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'Campo en Shopify',
                 'attribute' => 'Atributo de UnoPim',
                 'variantimage' => 'Atributo utilizado como imagen de variante',
                 'other' => 'Otros mapeos en Shopify',
                 'family' => 'Mapeo de familia (para productos)',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'Mapeo de definiciones de campos personalizados de Shopify',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'Mapeo de credenciales',
@@ -168,7 +211,6 @@ return [
                 ],
             ],
         ],
-
         'fields' => [
             'name' => 'Nombre',
             'description' => 'Descripción',
@@ -223,8 +265,11 @@ return [
                 'adminFilterable' => 'Filtrado para productos',
                 'smartCollectionCondition' => 'Colecciones inteligentes',
                 'storefronts' => 'Acceso a escaparates',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
             ],
-
             'type' => [
                 'single_line_text_field' => 'Texto de una línea',
                 'color' => 'Color',
@@ -240,7 +285,6 @@ return [
                 'weight' => 'Peso',
                 'volume' => 'Volumen',
             ],
-
             'edit' => [
                 'title' => 'Editar definición de Metacampo',
                 'back-btn' => 'Atrás',

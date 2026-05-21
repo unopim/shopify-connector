@@ -4,7 +4,6 @@ namespace Webkul\Shopify\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Models\JobTrackProxy;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
@@ -353,32 +352,44 @@ class BulkResultFinalizer
             return;
         }
 
-        // Serialize concurrent poll workers on the JobTrack row. Without the lock,
-        // two workers' SELECT-SUM-then-UPDATE on jobtracks.summary can interleave
-        // such that a stale read overwrites a fresh one (last-write-wins on a
-        // non-monotonic value), producing wrong product counts when more than one
-        // queue worker is running.
+        // Write the truthful Shopify-confirmed count directly to JobTrack.summary.
+        //
+        // We deliberately do NOT touch the individual batch summary rows: the
+        // exporter already wrote each batch's slice of the catalog (via
+        // markBatchAsNoOp) so SUM(batches.summary.created) = total catalog rows,
+        // which feeds the climbing per-batch count in Export::stats() during the
+        // processing window. Overwriting one batch row with `$success` and then
+        // re-aggregating would corrupt that math (e.g. 9962 + 19 × 500 = 19462
+        // for a 10k export with 38 failures), reintroducing the 200k-style bug.
+        //
+        // JobTrack.summary is the source of truth for the FINAL count shown in
+        // the completed UI; per-batch slice counts power the climbing during
+        // processing. The two coexist by reading from different sources at
+        // different states.
         DB::transaction(function () use ($bulkOperation, $success, $failed) {
             $jobTrackId = (int) $bulkOperation->job_track_id;
 
-            if ($jobTrackId > 0) {
-                $modelClass = JobTrackProxy::modelClass();
-                $modelClass::query()
-                    ->whereKey($jobTrackId)
-                    ->lockForUpdate()
-                    ->first();
+            if ($jobTrackId <= 0) {
+                return;
             }
 
-            $this->jobTrackBatchRepository->update([
-                'state' => ExportHelper::STATE_PROCESSED,
-                'summary' => [
-                    'processed' => $success,
-                    'created' => $success,
-                    'skipped' => $failed,
-                ],
-            ], $bulkOperation->job_track_batch_id);
+            $modelClass = JobTrackProxy::modelClass();
+            $jobTrack = $modelClass::query()
+                ->whereKey($jobTrackId)
+                ->lockForUpdate()
+                ->first();
 
-            $this->reAggregateJobTrackSummary($jobTrackId);
+            if (! $jobTrack) {
+                return;
+            }
+
+            $summary = array_merge((array) ($jobTrack->summary ?? []), [
+                'processed' => $success,
+                'created' => $success,
+                'skipped' => $failed,
+            ]);
+
+            $this->jobTrackRepository->update(['summary' => $summary], $jobTrackId);
         });
     }
 
@@ -452,6 +463,12 @@ class BulkResultFinalizer
         $bulkOperation->meta = $meta;
         $bulkOperation->save();
 
+        // Persist the created Shopify media IDs so subsequent exports update the
+        // existing media instead of creating duplicates.
+        if ($mutation === 'productCreateMedia') {
+            $this->persistMediaMappings($manifest, $results);
+        }
+
         if ($bulkOperation->job_track_id && $bulkOperation->phase) {
             $parentCoreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
 
@@ -461,6 +478,61 @@ class BulkResultFinalizer
                     (int) $bulkOperation->job_track_id,
                     (string) $bulkOperation->phase,
                 );
+            }
+        }
+    }
+
+    /**
+     * Persist a mapping for every image the media phase successfully created.
+     *
+     * The mapping is keyed by the media `alt` (the connector's deterministic
+     * "<sku> - <attribute>"); MediaBulkPayloadBuilder reads these on the next
+     * export and skips images already sent, preventing duplicate uploads.
+     */
+    protected function syncMediaMappings(array $results, array $manifest): void
+    {
+        $shopUrl = $manifest['shop_url'] ?? null;
+        $jobTrackId = $manifest['job_track_id'] ?? null;
+
+        if (empty($shopUrl)) {
+            return;
+        }
+
+        foreach ($results as $line) {
+            $decoded = json_decode($line, true) ?: [];
+            $payload = $decoded['data']['productCreateMedia'] ?? [];
+
+            if (! empty($payload['mediaUserErrors'])) {
+                continue;
+            }
+
+            $productId = $payload['product']['id'] ?? null;
+
+            foreach ($payload['media'] ?? [] as $media) {
+                $alt = $media['alt'] ?? null;
+
+                if (! is_string($alt) || $alt === '') {
+                    continue;
+                }
+
+                $exists = $this->shopifyMappingRepository
+                    ->where('entityType', 'product_media')
+                    ->where('code', $alt)
+                    ->where('apiUrl', $shopUrl)
+                    ->first();
+
+                if ($exists) {
+                    continue;
+                }
+
+                $this->shopifyMappingRepository->create([
+                    'entityType' => 'product_media',
+                    'code' => $alt,
+                    'externalId' => $media['id'] ?? null,
+                    'relatedId' => $productId,
+                    'jobInstanceId' => $jobTrackId,
+                    'apiUrl' => $shopUrl,
+                ]);
             }
         }
     }
@@ -532,6 +604,110 @@ class BulkResultFinalizer
             'code' => $sku,
             'externalId' => $variantId,
             'relatedId' => $productId,
+            'jobInstanceId' => $jobTrackId,
+            'apiUrl' => $shopUrl,
+        ];
+
+        if ($existing) {
+            $this->shopifyMappingRepository->update($data, $existing->id);
+
+            return;
+        }
+
+        $this->shopifyMappingRepository->create($data);
+    }
+
+    /**
+     * Store media mappings for media created by a productCreateMedia bulk operation.
+     *
+     * The phase manifest carries a per-line media plan written by MediaBulkPayloadBuilder.
+     * Each result line's created media is matched back to its (SKU, attribute) — by the
+     * deterministic alt text, falling back to positional order — and persisted so that
+     * the next export updates the existing media instead of creating a duplicate.
+     */
+    protected function persistMediaMappings(array $manifest, array $results): void
+    {
+        $mediaPlan = $manifest['media_plan'] ?? [];
+        $shopUrl = $manifest['shop_url'] ?? null;
+        $jobTrackId = $manifest['job_track_id'] ?? null;
+
+        if (empty($mediaPlan) || empty($shopUrl) || empty($jobTrackId)) {
+            return;
+        }
+
+        foreach ($results as $index => $line) {
+            $plan = $mediaPlan[$index] ?? null;
+
+            if (! $plan || empty($plan['items'])) {
+                continue;
+            }
+
+            $decoded = json_decode($line, true) ?: [];
+            $createdMedia = $decoded['data']['productCreateMedia']['media'] ?? [];
+
+            if (empty($createdMedia)) {
+                continue;
+            }
+
+            // Index plan items by their deterministic alt text for robust matching
+            // even when Shopify drops some media (partial failure shifts positions).
+            $itemsByAlt = [];
+            foreach ($plan['items'] as $item) {
+                if (! empty($item['alt'])) {
+                    $itemsByAlt[$item['alt']] = $item;
+                }
+            }
+
+            foreach ($createdMedia as $mediaIndex => $mediaNode) {
+                $mediaId = $mediaNode['id'] ?? null;
+
+                if (empty($mediaId)) {
+                    continue;
+                }
+
+                $alt = $mediaNode['alt'] ?? null;
+                $item = ($alt !== null && isset($itemsByAlt[$alt]))
+                    ? $itemsByAlt[$alt]
+                    : ($plan['items'][$mediaIndex] ?? null);
+
+                if (! $item) {
+                    continue;
+                }
+
+                $this->syncMediaMapping(
+                    $item['sku'] ?? null,
+                    $item['code'] ?? null,
+                    $mediaId,
+                    $plan['productId'] ?? null,
+                    (int) $jobTrackId,
+                    $shopUrl,
+                );
+            }
+        }
+    }
+
+    /**
+     * Create or update a media mapping row (entityType "productImage").
+     */
+    protected function syncMediaMapping(?string $sku, ?string $code, ?string $mediaId, ?string $productId, ?int $jobTrackId, ?string $shopUrl): void
+    {
+        if (! $sku || ! $code || ! $mediaId || ! $jobTrackId || ! $shopUrl) {
+            return;
+        }
+
+        $existing = $this->shopifyMappingRepository
+            ->where('entityType', 'productImage')
+            ->where('code', $code)
+            ->where('relatedSource', $sku)
+            ->where('apiUrl', $shopUrl)
+            ->first();
+
+        $data = [
+            'entityType' => 'productImage',
+            'code' => $code,
+            'externalId' => $mediaId,
+            'relatedId' => $productId,
+            'relatedSource' => $sku,
             'jobInstanceId' => $jobTrackId,
             'apiUrl' => $shopUrl,
         ];

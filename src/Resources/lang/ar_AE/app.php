@@ -1,13 +1,23 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'منتج شوبفاي',
             'category' => 'فئة شوبفاي',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
-
     'importers' => [
         'shopify' => [
             'product' => 'منتج شوبيفاي',
@@ -17,19 +27,19 @@ return [
             'metafield' => 'تعريفات الحقول الوصفية في شوبيفاي',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => 'الإعدادات',
                 'shopify' => 'شوبفاي',
                 'credentials' => 'بيانات الاعتماد',
                 'export-mappings' => 'تعيينات التصدير',
                 'import-mappings' => 'استيراد التعيينات',
-                'settings' => 'الإعدادات',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -44,9 +54,7 @@ return [
                 'mass_delete' => 'الحذف الجماعي لميتافيلد',
             ],
         ],
-
         'version' => 'الإصدار: 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => 'تعيين اللغات',
@@ -63,6 +71,7 @@ return [
             'invalid' => 'بيانات الاعتماد غير صالحة',
             'invalidurl' => 'رابط غير صالح',
             'already_taken' => 'تم استخدام عنوان URL للمتجر بالفعل.',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => 'معرف العميل / السر غير صالح.',
             'auto_refresh_not_configured' => 'لم يتم إعداد التحديث التلقائي لبيانات الاعتماد هذه.',
             'unable_to_refresh_access_token' => 'تعذر تحديث رمز وصول Shopify.',
@@ -79,6 +88,8 @@ return [
                 'url' => 'رابط شوبفاي',
                 'shopifyurlplaceholder' => 'رابط شوبفاي (مثل http://demo.myshopify.com)',
                 'accesstoken' => 'رمز وصول API الإداري',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'إصدار API',
                 'save' => 'حفظ',
                 'back-btn' => 'عودة',
@@ -96,7 +107,18 @@ return [
                 'shopUrl' => 'رابط شوبفاي',
                 'apiVersion' => 'إصدار API',
                 'enabled' => 'مفعل',
+                'sync' => 'مزامنة',
+                'revoke' => 'إلغاء',
             ],
+            'saas-locked' => 'يوجد اتصال Shopify بنظام SaaS بالفعل. تم تعطيل بيانات الاعتماد اليدوية.',
+            'sync-success' => 'تمت مزامنة بيانات اعتماد UnoPim مع Shopify بنجاح.',
+            'sync-failed' => 'تعذر مزامنة بيانات اعتماد UnoPim مع Shopify. يرجى المحاولة مرة أخرى.',
+            'sync-missing-data' => 'تتطلب المزامنة كلاً من معرف عميل UnoPim ونطاق المتجر.',
+            'sync-client-not-found' => 'لم يتم العثور على تكامل UnoPim نشط لمعرف العميل الخاص ببيانات الاعتماد هذه.',
+            'revoke-success' => 'تم إلغاء اتصال Shopify بنجاح.',
+            'revoke-failed' => 'تعذر إلغاء اتصال Shopify. يرجى المحاولة مرة أخرى.',
+            'secure-login-failed' => 'رابط تسجيل الدخول الآمن غير صالح أو منتهي الصلاحية. يرجى تسجيل الدخول يدويًا.',
+            'saas-readonly-note' => 'هذا اتصال Shopify بنظام SaaS. تفاصيل الاتصال للقراءة فقط — يمكنك فقط تكوين النشر (قنوات البيع) والموقع واللغة أدناه.',
         ],
         'export' => [
             'mapping' => [
@@ -105,17 +127,30 @@ return [
                 'save' => 'حفظ',
                 'created' => 'تم إنشاء تعيين التصدير',
                 'image' => 'خاصية تستخدم كصورة',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => 'خصائص تستخدم كحقول ميتا',
                 'filed-shopify' => 'حقل في شوبفاي',
                 'attribute' => 'خاصية',
                 'fixed-value' => 'قيمة ثابتة',
                 'save_failed' => 'فشل حفظ تعيين التصدير. يرجى تشغيل أمر تثبيت Shopify.',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => 'تم حفظ إعدادات التصدير بنجاح',
                 'save_failed' => 'فشل حفظ إعدادات التصدير. يرجى تشغيل أمر تثبيت Shopify.',
             ],
-
             'setting' => [
                 'title' => 'الإعدادات',
                 'tags' => 'إعدادات تصدير العلامات',
@@ -126,11 +161,11 @@ return [
                 'metafields' => 'إعدادات تصدير الحقول الميتا',
                 'metaFieldsKey' => 'استخدام المفتاح للحقول الميتا كرمز الخاصية / التسمية',
                 'metaFieldsNameSpace' => 'استخدام النطاق للحقول الميتا كرمز مجموعة الخصائص / عام',
+                'credentials' => 'Credentials Export',
                 'other-settings' => 'إعدادات أخرى',
                 'roundof-attribute-value' => 'إزالة الكسور الإضافية من القيم المترية (مثل 201,2000 كـ 201.2)',
                 'option_name_label' => 'قيمة اسم الخيارات كاسم خاصية (افتراضيًا كود الخاصية)',
             ],
-
             'errors' => [
                 'invalid-credential' => 'بيانات الاعتماد غير صالحة. بيانات الاعتماد معطلة أو غير صحيحة',
                 'invalid-locale' => 'لغة غير صالحة. يرجى تعيين اللغة في قسم تعديل بيانات الاعتماد.',
@@ -144,12 +179,21 @@ return [
                 'created' => 'تم حفظ خريطة الاستيراد بنجاح',
                 'save_failed' => 'فشل حفظ تعيين الاستيراد. يرجى تشغيل أمر تثبيت Shopify.',
                 'image' => 'السمة المستخدمة كصورة',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'الحقل في Shopify',
                 'attribute' => 'سمة UnoPim',
                 'variantimage' => 'السمة المستخدمة كصورة للمتغير',
                 'other' => 'خرائط أخرى في Shopify',
                 'family' => 'تعيين العائلة (للمنتجات)',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'تعيين تعريف الحقول الوصفية في Shopify',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'تعيين بيانات الاعتماد',
@@ -167,7 +211,6 @@ return [
                 ],
             ],
         ],
-
         'fields' => [
             'name' => 'اسم',
             'description' => 'وصف',
@@ -222,8 +265,11 @@ return [
                 'adminFilterable' => 'التصفية للمنتجات',
                 'smartCollectionCondition' => 'مجموعات ذكية',
                 'storefronts' => 'الوصول إلى الواجهات الأمامية',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
             ],
-
             'type' => [
                 'single_line_text_field' => 'سطر نصي واحد',
                 'color' => 'لون',
@@ -239,7 +285,6 @@ return [
                 'weight' => 'وزن',
                 'volume' => 'حجم',
             ],
-
             'edit' => [
                 'title' => 'تحرير تعريف الحقل الوصفي',
                 'back-btn' => 'رجوع',
@@ -251,6 +296,5 @@ return [
             'created' => 'تم إنشاء تعريف الحقل الوصفي بنجاح',
             'mass-delete-success' => 'تم حذف تعريفات الحقول الوصفية بنجاح',
         ],
-
     ],
 ];

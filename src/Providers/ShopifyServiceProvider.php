@@ -10,6 +10,7 @@ use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
 use Webkul\Shopify\Listeners\DeferJobTrackCompletion;
+use Webkul\Shopify\Listeners\RevokeShopifyOnApiKeyDelete;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -22,6 +23,7 @@ class ShopifyServiceProvider extends ServiceProvider
     public function boot(Router $router)
     {
         Route::middleware('web')->group(__DIR__.'/../Routes/shopify-routes.php');
+        Route::middleware('api')->group(__DIR__.'/../Routes/shopify-api-routes.php');
 
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migration');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'shopify');
@@ -43,6 +45,8 @@ class ShopifyServiceProvider extends ServiceProvider
         });
 
         Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
+
+        Event::listen('user.api_key.delete.before', [RevokeShopifyOnApiKeyDelete::class, 'handle']);
 
         $this->publishes([
             __DIR__.'/../../publishable' => public_path('themes'),
@@ -87,6 +91,9 @@ class ShopifyServiceProvider extends ServiceProvider
         );
         $this->mergeConfigFrom(
             __DIR__.'/../Config/unopim-vite.php', 'unopim-vite.viters'
+        );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/saas.php', 'shopify.saas'
         );
     }
 }
