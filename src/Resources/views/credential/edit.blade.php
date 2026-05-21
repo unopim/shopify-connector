@@ -75,90 +75,88 @@
                         <x-admin::form.control-group.error control-name="shopUrl" />
                     </x-admin::form.control-group>
 
-                    <x-admin::form.control-group class="w-[525px]">
-                        <x-admin::form.control-group.label>
-                            @lang('shopify::app.shopify.credential.index.clientId')
-                        </x-admin::form.control-group.label>
+                    @if ($isSaas)
+                        {{-- SaaS credentials authenticate via the proxy, so clientId / clientSecret / accessToken / apiVersion are owned by the proxy and not editable here. The controller still validates apiVersion as required, so we post it via a hidden input. --}}
+                        <input type="hidden" name="apiVersion" value="{{ $credential->apiVersion }}" />
+                    @else
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label>
+                                @lang('shopify::app.shopify.credential.index.clientId')
+                            </x-admin::form.control-group.label>
 
-                        <x-admin::form.control-group.control
-                            type="text"
-                            id="clientId"
-                            name="clientId"
-                            :value="old('clientId') ?? $credential->clientId"
-                            :label="trans('shopify::app.shopify.credential.index.clientId')"
-                            :placeholder="trans('shopify::app.shopify.credential.index.clientId')"
-                            :readonly="$isSaas"
-                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
-                        />
+                            <x-admin::form.control-group.control
+                                type="text"
+                                id="clientId"
+                                name="clientId"
+                                :value="old('clientId') ?? $credential->clientId"
+                                :label="trans('shopify::app.shopify.credential.index.clientId')"
+                                :placeholder="trans('shopify::app.shopify.credential.index.clientId')"
+                            />
 
-                        <x-admin::form.control-group.error control-name="clientId" />
-                    </x-admin::form.control-group>
+                            <x-admin::form.control-group.error control-name="clientId" />
+                        </x-admin::form.control-group>
 
-                    <x-admin::form.control-group class="w-[525px]">
-                        <x-admin::form.control-group.label>
-                            @lang('shopify::app.shopify.credential.index.clientSecret')
-                        </x-admin::form.control-group.label>
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label>
+                                @lang('shopify::app.shopify.credential.index.clientSecret')
+                            </x-admin::form.control-group.label>
 
-                        <x-admin::form.control-group.control
-                            type="password"
-                            id="clientSecret"
-                            name="clientSecret"
-                            :value="old('clientSecret') ?? $credential->clientSecret"
-                            :label="trans('shopify::app.shopify.credential.index.clientSecret')"
-                            :placeholder="trans('shopify::app.shopify.credential.index.clientSecret')"
-                            :readonly="$isSaas"
-                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
-                        />
+                            <x-admin::form.control-group.control
+                                type="password"
+                                id="clientSecret"
+                                name="clientSecret"
+                                :value="old('clientSecret') ?? $credential->clientSecret"
+                                :label="trans('shopify::app.shopify.credential.index.clientSecret')"
+                                :placeholder="trans('shopify::app.shopify.credential.index.clientSecret')"
+                            />
 
-                        <x-admin::form.control-group.error control-name="clientSecret" />
-                    </x-admin::form.control-group>
-                    <x-admin::form.control-group class="w-[525px]">
-                        <x-admin::form.control-group.label class="required">
-                            @lang('shopify::app.shopify.credential.index.accesstoken')
-                        </x-admin::form.control-group.label>
+                            <x-admin::form.control-group.error control-name="clientSecret" />
+                        </x-admin::form.control-group>
 
-                        <x-admin::form.control-group.control
-                            type="password"
-                            id="accessToken"
-                            name="accessToken"
-                            rules="required"
-                            :value="old('accessToken') ?? $credential->accessToken"
-                            :label="trans('shopify::app.shopify.credential.index.accesstoken')"
-                            :placeholder="trans('shopify::app.shopify.credential.index.accesstoken')"
-                            :readonly="$isSaas"
-                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
-                        />
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.credential.index.accesstoken')
+                            </x-admin::form.control-group.label>
 
-                        <x-admin::form.control-group.error control-name="accessToken" />
-                    </x-admin::form.control-group>
-                    <x-admin::form.control-group class="mb-4 w-[525px]">
-                        <x-admin::form.control-group.label class="required">
-                            @lang('shopify::app.shopify.credential.index.apiVersion')
-                        </x-admin::form.control-group.label>
+                            <x-admin::form.control-group.control
+                                type="password"
+                                id="accessToken"
+                                name="accessToken"
+                                rules="required"
+                                :value="old('accessToken') ?? $credential->accessToken"
+                                :label="trans('shopify::app.shopify.credential.index.accesstoken')"
+                                :placeholder="trans('shopify::app.shopify.credential.index.accesstoken')"
+                            />
 
-                        @php
-                        
-                            $apiVersion = json_encode($apiVersion, true);
-                            $selectedOption = old('apiVersion') ?: $credential->apiVersion;
-                            
-                        @endphp
+                            <x-admin::form.control-group.error control-name="accessToken" />
+                        </x-admin::form.control-group>
 
-                        <x-admin::form.control-group.control
-                            type="select"
-                            id="apiVersion"
-                            name="apiVersion"
-                            rules="required"
-                            :label="trans('shopify::app.shopify.credential.index.apiVersion')"
-                            :placeholder="trans('shopify::app.shopify.credential.index.apiVersion')"
-                            :value="$selectedOption"
-                            :options="$apiVersion"
-                            track-by="id"
-                            label-by="name"
-                            :disabled="$isSaas"
-                        />
+                        <x-admin::form.control-group class="mb-4 w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.credential.index.apiVersion')
+                            </x-admin::form.control-group.label>
 
-                        <x-admin::form.control-group.error control-name="apiVersion" />
-                    </x-admin::form.control-group>
+                            @php
+                                $apiVersion = json_encode($apiVersion, true);
+                                $selectedOption = old('apiVersion') ?: $credential->apiVersion;
+                            @endphp
+
+                            <x-admin::form.control-group.control
+                                type="select"
+                                id="apiVersion"
+                                name="apiVersion"
+                                rules="required"
+                                :label="trans('shopify::app.shopify.credential.index.apiVersion')"
+                                :placeholder="trans('shopify::app.shopify.credential.index.apiVersion')"
+                                :value="$selectedOption"
+                                :options="$apiVersion"
+                                track-by="id"
+                                label-by="name"
+                            />
+
+                            <x-admin::form.control-group.error control-name="apiVersion" />
+                        </x-admin::form.control-group>
+                    @endif
                     <x-admin::form.control-group class="mb-4 w-[525px]">
                         <x-admin::form.control-group.label class="required">
                             @lang('shopify::app.shopify.credential.index.channel')
