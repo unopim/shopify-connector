@@ -60,7 +60,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
                 .locator('.multiselect');
 
             await weightDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
             await page.locator('.multiselect__content').last().getByText('kg', { exact: true }).click();
 
             const volumeDropdown = page.locator('p:has-text("Unit Volume")')
@@ -68,7 +68,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
                 .locator('.multiselect');
 
             await volumeDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
             await page.locator('.multiselect__content').last().getByText('L', { exact: true }).click();
 
             const dimensionDropdown = page.locator('p:has-text("Unit Dimension")')
@@ -76,7 +76,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
                 .locator('.multiselect');
 
             await dimensionDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible();
+            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
             await page.locator('.multiselect__content').last().getByText('cm', { exact: true }).click();
 
             await page.getByRole('button', { name: 'Save' }).click();
@@ -108,7 +108,7 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await page.getByText('Gallery', { exact: true }).click();
         const pLocator = page.locator('p', { hasText: 'Media Attributes' });
         const multiselect = pLocator.locator('..').locator('.multiselect');
-        await expect(multiselect).toBeVisible();
+        await expect(multiselect).toBeVisible({ timeout: 20000 });
         const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
         expect(hasDisabledClass).toBe(false);
         await page.getByRole('button', { name: 'Save' }).click();

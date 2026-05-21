@@ -1,10 +1,21 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Shopify 产品',
             'category' => 'Shopify 类别',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
     'importers' => [
@@ -16,19 +27,19 @@ return [
             'metafield' => 'Shopify 元字段定义',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => '设置',
                 'shopify' => 'Shopify',
                 'credentials' => '凭据',
                 'export-mappings' => '导出映射',
                 'import-mappings' => '导入映射',
-                'settings' => '设置',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -36,7 +47,6 @@ return [
                 'edit' => '编辑',
                 'delete' => '删除',
             ],
-
             'metafield' => [
                 'create' => '创建元字段',
                 'edit' => '编辑元字段',
@@ -44,9 +54,7 @@ return [
                 'mass_delete' => '批量删除元字段',
             ],
         ],
-
         'version' => '版本: 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => '语言映射',
@@ -63,6 +71,7 @@ return [
             'invalid' => '无效凭据',
             'invalidurl' => '无效的 URL',
             'already_taken' => '商店网址已被占用',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => '无效的客户端 ID/密钥。',
             'auto_refresh_not_configured' => '此凭据未配置自动刷新。',
             'unable_to_refresh_access_token' => '无法刷新 Shopify 访问令牌。',
@@ -79,6 +88,8 @@ return [
                 'url' => 'Shopify URL',
                 'shopifyurlplaceholder' => 'Shopify URL（例如：http://demo.myshopify.com）',
                 'accesstoken' => '管理员 API 访问令牌',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'API 版本',
                 'save' => '保存',
                 'back-btn' => '返回',
@@ -96,8 +107,18 @@ return [
                 'shopUrl' => 'Shopify URL',
                 'apiVersion' => 'API 版本',
                 'enabled' => '启用',
-
+                'sync' => '同步',
+                'revoke' => '撤销',
             ],
+            'saas-locked' => '已存在一个 Shopify SaaS 连接。手动凭证已被禁用。',
+            'sync-success' => 'UnoPim 凭证已成功与 Shopify 同步。',
+            'sync-failed' => '无法将 UnoPim 凭证与 Shopify 同步。请重试。',
+            'sync-missing-data' => '同步需要 UnoPim 客户端 ID 和店铺域名。',
+            'sync-client-not-found' => '未找到与该客户端 ID 对应的有效 UnoPim 集成。',
+            'revoke-success' => 'Shopify 连接已成功撤销。',
+            'revoke-failed' => '无法撤销 Shopify 连接。请重试。',
+            'secure-login-failed' => '安全登录链接无效或已过期。请手动登录。',
+            'saas-readonly-note' => '这是一个 Shopify SaaS 连接。连接详情为只读 — 您只能在下方配置发布（销售渠道）、位置和语言。',
         ],
         'export' => [
             'mapping' => [
@@ -106,17 +127,30 @@ return [
                 'save' => '保存',
                 'created' => '导出映射已创建',
                 'image' => '用于图像的属性',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => '用于元字段的属性',
                 'filed-shopify' => 'Shopify 字段',
                 'attribute' => '属性',
                 'fixed-value' => '固定值',
                 'save_failed' => '导出映射保存失败。 请运行 Shopify 安装命令。',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => '导出设置保存成功',
                 'save_failed' => '导出设置保存失败。 请运行 Shopify 安装命令。',
             ],
-
             'setting' => [
                 'title' => '设置',
                 'tags' => '标签导出设置',
@@ -127,11 +161,11 @@ return [
                 'metafields' => '元字段导出设置',
                 'metaFieldsKey' => '使用属性代码/标签作为元字段键',
                 'metaFieldsNameSpace' => '使用属性组代码/全局作为元字段命名空间',
+                'credentials' => 'Credentials Export',
                 'other-settings' => '其他设置',
                 'roundof-attribute-value' => '去除公制属性值的小数点后多余的零（例如，201.2000 显示为 201.2）',
                 'option_name_label' => '选项名称的值使用属性标签（默认使用属性代码）',
             ],
-
             'errors' => [
                 'invalid-credential' => '凭证无效。凭证已禁用或不正确',
                 'invalid-locale' => '无效的区域设置。请在凭据编辑部分中映射区域设置',
@@ -145,12 +179,21 @@ return [
                 'created' => '导入映射已成功保存',
                 'save_failed' => '导入映射保存失败。 请运行 Shopify 安装命令。',
                 'image' => '用于图片的属性',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'Shopify 字段',
                 'attribute' => 'UnoPim 属性',
                 'variantimage' => '用于变体图片的属性',
                 'other' => 'Shopify 其他映射',
                 'family' => '家族映射（用于产品）',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'Shopify 元字段定义映射',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => '凭证映射',
@@ -168,51 +211,6 @@ return [
                 ],
             ],
         ],
-
-        'metafield' => [
-            'datagrid' => [
-                'definitiontype' => '用途',
-                'attribute-label' => 'UnoPim 属性',
-                'definitionName' => '定义名称',
-                'contentTypeName' => '类型',
-                'pin' => '固定',
-            ],
-            'index' => [
-                'title' => '元字段定义',
-                'create' => '添加定义',
-                'definitiontype' => '用途',
-                'attribute' => 'UnoPim 属性',
-                'ContentTypeName' => '类型',
-                'attributes' => '定义名称',
-                'urlvalidation' => '验证',
-                'urlvalidationdata' => '值必须以以下前缀之一开头：“HTTPS”、“HTTP”、“mailto:”、“sms:” 或 “tel:”',
-                'name_space_key' => '命名空间和键',
-                'description' => '描述',
-                'onevalue' => '单个值',
-                'listvalue' => '值列表',
-                'validation' => '验证',
-                'maxvalue' => '最大值',
-                'adminFilterable' => '产品筛选',
-                'smartCollectionCondition' => '智能集合',
-                'storefronts' => '店面访问',
-            ],
-            'type' => [
-                'single_line_text_field' => '单行文本',
-                'color' => '颜色',
-                'rating' => '评分',
-                'url' => 'URL',
-                'multi_line_text_field' => '多行文本',
-                'json' => 'JSON',
-                'boolean' => '真假值',
-                'date' => '日期',
-                'number_decimal' => '小数',
-                'number_integer' => '整数',
-                'dimension' => '尺寸',
-                'weight' => '重量',
-                'volume' => '体积',
-            ],
-        ],
-
         'fields' => [
             'name' => '名称',
             'description' => '描述',
@@ -240,6 +238,63 @@ return [
             'productfilter' => '产品过滤器 (SKU)',
             'locale' => '语言区域',
             'attribute-groups' => '属性组',
+        ],
+        'metafield' => [
+            'datagrid' => [
+                'definitiontype' => '用途',
+                'attribute-label' => 'UnoPim 属性',
+                'definitionName' => '定义名称',
+                'contentTypeName' => '类型',
+                'pin' => '固定',
+            ],
+            'index' => [
+                'title' => '元字段定义',
+                'create' => '添加定义',
+                'definitiontype' => '用途',
+                'attribute' => 'UnoPim 属性',
+                'ContentTypeName' => '类型',
+                'attributes' => '定义名称',
+                'urlvalidation' => '验证',
+                'urlvalidationdata' => '值必须以以下前缀之一开头：“HTTPS”、“HTTP”、“mailto:”、“sms:” 或 “tel:”',
+                'name_space_key' => '命名空间和键',
+                'description' => '描述',
+                'onevalue' => '单个值',
+                'listvalue' => '值列表',
+                'validation' => '验证',
+                'maxvalue' => '最大值',
+                'adminFilterable' => '产品筛选',
+                'smartCollectionCondition' => '智能集合',
+                'storefronts' => '店面访问',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
+            ],
+            'type' => [
+                'single_line_text_field' => '单行文本',
+                'color' => '颜色',
+                'rating' => '评分',
+                'url' => 'URL',
+                'multi_line_text_field' => '多行文本',
+                'json' => 'JSON',
+                'boolean' => '真假值',
+                'date' => '日期',
+                'number_decimal' => '小数',
+                'number_integer' => '整数',
+                'dimension' => '尺寸',
+                'weight' => '重量',
+                'volume' => '体积',
+            ],
+            'edit' => [
+                'title' => 'Edit Metafield Definition',
+                'back-btn' => 'Back',
+                'update' => 'Update',
+                'save' => 'Save',
+            ],
+            'delete-success' => 'Metafield Definition Deleted successfully',
+            'update-success' => 'MetaField Definition Updated successfully',
+            'created' => 'Create Metafield Definition successfully',
+            'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
         ],
     ],
 ];

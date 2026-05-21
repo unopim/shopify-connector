@@ -82,7 +82,7 @@ class ShopifyGraphQLDataFormatter
         $formatted = [];
         foreach ($productMetaField as $field) {
             $unoAttribute = $field['code'] ?? null;
-            if (! empty(@$rawData[$unoAttribute])) {
+            if (! empty($rawData[$unoAttribute] ?? null)) {
                 $nameSpaceAndKey = explode('.', $field['name_space_key']);
                 if (count($nameSpaceAndKey) > 2) {
                     continue;
@@ -94,7 +94,7 @@ class ShopifyGraphQLDataFormatter
                 switch ($type) {
                     case 'multi_line_text_field':
                     case 'color':
-                        $metafieldValue = @$rawData[$unoAttribute];
+                        $metafieldValue = $rawData[$unoAttribute] ?? '';
                         break;
 
                     case 'rating':
@@ -104,42 +104,42 @@ class ShopifyGraphQLDataFormatter
                                 array_map(fn ($key) => 'scale_'.$key, array_keys($ratingValidation)),
                                 $ratingValidation
                             );
-                            $updatedData['value'] = @$rawData[$unoAttribute];
+                            $updatedData['value'] = $rawData[$unoAttribute] ?? null;
                             $metafieldValue = json_encode($updatedData, true);
                         }
                         break;
 
                     case 'weight':
                         $metafieldValue = json_encode([
-                            'value' => @$rawData[$unoAttribute],
+                            'value' => $rawData[$unoAttribute] ?? 0,
                             'unit' => $units['weight'] ?? 'GRAMS',
                         ]);
                         break;
 
                     case 'volume':
                         $metafieldValue = json_encode([
-                            'value' => @$rawData[$unoAttribute],
+                            'value' => $rawData[$unoAttribute] ?? 0,
                             'unit' => $units['volume'] ?? 'MILLILITERS',
                         ]);
                         break;
 
                     case 'dimension':
                         $metafieldValue = json_encode([
-                            'value' => @$rawData[$unoAttribute],
+                            'value' => $rawData[$unoAttribute] ?? 0,
                             'unit' => $units['dimension'] ?? 'MILLIMETERS',
                         ]);
                         break;
 
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
-                            ? @$rawData[$unoAttribute][$this->currency]
-                            : $this->stripTagMetafield(@$rawData[$unoAttribute], $locale, $attribute);
+                            ? ($rawData[$unoAttribute][$this->currency] ?? 0)
+                            : $this->stripTagMetafield((string) ($rawData[$unoAttribute] ?? ''), $locale, $attribute);
                         break;
                 }
 
                 if (! empty($field['listvalue'])) {
                     $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue(@$rawData[$unoAttribute], $attribute, $locale);
+                    $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
                 }
 
                 $formatted[] = [
@@ -199,7 +199,7 @@ class ShopifyGraphQLDataFormatter
     {
         foreach ($exportMapping['shopify_connector_settings'] ?? [] as $shopifyField => $unopimField) {
             if (in_array($shopifyField, $this->productIndexes)) {
-                $typeCastValues = $parentData[$unopimField] ?? @$rawData[$unopimField] ?? '';
+                $typeCastValues = $parentData[$unopimField] ?? ($rawData[$unopimField] ?? '');
                 $attribute = $this->attributeAll[$unopimField] ?? null;
                 if ($attribute?->type == 'select') {
                     $option = $attribute->options()->where('code', $typeCastValues)->orderBy('sort_order')->first();
@@ -216,7 +216,7 @@ class ShopifyGraphQLDataFormatter
 
             if (in_array($shopifyField, $this->seoFields)) {
                 $name = $shopifyField === 'metafields_global_title_tag' ? 'title' : 'description';
-                $formatted['seo'][$name] = $parentData[$unopimField] ?? @$rawData[$unopimField] ?? '';
+                $formatted['seo'][$name] = $parentData[$unopimField] ?? ($rawData[$unopimField] ?? '');
 
                 continue;
             }
@@ -268,12 +268,12 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'barcode':
-                $barCode = @$rawData[$unopimField] ?? '';
+                $barCode = $rawData[$unopimField] ?? '';
                 $formatted['variant'][$shopifyField] = (string) $barCode;
 
                 break;
             case 'taxable':
-                $formatted['variant']['taxable'] = @$rawData[$unopimField] == 'false' ? false : true;
+                $formatted['variant']['taxable'] = ($rawData[$unopimField] ?? null) === 'false' ? false : true;
 
                 break;
             case 'compareAtPrice':
@@ -281,12 +281,12 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'sku':
-                $skuValues = @$rawData[$unopimField] ?? '';
+                $skuValues = $rawData[$unopimField] ?? '';
                 $formatted['variant']['inventoryItem']['sku'] = (string) $skuValues;
 
                 break;
             case 'inventoryTracked':
-                $formatted['variant']['inventoryItem']['tracked'] = @$rawData[$unopimField] == 'false' ? false : true;
+                $formatted['variant']['inventoryItem']['tracked'] = ($rawData[$unopimField] ?? null) === 'false' ? false : true;
 
                 break;
             case 'cost':
@@ -301,12 +301,12 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'price':
-                $formatted['variant']['price'] = (float) @$rawData[$unopimField][$this->currency] ?? 0;
+                $formatted['variant']['price'] = (float) ($rawData[$unopimField][$this->currency] ?? 0);
 
                 break;
             case 'inventoryQuantity':
                 if ($this->locationId) {
-                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) @$rawData[$unopimField];
+                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
                 break;
@@ -327,7 +327,7 @@ class ShopifyGraphQLDataFormatter
         foreach ($unopimAttr as $attributeCode) {
             $attribute = $this->attributeAll[$attributeCode] ?? null;
             $attributeLabel = empty($attribute?->translate($locale)->name) ? $attribute?->code : $attribute?->translate($locale)->name;
-            $value = strip_tags(@$parentData[$attributeCode] ?? @$rawData[$attributeCode] ?? null);
+            $value = strip_tags((string) ($parentData[$attributeCode] ?? ($rawData[$attributeCode] ?? '')));
             if (in_array($attribute?->type, ['multiselect', 'select'])) {
                 $value = $this->getTranslatedOptionLabels($attribute, $value, $locale);
                 $value = implode(' / ', $value);
@@ -466,7 +466,7 @@ class ShopifyGraphQLDataFormatter
     /**
      * Sets the initial data for the class properties.
      */
-    public function setInitialData(string $locationId, string $currency, $settings, $attributeAll)
+    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll)
     {
         $this->locationId = $locationId;
         $this->currency = $currency;

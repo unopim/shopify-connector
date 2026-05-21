@@ -1,13 +1,23 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Shopify उत्पाद',
             'category' => 'Shopify श्रेणी',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
-
     'importers' => [
         'shopify' => [
             'product' => 'शोपिफाई उत्पाद',
@@ -17,19 +27,19 @@ return [
             'metafield' => 'शॉपिफ़ाई मेटाफ़ील्ड परिभाषाएँ',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => 'सेटिंग्स',
                 'shopify' => 'Shopify',
                 'credentials' => 'प्रमाण पत्र',
                 'export-mappings' => 'निर्यात मानचित्रण',
                 'import-mappings' => 'आयात मैपिंग्स',
-                'settings' => 'सेटिंग्स',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -37,7 +47,6 @@ return [
                 'edit' => 'संपादित करें',
                 'delete' => 'हटाएँ',
             ],
-
             'metafield' => [
                 'create' => 'मेटाफील्ड बनाएं',
                 'edit' => 'मेटाफील्ड संपादित करें',
@@ -45,9 +54,7 @@ return [
                 'mass_delete' => 'मेटाफील्ड को सामूहिक रूप से हटाएं',
             ],
         ],
-
         'version' => 'संस्करण: 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => 'स्थानीय मानचित्रण',
@@ -64,6 +71,7 @@ return [
             'invalid' => 'अमान्य प्रमाण पत्र',
             'invalidurl' => 'अमान्य URL',
             'already_taken' => 'शॉप यूआरएल पहले ही लिया जा चुका है।',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => 'अमान्य क्लाइंट आईडी/गुप्त।',
             'auto_refresh_not_configured' => 'इस क्रेडेंशियल के लिए ऑटो-रिफ्रेश कॉन्फ़िगर नहीं है।',
             'unable_to_refresh_access_token' => 'Shopify एक्सेस टोकन को रिफ्रेश नहीं किया जा सका।',
@@ -80,6 +88,8 @@ return [
                 'url' => 'Shopify URL',
                 'shopifyurlplaceholder' => 'Shopify URL (उदा. http://demo.myshopify.com)',
                 'accesstoken' => 'एडमिन API एक्सेस टोकन',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'API संस्करण',
                 'save' => 'सहेजें',
                 'back-btn' => 'वापस',
@@ -97,7 +107,18 @@ return [
                 'shopUrl' => 'Shopify URL',
                 'apiVersion' => 'API संस्करण',
                 'enabled' => 'सक्रिय करें',
+                'sync' => 'सिंक करें',
+                'revoke' => 'रद्द करें',
             ],
+            'saas-locked' => 'एक SaaS Shopify कनेक्शन पहले से मौजूद है। मैनुअल क्रेडेंशियल्स अक्षम कर दिए गए हैं।',
+            'sync-success' => 'UnoPim क्रेडेंशियल्स सफलतापूर्वक Shopify के साथ सिंक हो गए हैं।',
+            'sync-failed' => 'UnoPim क्रेडेंशियल्स को Shopify के साथ सिंक नहीं किया जा सका। कृपया पुनः प्रयास करें।',
+            'sync-missing-data' => 'सिंक के लिए UnoPim क्लाइंट आईडी और शॉप डोमेन दोनों आवश्यक हैं।',
+            'sync-client-not-found' => 'इस क्रेडेंशियल के क्लाइंट आईडी के लिए कोई सक्रिय UnoPim इंटीग्रेशन नहीं मिला।',
+            'revoke-success' => 'Shopify कनेक्शन सफलतापूर्वक रद्द कर दिया गया है।',
+            'revoke-failed' => 'Shopify कनेक्शन रद्द नहीं किया जा सका। कृपया पुनः प्रयास करें।',
+            'secure-login-failed' => 'सिक्योर लॉगिन लिंक अमान्य है या समाप्त हो गया है। कृपया मैन्युअली लॉगिन करें।',
+            'saas-readonly-note' => 'यह एक SaaS Shopify कनेक्शन है। कनेक्शन विवरण केवल पढ़ने के लिए हैं — आप नीचे केवल Publishing (Sales Channels), Location और Locale मैपिंग कॉन्फ़िगर कर सकते हैं।',
         ],
         'export' => [
             'mapping' => [
@@ -106,17 +127,30 @@ return [
                 'save' => 'सहेजें',
                 'created' => 'निर्यात मानचित्रण बनाया गया',
                 'image' => 'छवि के रूप में उपयोग की जाने वाली विशेषता',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => 'मेटाफील्ड के रूप में उपयोग की जाने वाली विशेषताएँ',
                 'filed-shopify' => 'Shopify में फ़ील्ड',
                 'attribute' => 'विशेषता',
                 'fixed-value' => 'स्थिर मान',
                 'save_failed' => 'निर्यात मानचित्रण सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => 'निर्यात सेटिंग्स सफलतापूर्वक सहेजी गईं',
                 'save_failed' => 'निर्यात सेटिंग्स सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
             ],
-
             'setting' => [
                 'title' => 'सेटिंग',
                 'tags' => 'टैग निर्यात सेटिंग',
@@ -127,11 +161,11 @@ return [
                 'metafields' => 'मेटाफील्ड निर्यात सेटिंग',
                 'metaFieldsKey' => 'मेटाफील्ड कुंजी के रूप में विशेषता कोड/लेबल का उपयोग करें',
                 'metaFieldsNameSpace' => 'मेटाफील्ड के नामस्थान के रूप में विशेषता समूह कोड/वैश्विक का उपयोग करें',
+                'credentials' => 'Credentials Export',
                 'other-settings' => 'अन्य सेटिंग्स',
                 'roundof-attribute-value' => 'मेट्रिक विशेषता मान के अतिरिक्त अंशात्मक शून्य हटाएं (उदा. 201.2000 को 201.2 के रूप में दिखाएं)',
                 'option_name_label' => 'विकल्प नाम के लिए मान को विशेषता लेबल के रूप में दिखाएं (डिफ़ॉल्ट रूप से विशेषता कोड)',
             ],
-
             'errors' => [
                 'invalid-credential' => 'अमान्य क्रेडेंशियल। क्रेडेंशियल या तो अक्षम है या गलत है',
                 'invalid-locale' => 'अमान्य लोकेल। कृपया क्रेडेंशियल एडिट सेक्शन में लोकेल मैप करें।',
@@ -145,12 +179,21 @@ return [
                 'created' => 'आयात मैपिंग सफलतापूर्वक सहेजा गया',
                 'save_failed' => 'आयात मानचित्रण सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
                 'image' => 'चित्र के रूप में उपयोग करने के लिए गुण',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'Shopify में फ़ील्ड',
                 'attribute' => 'UnoPim गुण',
                 'variantimage' => 'वेरिएंट छवि के रूप में उपयोग करने के लिए गुण',
                 'other' => 'Shopify अन्य मैपिंग्स',
                 'family' => 'परिवार मैपिंग (उत्पादों के लिए)',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'Shopify मेटाफील्ड परिभाषा मैपिंग',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'क्रेडेंशियल मैपिंग',
@@ -168,7 +211,6 @@ return [
                 ],
             ],
         ],
-
         'fields' => [
             'name' => 'नाम',
             'description' => 'विवरण',
@@ -196,6 +238,63 @@ return [
             'productfilter' => 'उत्पाद फ़िल्टर (SKU)',
             'locale' => 'भाषा',
             'attribute-groups' => 'गुण समूह',
+        ],
+        'metafield' => [
+            'datagrid' => [
+                'definitiontype' => 'Used For',
+                'attribute-label' => 'Unopim Attribute',
+                'definitionName' => 'Definition name',
+                'contentTypeName' => 'Type',
+                'pin' => 'Pin',
+            ],
+            'index' => [
+                'title' => 'Metafield definitions',
+                'create' => 'Add definition',
+                'definitiontype' => 'Used For',
+                'attribute' => 'UnoPim Attribute',
+                'ContentTypeName' => 'Type',
+                'attributes' => 'Definition Name',
+                'urlvalidation' => 'Validation',
+                'urlvalidationdata' => 'Values must be prefixed with: “HTTPS”, “HTTP”, “mailto:”, “sms:”, or “tel:”',
+                'name_space_key' => 'Namespace and key',
+                'description' => 'Description',
+                'onevalue' => 'One Value',
+                'listvalue' => 'List of Values',
+                'validation' => 'Validations',
+                'maxvalue' => 'Max value',
+                'adminFilterable' => 'Filtering for products',
+                'smartCollectionCondition' => 'Smart collections',
+                'storefronts' => 'Storefronts access',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
+            ],
+            'type' => [
+                'single_line_text_field' => 'Single line text',
+                'color' => 'Color',
+                'rating' => 'Rating',
+                'url' => 'Url',
+                'multi_line_text_field' => 'Multi-line text',
+                'json' => 'JSON',
+                'boolean' => 'True and False',
+                'date' => 'Date',
+                'number_decimal' => 'Decimal',
+                'number_integer' => 'Number',
+                'dimension' => 'Dimension',
+                'weight' => 'Weight',
+                'volume' => 'Volume',
+            ],
+            'edit' => [
+                'title' => 'Edit Metafield Definition',
+                'back-btn' => 'Back',
+                'update' => 'Update',
+                'save' => 'Save',
+            ],
+            'delete-success' => 'Metafield Definition Deleted successfully',
+            'update-success' => 'MetaField Definition Updated successfully',
+            'created' => 'Create Metafield Definition successfully',
+            'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
         ],
     ],
 ];

@@ -35,6 +35,13 @@
             </div>
         </div>
 
+        @if ($isSaas)
+            <div class="flex items-center gap-2 mt-3.5 p-4 bg-violet-50 dark:bg-cherry-800 border border-violet-200 dark:border-cherry-700 rounded text-sm text-gray-700 dark:text-gray-300">
+                <span class="icon-information text-xl"></span>
+                <p>@lang('shopify::app.shopify.credential.saas-readonly-note')</p>
+            </div>
+        @endif
+
         <!-- body content -->
         <div class="flex gap-2.5 mt-3.5 max-xl:flex-wrap">
             <!-- Left Section -->
@@ -61,7 +68,8 @@
                             :value="old('shopUrl') ?? $credential->shopUrl"
                             :label="trans('shopify::app.shopify.credential.index.url')"
                             :placeholder="trans('shopify::app.shopify.credential.index.shopifyurlplaceholder')"
-                            
+                            :readonly="$isSaas"
+                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
                         />
 
                         <x-admin::form.control-group.error control-name="shopUrl" />
@@ -79,6 +87,8 @@
                             :value="old('clientId') ?? $credential->clientId"
                             :label="trans('shopify::app.shopify.credential.index.clientId')"
                             :placeholder="trans('shopify::app.shopify.credential.index.clientId')"
+                            :readonly="$isSaas"
+                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
                         />
 
                         <x-admin::form.control-group.error control-name="clientId" />
@@ -96,6 +106,8 @@
                             :value="old('clientSecret') ?? $credential->clientSecret"
                             :label="trans('shopify::app.shopify.credential.index.clientSecret')"
                             :placeholder="trans('shopify::app.shopify.credential.index.clientSecret')"
+                            :readonly="$isSaas"
+                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
                         />
 
                         <x-admin::form.control-group.error control-name="clientSecret" />
@@ -113,6 +125,8 @@
                             :value="old('accessToken') ?? $credential->accessToken"
                             :label="trans('shopify::app.shopify.credential.index.accesstoken')"
                             :placeholder="trans('shopify::app.shopify.credential.index.accesstoken')"
+                            :readonly="$isSaas"
+                            :class="$isSaas ? 'bg-gray-100 dark:bg-cherry-800 cursor-not-allowed' : ''"
                         />
 
                         <x-admin::form.control-group.error control-name="accessToken" />
@@ -140,6 +154,7 @@
                             :options="$apiVersion"
                             track-by="id"
                             label-by="name"
+                            :disabled="$isSaas"
                         />
 
                         <x-admin::form.control-group.error control-name="apiVersion" />
@@ -153,7 +168,9 @@
                             $salesChannel = $credential->extras;
                             $channel = array_column($publishingChannel, 'node');
                             $pubChannel = json_encode($channel, true);
-                            $selectChannel = $salesChannel ? explode(',' , $salesChannel['salesChannel']) : array_column($channel,'id');
+                            $selectChannel = ! empty($salesChannel['salesChannel'])
+                                ? explode(',', $salesChannel['salesChannel'])
+                                : array_column($channel, 'id');
                             $selectedOption = json_encode($selectChannel);
                         @endphp
 
@@ -178,7 +195,9 @@
                         </x-admin::form.control-group.label>
 
                         @php
-                            $selectLocation = $salesChannel ? explode(',' , $salesChannel['locations'])[0] : '' ;
+                            $selectLocation = ! empty($salesChannel['locations'])
+                                ? explode(',', $salesChannel['locations'])[0]
+                                : '';
                             $locationAll = array_column($locationAll, 'node');
                             $publocationAll = json_encode($locationAll, true);
                         @endphp
@@ -214,6 +233,7 @@
                                 name="active"
                                 value="1"
                                 :checked="(boolean) $credential->active"
+                                :disabled="$isSaas"
                             />
                     </x-admin::form.control-group>
                 </div>
@@ -247,7 +267,7 @@
                         <input type="hidden" name="storeLocales" class="default" value="{{ $JsonShopLocales }}">
 
                         @foreach ($shopLocales as $locale)
-                                @php 
+                                @php
                                     $localeCode = $locale['locale'];
                                     $primary = $locale['primary'] ? '(Default)' : '';
                                     $selectedLocale = $storelocaleMapping[$localeCode] ?? null;

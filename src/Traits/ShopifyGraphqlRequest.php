@@ -3,13 +3,11 @@
 namespace Webkul\Shopify\Traits;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Models\JobTrack;
 use Webkul\Shopify\Exceptions\InvalidCredential;
-use Webkul\Shopify\Http\Client\GraphQLApiClient;
-use Webkul\Shopify\Services\ShopifyAccessTokenManager;
+use Webkul\Shopify\Services\ShopifyClientFactory;
 
 /**
  * Trait for making GraphQL API requests to Shopify.
@@ -17,55 +15,26 @@ use Webkul\Shopify\Services\ShopifyAccessTokenManager;
 trait ShopifyGraphqlRequest
 {
     /**
-     * Sends a GraphQL API request to Shopify based on the provided mutation type and credentials.
+     * Sends a Shopify API request for the given operation and credentials.
      *
-     * @param  string  $mutationType  The GraphQL mutation type or query to execute.
-     * @param  array|null  $credential  Optional. Shopify credentials including 'shopUrl', 'accessToken', and 'apiVersion'.
-     * @param  array|null  $formatedVariable  Optional. Variables to be sent with the GraphQL query or mutation.
-     * @return array The response from Shopify's GraphQL API.
+     * The credential's transport (manual Shopify Admin API vs. SaaS proxy) is
+     * resolved by ShopifyClientFactory — this method depends only on the
+     * ShopifyClient contract and never on a concrete transport. A failed call
+     * (no/401/404 response code) fails the running export job.
+     *
+     * @param  string  $mutationType  The operation/endpoint name to execute.
+     * @param  array|null  $credential  Shopify credentials assembled by the caller.
+     * @param  array|null  $formatedVariable  Variables to send with the operation.
+     * @return array The response in the Shopify GraphQL envelope shape.
      */
     protected function requestGraphQlApiAction(string $mutationType, ?array $credential = [], ?array $formatedVariable = []): array
     {
-        if (! $credential || ! isset($credential['shopUrl'], $credential['apiVersion'])) {
-            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
-        }
+        $client = app(ShopifyClientFactory::class)->make($credential ?? []);
 
-        $accessTokenManager = app(ShopifyAccessTokenManager::class);
-
-        $credential = $accessTokenManager->ensureValidAccessToken($credential);
-
-        if (empty($credential['accessToken'])) {
-            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
-        }
-
-        $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
-
-        $response = $apiClient->request($mutationType, $formatedVariable);
+        $response = $client->request($mutationType, $formatedVariable ?? []);
 
         if (
-            isset($response['code'])
-            && (int) $response['code'] === 401
-            && $accessTokenManager->canAutoGenerateAccessToken($credential)
-        ) {
-            try {
-                $credential = $accessTokenManager->regenerateAccessToken($credential);
-
-                $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
-                $response = $apiClient->request($mutationType, $formatedVariable);
-            } catch (\Throwable $e) {
-                Log::error('Shopify token regeneration failed', [
-                    'message' => $e->getMessage(),
-                    'credential' => [
-                        'credentialId' => $credential['credentialId'] ?? null,
-                        'shopUrl' => $credential['shopUrl'] ?? null,
-                        'apiVersion' => $credential['apiVersion'] ?? null,
-                    ],
-                ]);
-            }
-        }
-
-        if (
-            (! $response['code'] || in_array($response['code'], [401, 404]))
+            (empty($response['code']) || in_array($response['code'], [401, 404], true))
             && property_exists($this, 'export')
             && $this->export instanceof JobTrack
         ) {

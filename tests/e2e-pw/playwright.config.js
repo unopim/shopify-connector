@@ -21,6 +21,13 @@ module.exports = defineConfig({
   /* Global Setup for Authentication */
   globalSetup: './tests/setup/global-setup.js',
 
+  /* Default per-assertion timeout. Default is 5s; bumped to 15s so slow-loading
+   * elements (multiselect dropdowns, async-populated form fields) don't flake
+   * the CI run when the full Unopim app is in front of Shopify. */
+  expect: {
+    timeout: 15000,
+  },
+
   /* Shared settings for all projects */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

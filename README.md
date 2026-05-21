@@ -7,6 +7,12 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
   
 ## ✨ Features
 
+- **One-Click SaaS Install via UnoPIM-Shopify Connector App**  
+  Install the UnoPIM connector app from Shopify, fill in your UnoPIM integration details, and click Connect — no manual credential creation in UnoPIM.
+
+- **Bulk Export & Import**  
+  Products can be exported and imported in bulk for faster syncing of large catalogs.
+
 - **Sync Multiple Stores**  
   This feature exports products from UnoPim to Shopify and allows syncing multiple Shopify stores.
 

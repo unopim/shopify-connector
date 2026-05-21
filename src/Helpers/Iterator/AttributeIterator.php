@@ -78,23 +78,37 @@ class AttributeIterator implements \Iterator
     private function fetchByCursor(): void
     {
         $this->currentPageData = [];
+        $this->currentKey = 0;
+
         try {
-            $variables = [];
-            if ($this->cursor) {
-                $variables = [
-                    'first' => 50,
-                    'afterCursor' => $this->cursor,
-                ];
-            }
+            do {
+                $variables = [];
+                if ($this->cursor) {
+                    $variables = [
+                        'first' => 50,
+                        'afterCursor' => $this->cursor,
+                    ];
+                }
 
-            $mutationType = $this->cursor ? 'productOptionByCursor' : 'productGettingOptions';
-            $graphResponse = $this->requestGraphQlApiAction($mutationType, $this->credential, $variables);
+                $mutationType = $this->cursor ? 'productOptionByCursor' : 'productGettingOptions';
+                $graphResponse = $this->requestGraphQlApiAction($mutationType, $this->credential, $variables);
 
-            $edges = $graphResponse['body']['data']['products']['edges'] ?? [];
-            $this->currentPageData = $this->formatedAttributeAndOption($edges);
-            // Update the cursor for the next page
-            $this->cursor = ! empty($edges) ? end($edges)['cursor'] : null;
+                $edges = $graphResponse['body']['data']['products']['edges'] ?? [];
 
+                $previousCursor = $this->cursor;
+                // Update the cursor for the next page
+                $this->cursor = ! empty($edges) ? end($edges)['cursor'] : null;
+                $this->currentPageData = $this->formatedAttributeAndOption($edges);
+
+                // A page can hold only simple products (no variant options) and
+                // so yield no attributes. Keep paging until attributes are found
+                // or the product list is exhausted, instead of ending early.
+            } while (
+                empty($this->currentPageData)
+                && ! empty($edges)
+                && ! empty($this->cursor)
+                && $this->cursor !== $previousCursor
+            );
         } catch (\Exception $e) {
             error_log($e->getMessage());
         }
@@ -109,9 +123,16 @@ class AttributeIterator implements \Iterator
     {
         $optionsArray = [];
         foreach ($options as $option) {
-            $productOptions = $option['node']['options'];
+            $productOptions = $option['node']['options'] ?? [];
             foreach ($productOptions as $productOption) {
-                if ($productOption['name'] == 'Title' && in_array('Default Title', $productOption['values'])) {
+                // Shopify exposes option values as `values`; the SaaS proxy's
+                // product list returns them only under `optionValues`. Derive
+                // the value names from whichever the response carries.
+                $optionValueNames = $productOption['values']
+                    ?? array_column($productOption['optionValues'] ?? [], 'name');
+
+                if (($productOption['name'] ?? '') === 'Title'
+                    && in_array('Default Title', (array) $optionValueNames, true)) {
                     continue;
                 }
 

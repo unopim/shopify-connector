@@ -1,10 +1,21 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Shopify продукт',
             'category' => 'Shopify категория',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
     'importers' => [
@@ -16,19 +27,19 @@ return [
             'metafield' => 'Определения метаполей Shopify',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => 'Настройки',
                 'shopify' => 'Shopify',
                 'credentials' => 'Учетные данные',
                 'export-mappings' => 'Экспортные сопоставления',
                 'import-mappings' => 'Импорт маппингов',
-                'settings' => 'Настройки',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -36,7 +47,6 @@ return [
                 'edit' => 'Редактировать',
                 'delete' => 'Удалить',
             ],
-
             'metafield' => [
                 'create' => 'Создать метаполе',
                 'edit' => 'Редактировать метаполе',
@@ -44,9 +54,7 @@ return [
                 'mass_delete' => 'Массовое удаление метаполей',
             ],
         ],
-
         'version' => 'Версия: 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => 'Сопоставление локалей',
@@ -63,6 +71,7 @@ return [
             'invalid' => 'Неверные учетные данные',
             'invalidurl' => 'Неверный URL',
             'already_taken' => 'URL магазина уже занят.',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => 'Неверный идентификатор клиента/секрет.',
             'auto_refresh_not_configured' => 'Автообновление не настроено для этих учетных данных.',
             'unable_to_refresh_access_token' => 'Не удалось обновить токен доступа Shopify.',
@@ -79,6 +88,8 @@ return [
                 'url' => 'Shopify URL',
                 'shopifyurlplaceholder' => 'Shopify URL (например, http://demo.myshopify.com)',
                 'accesstoken' => 'Токен доступа Admin API',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'Версия API',
                 'save' => 'Сохранить',
                 'back-btn' => 'Назад',
@@ -96,8 +107,18 @@ return [
                 'shopUrl' => 'Shopify URL',
                 'apiVersion' => 'Версия API',
                 'enabled' => 'Включено',
-
+                'sync' => 'Синхронизировать',
+                'revoke' => 'Отозвать',
             ],
+            'saas-locked' => 'Соединение Shopify SaaS уже существует. Ручные учетные данные отключены.',
+            'sync-success' => 'Учетные данные UnoPim успешно синхронизированы с Shopify.',
+            'sync-failed' => 'Не удалось синхронизировать учетные данные UnoPim с Shopify. Пожалуйста, попробуйте снова.',
+            'sync-missing-data' => 'Для синхронизации требуется идентификатор клиента UnoPim и домен магазина.',
+            'sync-client-not-found' => 'Активная интеграция UnoPim для данного идентификатора клиента не найдена.',
+            'revoke-success' => 'Соединение с Shopify успешно отозвано.',
+            'revoke-failed' => 'Не удалось отозвать соединение с Shopify. Пожалуйста, попробуйте снова.',
+            'secure-login-failed' => 'Ссылка для безопасного входа недействительна или истекла. Пожалуйста, войдите вручную.',
+            'saas-readonly-note' => 'Это SaaS-соединение Shopify. Детали соединения доступны только для чтения — вы можете настроить только публикацию (каналы продаж), местоположение и локаль ниже.',
         ],
         'export' => [
             'mapping' => [
@@ -106,17 +127,30 @@ return [
                 'save' => 'Сохранить',
                 'created' => 'Экспортное сопоставление создано',
                 'image' => 'Атрибут для использования в качестве изображения',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => 'Атрибуты для использования в метаполях',
                 'filed-shopify' => 'Поле в Shopify',
                 'attribute' => 'Атрибут',
                 'fixed-value' => 'Фиксированное значение',
                 'save_failed' => 'Не удалось сохранить сопоставление экспорта. Пожалуйста, выполните команду установки Shopify.',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => 'Настройки экспорта успешно сохранены',
                 'save_failed' => 'Не удалось сохранить настройки экспорта. Пожалуйста, выполните команду установки Shopify.',
             ],
-
             'setting' => [
                 'title' => 'Настройка',
                 'tags' => 'Настройка экспорта тегов',
@@ -127,11 +161,11 @@ return [
                 'metafields' => 'Настройка экспорта метаполей',
                 'metaFieldsKey' => 'Использовать ключ для метаполя как код/метку атрибута',
                 'metaFieldsNameSpace' => 'Использовать пространство имен для метаполя как код группы атрибутов/глобальный',
+                'credentials' => 'Credentials Export',
                 'other-settings' => 'Прочие настройки',
                 'roundof-attribute-value' => 'Удалить лишние дробные нули в значении метрического атрибута (например, 201.2000 как 201.2)',
                 'option_name_label' => 'Значение для имени опции как метка атрибута (по умолчанию код атрибута)',
             ],
-
             'errors' => [
                 'invalid-credential' => 'Неверные учетные данные. Учетные данные отключены или неверны.',
                 'invalid-locale' => 'Неверный локаль. Пожалуйста, настройте локаль в разделе редактирования учетных данных.',
@@ -145,12 +179,21 @@ return [
                 'created' => 'Маппинг импорта успешно сохранен',
                 'save_failed' => 'Не удалось сохранить сопоставление импорта. Пожалуйста, выполните команду установки Shopify.',
                 'image' => 'Атрибут, используемый как изображение',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'Поле в Shopify',
                 'attribute' => 'Атрибут UnoPim',
                 'variantimage' => 'Атрибут, используемый как изображение вариации',
                 'other' => 'Другие маппинги Shopify',
                 'family' => 'Маппинг семейства (для продуктов)',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'Маппинг определения метаполя Shopify',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'Маппинг учетных данных',
@@ -168,7 +211,6 @@ return [
                 ],
             ],
         ],
-
         'fields' => [
             'name' => 'Название',
             'description' => 'Описание',
@@ -196,6 +238,63 @@ return [
             'productfilter' => 'Фильтр продуктов (SKU)',
             'locale' => 'Языковая локаль',
             'attribute-groups' => 'Группы атрибутов',
+        ],
+        'metafield' => [
+            'datagrid' => [
+                'definitiontype' => 'Used For',
+                'attribute-label' => 'Unopim Attribute',
+                'definitionName' => 'Definition name',
+                'contentTypeName' => 'Type',
+                'pin' => 'Pin',
+            ],
+            'index' => [
+                'title' => 'Metafield definitions',
+                'create' => 'Add definition',
+                'definitiontype' => 'Used For',
+                'attribute' => 'UnoPim Attribute',
+                'ContentTypeName' => 'Type',
+                'attributes' => 'Definition Name',
+                'urlvalidation' => 'Validation',
+                'urlvalidationdata' => 'Values must be prefixed with: “HTTPS”, “HTTP”, “mailto:”, “sms:”, or “tel:”',
+                'name_space_key' => 'Namespace and key',
+                'description' => 'Description',
+                'onevalue' => 'One Value',
+                'listvalue' => 'List of Values',
+                'validation' => 'Validations',
+                'maxvalue' => 'Max value',
+                'adminFilterable' => 'Filtering for products',
+                'smartCollectionCondition' => 'Smart collections',
+                'storefronts' => 'Storefronts access',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
+            ],
+            'type' => [
+                'single_line_text_field' => 'Single line text',
+                'color' => 'Color',
+                'rating' => 'Rating',
+                'url' => 'Url',
+                'multi_line_text_field' => 'Multi-line text',
+                'json' => 'JSON',
+                'boolean' => 'True and False',
+                'date' => 'Date',
+                'number_decimal' => 'Decimal',
+                'number_integer' => 'Number',
+                'dimension' => 'Dimension',
+                'weight' => 'Weight',
+                'volume' => 'Volume',
+            ],
+            'edit' => [
+                'title' => 'Edit Metafield Definition',
+                'back-btn' => 'Back',
+                'update' => 'Update',
+                'save' => 'Save',
+            ],
+            'delete-success' => 'Metafield Definition Deleted successfully',
+            'update-success' => 'MetaField Definition Updated successfully',
+            'created' => 'Create Metafield Definition successfully',
+            'mass-delete-success' => 'Mass Delete Metafield Definition successfully',
         ],
     ],
 ];

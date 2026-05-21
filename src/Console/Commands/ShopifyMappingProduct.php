@@ -86,15 +86,7 @@ class ShopifyMappingProduct extends Command
             return 0;
         }
         $output->writeln('<info>Mapping migration process start </info>');
-        $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => $this->credential?->accessTokenExpiresAt,
-        ];
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $totalProduct = $this->getTotalProduct();
         if (! $totalProduct) {

@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -18,10 +20,14 @@ use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
+use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
+use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\Bulk\PayloadBuilders\Core\CoreProductBulkPayloadBuilder;
+use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -54,7 +60,7 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
-    public const BATCH_SIZE = 50;
+    public const BATCH_SIZE = 500;
 
     /**
      * @var array
@@ -138,6 +144,9 @@ class Exporter extends AbstractExporter
         protected AttributeFamilyGroupMappingRepository $attributeFamilyGroupMappingRepository,
         protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ShopifyBulkOperationRepository $shopifyBulkOperationRepository,
+        protected BulkOperationService $bulkOperationService,
+        protected CoreProductBulkPayloadBuilder $coreProductBulkPayloadBuilder,
         protected ?AssetRepository $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
@@ -152,6 +161,7 @@ class Exporter extends AbstractExporter
     {
         $this->initCredential();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code');
+        $this->productId = [];
 
         $this->initPublications();
 
@@ -192,15 +202,7 @@ class Exporter extends AbstractExporter
             throw new InvalidCredential;
         }
 
-        $this->credentialAsArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
     }
 
     /**
@@ -251,6 +253,14 @@ class Exporter extends AbstractExporter
     {
         Event::dispatch('shopify.product.export.before', $batch);
 
+        if ($this->shouldUseBulkCorePath()) {
+            $this->exportCoreProductsInBulk($batch);
+
+            Event::dispatch('shopify.product.export.after', $batch);
+
+            return true;
+        }
+
         $this->initilize();
         $products = $this->prepareProductsForShopify($batch, $filePath);
 
@@ -264,22 +274,230 @@ class Exporter extends AbstractExporter
         return true;
     }
 
+    /**
+     * Use the bulk operation path as the primary core export flow.
+     */
+    protected function shouldUseBulkCorePath(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Submit a Shopify bulk core product sync for the whole export.
+     *
+     * Shopify permits only one bulk mutation per app+shop at a time. A catalog
+     * larger than BATCH_SIZE is split into several export batches that run
+     * concurrently — if each submitted its own bulk op they would collide with
+     * "a bulk mutation operation for this app and shop is already in progress".
+     *
+     * Instead, the first batch to acquire the lock submits a single bulk op
+     * covering the entire export; every other batch finds that op already
+     * recorded and no-ops. Shopify bulk operations are designed to ingest a
+     * full catalog in one JSONL file, so one op per export is the correct unit.
+     */
+    protected function exportCoreProductsInBulk(JobTrackBatchContract $batch): void
+    {
+        $lock = Cache::lock('shopify-core-bulk-'.$this->export->id, 600);
+
+        try {
+            $lock->block(90);
+        } catch (LockTimeoutException $e) {
+            // Another batch is still submitting the export-wide bulk op; its
+            // JSONL already covers this batch's products, so nothing to do.
+            $this->markBatchAsNoOp($batch->id);
+
+            return;
+        }
+
+        try {
+            $existingOperation = $this->shopifyBulkOperationRepository
+                ->where('job_track_id', $this->export->id)
+                ->where('phase', BulkOperationService::CORE_PRODUCT_PHASE)
+                ->first();
+
+            if ($existingOperation) {
+                $this->markBatchAsNoOp($batch->id);
+
+                return;
+            }
+
+            $this->submitCoreBulkOperation($batch);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Mark a batch processed, writing its own slice of the catalog as its summary.
+     *
+     * The Shopify connector uses one bulk op for the whole export (lock pattern),
+     * so only the winner batch does real submission work and the rest no-op. But
+     * for the tracker UI to show a climbing count as batches finish — the behaviour
+     * users expect from other framework exporters — every batch needs to "own" its
+     * slice of the catalog. Each batch carries its slice in its `data` field; we
+     * write that count as the batch's summary on completion. Across all batches:
+     *
+     *     SUM(summary.created) = total catalog rows  (10000 for a 10k export)
+     *
+     * Then `Export::stats()` SUMs batches with state='processed' to produce a
+     * climbing live count for the tracker (500, 1000, 1500, …, 10000).
+     *
+     * IMPORTANT: this is the "submitted to Shopify" count, NOT the
+     * "accepted by Shopify" count. `BulkResultFinalizer::markBatchProcessed`
+     * writes the real Shopify success count directly to `job_track.summary` once
+     * Shopify finishes the bulk op, so the final value reflects truth. The
+     * climbing UX is from per-batch slice counts; the truthful final count is
+     * from Shopify. Do NOT use `updateBatchState()` here — it derives `created`
+     * via `getCreatedItemsCount()` which pulls from `$this->export->summary` and
+     * would re-introduce the multiplication bug if BulkResultFinalizer has
+     * already aggregated.
+     */
+    protected function markBatchAsNoOp(int $batchId): void
+    {
+        $batch = $this->exportBatchRepository->find($batchId);
+        $rowCount = is_array($batch->data ?? null) ? count($batch->data) : 0;
+
+        $this->exportBatchRepository->update([
+            'state' => ExportHelper::STATE_PROCESSED,
+            'summary' => [
+                'processed' => $rowCount,
+                'created' => $rowCount,
+                'skipped' => 0,
+            ],
+        ], $batchId);
+    }
+
+    /**
+     * Build and submit the single export-wide core bulk operation.
+     */
+    protected function submitCoreBulkOperation(JobTrackBatchContract $batch): void
+    {
+        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export->id);
+
+        // Do NOT seed batch summary with the builder's line count — that's
+        // "submitted to Shopify", not "accepted by Shopify". For a 10k-product
+        // bulk op the gap is minutes, during which the UI would show 10000 as
+        // if the export were done. BulkResultFinalizer::markBatchProcessed
+        // writes the real success/failure counts once Shopify finishes; until
+        // then the count stays at 0 so the user sees actual progress, not
+        // optimistic intent.
+        if (empty($payload['lines'])) {
+            $this->markBatchAsNoOp($batch->id);
+
+            return;
+        }
+
+        $basePath = sprintf('shopify/bulk/%s/%s', $this->export->id, $batch->id);
+        $jsonlPath = $basePath.'/input.jsonl';
+        $manifestPath = $basePath.'/manifest.json';
+        $jsonlFileName = sprintf('shopify-products-%s-%s.jsonl', $this->export->id, $batch->id);
+
+        $jsonlAbsolutePath = $this->bulkOperationService->writeJsonl($jsonlPath, $payload['lines']);
+        $this->bulkOperationService->writeManifest($manifestPath, $payload['manifest']);
+
+        $uploadTarget = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
+
+        if (empty($uploadTarget)) {
+            throw new \RuntimeException(json_encode([['message' => 'Unable to create Shopify bulk upload target.']]));
+        }
+
+        $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($uploadTarget, $jsonlAbsolutePath);
+        $mutation = config('shopify_bulk_mutations.productSetBulk');
+
+        $operationResponse = $this->bulkOperationService->runMutation($payload['credential'], $mutation, $stagedUploadPath);
+        $operationErrors = $operationResponse['userErrors'] ?? [];
+        $bulkOperationData = $operationResponse['bulkOperation'] ?? [];
+
+        if (! empty($operationErrors) || empty($bulkOperationData['id'])) {
+            throw new \RuntimeException(json_encode($operationErrors ?: [['message' => 'Unable to start Shopify bulk core sync.']]));
+        }
+
+        $bulkOperation = $this->shopifyBulkOperationRepository->create([
+            'job_track_id' => $this->export->id,
+            'job_track_batch_id' => $batch->id,
+            'credential_id' => $payload['manifest']['credential_id'] ?? $payload['credential']['credentialId'] ?? null,
+            'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
+            'status' => 'created',
+            'shopify_bulk_operation_id' => $bulkOperationData['id'],
+            'shopify_status' => strtolower($bulkOperationData['status'] ?? 'created'),
+            'input_file_path' => $manifestPath,
+            'staged_upload_path' => $stagedUploadPath,
+            'meta' => [
+                'jsonl_path' => $jsonlPath,
+                'summary' => $payload['summary'],
+            ],
+        ]);
+
+        PollBulkShopifyOperation::dispatch($bulkOperation->id)->delay(
+            now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
+        );
+
+        // Winner batch: mark state processed with zero summary. BulkResultFinalizer
+        // is the single source of truth for the real created/processed counts on
+        // this batch — going through updateBatchState() here would risk picking up
+        // a polluted cumulative count from job_track.summary (see markBatchAsNoOp
+        // for the loser-side reasoning; the race is symmetric).
+        $this->markBatchAsNoOp($batch->id);
+
+        $this->jobLogger?->info(sprintf(
+            'Shopify bulk core sync submitted. Operation: %s. Batch: %s.',
+            $bulkOperationData['id'],
+            $batch->id
+        ));
+    }
+
+    /**
+     * Collect every root product row for this export as core batch rows.
+     *
+     * The export-wide bulk op covers the whole catalog regardless of how the
+     * framework split it into batches, so its payload is built from all root
+     * SKUs rather than a single batch's slice. Mirrors getResults()'s filter.
+     *
+     * @return array<int, array{sku: string}>
+     */
+    protected function getAllCoreBatchRows(): array
+    {
+        $filters = $this->getFilters();
+
+        $query = DB::table('products')
+            ->select('sku')
+            ->where(function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
+            });
+
+        if (! empty($filters['productfilter'])) {
+            $skus = array_map('trim', explode(',', $filters['productfilter']));
+            $query->whereIn('sku', $skus);
+        }
+
+        return $query->get()
+            ->map(fn ($row) => ['sku' => $row->sku])
+            ->all();
+    }
+
     protected function getResults()
     {
         $filters = $this->getFilters();
 
-        $skus = null;
-
-        $query = $this->source->select('sku');
+        $query = DB::table('products')
+            ->select('sku')
+            ->where(function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
+            });
 
         if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
-            $skus = explode(',', $filters['productfilter']);
-            $skus = array_map('trim', $skus);
-
+            $skus = array_map('trim', explode(',', $filters['productfilter']));
             $query->whereIn('sku', $skus);
         }
 
-        return $query->get()?->getIterator();
+        $rows = $query->get();
+
+        $this->jobLogger?->info(sprintf(
+            'Shopify export iterator: %d product roots after filtering variants (parent_id IS NULL).',
+            $rows->count()
+        ));
+
+        return $rows->getIterator();
     }
 
     public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
@@ -445,7 +663,7 @@ class Exporter extends AbstractExporter
         }
 
         if (! empty($imageData)) {
-            $this->imageData = array_merge($imageData[@$parentData['sku']] ?? [], $imageData[$rowData['sku']] ?? []);
+            $this->imageData = array_merge($imageData[$parentData['sku'] ?? ''] ?? [], $imageData[$rowData['sku']] ?? []);
         }
 
         $variantData = $formattedGraphqlData['variant'];
@@ -492,17 +710,17 @@ class Exporter extends AbstractExporter
                     $finalOption,
                 );
             }
+        }
 
-            if (count($this->credential?->storelocaleMapping) > 1) {
-                $this->handleProductProcessingForTranslation(
-                    $productId,
-                    $parentMergedFields,
-                    $mergedFields,
-                    $parentData,
-                    $rowData,
-                    $formattedGraphqlData
-                );
-            }
+        if (count($this->credential?->storelocaleMapping) > 1) {
+            $this->handleProductProcessingForTranslation(
+                $productId,
+                $parentMergedFields,
+                $mergedFields,
+                $parentData,
+                $rowData,
+                $formattedGraphqlData
+            );
         }
 
         if (count($this->credential?->storelocaleMapping) > 1) {
@@ -772,8 +990,8 @@ class Exporter extends AbstractExporter
             }
 
             $productOption = $this->updateProductOptions($parentData, $variableOption);
-            if (! empty($this->updateMedia) && empty($variantData['mediaId'])) {
-                $key = count($imageData[@$parentData['sku']] ?? []);
+            if (! empty($this->updateMedia) && empty($variantData['mediaId']) && ! empty($parentData['sku'])) {
+                $key = count($imageData[$parentData['sku']] ?? []);
                 if (! empty($this->updateMedia[$key]['id'])) {
                     $variantData['mediaId'] = $this->updateMedia[$key]['id'];
                 }
@@ -1342,7 +1560,7 @@ class Exporter extends AbstractExporter
         array $parentData,
         string $productId
     ): void {
-        foreach ($imageData[@$parentData['sku']] ?? [] as $key => $imageUrl) {
+        foreach ($imageData[$parentData['sku'] ?? ''] ?? [] as $key => $imageUrl) {
             $this->imageMapping('productImage', $this->parentImageAttr[$key] ?? $this->imageAttributes[$key], $imageIds[$key]['id'], $this->export->id, $productId, $parentData['sku']);
 
             unset($imageIds[$key]['id']);
@@ -1569,7 +1787,7 @@ class Exporter extends AbstractExporter
                 break;
             }
 
-            $lastCursor = @end($gettingMetaFields)['cursor'];
+            $lastCursor = ! empty($gettingMetaFields) ? end($gettingMetaFields)['cursor'] : null;
 
             if (isset($gettingMetaFields) && $url !== $lastCursor) {
                 $url = $lastCursor;
@@ -1876,8 +2094,9 @@ class Exporter extends AbstractExporter
         if ($assetPath) {
             $fullUrl = route('admin.dam.file.fetch', ['path' => $assetPath]);
         } else {
-            $urlPath = is_array(@$itemData[$imageAttr]) ? @$itemData[$imageAttr][0] : @$itemData[$imageAttr];
-            $fullUrl = Storage::url($urlPath);
+            $urlValue = $itemData[$imageAttr] ?? null;
+            $urlPath = is_array($urlValue) ? ($urlValue[0] ?? '') : (string) $urlValue;
+            $fullUrl = $urlPath ? Storage::url($urlPath) : '';
         }
 
         if (! empty($mappingImage)) {

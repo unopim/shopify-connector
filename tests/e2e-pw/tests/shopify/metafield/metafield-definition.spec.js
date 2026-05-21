@@ -179,7 +179,7 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
     await expect(page.getByTitle('Delete').first()).toBeVisible();
     await page.getByTitle('Delete').first().click();
     await expect(page.getByText('Are you sure you want to')).toBeVisible();
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.locator('button.danger-button:has-text("Delete")').click();
     await expect(page.getByText(/Deleted successfully/i)).toBeVisible({ timeout: 15000 });
   });
 });

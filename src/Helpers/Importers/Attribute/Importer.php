@@ -97,15 +97,7 @@ class Importer extends AbstractImporter
         if (! $this->credential?->active) {
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
-        $this->credentialArray = [
-            'credentialId' => $this->credential?->id,
-            'shopUrl' => $this->credential?->shopUrl,
-            'accessToken' => $this->credential?->accessToken,
-            'apiVersion' => $this->credential?->apiVersion,
-            'clientId' => $this->credential?->clientId,
-            'clientSecret' => $this->credential?->clientSecret,
-            'accessTokenExpiresAt' => optional($this->credential?->accessTokenExpiresAt)?->toDateTimeString(),
-        ];
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $shopifyLocaleForCurrent = array_search($this->locale, (array) ($this->credential?->storelocaleMapping ?? []), true);
 

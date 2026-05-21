@@ -1,10 +1,21 @@
 <?php
 
 return [
+    'tracker' => [
+        'phase' => [
+            'product' => 'Product Exporting',
+            'publishing' => 'Publishing Products',
+            'collections' => 'Collection Assigning',
+            'translations' => 'Translation Adding',
+            'inventory' => 'Inventory Updating',
+            'media' => 'Uploading Media',
+        ],
+    ],
     'exporters' => [
         'shopify' => [
             'product' => 'Produit Shopify',
             'category' => 'Catégorie Shopify',
+            'metafields' => 'Shopify Metafields Definition',
         ],
     ],
     'importers' => [
@@ -16,19 +27,19 @@ return [
             'metafield' => 'Définitions des métachamps Shopify',
         ],
     ],
-
     'components' => [
         'layouts' => [
             'sidebar' => [
+                'settings' => 'Paramètres',
                 'shopify' => 'Shopify',
                 'credentials' => 'Identifiants',
                 'export-mappings' => 'Mappages d\'exportation',
                 'import-mappings' => 'Importer les correspondances',
-                'settings' => 'Paramètres',
+                'meta-fields' => 'Metafield Definitions',
+                'metafield-definitions' => 'Metafield Definitions',
             ],
         ],
     ],
-
     'shopify' => [
         'acl' => [
             'credential' => [
@@ -36,7 +47,6 @@ return [
                 'edit' => 'Modifier',
                 'delete' => 'Supprimer',
             ],
-
             'metafield' => [
                 'create' => 'Créer un métachamp',
                 'edit' => 'Modifier un métachamp',
@@ -44,9 +54,7 @@ return [
                 'mass_delete' => 'Suppression massive de métachamps',
             ],
         ],
-
         'version' => 'Version : 1.0.0',
-
         'credential' => [
             'export' => [
                 'locales' => 'Mappage de langue',
@@ -63,6 +71,7 @@ return [
             'invalid' => 'Identifiant invalide',
             'invalidurl' => 'URL invalide',
             'already_taken' => 'L URL de la boutique a déjà été prise.',
+            'token_required_or_oauth' => 'Provide an access token or OAuth client credentials (Client ID and Client Secret).',
             'token_refresh_failed' => 'Identifiant/Secret de client invalide.',
             'auto_refresh_not_configured' => 'Le renouvellement automatique n\'est pas configuré pour ces identifiants.',
             'unable_to_refresh_access_token' => 'Impossible d\'actualiser le jeton d\'accès Shopify.',
@@ -79,6 +88,8 @@ return [
                 'url' => 'URL Shopify',
                 'shopifyurlplaceholder' => 'URL Shopify (ex. http://demo.myshopify.com)',
                 'accesstoken' => 'Jeton d\'accès API Admin',
+                'clientId' => 'Client ID',
+                'clientSecret' => 'Client Secret',
                 'apiVersion' => 'Version de l\'API',
                 'save' => 'Sauvegarder',
                 'back-btn' => 'Retour',
@@ -96,7 +107,18 @@ return [
                 'shopUrl' => 'URL Shopify',
                 'apiVersion' => 'Version de l\'API',
                 'enabled' => 'Activer',
+                'sync' => 'Synchroniser',
+                'revoke' => 'Révoquer',
             ],
+            'saas-locked' => 'Une connexion SaaS Shopify existe déjà. Les identifiants manuels sont désactivés.',
+            'sync-success' => 'Les identifiants UnoPim ont été synchronisés avec Shopify avec succès.',
+            'sync-failed' => 'Impossible de synchroniser les identifiants UnoPim avec Shopify. Veuillez réessayer.',
+            'sync-missing-data' => 'La synchronisation nécessite à la fois un identifiant client UnoPim et un domaine de boutique.',
+            'sync-client-not-found' => 'Aucune intégration UnoPim active trouvée pour l’identifiant client de ces identifiants.',
+            'revoke-success' => 'La connexion Shopify a été révoquée avec succès.',
+            'revoke-failed' => 'Impossible de révoquer la connexion Shopify. Veuillez réessayer.',
+            'secure-login-failed' => 'Le lien de connexion sécurisé est invalide ou expiré. Veuillez vous connecter manuellement.',
+            'saas-readonly-note' => 'Il s’agit d’une connexion SaaS Shopify. Les détails de connexion sont en lecture seule — vous pouvez uniquement configurer la publication (canaux de vente), l’emplacement et la langue ci-dessous.',
         ],
         'export' => [
             'mapping' => [
@@ -105,17 +127,30 @@ return [
                 'save' => 'Sauvegarder',
                 'created' => 'Mappage d\'exportation créé',
                 'image' => 'Attribut à utiliser comme image',
+                'gallery' => 'Attribute to used as gallery',
                 'metafields' => 'Attributs à utiliser comme Méta-champs',
                 'filed-shopify' => 'Champ dans Shopify',
                 'attribute' => 'Attribut',
                 'fixed-value' => 'Valeur fixe',
                 'save_failed' => 'Échec de l\'enregistrement du mappage d\'exportation. Veuillez exécuter la commande d\'installation Shopify.',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
+                'unit' => [
+                    'title' => 'Shopify unit Mapping',
+                    'weight' => 'Unit Weight',
+                    'volume' => 'Unit Volume',
+                    'dimension' => 'Unit Dimension',
+                ],
             ],
             'settings' => [
                 'created' => 'Paramètres d\'exportation enregistrés avec succès',
                 'save_failed' => 'Échec de l\'enregistrement des paramètres d\'exportation. Veuillez exécuter la commande d\'installation Shopify.',
             ],
-
             'setting' => [
                 'title' => 'Paramètre',
                 'tags' => 'Paramètres d\'exportation des étiquettes',
@@ -126,11 +161,11 @@ return [
                 'metafields' => 'Paramètres d\'exportation des Méta-champs',
                 'metaFieldsKey' => 'Utiliser la clé pour Méta-champ comme Code/Label d\'attribut',
                 'metaFieldsNameSpace' => 'Utiliser l\'espace de nom pour Méta-champ comme Code de groupe d\'attribut ou global',
+                'credentials' => 'Credentials Export',
                 'other-settings' => 'Autres paramètres',
                 'roundof-attribute-value' => 'Supprimer les zéros fractionnaires supplémentaires des valeurs d\'attributs métriques (ex. 201.2000 en 201.2)',
                 'option_name_label' => 'Valeur du nom de l\'option comme étiquette d\'attribut (par défaut Code d\'attribut)',
             ],
-
             'errors' => [
                 'invalid-credential' => 'Informations d\'identification non valides. Les informations d\'identification sont désactivées ou incorrectes.',
                 'invalid-locale' => 'Locale invalide. Veuillez mapper la locale dans la section de modification des identifiants.',
@@ -144,12 +179,21 @@ return [
                 'created' => 'Mapping d’importation enregistré avec succès',
                 'save_failed' => 'Échec de l\'enregistrement du mappage d\'importation. Veuillez exécuter la commande d\'installation Shopify.',
                 'image' => 'Attribut utilisé comme image',
+                'gallery' => 'Attribute to used as gallery',
                 'filed-shopify' => 'Champ dans Shopify',
                 'attribute' => 'Attribut UnoPim',
                 'variantimage' => 'Attribut utilisé comme image de variante',
                 'other' => 'Autres mappings Shopify',
                 'family' => 'Mapping de la famille (pour les produits)',
+                'families' => 'Choose Family',
                 'metafieldDefinitions' => 'Mapping des définitions de champs personnalisés Shopify',
+                'images' => [
+                    'title' => 'Shopify Media Mapping',
+                    'label' => [
+                        'type' => 'Media Type',
+                        'attribute' => 'Media Attributes',
+                    ],
+                ],
             ],
             'setting' => [
                 'credentialmapping' => 'Mapping des identifiants',
@@ -167,7 +211,6 @@ return [
                 ],
             ],
         ],
-
         'fields' => [
             'name' => 'Nom',
             'description' => 'Description',
@@ -196,7 +239,6 @@ return [
             'locale' => 'Langue',
             'attribute-groups' => 'Groupes d’attributs',
         ],
-
         'metafield' => [
             'datagrid' => [
                 'definitiontype' => 'Utilisé pour',
@@ -223,8 +265,11 @@ return [
                 'adminFilterable' => 'Filtrage pour les produits',
                 'smartCollectionCondition' => 'Collections intelligentes',
                 'storefronts' => 'Accès aux vitrines',
+                'unit' => [
+                    'minvalue' => '',
+                    'maxvalue' => '',
+                ],
             ],
-
             'type' => [
                 'single_line_text_field' => 'Texte sur une seule ligne',
                 'color' => 'Couleur',
@@ -240,7 +285,6 @@ return [
                 'weight' => 'Poids',
                 'volume' => 'Volume',
             ],
-
             'edit' => [
                 'title' => 'Modifier la définition du champ méta',
                 'back-btn' => 'Retour',
@@ -251,62 +295,6 @@ return [
             'update-success' => 'Définition du champ méta mise à jour avec succès',
             'created' => 'Définition du champ méta créée avec succès',
             'mass-delete-success' => 'Définitions des champs méta supprimées avec succès',
-            'metafield' => [
-                'datagrid' => [
-                    'definitiontype' => '用于',
-                    'attribute-label' => 'Unopim 属性',
-                    'definitionName' => '定义名称',
-                    'contentTypeName' => '类型',
-                    'pin' => '固定',
-                ],
-                'index' => [
-                    'title' => '元字段定义',
-                    'create' => '添加定义',
-                    'definitiontype' => '用于',
-                    'attribute' => 'UnoPim 属性',
-                    'ContentTypeName' => '类型',
-                    'attributes' => '定义名称',
-                    'urlvalidation' => '验证',
-                    'urlvalidationdata' => '值必须以 "HTTPS"、"HTTP"、"mailto:"、"sms:" 或 "tel:" 开头',
-                    'name_space_key' => '命名空间和键',
-                    'description' => '描述',
-                    'onevalue' => '单个值',
-                    'listvalue' => '值列表',
-                    'validation' => '验证',
-                    'maxvalue' => '最大值',
-                    'adminFilterable' => '产品筛选',
-                    'smartCollectionCondition' => '智能集合',
-                    'storefronts' => '店面访问',
-                ],
-
-                'type' => [
-                    'single_line_text_field' => 'Texte sur une seule ligne',
-                    'color' => 'Couleur',
-                    'rating' => 'Évaluation',
-                    'url' => 'URL',
-                    'multi_line_text_field' => 'Texte multiligne',
-                    'json' => 'JSON',
-                    'boolean' => 'Vrai ou faux',
-                    'date' => 'Date',
-                    'number_decimal' => 'Nombre décimal',
-                    'number_integer' => 'Nombre entier',
-                    'dimension' => 'Dimension',
-                    'weight' => 'Poids',
-                    'volume' => 'Volume',
-                ],
-
-                'edit' => [
-                    'title' => '编辑元字段定义',
-                    'back-btn' => '返回',
-                    'update' => '更新',
-                    'save' => '保存',
-                ],
-                'delete-success' => '元字段定义删除成功',
-                'update-success' => '元字段定义更新成功',
-                'created' => '元字段定义创建成功',
-                'mass-delete-success' => '批量删除元字段定义成功',
-            ],
-
         ],
     ],
 ];

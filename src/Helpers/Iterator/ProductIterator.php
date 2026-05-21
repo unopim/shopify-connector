@@ -113,6 +113,10 @@ class ProductIterator implements \Iterator
 
     protected function applyLocaleTranslations(array $edges): array
     {
+        if (config('shopify-bulk-operations.import_bulk_translations', true)) {
+            $this->primeTranslationsForPage($edges);
+        }
+
         foreach ($edges as $index => $edge) {
             $resourceId = $edge['node']['id'] ?? null;
             if (empty($resourceId)) {
@@ -146,6 +150,74 @@ class ProductIterator implements \Iterator
         }
 
         return $edges;
+    }
+
+    /**
+     * Prefetch translations for every product in the current page in ONE GraphQL
+     * call via translatableResourcesByIds. Falls back silently if the bulk call
+     * errors — the per-resource getTranslations() path will still run.
+     */
+    protected function primeTranslationsForPage(array $edges): void
+    {
+        if (empty($this->shopifyLocale)) {
+            return;
+        }
+
+        $resourceIds = [];
+        foreach ($edges as $edge) {
+            $id = $edge['node']['id'] ?? null;
+            if (! $id) {
+                continue;
+            }
+            $cacheKey = $id.'|'.$this->shopifyLocale;
+            if (array_key_exists($cacheKey, $this->translationCache)) {
+                continue;
+            }
+            $resourceIds[] = $id;
+        }
+
+        if (empty($resourceIds)) {
+            return;
+        }
+
+        try {
+            $response = $this->requestGraphQlApiAction('getBulkTranslations', $this->credential, [
+                'resourceIds' => $resourceIds,
+                'locale' => $this->shopifyLocale,
+            ]);
+
+            $payload = $response['body']['data']['translatableResourcesByIds'] ?? [];
+            $nodes = $payload['nodes'] ?? null;
+            if (! is_array($nodes) && isset($payload['edges']) && is_array($payload['edges'])) {
+                $nodes = array_map(fn ($e) => $e['node'] ?? [], $payload['edges']);
+            }
+            if (! is_array($nodes)) {
+                return;
+            }
+
+            $returnedIds = [];
+            foreach ($nodes as $node) {
+                $rid = $node['resourceId'] ?? null;
+                if (! $rid) {
+                    continue;
+                }
+                $returnedIds[$rid] = true;
+                $this->translationCache[$rid.'|'.$this->shopifyLocale] = collect($node['translations'] ?? [])
+                    ->filter(fn ($item) => isset($item['key']))
+                    ->pluck('value', 'key')
+                    ->toArray();
+            }
+
+            // Resources that did not come back have no translations — cache an
+            // empty result so the per-resource path doesn't re-query.
+            foreach ($resourceIds as $rid) {
+                if (! isset($returnedIds[$rid])) {
+                    $this->translationCache[$rid.'|'.$this->shopifyLocale] = [];
+                }
+            }
+        } catch (\Throwable) {
+            // swallow — per-resource fallback in getTranslations() will run
+        }
     }
 
     protected function getTranslations(string $resourceId): array

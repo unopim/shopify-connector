@@ -103,12 +103,12 @@ trait TranslationTrait
                 $defaultValue = $productData[$shopifyField] ?? '';
                 if ($shopifyField == 'metafields_global_title_tag') {
                     $defaultValue = $productData['seo']['title'] ?? '';
-                    $shopifyField = 'meta_title';
+                    $shopifyField = 'metafields.global.title_tag';
                 }
 
                 if ($shopifyField == 'metafields_global_description_tag') {
                     $defaultValue = $productData['seo']['description'] ?? '';
-                    $shopifyField = 'meta_description';
+                    $shopifyField = 'metafields.global.description_tag';
                 }
 
                 if ($shopifyField == 'productType') {
