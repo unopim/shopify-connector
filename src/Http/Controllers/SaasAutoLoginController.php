@@ -92,20 +92,7 @@ class SaasAutoLoginController extends Controller
         auth()->guard('admin')->login($admin);
         $request->session()->regenerate();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Auto-login successful.',
-            'http_code' => 200,
-            'data' => [
-                'admin' => [
-                    'id' => $admin->id,
-                    'name' => $admin->name,
-                    'email' => $admin->email,
-                ],
-                'shop' => $shop,
-                'redirect_url' => route('admin.dashboard.index'),
-            ],
-        ], 200);
+        return redirect()->route('admin.dashboard.index');
     }
 
     /**
