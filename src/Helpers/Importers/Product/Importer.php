@@ -583,6 +583,7 @@ class Importer extends AbstractImporter
             $mediaMapping,
             $metaFieldAllAttr,
             $allMediaIdVariants,
+            $configurableAttributes,
         );
 
         $mappedImageAttr = null;
@@ -669,6 +670,7 @@ class Importer extends AbstractImporter
         array $mediaMapping,
         array $metaFieldAllAttr,
         &$allMediaIdVariants,
+        array $configurableAttributes = [],
     ) {
         $variantSkus = [];
         $variantProductData = [];
@@ -866,6 +868,23 @@ class Importer extends AbstractImporter
             }
 
             [$vMdcommon, $vMdlocale_specific, $vMdchannel_specific, $vMdchannelAndLocaleSpecific] = $this->mapMetafieldsAttribute($productVariant['node']['metafields']['edges'] ?? [], $metaFieldAllAttr);
+
+            $missingSuperAttrs = [];
+            foreach ($configurableAttributes as $cfgAttr) {
+                if (! array_key_exists($cfgAttr['code'], $vcommon)) {
+                    $missingSuperAttrs[] = $cfgAttr['code'];
+                }
+            }
+            if (! empty($missingSuperAttrs)) {
+                $this->jobLogger->warning(sprintf(
+                    'Variant %s skipped — Shopify variant is missing super-attribute option-value(s) [%s] required by the assigned family. Fix on Shopify or remove the attribute from the family.',
+                    $vsku,
+                    implode(', ', $missingSuperAttrs)
+                ));
+
+                continue;
+            }
+
             $vkey = $variantProductExist ? $variantProductExist->id : 'variant_'.$key;
             if ($this->updateVarint) {
                 $this->updatedItemsCount++;
