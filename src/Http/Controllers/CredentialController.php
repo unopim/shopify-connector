@@ -394,7 +394,6 @@ class CredentialController extends Controller
             $requestData['clientSecret'] = $credential->clientSecret;
             $requestData['accessToken'] = $credential->accessToken;
             $requestData['apiVersion'] = $credential->apiVersion;
-            $requestData['active'] = $credential->active;
         }
 
         try {

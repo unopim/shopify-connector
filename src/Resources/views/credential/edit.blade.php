@@ -231,7 +231,6 @@
                                 name="active"
                                 value="1"
                                 :checked="(boolean) $credential->active"
-                                :disabled="$isSaas"
                             />
                     </x-admin::form.control-group>
                 </div>
