@@ -14,7 +14,7 @@ return [
 
     'proxy_url' => env(
         'SHOPIFY_SAAS_PROXY_URL',
-        'https://shubhamkumar-shopify.huebeam.com/unopim-connector-shopify/public'
+        'https://apps-sp.webkul.com/unopim'
     ),
 
     'request_timeout' => (int) env('SHOPIFY_SAAS_PROXY_TIMEOUT', 30),

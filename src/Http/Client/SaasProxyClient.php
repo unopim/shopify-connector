@@ -288,7 +288,7 @@ class SaasProxyClient implements ShopifyClient
      */
     public function locations(): array
     {
-        $response = $this->get('/graphql/api/locations.json');
+        $response = $this->get('/graphql/api/locations.json?includeLegacy=true');
 
         $body = $response['body'] ?? [];
         $candidates = $body['locations']['nodes']
