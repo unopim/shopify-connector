@@ -466,12 +466,46 @@ class Exporter extends AbstractExporter
             });
 
         if (! empty($filters['productfilter'])) {
-            $skus = array_map('trim', explode(',', $filters['productfilter']));
-            $query->whereIn('sku', $skus);
+            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+            if (empty($rootSkus)) {
+                return [];
+            }
+
+            $query->whereIn('sku', $rootSkus);
         }
 
         return $query->get()
             ->map(fn ($row) => ['sku' => $row->sku])
+            ->all();
+    }
+
+    /**
+     * Resolve filter SKUs to their root SKUs so a variant SKU in the filter
+     * pulls in its parent. Shopify's productSet treats the variants list as
+     * authoritative, so a variant must always be exported as part of its full
+     * parent product to avoid deleting siblings on Shopify.
+     *
+     * @return array<int, string>
+     */
+    protected function resolveFilterSkusToRoots(string $productFilter): array
+    {
+        $skus = array_values(array_filter(
+            array_map('trim', explode(',', $productFilter)),
+            fn ($s) => $s !== ''
+        ));
+
+        if (empty($skus)) {
+            return [];
+        }
+
+        return DB::table('products as p')
+            ->leftJoin('products as parent', 'p.parent_id', '=', 'parent.id')
+            ->whereIn('p.sku', $skus)
+            ->select(DB::raw('COALESCE(parent.sku, p.sku) AS root_sku'))
+            ->pluck('root_sku')
+            ->unique()
+            ->values()
             ->all();
     }
 
@@ -486,8 +520,13 @@ class Exporter extends AbstractExporter
             });
 
         if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
-            $skus = array_map('trim', explode(',', $filters['productfilter']));
-            $query->whereIn('sku', $skus);
+            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+            if (empty($rootSkus)) {
+                return new \ArrayIterator([]);
+            }
+
+            $query->whereIn('sku', $rootSkus);
         }
 
         $rows = $query->get();
