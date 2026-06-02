@@ -117,7 +117,7 @@ class CoreProductBulkPayloadBuilder
         $this->credential = $this->shopifyCredentialRepository->find($filters['credentials'] ?? null);
 
         if (! $this->credential?->active) {
-            $jobTrack->state = 'failed';
+            $jobTrack->state = \Webkul\DataTransfer\Helpers\Export::STATE_FAILED;
 
             $jobTrack->errors = [trans('shopify::app.shopify.export.errors.invalid-credential')];
             $jobTrack->save();
