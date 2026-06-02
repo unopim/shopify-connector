@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
@@ -51,7 +52,7 @@ class CoreProductBulkPayloadBuilder
     /**
      * Build JSONL lines and manifest payload for a batch.
      */
-    public function build(array $filters, array $batchRows, $jobTrack): array
+    public function build(array $filters, array $batchRows, JobTrackContract $jobTrack): array
     {
         $this->initialize($filters, $jobTrack);
         $jobTrackId = $jobTrack->id;
