@@ -110,7 +110,7 @@ class CoreProductBulkPayloadBuilder
     /**
      * Initialize context for payload generation.
      */
-    protected function initialize(array $filters, $jobTrack): void
+    protected function initialize(array $filters, JobTrackContract $jobTrack): void
     {
         $this->currency = $filters['currency'] ?? null;
         $this->jobChannel = $filters['channel'] ?? null;
