@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
+use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
@@ -117,7 +118,7 @@ class CoreProductBulkPayloadBuilder
         $this->credential = $this->shopifyCredentialRepository->find($filters['credentials'] ?? null);
 
         if (! $this->credential?->active) {
-            $jobTrack->state = \Webkul\DataTransfer\Helpers\Export::STATE_FAILED;
+            $jobTrack->state = Export::STATE_FAILED;
 
             $jobTrack->errors = [trans('shopify::app.shopify.export.errors.invalid-credential')];
             $jobTrack->save();
