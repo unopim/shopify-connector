@@ -114,7 +114,7 @@ class CoreProductBulkPayloadBuilder
     {
         $this->currency = $filters['currency'] ?? null;
         $this->jobChannel = $filters['channel'] ?? null;
-        $this->credential = $this->shopifyCredentialRepository->find($filters['credentials']);
+        $this->credential = $this->shopifyCredentialRepository->find($filters['credentials'] ?? null);
 
         if (! $this->credential?->active) {
             $jobTrack->state = 'failed';
