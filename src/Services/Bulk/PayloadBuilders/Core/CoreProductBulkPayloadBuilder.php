@@ -293,7 +293,7 @@ class CoreProductBulkPayloadBuilder
                 $formattedVariant['variant'] ?? [],
                 ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [],
                 $optionValues,
-                $variantMapping[0]['externalId'] ?? null,
+                $this->resolveVariantGid($variantMapping[0]['externalId'] ?? null),
                 ! empty($parentData)
             );
             $variantManifest[] = [
@@ -486,6 +486,25 @@ class CoreProductBulkPayloadBuilder
         $variantInput['optionValues'] = array_values($optionValues);
 
         return $variantInput;
+    }
+
+    /**
+     * Use a mapping's externalId as a variant id only when it is a real
+     * ProductVariant GID.
+     *
+     * For a simple product the variant SKU equals the product SKU, so
+     * findMapping() can return the product mapping whose externalId is a
+     * Product GID (this happens for products created by the sequential export
+     * path, which records a single product-level mapping). Sending a Product
+     * GID as a variant id makes Shopify reject the variant and the product
+     * silently fails to update. Returning null instead lets productSet match
+     * the existing variant by its option values.
+     */
+    protected function resolveVariantGid(?string $externalId): ?string
+    {
+        return is_string($externalId) && str_contains($externalId, '/ProductVariant/')
+            ? $externalId
+            : null;
     }
 
     /**

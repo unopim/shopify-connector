@@ -100,7 +100,9 @@ class BulkOperationService
      */
     public function downloadResult(string $url, string $targetPath): string
     {
-        $response = Http::timeout(300)->get($url);
+        $response = Http::timeout(300)
+            ->retry(3, 2000, throw: false)
+            ->get($url);
 
         if ($response->failed()) {
             throw new \RuntimeException('Unable to download Shopify bulk operation result file.');

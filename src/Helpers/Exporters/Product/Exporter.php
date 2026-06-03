@@ -60,6 +60,12 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
+    /**
+     * Cached count of product rows (simple + configurable + variants) in this
+     * export, used to pick the core path.
+     */
+    protected ?int $totalExportProductCount = null;
+
     public const BATCH_SIZE = 500;
 
     /**
@@ -275,11 +281,61 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Use the bulk operation path as the primary core export flow.
+     * Decide between the bulk and sequential core export paths.
      */
     protected function shouldUseBulkCorePath(): bool
     {
-        return true;
+        $threshold = (int) config('shopify-bulk-operations.bulk_threshold', 5);
+
+        if ($threshold <= 0) {
+            return true;
+        }
+
+        return $this->getTotalExportProductCount() >= $threshold;
+    }
+
+    /**
+     * Count the product rows this export will actually process: simple products,
+     * configurable parents, AND every variant of those configurables.
+     *
+     * The sequential path works variant-by-variant, so a filter of 3 SKUs where
+     * two are configurables with variants can expand to many more rows. Weighing
+     * the decision by this expanded total (not just the filtered/root SKU count)
+     * routes such exports to bulk once the real workload reaches the threshold.
+     */
+    protected function getTotalExportProductCount(): int
+    {
+        if ($this->totalExportProductCount !== null) {
+            return $this->totalExportProductCount;
+        }
+
+        $filters = $this->getFilters();
+
+        // No filter: the whole catalog — every simple, configurable, and variant.
+        if (empty($filters['productfilter'])) {
+            return $this->totalExportProductCount = DB::table('products')->count();
+        }
+
+        $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+        if (empty($rootSkus)) {
+            return $this->totalExportProductCount = 0;
+        }
+
+        $rootIds = DB::table('products')
+            ->where(function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
+            })
+            ->whereIn('sku', $rootSkus)
+            ->pluck('id');
+
+        // Roots (simple + configurable) plus all variants belonging to them.
+        return $this->totalExportProductCount = DB::table('products')
+            ->where(function ($q) use ($rootIds) {
+                $q->whereIn('id', $rootIds)
+                    ->orWhereIn('parent_id', $rootIds);
+            })
+            ->count();
     }
 
     /**
@@ -463,12 +519,46 @@ class Exporter extends AbstractExporter
             });
 
         if (! empty($filters['productfilter'])) {
-            $skus = array_map('trim', explode(',', $filters['productfilter']));
-            $query->whereIn('sku', $skus);
+            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+            if (empty($rootSkus)) {
+                return [];
+            }
+
+            $query->whereIn('sku', $rootSkus);
         }
 
         return $query->get()
             ->map(fn ($row) => ['sku' => $row->sku])
+            ->all();
+    }
+
+    /**
+     * Resolve filter SKUs to their root SKUs so a variant SKU in the filter
+     * pulls in its parent. Shopify's productSet treats the variants list as
+     * authoritative, so a variant must always be exported as part of its full
+     * parent product to avoid deleting siblings on Shopify.
+     *
+     * @return array<int, string>
+     */
+    protected function resolveFilterSkusToRoots(string $productFilter): array
+    {
+        $skus = array_values(array_filter(
+            array_map('trim', explode(',', $productFilter)),
+            fn ($s) => $s !== ''
+        ));
+
+        if (empty($skus)) {
+            return [];
+        }
+
+        return DB::table('products as p')
+            ->leftJoin('products as parent', 'p.parent_id', '=', 'parent.id')
+            ->whereIn('p.sku', $skus)
+            ->select(DB::raw('COALESCE(parent.sku, p.sku) AS root_sku'))
+            ->pluck('root_sku')
+            ->unique()
+            ->values()
             ->all();
     }
 
@@ -483,8 +573,13 @@ class Exporter extends AbstractExporter
             });
 
         if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
-            $skus = array_map('trim', explode(',', $filters['productfilter']));
-            $query->whereIn('sku', $skus);
+            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+            if (empty($rootSkus)) {
+                return new \ArrayIterator([]);
+            }
+
+            $query->whereIn('sku', $rootSkus);
         }
 
         $rows = $query->get();
@@ -691,7 +786,15 @@ class Exporter extends AbstractExporter
                 ['variantId' => $variantId, 'optionsGetting' => $optionsGetting, 'productId' => $productId] = $createResult;
             } else {
                 $variantData = $variantData + $productOptionValues;
-                $productId = ! empty($parentMapping) ? $parentMapping[0]['externalId'] : $mapping[0]['externalId'];
+                // For a simple product the mapping row encodes both GIDs: the bulk
+                // path stores externalId=variant GID and relatedId=product GID. Use
+                // relatedId first so we resolve the product GID regardless of which
+                // path created the mapping (sequential stores externalId=product GID,
+                // relatedId=null). Parent mappings always have relatedId=null, so
+                // configurable handling is unchanged.
+                $productId = ! empty($parentMapping)
+                    ? ($parentMapping[0]['relatedId'] ?? $parentMapping[0]['externalId'])
+                    : ($mapping[0]['relatedId'] ?? $mapping[0]['externalId']);
                 ['variantId' => $variantId, 'optionsGetting' => $optionsGetting] = $this->processProductUpdate(
                     $skipParent,
                     $formattedGraphqlData,
@@ -818,6 +921,24 @@ class Exporter extends AbstractExporter
         $productOption = $result['body']['data'][self::VARIANT_CREATE]['product']['options'];
         if (! empty($parentData)) {
             $this->parentMapping($rowData['sku'], $variantId, $this->export->id, $productId);
+        } else {
+            // Simple product: the variant SKU equals the product SKU, so the
+            // single mapping row must encode both GIDs the same way the bulk
+            // path does (externalId=variant GID, relatedId=product GID). The row
+            // created above holds the product GID; overwrite it so a later
+            // re-export (bulk or sequential) resolves the variant id correctly
+            // instead of treating the product GID as the variant id.
+            $existing = $this->shopifyMappingRepository->where('code', $rowData['sku'])
+                ->where('entityType', self::UNOPIM_ENTITY_NAME)
+                ->where('apiUrl', $this->credential->shopUrl)
+                ->first();
+
+            if ($existing) {
+                $this->shopifyMappingRepository->update([
+                    'externalId' => $variantId,
+                    'relatedId' => $productId,
+                ], $existing->id);
+            }
         }
 
         return [
@@ -1619,24 +1740,32 @@ class Exporter extends AbstractExporter
                 $name = array_column(array_filter($translationsOption, fn ($item) => $item['locale'] === $shopifyDefaultLocale), 'name')[0] ?? $optionvalues['name'];
             }
 
+            $optionValue = $mergedFields[$optionvalues['code']] ?? null;
+
             if ($key < 3) {
                 $options = [
                     'name' => $name,
-                    'values' => [['name' => $mergedFields[$optionvalues['code']]]],
+                    'values' => [['name' => $optionValue]],
                 ];
                 $finalOption[] = $options;
             }
 
             $attribute = $this->attributesAll[$optionvalues['code']] ?? null;
 
-            $optionTrans = $attribute->options()->where('code', '=', $mergedFields[$optionvalues['code']])->first()->toArray();
+            // A variant value can drift out of sync with its attribute options
+            // (renamed/deleted options, casing). When it no longer matches an
+            // option, skip the translation enrichment instead of crashing the
+            // whole batch — the product still exports with its raw option value.
+            $option = ($attribute && $optionValue !== null)
+                ? $attribute->options()->where('code', '=', $optionValue)->first()
+                : null;
 
             $optionsValues['optionValues'][] = [
-                'name' => $mergedFields[$optionvalues['code']],
+                'name' => $optionValue,
                 'optionName' => $name,
             ];
 
-            $optionValuesTranslation[$mergedFields[$optionvalues['code']]] = $optionTrans['translations'];
+            $optionValuesTranslation[$optionValue] = $option?->toArray()['translations'] ?? [];
 
             if (! empty($parentMapping) && ! empty($mapping)) {
                 $optionValuesToUpdate = [

@@ -284,7 +284,9 @@ trait TranslationTrait
                     'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
                 ];
             }
-            $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
+            if (! empty($formatedVariable['translations'])) {
+                $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
+            }
         }
     }
 }
