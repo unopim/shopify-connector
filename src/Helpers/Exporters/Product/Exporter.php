@@ -372,8 +372,7 @@ class Exporter extends AbstractExporter
      */
     protected function submitCoreBulkOperation(JobTrackBatchContract $batch): void
     {
-        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export->id);
-
+        $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export);
         // Do NOT seed batch summary with the builder's line count — that's
         // "submitted to Shopify", not "accepted by Shopify". For a 10k-product
         // bulk op the gap is minutes, during which the UI would show 10000 as
@@ -394,9 +393,7 @@ class Exporter extends AbstractExporter
 
         $jsonlAbsolutePath = $this->bulkOperationService->writeJsonl($jsonlPath, $payload['lines']);
         $this->bulkOperationService->writeManifest($manifestPath, $payload['manifest']);
-
         $uploadTarget = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
-
         if (empty($uploadTarget)) {
             throw new \RuntimeException(json_encode([['message' => 'Unable to create Shopify bulk upload target.']]));
         }
