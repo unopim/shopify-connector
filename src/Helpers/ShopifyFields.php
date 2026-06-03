@@ -122,7 +122,7 @@ class ShopifyFields
             'types' => [
                 'text',
             ],
-            'tooltip' => 'supported attributes types: text',
+            'tooltip' => 'supported attributes types: text (If multiple products have the same handle, only the last product will be exported.)',
         ], [
             'name' => 'taxable',
             'label' => 'shopify::app.shopify.fields.taxable',
