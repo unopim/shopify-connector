@@ -674,17 +674,29 @@ class MediaBulkPayloadBuilder
                 $multipart[] = ['name' => $param['name'], 'contents' => $param['value']];
             }
 
-            $multipart[] = [
-                'name' => 'file',
-                'contents' => Storage::disk($disk)->get($path),
-                'filename' => $asset['file_name'] ?? 'video.mp4',
-                'headers' => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
-            ];
+            $stream = Storage::disk($disk)->readStream($path);
 
-            $upload = Http::asMultipart()->post($target['url'], $multipart);
-
-            if ($upload->failed()) {
+            if ($stream === false) {
                 return null;
+            }
+
+            try {
+                $multipart[] = [
+                    'name' => 'file',
+                    'contents' => $stream,
+                    'filename' => $asset['file_name'] ?? 'video.mp4',
+                    'headers' => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
+                ];
+
+                $upload = Http::asMultipart()->timeout(300)->post($target['url'], $multipart);
+
+                if ($upload->failed()) {
+                    return null;
+                }
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
             }
 
             return $target['resourceUrl'] ?? null;
