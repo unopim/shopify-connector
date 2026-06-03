@@ -6,11 +6,11 @@ return [
 
     /*
     | Core export path selection. Bulk Operations have a large fixed latency
+    | Core export path selection. Bulk Operations have a large fixed latency
     | (async submit + poll + sequential follow-up phases) that dominates for
-    | small catalogs — a single product can take ~30s. Below this many root
-    | products the export falls back to the direct per-product GraphQL path,
-    | which has near-zero fixed cost. At or above it, bulk wins on throughput.
-    | Set to 0 to disable the fallback and always use bulk.
+    | small catalogs — a single product can take ~30s. Below this many product
+    | rows (roots + variants) the export falls back to the direct per-product
+    | GraphQL path, which has near-zero fixed cost. At or above it, bulk wins on throughput.
     */
     'bulk_threshold' => env('SHOPIFY_EXPORT_BULK_THRESHOLD', 5),
 
