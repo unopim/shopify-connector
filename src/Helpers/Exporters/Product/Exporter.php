@@ -285,13 +285,7 @@ class Exporter extends AbstractExporter
      */
     protected function shouldUseBulkCorePath(): bool
     {
-        $threshold = (int) config('shopify-bulk-operations.bulk_threshold', 5);
-
-        if ($threshold <= 0) {
-            return true;
-        }
-
-        return $this->getTotalExportProductCount() >= $threshold;
+        return true;
     }
 
     /**
