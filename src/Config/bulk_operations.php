@@ -6,7 +6,6 @@ return [
 
     /*
     | Core export path selection. Bulk Operations have a large fixed latency
-    | Core export path selection. Bulk Operations have a large fixed latency
     | (async submit + poll + sequential follow-up phases) that dominates for
     | small catalogs — a single product can take ~30s. Below this many product
     | rows (roots + variants) the export falls back to the direct per-product
