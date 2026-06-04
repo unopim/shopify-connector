@@ -573,6 +573,11 @@ class Importer extends AbstractImporter
             $this->parentMapping($rowData['node']['handle'], $shopifyProductId, $this->import->id);
         }
 
+        $productSuperAttributes = array_map(
+            fn ($code) => ['code' => $code],
+            array_keys($attributes)
+        );
+
         $allMediaIdVariants = [];
         $variantProductData = $this->processVariants(
             $variants,
@@ -583,7 +588,7 @@ class Importer extends AbstractImporter
             $mediaMapping,
             $metaFieldAllAttr,
             $allMediaIdVariants,
-            $configurableAttributes,
+            $productSuperAttributes,
         );
 
         $mappedImageAttr = null;
@@ -824,7 +829,7 @@ class Importer extends AbstractImporter
                 }
             }
 
-            $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr);
+            $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr, array_column($configurableAttributes, 'code'));
             if (! $variantProductValue) {
                 continue;
             }
@@ -1026,7 +1031,7 @@ class Importer extends AbstractImporter
         $storeForVariant = [];
         $variantData = null;
         foreach ($variants as $key => $productVariant) {
-            $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
+            $variantData = $this->formatVariantData($productVariant, $extractVariantAttr, []);
             if (empty($productVariant['node']['sku'])) {
                 $this->jobLogger->warning('SKU not found in product '.$shopifyProductId);
 
@@ -1475,7 +1480,7 @@ class Importer extends AbstractImporter
     /**
      * Variant Data formater
      */
-    public function formatVariantData($variantData, $extractVariantAttr): ?array
+    public function formatVariantData($variantData, $extractVariantAttr, array $superAttributeCodes = []): ?array
     {
         // Initialize arrays to store different types of attributes
         $Opcommon = $Oplocale_specific = $Opchannel_specific = $OpchannelAndLocaleSpecific = [];
@@ -1510,9 +1515,14 @@ class Importer extends AbstractImporter
             $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
             if (! $optionForShopify) {
-                $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
 
-                return null;
+                if (in_array($name, $superAttributeCodes, true)) {
+                    $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
+
+                    return null;
+                }
+
+                continue;
             }
 
             $classifyAttribute($attribute, $name, $optionForShopify?->code, $Opcommon, $Oplocale_specific, $Opchannel_specific, $OpchannelAndLocaleSpecific);
