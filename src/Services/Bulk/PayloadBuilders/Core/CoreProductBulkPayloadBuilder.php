@@ -252,7 +252,7 @@ class CoreProductBulkPayloadBuilder
         if (! $firstVariant) {
             return null;
         }
-        $categoryCodes = $parentData['values']['categories'] ?? [];
+$categoryCodes = $parentData ? ($parentData['values']['categories'] ?? []) : [];
         $parentMergedFields = $parentData ? $this->getAllAttributeValues($parentData) : [];
         $productMergedFields = $parentData ? $parentMergedFields : $this->getAllAttributeValues($firstVariant);
         $productOptions = $this->buildProductOptions($parentData, $group['variants']);
