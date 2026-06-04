@@ -3,10 +3,6 @@
 ## Features
 - UnoPIM-Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click Connect.
 - No manual credential setup needed in UnoPIM.
-
-# 1.5.0 ( 30 April 2026 )
-
-## Features
 - Bulk product export.
 - Bulk product import.
 
