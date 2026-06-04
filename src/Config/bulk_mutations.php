@@ -228,29 +228,11 @@ mutation publishablePublishBulk($id: ID!, $input: [PublicationInput!]!) {
 }
 GRAPHQL,
 
-    'collectionAddProductsBulk' => <<<'GRAPHQL'
-mutation collectionAddProductsBulk($id: ID!, $productIds: [ID!]!) {
-  collectionAddProductsV2(id: $id, productIds: $productIds) {
-    job { id done }
-    userErrors { field message }
-  }
-}
-GRAPHQL,
-
     'translationsRegisterBulk' => <<<'GRAPHQL'
 mutation translationsRegisterBulk($resourceId: ID!, $translations: [TranslationInput!]!) {
   translationsRegister(resourceId: $resourceId, translations: $translations) {
     userErrors { field message }
     translations { locale key value }
-  }
-}
-GRAPHQL,
-
-    'inventorySetOnHandQuantitiesBulk' => <<<'GRAPHQL'
-mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesInput!) {
-  inventorySetOnHandQuantities(input: $input) {
-    userErrors { field message }
-    inventoryAdjustmentGroup { reason referenceDocumentUri }
   }
 }
 GRAPHQL,
