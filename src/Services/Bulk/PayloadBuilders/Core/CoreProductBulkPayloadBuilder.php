@@ -252,7 +252,7 @@ class CoreProductBulkPayloadBuilder
         if (! $firstVariant) {
             return null;
         }
-$categoryCodes = $parentData ? ($parentData['values']['categories'] ?? []) : [];
+        $categoryCodes = $parentData ? ($parentData['values']['categories'] ?? []) : [];
         $parentMergedFields = $parentData ? $this->getAllAttributeValues($parentData) : [];
         $productMergedFields = $parentData ? $parentMergedFields : $this->getAllAttributeValues($firstVariant);
         $productOptions = $this->buildProductOptions($parentData, $group['variants']);
@@ -301,8 +301,11 @@ $categoryCodes = $parentData ? ($parentData['values']['categories'] ?? []) : [];
             ];
         }
 
+        $categoryCodes = array_values(array_unique(array_filter($categoryCodes)));
         $productCollections = $this->resolveCollectionIds($categoryCodes);
-        $productInput['collections'] = $productCollections;
+        if (! empty($productCollections)) {
+            $productInput['collections'] = $productCollections;
+        }
         $productInput['variants'] = $variants;
 
         return [
