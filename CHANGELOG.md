@@ -1,10 +1,31 @@
-# 2.0.0 ( 20 May 2026 )
+# 2.0.0 ( 4 June 2026 )
 
 ## Features
-- UnoPIM-Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click Connect.
-- No manual credential setup needed in UnoPIM.
-- Bulk product export.
-- Bulk product import.
+- UnoPIM–Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click **Connect**. No manual credential setup needed in UnoPIM.
+- SaaS authentication flow with auto-login and proxy-based Shopify API access (`SaasProxyClient`, `SaasAutoLoginController`, `SaasCredentialController`).
+- Automatic credential revocation when the linked API key is deleted.
+- **Bulk product export** built on a phase-based architecture (Core, Media, Translation, Publishing phases) using Shopify Bulk Operations for large catalogs.
+- **Bulk product import** using Shopify Bulk Operations with batched mapping and caching for high-volume catalogs.
+- Variant SKU filter support in product export.
+- Public-hosted media export (S3 and other external URLs), including streamed video upload.
+- New `ShopifyPollBulkOperations` command and polling job to track bulk operation status.
+
+## Changed
+- Restructured product export into a modular, phase-based pipeline with per-phase progress tracking and deferred job-track completion.
+- Widened the Shopify credentials `access_token` column to support longer tokens.
+- Updated Vite to `^6.4.2` and laravel-vite-plugin to `^1.2.0`.
+- Enhanced credential UI tooltips and field handling for SaaS credentials.
+
+## Bug fixes
+- Fixed out-of-memory error on large video uploads by streaming the upload and adding a timeout.
+- Fixed media export for public-hosted images (S3 and other external sources).
+- Skip variants missing super-attribute values to prevent import crashes on Configurable product updates.
+- Added a 3-retry guard when downloading bulk-operation results.
+- Handle product recreation when a product was deleted from Shopify.
+- Fixed collection assignment and updates during bulk export.
+- Fixed inventory quantity sync and simple product export in bulk mode.
+- Fixed incorrect product count in job status and synced the UI job tracker with running phase jobs.
+- Show a UI error when no credential is configured.
 
 # 1.4.0 ( 15 April 2026 )
 
