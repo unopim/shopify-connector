@@ -2,8 +2,6 @@
 
 namespace Webkul\Shopify\Services;
 
-use Webkul\Shopify\Jobs\RunCollectionAssignmentPhase;
-use Webkul\Shopify\Jobs\RunInventoryPhase;
 use Webkul\Shopify\Jobs\RunMediaPhase;
 use Webkul\Shopify\Jobs\RunPublishingPhase;
 use Webkul\Shopify\Jobs\RunTranslationPhase;
@@ -46,9 +44,7 @@ class PhaseOrchestrator
         );
 
         RunPublishingPhase::dispatch($bulkOperation->id);
-        RunCollectionAssignmentPhase::dispatch($bulkOperation->id);
         RunTranslationPhase::dispatch($bulkOperation->id);
-        RunInventoryPhase::dispatch($bulkOperation->id);
         RunMediaPhase::dispatch($bulkOperation->id);
     }
 }

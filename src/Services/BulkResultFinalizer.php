@@ -543,9 +543,6 @@ class BulkResultFinalizer
     protected function extractUserErrors(array $decoded, string $mutation): array
     {
         return match ($mutation) {
-            'inventorySetOnHandQuantities' => $decoded['data']['inventorySetOnHandQuantities']['userErrors'] ?? [],
-            'collectionAddProductsV2' => $decoded['data']['collectionAddProductsV2']['userErrors'] ?? [],
-            'collectionAddProducts' => $decoded['data']['collectionAddProducts']['userErrors'] ?? [],
             'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
             'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
             'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],

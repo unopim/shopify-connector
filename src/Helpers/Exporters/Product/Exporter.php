@@ -1145,6 +1145,13 @@ class Exporter extends AbstractExporter
         $this->metaFieldAttributeCode = $this->metafieldTranslationFormate($this->productMetaFieldMapping);
         $this->variantMetafieldAttrCode = $this->metafieldTranslationFormate($this->variantMetaFieldMapping);
 
+        if (! empty($formattedGraphqlData['variant']['inventoryQuantities'] ?? null)) {
+            $formattedGraphqlData['variant']['inventoryQuantities'] = [
+                'locationId' => $formattedGraphqlData['variant']['inventoryQuantities']['locationId'] ?? null,
+                'availableQuantity' => (int) ($formattedGraphqlData['variant']['inventoryQuantities']['availableQuantity'] ?? 0),
+            ];
+        }
+
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
 

@@ -96,8 +96,6 @@ class CoreProductBulkPayloadBuilder
                     'publishing' => true,
                     'media' => true,
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
-                    'inventory' => ! empty($this->locationId),
-                    'collections' => true,
                     'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
                     'location_id' => $this->locationId,
                 ],
@@ -254,11 +252,11 @@ class CoreProductBulkPayloadBuilder
         if (! $firstVariant) {
             return null;
         }
-
+        $categoryCodes = $parentData ? ($parentData['values']['categories'] ?? []) : [];
         $parentMergedFields = $parentData ? $this->getAllAttributeValues($parentData) : [];
         $productMergedFields = $parentData ? $parentMergedFields : $this->getAllAttributeValues($firstVariant);
         $productOptions = $this->buildProductOptions($parentData, $group['variants']);
-        $productCollections = $this->resolveCollectionIds($group);
+
         $productIdentifierId = $productMapping[0]['relatedId'] ?? $productMapping[0]['externalId'] ?? null;
 
         $formattedProduct = $this->shopifyGraphQLDataFormatter->formatDataForGraphql(
@@ -277,6 +275,7 @@ class CoreProductBulkPayloadBuilder
         $variants = [];
 
         foreach ($group['variants'] as $variantRow) {
+            $categoryCodes = array_merge($variantRow['values']['categories'] ?? [], $categoryCodes);
             $variantMapping = $this->findMapping($variantRow['sku']);
             $variantMergedFields = $this->getAllAttributeValues($variantRow);
             $optionValues = $this->buildVariantOptionValues($parentData, $variantMergedFields);
@@ -302,6 +301,11 @@ class CoreProductBulkPayloadBuilder
             ];
         }
 
+        $categoryCodes = array_values(array_unique(array_filter($categoryCodes)));
+        $productCollections = $this->resolveCollectionIds($categoryCodes);
+        if (! empty($productCollections)) {
+            $productInput['collections'] = $productCollections;
+        }
         $productInput['variants'] = $variants;
 
         return [
@@ -316,10 +320,8 @@ class CoreProductBulkPayloadBuilder
                 'product_handle' => $productInput['handle'],
                 'variant_skus' => array_column($variantManifest, 'sku'),
                 'phase_context' => [
-                    'collections' => $productCollections,
                     'publishing' => ! empty($this->credential?->extras['salesChannel']),
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
-                    'inventory' => ! empty($this->locationId),
                     'media' => collect($variantManifest)->contains('has_media', true),
                 ],
             ],
@@ -466,8 +468,6 @@ class CoreProductBulkPayloadBuilder
         ?string $variantId,
         bool $includeVariantMetafields
     ): array {
-        unset($variantPayload['inventoryQuantities']);
-
         $inventoryItem = $variantPayload['inventoryItem'] ?? [];
 
         $variantInput = array_filter([
@@ -479,6 +479,9 @@ class CoreProductBulkPayloadBuilder
             'inventoryPolicy' => $variantPayload['inventoryPolicy'] ?? null,
             'metafields' => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
             'inventoryItem' => empty($inventoryItem) ? null : $inventoryItem,
+            // Inventory quantities are synced inline through productSet; there is
+            // no separate inventory phase, so this is the single source of truth.
+            'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present
@@ -540,21 +543,9 @@ class CoreProductBulkPayloadBuilder
     /**
      * Resolve collection ids for a grouped product.
      */
-    protected function resolveCollectionIds(array $group): array
+    protected function resolveCollectionIds(array $categoryCodes): array
     {
-        $categoryCodes = [];
-
-        foreach ($group['variants'] as $variant) {
-            $categoryCodes = array_merge($categoryCodes, $variant['values']['categories'] ?? []);
-        }
-
-        if (! empty($group['parent']['values']['categories'] ?? [])) {
-            $categoryCodes = array_merge($categoryCodes, $group['parent']['values']['categories']);
-        }
-
-        $categoryCodes = array_unique(array_filter($categoryCodes));
         $collectionIds = [];
-
         foreach ($categoryCodes as $code) {
             $mapping = $this->shopifyMappingRepository->where('code', $code)
                 ->where('entityType', 'category')

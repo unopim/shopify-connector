@@ -44,7 +44,8 @@ class ShopifyGraphQLDataFormatter
 
         if ($this->locationId) {
             $formatted['variant']['inventoryQuantities']['locationId'] = $this->locationId;
-            $formatted['variant']['inventoryQuantities']['availableQuantity'] = 0;
+            $formatted['variant']['inventoryQuantities']['name'] = 'available';
+            $formatted['variant']['inventoryQuantities']['quantity'] = 0;
         }
 
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
@@ -306,7 +307,7 @@ class ShopifyGraphQLDataFormatter
                 break;
             case 'inventoryQuantity':
                 if ($this->locationId) {
-                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) ($rawData[$unopimField] ?? 0);
+                    $formatted['variant']['inventoryQuantities']['quantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
                 break;
@@ -423,7 +424,7 @@ class ShopifyGraphQLDataFormatter
                 break;
             case 'inventoryQuantity':
                 if ($this->locationId) {
-                    $formatted['variant']['inventoryQuantities']['availableQuantity'] = (int) $defaultValue;
+                    $formatted['variant']['inventoryQuantities']['quantity'] = (int) $defaultValue;
                 }
                 break;
             case 'sku':

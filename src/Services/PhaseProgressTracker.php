@@ -23,7 +23,7 @@ use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
  */
 class PhaseProgressTracker
 {
-    public const PHASES_PER_BATCH = 5;
+    public const PHASES_PER_BATCH = 3;
 
     public function __construct(
         protected JobTrackRepository $jobTrackRepository,
