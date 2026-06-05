@@ -14,6 +14,7 @@ class ShopifyProductValidator extends JobValidator
         'filters.locale' => 'required',
         'filters.channel' => 'required',
         'filters.currency' => 'required',
+        'filters.status' => 'nullable|in:enable,disable',
     ];
 
     /**
@@ -24,5 +25,6 @@ class ShopifyProductValidator extends JobValidator
         'filters.locale' => 'Locale',
         'filters.channel' => 'Channel',
         'filters.currency' => 'Currency',
+        'filters.status' => 'Status',
     ];
 }

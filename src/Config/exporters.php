@@ -44,6 +44,15 @@ return [
                     'title' => 'shopify::app.shopify.job.productfilter',
                     'required' => false,
                     'type' => 'textarea',
+                ], [
+                    'name' => 'status',
+                    'title' => 'shopify::app.shopify.job.status',
+                    'required' => false,
+                    'type' => 'select',
+                    'options' => [
+                        ['label' => 'shopify::app.shopify.job.enable', 'value' => 'enable'],
+                        ['label' => 'shopify::app.shopify.job.disable', 'value' => 'disable'],
+                    ],
                 ],
             ],
         ],

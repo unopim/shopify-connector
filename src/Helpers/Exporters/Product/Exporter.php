@@ -304,24 +304,32 @@ class Exporter extends AbstractExporter
         }
 
         $filters = $this->getFilters();
+        $hasProductFilter = ! empty($filters['productfilter']);
+        $hasStatusFilter = in_array($filters['status'] ?? null, ['enable', 'disable'], true);
 
         // No filter: the whole catalog — every simple, configurable, and variant.
-        if (empty($filters['productfilter'])) {
+        if (! $hasProductFilter && ! $hasStatusFilter) {
             return $this->totalExportProductCount = DB::table('products')->count();
         }
 
-        $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
-
-        if (empty($rootSkus)) {
-            return $this->totalExportProductCount = 0;
-        }
-
-        $rootIds = DB::table('products')
+        $rootIdsQuery = DB::table('products')
             ->where(function ($q) {
                 $q->whereNull('parent_id')->orWhere('parent_id', 0);
-            })
-            ->whereIn('sku', $rootSkus)
-            ->pluck('id');
+            });
+
+        $this->applyStatusFilter($rootIdsQuery, $filters);
+
+        if ($hasProductFilter) {
+            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
+
+            if (empty($rootSkus)) {
+                return $this->totalExportProductCount = 0;
+            }
+
+            $rootIdsQuery->whereIn('sku', $rootSkus);
+        }
+
+        $rootIds = $rootIdsQuery->pluck('id');
 
         // Roots (simple + configurable) plus all variants belonging to them.
         return $this->totalExportProductCount = DB::table('products')
@@ -522,6 +530,8 @@ class Exporter extends AbstractExporter
             $query->whereIn('sku', $rootSkus);
         }
 
+        $this->applyStatusFilter($query, $filters);
+
         return $query->get()
             ->map(fn ($row) => ['sku' => $row->sku])
             ->all();
@@ -556,6 +566,21 @@ class Exporter extends AbstractExporter
             ->all();
     }
 
+    /**
+     * Apply the optional UnoPim product-status filter to a root-product query.
+     * Absent or unrecognised value leaves the query untouched (every status).
+     */
+    protected function applyStatusFilter($query, array $filters): void
+    {
+        $status = $filters['status'] ?? null;
+
+        if ($status === 'enable') {
+            $query->where('status', 1);
+        } elseif ($status === 'disable') {
+            $query->where('status', 0);
+        }
+    }
+
     protected function getResults()
     {
         $filters = $this->getFilters();
@@ -575,6 +600,8 @@ class Exporter extends AbstractExporter
 
             $query->whereIn('sku', $rootSkus);
         }
+
+        $this->applyStatusFilter($query, $filters);
 
         $rows = $query->get();
 
@@ -1144,14 +1171,12 @@ class Exporter extends AbstractExporter
         $formattedGraphqlData = $this->shopifyGraphQLDataFormatter->formatDataForGraphql($mergedFields, $this->exportMapping->mapping ?? [], $this->shopifyDefaultLocale, $parentMergedFields, $this->productMetaFieldMapping, $this->variantMetaFieldMapping);
         $this->metaFieldAttributeCode = $this->metafieldTranslationFormate($this->productMetaFieldMapping);
         $this->variantMetafieldAttrCode = $this->metafieldTranslationFormate($this->variantMetaFieldMapping);
-
         if (! empty($formattedGraphqlData['variant']['inventoryQuantities'] ?? null)) {
             $formattedGraphqlData['variant']['inventoryQuantities'] = [
                 'locationId' => $formattedGraphqlData['variant']['inventoryQuantities']['locationId'] ?? null,
                 'availableQuantity' => (int) ($formattedGraphqlData['variant']['inventoryQuantities']['availableQuantity'] ?? 0),
             ];
         }
-
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
 

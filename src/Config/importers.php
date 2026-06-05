@@ -157,6 +157,15 @@ return [
                     'label_by' => 'label',
                     'list_route' => 'shopify.currency.fetch-all',
                     'dependent' => ['channel'],
+                ], [
+                    'name' => 'status',
+                    'title' => 'shopify::app.shopify.job.status',
+                    'required' => false,
+                    'type' => 'select',
+                    'options' => [
+                        ['label' => 'shopify::app.shopify.job.enable', 'value' => 'enable'],
+                        ['label' => 'shopify::app.shopify.job.disable', 'value' => 'disable'],
+                    ],
                 ],
             ],
         ],

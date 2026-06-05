@@ -106,6 +106,11 @@ class Importer extends AbstractImporter
      */
     private $currency;
 
+    /**
+     * Optional Shopify product-status import filter: 'enable', 'disable', or null (all).
+     */
+    private ?string $statusFilter = null;
+
     protected $importMapping;
 
     protected $defintiionMapping;
@@ -287,6 +292,8 @@ class Importer extends AbstractImporter
 
         $this->currency = $filters['currency'] ?? null;
 
+        $this->statusFilter = $filters['status'] ?? null;
+
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
@@ -345,7 +352,11 @@ class Importer extends AbstractImporter
      */
     public function validateRow(array $rowData, int $rowNumber): bool
     {
-        return true;
+        return match ($this->statusFilter) {
+            'enable' => ($rowData['node']['status'] ?? null) === 'ACTIVE',
+            'disable' => ($rowData['node']['status'] ?? null) !== 'ACTIVE',
+            default => true,
+        };
     }
 
     /**
@@ -572,6 +583,7 @@ class Importer extends AbstractImporter
         if (! $configProductMapping) {
             $this->parentMapping($rowData['node']['handle'], $shopifyProductId, $this->import->id);
         }
+
 
         $allMediaIdVariants = [];
         $variantProductData = $this->processVariants(
@@ -824,7 +836,7 @@ class Importer extends AbstractImporter
                 }
             }
 
-            $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr);
+             $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr);
             if (! $variantProductValue) {
                 continue;
             }
@@ -1026,7 +1038,7 @@ class Importer extends AbstractImporter
         $storeForVariant = [];
         $variantData = null;
         foreach ($variants as $key => $productVariant) {
-            $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
+             $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
             if (empty($productVariant['node']['sku'])) {
                 $this->jobLogger->warning('SKU not found in product '.$shopifyProductId);
 
@@ -1510,7 +1522,8 @@ class Importer extends AbstractImporter
             $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
             if (! $optionForShopify) {
-                $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
+
+                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
 
                 return null;
             }
