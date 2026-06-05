@@ -436,12 +436,6 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
-        // UNUSED DUPLICATE: Already defined above (using $collectionId).
-        'publishablePublish' => [
-            'query' => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
-            'method' => 'POST',
-        ],
-
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'publishableUnpublish' => [
             'query' => 'mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) { publishableUnpublish(id: $id, input: $input) { userErrors { field message } } }',
