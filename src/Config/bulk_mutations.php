@@ -21,7 +21,7 @@ return [
     */
     'productImportBulkQueryCore' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id
@@ -140,7 +140,7 @@ GRAPHQL,
     */
     'productImportBulkQueryRelations' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id
