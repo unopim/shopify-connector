@@ -467,7 +467,6 @@ class Importer extends AbstractImporter
                 if (! $parentData) {
                     continue;
                 }
-
             } else {
                 $childData = $this->processSimpleProduct(
                     $rowData,
@@ -823,8 +822,8 @@ class Importer extends AbstractImporter
                     }
                 }
             }
-
-            $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr);
+            $requiredAttrForVariant = [];
+            $variantProductValue = $this->formatVariantData($productVariant, $extractVariantAttr, $requiredAttrForVariant);
             if (! $variantProductValue) {
                 continue;
             }
@@ -869,17 +868,15 @@ class Importer extends AbstractImporter
 
             [$vMdcommon, $vMdlocale_specific, $vMdchannel_specific, $vMdchannelAndLocaleSpecific] = $this->mapMetafieldsAttribute($productVariant['node']['metafields']['edges'] ?? [], $metaFieldAllAttr);
 
-            $missingSuperAttrs = [];
-            foreach ($configurableAttributes as $cfgAttr) {
-                if (! array_key_exists($cfgAttr['code'], $vcommon)) {
-                    $missingSuperAttrs[] = $cfgAttr['code'];
-                }
-            }
-            if (! empty($missingSuperAttrs)) {
+            $existingAttributes = array_column($configurableAttributes ?? [], 'code');
+
+            $missingAttributes = array_diff($requiredAttrForVariant, $existingAttributes);
+
+            if (! empty($missingAttributes)) {
                 $this->jobLogger->warning(sprintf(
-                    'Variant %s skipped — Shopify variant is missing super-attribute option-value(s) [%s] required by the assigned family. Fix on Shopify or remove the attribute from the family.',
+                    'Variant %s skipped — required super attribute(s) [%s] do not exist in the attribute family.',
                     $vsku,
-                    implode(', ', $missingSuperAttrs)
+                    implode(', ', $missingAttributes)
                 ));
 
                 continue;
@@ -1475,7 +1472,7 @@ class Importer extends AbstractImporter
     /**
      * Variant Data formater
      */
-    public function formatVariantData($variantData, $extractVariantAttr): ?array
+    public function formatVariantData($variantData, $extractVariantAttr, &$variantCreationAttr = []): ?array
     {
         // Initialize arrays to store different types of attributes
         $Opcommon = $Oplocale_specific = $Opchannel_specific = $OpchannelAndLocaleSpecific = [];
@@ -1504,8 +1501,8 @@ class Importer extends AbstractImporter
             if (! isset($this->attributes[$name])) {
                 continue;
             }
+            $variantCreationAttr[] = $name;
             $attribute = $this->attributes[$name];
-
             $optionvalue = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']), '-');
             $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
