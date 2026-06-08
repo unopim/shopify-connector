@@ -3,7 +3,9 @@
 namespace Webkul\Shopify\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Webkul\Core\Rules\BooleanString;
+use Webkul\Shopify\Helpers\ShopifyFields;
 
 class ExportMappingForm extends FormRequest
 {
@@ -23,6 +25,7 @@ class ExportMappingForm extends FormRequest
             'default_inventoryQuantity' => 'sometimes|nullable|numeric',
             'default_compareAtPrice' => 'sometimes|nullable|numeric',
             'default_cost' => 'sometimes|nullable|numeric',
+            'status' => ['sometimes', 'nullable', Rule::in((new ShopifyFields)->getStatusEnumValues())],
         ];
     }
 }

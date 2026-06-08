@@ -151,6 +151,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'Product Status',
+                    'label' => 'Shopify Status',
+                    'placeholder' => 'Keep product status',
+                    'tooltip' => 'Applies to all exported products. Leave empty to keep the product enable/disable status.',
+                    'options' => [
+                        'active' => 'Active',
+                        'draft' => 'Draft',
+                        'archived' => 'Archived',
+                        'unlisted' => 'Unlisted',
+                    ],
+                ],
             ],
 
             'settings' => [
@@ -249,6 +262,10 @@ return [
             'status' => 'Status',
             'enable' => 'Enable',
             'disable' => 'Disable',
+            'active' => 'Active',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'unlisted' => 'Unlisted',
             'locale' => 'Locale',
             'attribute-groups' => 'Attribute Groups',
         ],

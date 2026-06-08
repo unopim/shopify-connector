@@ -27,6 +27,7 @@ class MappingController extends Controller
     public function index(): View
     {
         $mappingFields = (new ShopifyFields)->getMappingField();
+        $statusOptions = (new ShopifyFields)->getStatusOptions();
         $shopifyMapping = $this->shopifyExportMappingRepository->first();
 
         $object = (new ShoifyMetaFieldType);
@@ -57,7 +58,7 @@ class MappingController extends Controller
             $mediaMapping[$row] = $value;
         }
 
-        return view('shopify::export.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
+        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
     }
 
     /**

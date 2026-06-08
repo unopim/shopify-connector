@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'Estado del producto',
+                    'label' => 'Estado de Shopify',
+                    'placeholder' => 'Mantener el estado del producto',
+                    'tooltip' => 'Se aplica a todos los productos exportados. Déjalo vacío para mantener el estado activo/inactivo del producto.',
+                    'options' => [
+                        'active' => 'Activo',
+                        'draft' => 'Borrador',
+                        'archived' => 'Archivado',
+                        'unlisted' => 'No listado',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => 'Configuración de exportación guardada correctamente',
@@ -239,6 +252,10 @@ return [
             'status' => 'Estado',
             'enable' => 'Activar',
             'disable' => 'Desactivar',
+            'active' => 'Activo',
+            'draft' => 'Borrador',
+            'archived' => 'Archivado',
+            'unlisted' => 'No listado',
             'locale' => 'Idioma',
             'attribute-groups' => 'Grupos de atributos',
         ],

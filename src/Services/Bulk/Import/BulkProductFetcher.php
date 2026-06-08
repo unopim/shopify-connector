@@ -99,14 +99,17 @@ class BulkProductFetcher
      * parentheses, or an empty string when no filter applies.
      *
      * Only hardcoded literals are emitted — the raw $statusFilter is never
-     * interpolated, so there is no query-injection surface. 'disable' is the
-     * negation of 'enable' (DRAFT + ARCHIVED) to match Importer::validateRow().
+     * interpolated, so there is no query-injection surface. The filter mirrors
+     * the four Shopify product statuses; regardless of the filter, an imported
+     * product's UnoPim flag is set by ACTIVE -> enabled, everything else -> disabled.
      */
     protected function buildProductFilterClause(?string $statusFilter): string
     {
         $query = match ($statusFilter) {
-            'enable' => 'status:active',
-            'disable' => 'status:draft OR status:archived',
+            'active' => 'status:active',
+            'draft' => 'status:draft',
+            'archived' => 'status:archived',
+            'unlisted' => 'status:unlisted',
             default => null,
         };
 

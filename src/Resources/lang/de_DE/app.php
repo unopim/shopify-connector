@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'Produktstatus',
+                    'label' => 'Shopify-Status',
+                    'placeholder' => 'Produktstatus beibehalten',
+                    'tooltip' => 'Gilt für alle exportierten Produkte. Leer lassen, um den Aktiv-/Inaktiv-Status des Produkts beizubehalten.',
+                    'options' => [
+                        'active' => 'Aktiv',
+                        'draft' => 'Entwurf',
+                        'archived' => 'Archiviert',
+                        'unlisted' => 'Nicht gelistet',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => 'Exporteinstellungen erfolgreich gespeichert',
@@ -239,6 +252,10 @@ return [
             'status' => 'Status',
             'enable' => 'Aktivieren',
             'disable' => 'Deaktivieren',
+            'active' => 'Aktiv',
+            'draft' => 'Entwurf',
+            'archived' => 'Archiviert',
+            'unlisted' => 'Nicht gelistet',
             'locale' => 'Sprache',
             'attribute-groups' => 'Attributgruppen',
         ],

@@ -14,7 +14,7 @@ class ShopifyProductValidator extends JobValidator
         'filters.locale' => 'required',
         'filters.channel' => 'required',
         'filters.currency' => 'required',
-        'filters.status' => 'nullable|in:enable,disable',
+        'filters.status' => 'nullable|in:active,draft,archived,unlisted',
     ];
 
     /**

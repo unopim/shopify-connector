@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'Statut du produit',
+                    'label' => 'Statut Shopify',
+                    'placeholder' => 'Conserver le statut du produit',
+                    'tooltip' => 'S\'applique à tous les produits exportés. Laissez vide pour conserver le statut activé/désactivé du produit.',
+                    'options' => [
+                        'active' => 'Actif',
+                        'draft' => 'Brouillon',
+                        'archived' => 'Archivé',
+                        'unlisted' => 'Non répertorié',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => 'Paramètres d\'exportation enregistrés avec succès',
@@ -239,6 +252,10 @@ return [
             'status' => 'Statut',
             'enable' => 'Activer',
             'disable' => 'Désactiver',
+            'active' => 'Actif',
+            'draft' => 'Brouillon',
+            'archived' => 'Archivé',
+            'unlisted' => 'Non répertorié',
             'locale' => 'Langue',
             'attribute-groups' => 'Groupes d’attributs',
         ],

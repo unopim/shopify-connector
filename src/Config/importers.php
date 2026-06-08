@@ -163,8 +163,10 @@ return [
                     'required' => false,
                     'type' => 'select',
                     'options' => [
-                        ['label' => 'shopify::app.shopify.job.enable', 'value' => 'enable'],
-                        ['label' => 'shopify::app.shopify.job.disable', 'value' => 'disable'],
+                        ['label' => 'shopify::app.shopify.job.active', 'value' => 'active'],
+                        ['label' => 'shopify::app.shopify.job.draft', 'value' => 'draft'],
+                        ['label' => 'shopify::app.shopify.job.archived', 'value' => 'archived'],
+                        ['label' => 'shopify::app.shopify.job.unlisted', 'value' => 'unlisted'],
                     ],
                 ],
             ],

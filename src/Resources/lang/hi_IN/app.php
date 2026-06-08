@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'उत्पाद स्थिति',
+                    'label' => 'Shopify स्थिति',
+                    'placeholder' => 'उत्पाद स्थिति बनाए रखें',
+                    'tooltip' => 'सभी निर्यात किए गए उत्पादों पर लागू होता है। उत्पाद की सक्रिय/निष्क्रिय स्थिति बनाए रखने के लिए खाली छोड़ें।',
+                    'options' => [
+                        'active' => 'सक्रिय',
+                        'draft' => 'ड्राफ्ट',
+                        'archived' => 'संग्रहीत',
+                        'unlisted' => 'असूचीबद्ध',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => 'निर्यात सेटिंग्स सफलतापूर्वक सहेजी गईं',
@@ -239,6 +252,10 @@ return [
             'status' => 'स्थिति',
             'enable' => 'सक्षम करें',
             'disable' => 'अक्षम करें',
+            'active' => 'सक्रिय',
+            'draft' => 'ड्राफ्ट',
+            'archived' => 'संग्रहीत',
+            'unlisted' => 'असूचीबद्ध',
             'locale' => 'भाषा',
             'attribute-groups' => 'गुण समूह',
         ],

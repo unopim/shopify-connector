@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Webkul\Shopify\Helpers\ShopifyFields;
+
 class ShopifyGraphQLDataFormatter
 {
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
@@ -35,7 +37,9 @@ class ShopifyGraphQLDataFormatter
         $productMetaField = [],
         $variantMetaField = [],
     ): array {
-        $status = $this->getStatus($rawData, $parentData);
+        $configuredStatus = $exportMapping['shopify_connector_settings']['status'] ?? null;
+
+        $status = $this->getStatus($rawData, $parentData, $configuredStatus);
 
         $formatted = [
             'title' => $parentData['sku'] ?? $rawData['sku'],
@@ -172,10 +176,20 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Get status of the product
-     * */
-    protected function getStatus(array $rawData, array $parentData): string
+     * Resolve the Shopify product status.
+     *
+     * When the export mapping defines a status, that value overrides every
+     * product (static override). Otherwise fall back to the legacy mapping of
+     * the UnoPim product flag: enabled -> ACTIVE, disabled -> DRAFT.
+     */
+    protected function getStatus(array $rawData, array $parentData, ?string $configuredStatus = null): string
     {
+        if ($configuredStatus !== null
+            && in_array($configuredStatus, (new ShopifyFields)->getStatusEnumValues(), true)
+        ) {
+            return $configuredStatus;
+        }
+
         $status = 'ACTIVE';
 
         if (! empty($rawData['status']) && $rawData['status'] == 'false') {

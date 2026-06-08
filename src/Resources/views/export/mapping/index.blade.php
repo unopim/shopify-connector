@@ -107,6 +107,39 @@
                                 </x-admin::form.control-group>
                             </div>
                         @endforeach
+
+                        <!----- Product status: static dropdown in the attribute column, fixed value always disabled ---->
+                        <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <div>
+                                <p class="break-words">@lang('shopify::app.shopify.export.mapping.status.label') {{ ' [status]' }}
+                                <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang('shopify::app.shopify.export.mapping.status.tooltip')</p> </div>
+                                </p>
+                            </div>
+
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="status"
+                                    track-by="id"
+                                    label-by="name"
+                                    :value="old('status') ?? ($exportMapping['status'] ?? '')"
+                                    :options="json_encode($statusOptions, true)"
+                                    :label="trans('shopify::app.shopify.export.mapping.status.label')"
+                                    :placeholder="trans('shopify::app.shopify.export.mapping.status.placeholder')"
+                                />
+                                <x-admin::form.control-group.error control-name="status" />
+                            </x-admin::form.control-group>
+
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="text"
+                                    name="default_status"
+                                    :placeholder="trans('shopify::app.shopify.export.mapping.fixed-value')"
+                                    disabled
+                                    ::disabled="true"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
      
                         
                     </div>

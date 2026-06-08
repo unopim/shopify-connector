@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => 'حالة المنتج',
+                    'label' => 'حالة Shopify',
+                    'placeholder' => 'الاحتفاظ بحالة المنتج',
+                    'tooltip' => 'يُطبَّق على جميع المنتجات المصدَّرة. اتركه فارغًا للحفاظ على حالة تفعيل/تعطيل المنتج.',
+                    'options' => [
+                        'active' => 'نشط',
+                        'draft' => 'مسودة',
+                        'archived' => 'مؤرشف',
+                        'unlisted' => 'غير مدرج',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => 'تم حفظ إعدادات التصدير بنجاح',
@@ -239,6 +252,10 @@ return [
             'status' => 'الحالة',
             'enable' => 'تفعيل',
             'disable' => 'تعطيل',
+            'active' => 'نشط',
+            'draft' => 'مسودة',
+            'archived' => 'مؤرشف',
+            'unlisted' => 'غير مدرج',
             'locale' => 'اللغة',
             'attribute-groups' => 'مجموعات السمات',
         ],

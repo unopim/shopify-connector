@@ -149,4 +149,45 @@ class ShopifyFields
     {
         return $this->mappingFields;
     }
+
+    /**
+     * Shopify product status options: enum value => translation key.
+     * Single source of truth for the export status dropdown. The exported
+     * status is one of these enum values; labels are translatable.
+     *
+     * @var array<string, string>
+     */
+    public const STATUS_OPTIONS = [
+        'ACTIVE' => 'shopify::app.shopify.export.mapping.status.options.active',
+        'DRAFT' => 'shopify::app.shopify.export.mapping.status.options.draft',
+        'ARCHIVED' => 'shopify::app.shopify.export.mapping.status.options.archived',
+        'UNLISTED' => 'shopify::app.shopify.export.mapping.status.options.unlisted',
+    ];
+
+    /**
+     * Status options shaped for the admin select control (track-by id, label-by name).
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function getStatusOptions(): array
+    {
+        return array_map(
+            fn (string $enum, string $labelKey): array => [
+                'id' => $enum,
+                'name' => trans($labelKey),
+            ],
+            array_keys(self::STATUS_OPTIONS),
+            array_values(self::STATUS_OPTIONS),
+        );
+    }
+
+    /**
+     * Valid Shopify status enum values.
+     *
+     * @return array<int, string>
+     */
+    public function getStatusEnumValues(): array
+    {
+        return array_keys(self::STATUS_OPTIONS);
+    }
 }

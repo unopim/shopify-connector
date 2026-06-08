@@ -146,6 +146,19 @@ return [
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
                 ],
+
+                'status' => [
+                    'title' => '产品状态',
+                    'label' => 'Shopify 状态',
+                    'placeholder' => '保留产品状态',
+                    'tooltip' => '应用于所有导出的产品。留空以保留产品的启用/禁用状态。',
+                    'options' => [
+                        'active' => '上架',
+                        'draft' => '草稿',
+                        'archived' => '已归档',
+                        'unlisted' => '未列出',
+                    ],
+                ],
             ],
             'settings' => [
                 'created' => '导出设置保存成功',
@@ -239,6 +252,10 @@ return [
             'status' => '状态',
             'enable' => '启用',
             'disable' => '禁用',
+            'active' => '上架',
+            'draft' => '草稿',
+            'archived' => '已归档',
+            'unlisted' => '未列出',
             'locale' => '语言区域',
             'attribute-groups' => '属性组',
         ],
