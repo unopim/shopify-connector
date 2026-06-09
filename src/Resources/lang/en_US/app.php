@@ -137,6 +137,10 @@ return [
                 'attribute' => 'UnoPim Attribute',
                 'fixed-value' => 'Fixed Value',
                 'save_failed' => 'Export mapping save failed. Please run the Shopify install command.',
+                'validation' => [
+                    'name_required' => 'Please map an attribute or set a fixed value for Name.',
+                    'status_required' => 'Please select a product status.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -155,14 +159,23 @@ return [
                 'status' => [
                     'title' => 'Product Status',
                     'label' => 'Shopify Status',
-                    'placeholder' => 'Keep product status',
-                    'tooltip' => 'Applies to all exported products. Leave empty to keep the product enable/disable status.',
+                    'placeholder' => 'Select product status',
+                    'tooltip' => 'Applies to all exported products.',
                     'options' => [
                         'active' => 'Active',
                         'draft' => 'Draft',
                         'archived' => 'Archived',
                         'unlisted' => 'Unlisted',
                     ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Unit Price',
+                    'quantity_value' => 'Total amount',
+                    'quantity_unit' => 'Total amount unit',
+                    'reference_value' => 'Base measure',
+                    'reference_unit' => 'Base measure unit',
+                    'auto' => 'Auto (same as total amount unit)',
                 ],
             ],
 

@@ -482,6 +482,8 @@ class CoreProductBulkPayloadBuilder
             // Inventory quantities are synced inline through productSet; there is
             // no separate inventory phase, so this is the single source of truth.
             'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
+            'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present

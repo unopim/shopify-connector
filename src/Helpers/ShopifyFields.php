@@ -190,4 +190,51 @@ class ShopifyFields
     {
         return array_keys(self::STATUS_OPTIONS);
     }
+
+    /**
+     * Shopify unit-price units mapped to their measure group.
+     * Single source of truth for the Reference Unit dropdown, the referenceUnit
+     * validation, and the export-time quantityUnit validation / measure-type guard.
+     *
+     * @var array<string, string>
+     */
+    public const UNIT_PRICE_UNITS = [
+        'ML' => 'VOLUME', 'CL' => 'VOLUME', 'L' => 'VOLUME', 'M3' => 'VOLUME',
+        'FLOZ' => 'VOLUME', 'PT' => 'VOLUME', 'QT' => 'VOLUME', 'GAL' => 'VOLUME',
+        'MG' => 'WEIGHT', 'G' => 'WEIGHT', 'KG' => 'WEIGHT', 'OZ' => 'WEIGHT', 'LB' => 'WEIGHT',
+        'MM' => 'LENGTH', 'CM' => 'LENGTH', 'M' => 'LENGTH', 'IN' => 'LENGTH', 'FT' => 'LENGTH', 'YD' => 'LENGTH',
+        'FT2' => 'AREA', 'M2' => 'AREA',
+        'ITEM' => 'COUNT',
+    ];
+
+    /**
+     * Valid Shopify unit-price unit enum values.
+     *
+     * @return array<int, string>
+     */
+    public function getUnitPriceUnitValues(): array
+    {
+        return array_keys(self::UNIT_PRICE_UNITS);
+    }
+
+    /**
+     * Unit options shaped for the admin select control (id = name = enum).
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function getUnitPriceUnitOptions(): array
+    {
+        return array_map(
+            fn (string $unit): array => ['id' => $unit, 'name' => $unit],
+            array_keys(self::UNIT_PRICE_UNITS),
+        );
+    }
+
+    /**
+     * Measure group ('VOLUME'/'WEIGHT'/'LENGTH'/'AREA'/'COUNT') for a unit, or null.
+     */
+    public function getUnitPriceMeasure(?string $unit): ?string
+    {
+        return self::UNIT_PRICE_UNITS[$unit] ?? null;
+    }
 }

@@ -55,6 +55,8 @@ class ShopifyGraphQLDataFormatter
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
 
+        $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
+
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
         return $formatted;
@@ -205,6 +207,48 @@ class ShopifyGraphQLDataFormatter
         }
 
         return $status;
+    }
+
+    /**
+     * Build the variant unitPriceMeasurement from mapping['unit_price'] and always
+     * show the unit price. Skips when unconfigured, quantity is non-positive, the unit
+     * is not a Shopify enum, or a non-AUTO reference unit is a different measure.
+     */
+    protected function applyUnitPriceMeasurement(array &$formatted, array $rawData, array $exportMapping): void
+    {
+        $cfg = $exportMapping['unit_price'] ?? null;
+
+        if (empty($cfg) || empty($cfg['quantityValueAttr']) || empty($cfg['quantityUnitAttr'])) {
+            return;
+        }
+
+        $rawQuantityValue = $rawData[$cfg['quantityValueAttr']] ?? null;
+        $quantityUnit = strtoupper(trim((string) ($rawData[$cfg['quantityUnitAttr']] ?? '')));
+
+        $fields = new ShopifyFields;
+
+        if (! is_numeric($rawQuantityValue) || (float) $rawQuantityValue <= 0
+            || ! in_array($quantityUnit, $fields->getUnitPriceUnitValues(), true)
+        ) {
+            return;
+        }
+
+        $quantityValue = (float) $rawQuantityValue;
+
+        $referenceUnit = ($cfg['referenceUnit'] ?? 'AUTO') === 'AUTO' ? $quantityUnit : $cfg['referenceUnit'];
+
+        if ($fields->getUnitPriceMeasure($referenceUnit) !== $fields->getUnitPriceMeasure($quantityUnit)) {
+            return;
+        }
+
+        $formatted['variant']['unitPriceMeasurement'] = [
+            'quantityValue' => $quantityValue,
+            'quantityUnit' => $quantityUnit,
+            'referenceValue' => (int) ($cfg['referenceValue'] ?? 100),
+            'referenceUnit' => $referenceUnit,
+        ];
+
+        $formatted['variant']['showUnitPrice'] = true;
     }
 
     /**

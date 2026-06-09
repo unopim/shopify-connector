@@ -133,6 +133,10 @@ return [
                 'attribute' => 'Attribut',
                 'fixed-value' => 'Fester Wert',
                 'save_failed' => 'Speichern der Exportzuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                'validation' => [
+                    'name_required' => 'Bitte ordnen Sie ein Attribut zu oder legen Sie einen festen Wert für den Namen fest.',
+                    'status_required' => 'Bitte wählen Sie einen Produktstatus aus.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -150,14 +154,23 @@ return [
                 'status' => [
                     'title' => 'Produktstatus',
                     'label' => 'Shopify-Status',
-                    'placeholder' => 'Produktstatus beibehalten',
-                    'tooltip' => 'Gilt für alle exportierten Produkte. Leer lassen, um den Aktiv-/Inaktiv-Status des Produkts beizubehalten.',
+                    'placeholder' => 'Produktstatus auswählen',
+                    'tooltip' => 'Gilt für alle exportierten Produkte.',
                     'options' => [
                         'active' => 'Aktiv',
                         'draft' => 'Entwurf',
                         'archived' => 'Archiviert',
                         'unlisted' => 'Nicht gelistet',
                     ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Grundpreis',
+                    'quantity_value' => 'Gesamtmenge',
+                    'quantity_unit' => 'Einheit der Gesamtmenge',
+                    'reference_value' => 'Grundmaß',
+                    'reference_unit' => 'Grundmaßeinheit',
+                    'auto' => 'Automatisch (wie Einheit der Gesamtmenge)',
                 ],
             ],
             'settings' => [

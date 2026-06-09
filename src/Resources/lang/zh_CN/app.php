@@ -133,6 +133,10 @@ return [
                 'attribute' => '属性',
                 'fixed-value' => '固定值',
                 'save_failed' => '导出映射保存失败。 请运行 Shopify 安装命令。',
+                'validation' => [
+                    'name_required' => '请为名称映射一个属性或设置一个固定值。',
+                    'status_required' => '请选择产品状态。',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -150,14 +154,23 @@ return [
                 'status' => [
                     'title' => '产品状态',
                     'label' => 'Shopify 状态',
-                    'placeholder' => '保留产品状态',
-                    'tooltip' => '应用于所有导出的产品。留空以保留产品的启用/禁用状态。',
+                    'placeholder' => '选择产品状态',
+                    'tooltip' => '应用于所有导出的产品。',
                     'options' => [
                         'active' => '上架',
                         'draft' => '草稿',
                         'archived' => '已归档',
                         'unlisted' => '未列出',
                     ],
+                ],
+
+                'unit_price' => [
+                    'title' => '单位价格',
+                    'quantity_value' => '总量',
+                    'quantity_unit' => '总量单位',
+                    'reference_value' => '基准计量',
+                    'reference_unit' => '基准计量单位',
+                    'auto' => '自动（与总量单位相同）',
                 ],
             ],
             'settings' => [

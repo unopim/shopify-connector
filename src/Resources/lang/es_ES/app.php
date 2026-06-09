@@ -133,6 +133,10 @@ return [
                 'attribute' => 'Atributo',
                 'fixed-value' => 'Valor Fijo',
                 'save_failed' => 'Error al guardar el mapeo de exportación. Por favor, ejecute el comando de instalación de Shopify.',
+                'validation' => [
+                    'name_required' => 'Por favor, asigne un atributo o establezca un valor fijo para el Nombre.',
+                    'status_required' => 'Por favor, seleccione un estado del producto.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -150,14 +154,23 @@ return [
                 'status' => [
                     'title' => 'Estado del producto',
                     'label' => 'Estado de Shopify',
-                    'placeholder' => 'Mantener el estado del producto',
-                    'tooltip' => 'Se aplica a todos los productos exportados. Déjalo vacío para mantener el estado activo/inactivo del producto.',
+                    'placeholder' => 'Seleccionar estado del producto',
+                    'tooltip' => 'Se aplica a todos los productos exportados.',
                     'options' => [
                         'active' => 'Activo',
                         'draft' => 'Borrador',
                         'archived' => 'Archivado',
                         'unlisted' => 'No listado',
                     ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Precio por unidad',
+                    'quantity_value' => 'Cantidad total',
+                    'quantity_unit' => 'Unidad de cantidad total',
+                    'reference_value' => 'Medida base',
+                    'reference_unit' => 'Unidad de medida base',
+                    'auto' => 'Automático (igual que la unidad de cantidad total)',
                 ],
             ],
             'settings' => [

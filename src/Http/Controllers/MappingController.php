@@ -58,7 +58,10 @@ class MappingController extends Controller
             $mediaMapping[$row] = $value;
         }
 
-        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
+        $unitPriceUnitOptions = (new ShopifyFields)->getUnitPriceUnitOptions();
+        $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
+
+        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
     }
 
     /**
@@ -75,6 +78,8 @@ class MappingController extends Controller
         $this->formatMediaMapping($filteredData, $mappingFields);
 
         $this->formatUnitMapping($filteredData, $mappingFields);
+
+        $this->formatUnitPriceMapping($request, $filteredData, $mappingFields);
 
         foreach ($filteredData as $row => $value) {
 
@@ -130,5 +135,31 @@ class MappingController extends Controller
         $mappingFields['unit']['weight'] = $filteredData['weightunit'] ?? null;
         $mappingFields['unit']['volume'] = $filteredData['volumeunit'] ?? null;
         $mappingFields['unit']['dimension'] = $filteredData['dimensionunit'] ?? null;
+    }
+
+    /**
+     * Extract the Unit Price fields into mapping['unit_price'] and drop them from
+     * $filteredData. Read from the request so a falsy show/reference value survives
+     * array_filter(). Skipped when both quantity attributes are not set (blank = no-op).
+     */
+    public function formatUnitPriceMapping(ExportMappingForm $request, array &$filteredData, array &$mappingFields)
+    {
+        foreach (['unit_price_quantity_value', 'unit_price_quantity_unit', 'unit_price_reference_value', 'unit_price_reference_unit'] as $key) {
+            unset($filteredData[$key]);
+        }
+
+        $quantityValueAttr = $request->input('unit_price_quantity_value');
+        $quantityUnitAttr = $request->input('unit_price_quantity_unit');
+
+        if (empty($quantityValueAttr) || empty($quantityUnitAttr)) {
+            return;
+        }
+
+        $mappingFields['unit_price'] = [
+            'quantityValueAttr' => $quantityValueAttr,
+            'quantityUnitAttr' => $quantityUnitAttr,
+            'referenceValue' => (int) ($request->input('unit_price_reference_value') ?: 100),
+            'referenceUnit' => $request->input('unit_price_reference_unit') ?: 'AUTO',
+        ];
     }
 }

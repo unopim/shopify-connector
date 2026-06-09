@@ -234,7 +234,7 @@ class OptionController extends Controller
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
             $attributeRepository = in_array('number', $entityName)
-                ? $attributeRepository->whereIn('validation', $entityName)
+                ? $attributeRepository->whereIn('validation', $entityName)->where('type', '!=', 'price')
                 : $attributeRepository->whereIn('type', $entityName);
         }
 

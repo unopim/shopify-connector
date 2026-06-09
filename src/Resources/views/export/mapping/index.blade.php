@@ -67,7 +67,7 @@
 
                             <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                                 <div>
-                                    <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }} 
+                                    <p class="break-words"><span @class(['required' => $field['name'] === 'title'])>@lang($field['label']) {{ ' ['.$field['name'].']' }}</span>
                                     @if(isset($field['tooltip']))
                                     <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang($field['tooltip'])</p> </div>
                                      </p>
@@ -111,7 +111,7 @@
                         <!----- Product status: static dropdown in the attribute column, fixed value always disabled ---->
                         <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <div>
-                                <p class="break-words">@lang('shopify::app.shopify.export.mapping.status.label') {{ ' [status]' }}
+                                <p class="break-words"><span class="required">@lang('shopify::app.shopify.export.mapping.status.label') {{ ' [status]' }}</span>
                                 <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang('shopify::app.shopify.export.mapping.status.tooltip')</p> </div>
                                 </p>
                             </div>
@@ -120,6 +120,7 @@
                                 <x-admin::form.control-group.control
                                     type="select"
                                     name="status"
+                                    rules="required"
                                     track-by="id"
                                     label-by="name"
                                     :value="old('status') ?? ($exportMapping['status'] ?? '')"
@@ -130,18 +131,83 @@
                                 <x-admin::form.control-group.error control-name="status" />
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group class="!mb-0">
-                                <x-admin::form.control-group.control
-                                    type="text"
-                                    name="default_status"
-                                    :placeholder="trans('shopify::app.shopify.export.mapping.fixed-value')"
-                                    disabled
-                                    ::disabled="true"
-                                />
-                            </x-admin::form.control-group>
+                            <div></div>
                         </div>
      
                         
+                    </div>
+
+                    <!----- Unit price mapping ---->
+                    @php
+                        $unitPrice = $unitPriceMapping ?? [];
+                        $referenceUnitOptions = array_merge(
+                            [['id' => 'AUTO', 'name' => trans('shopify::app.shopify.export.mapping.unit_price.auto')]],
+                            $unitPriceUnitOptions
+                        );
+                    @endphp
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="text-base text-gray-800 dark:text-white font-semibold">
+                                @lang('shopify::app.shopify.export.mapping.unit_price.title')
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_value')</p>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="unit_price_quantity_value"
+                                    track-by="code"
+                                    label-by="label"
+                                    :value="$unitPrice['quantityValueAttr'] ?? ''"
+                                    :entityName="json_encode(['number','decimal'])"
+                                    async=true
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit')</p>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="unit_price_quantity_unit"
+                                    track-by="code"
+                                    label-by="label"
+                                    :value="$unitPrice['quantityUnitAttr'] ?? ''"
+                                    :entityName="json_encode(['select','text'])"
+                                    async=true
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.reference_value')</p>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="text"
+                                    name="unit_price_reference_value"
+                                    :value="$unitPrice['referenceValue'] ?? 100"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.reference_unit')</p>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="unit_price_reference_unit"
+                                    track-by="id"
+                                    label-by="name"
+                                    :value="$unitPrice['referenceUnit'] ?? 'AUTO'"
+                                    :options="json_encode($referenceUnitOptions, true)"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
                     </div>
 
                     <!----- Image mappings ---->

@@ -133,6 +133,10 @@ return [
                 'attribute' => 'خاصية',
                 'fixed-value' => 'قيمة ثابتة',
                 'save_failed' => 'فشل حفظ تعيين التصدير. يرجى تشغيل أمر تثبيت Shopify.',
+                'validation' => [
+                    'name_required' => 'يرجى تعيين سمة أو تحديد قيمة ثابتة للاسم.',
+                    'status_required' => 'يرجى اختيار حالة المنتج.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -150,14 +154,23 @@ return [
                 'status' => [
                     'title' => 'حالة المنتج',
                     'label' => 'حالة Shopify',
-                    'placeholder' => 'الاحتفاظ بحالة المنتج',
-                    'tooltip' => 'يُطبَّق على جميع المنتجات المصدَّرة. اتركه فارغًا للحفاظ على حالة تفعيل/تعطيل المنتج.',
+                    'placeholder' => 'اختر حالة المنتج',
+                    'tooltip' => 'يُطبَّق على جميع المنتجات المصدَّرة.',
                     'options' => [
                         'active' => 'نشط',
                         'draft' => 'مسودة',
                         'archived' => 'مؤرشف',
                         'unlisted' => 'غير مدرج',
                     ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'سعر الوحدة',
+                    'quantity_value' => 'المبلغ الإجمالي',
+                    'quantity_unit' => 'وحدة المبلغ الإجمالي',
+                    'reference_value' => 'القياس الأساسي',
+                    'reference_unit' => 'وحدة القياس الأساسي',
+                    'auto' => 'تلقائي (نفس وحدة المبلغ الإجمالي)',
                 ],
             ],
             'settings' => [
