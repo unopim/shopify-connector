@@ -249,14 +249,14 @@ class Exporter extends AbstractExporter
         sort($newIds);
         if ($existingIds !== $newIds) {
             $this->requestGraphQlApiAction(self::UPDATE_PUBLISH_CHANNEL, $this->credentialArray, [
-                'collectionId' => $collectionId,
+                'id' => $collectionId,
                 'input' => $publicationIds,
             ]);
 
             $removePublication = array_values(array_diff($existingIds, $newIds));
             if (! empty($removePublication)) {
                 $this->requestGraphQlApiAction(self::UPDATE_UNPUBLISH_CHANNEL, $this->credentialArray, [
-                    'collectionId' => $collectionId,
+                    'id' => $collectionId,
                     'input' => array_map(fn ($id) => ['publicationId' => $id], $removePublication),
                 ]);
             }

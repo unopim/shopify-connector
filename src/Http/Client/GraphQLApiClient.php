@@ -396,7 +396,7 @@ class GraphQLApiClient
         ],
 
         'publishablePublish' => [
-            'query' => 'mutation PublishablePublish($collectionId: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $collectionId, input: $input) { userErrors { field message } } }',
+            'query' => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
@@ -433,12 +433,6 @@ class GraphQLApiClient
 
         'bulkOperationStatus' => [
             'query' => 'query bulkOperationStatus($id: ID!) { bulkOperation(id: $id) { id status errorCode createdAt completedAt objectCount fileSize url partialDataUrl } }',
-            'method' => 'POST',
-        ],
-
-        // UNUSED DUPLICATE: Already defined above (using $collectionId).
-        'publishablePublish' => [
-            'query' => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
