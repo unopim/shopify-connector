@@ -95,6 +95,9 @@ return [
                 'back-btn' => 'عودة',
                 'channel' => 'قناة البيع',
                 'locations' => 'قائمة المواقع',
+                'location_inventory_title' => 'المخزون حسب الموقع',
+                'location_inventory_info' => 'قم بربط سمة كمية لكل موقع لإرسال المخزون حسب الموقع. يتم تجاهل المواقع المتروكة فارغة.',
+                'location_inventory_attribute' => 'سمة الكمية',
             ],
             'edit' => [
                 'title' => 'تحرير بيانات الاعتماد',

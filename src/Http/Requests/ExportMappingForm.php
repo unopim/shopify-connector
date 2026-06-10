@@ -23,7 +23,6 @@ class ExportMappingForm extends FormRequest
             'default_inventoryTracked' => ['sometimes', 'nullable', new BooleanString],
             'default_price' => 'sometimes|nullable|numeric',
             'default_weight' => 'sometimes|nullable|numeric',
-            'default_inventoryQuantity' => 'sometimes|nullable|numeric',
             'default_compareAtPrice' => 'sometimes|nullable|numeric',
             'default_cost' => 'sometimes|nullable|numeric',
             'status' => ['required', Rule::in((new ShopifyFields)->getStatusEnumValues())],

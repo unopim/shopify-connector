@@ -95,6 +95,9 @@ return [
                 'back-btn' => '返回',
                 'channel' => '发布渠道（销售渠道）',
                 'locations' => '位置列表',
+                'location_inventory_title' => '按地点库存',
+                'location_inventory_info' => '为每个地点映射一个数量属性，以按地点发送库存。留空的地点将被跳过。',
+                'location_inventory_attribute' => '数量属性',
             ],
             'edit' => [
                 'title' => '编辑凭据',

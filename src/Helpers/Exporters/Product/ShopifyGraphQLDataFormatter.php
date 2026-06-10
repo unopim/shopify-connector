@@ -10,11 +10,13 @@ class ShopifyGraphQLDataFormatter
 
     protected $seoFields = ['metafields_global_title_tag', 'metafields_global_description_tag'];
 
-    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
+    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price'];
 
     protected $currency = 'USD';
 
     protected $locationId = null;
+
+    protected $locationAttributeMappings = [];
 
     protected $separators = [
         'colon' => ': ',
@@ -46,7 +48,7 @@ class ShopifyGraphQLDataFormatter
             'status' => $status,
         ];
 
-        if ($this->locationId) {
+        if ($this->locationId && empty($this->locationAttributeMappings)) {
             $formatted['variant']['inventoryQuantities']['locationId'] = $this->locationId;
             $formatted['variant']['inventoryQuantities']['name'] = 'available';
             $formatted['variant']['inventoryQuantities']['quantity'] = 0;
@@ -56,6 +58,8 @@ class ShopifyGraphQLDataFormatter
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
 
         $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
+
+        $this->applyLocationInventory($formatted, $rawData);
 
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
@@ -252,6 +256,39 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
+     * Build the variant inventoryQuantities list from the per-location attribute map
+     * (credential extras['locationAttributeMappings']). One 'available' entry per mapped
+     * location whose attribute value is numeric. Replaces the single-location shape;
+     * no-op when no per-location mappings are configured.
+     */
+    protected function applyLocationInventory(array &$formatted, array $rawData): void
+    {
+        if (empty($this->locationAttributeMappings)) {
+            return;
+        }
+
+        $list = [];
+
+        foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
+            $raw = $rawData[$attributeCode] ?? null;
+
+            if (empty($locationId) || empty($attributeCode) || ! is_numeric($raw)) {
+                continue;
+            }
+
+            $list[] = [
+                'locationId' => $locationId,
+                'name' => 'available',
+                'quantity' => (int) $raw,
+            ];
+        }
+
+        if (! empty($list)) {
+            $formatted['variant']['inventoryQuantities'] = $list;
+        }
+    }
+
+    /**
      * Processes Shopify connector settings and maps fields from raw data to the formatted output.
      * */
     protected function processShopifyConnectorSettings(array $formatted, array $rawData, array $exportMapping, string $locale, array $parentData = [])
@@ -364,7 +401,7 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
@@ -481,7 +518,7 @@ class ShopifyGraphQLDataFormatter
                 $formatted['variant']['compareAtPrice'] = (int) $defaultValue;
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) $defaultValue;
                 }
                 break;
@@ -525,11 +562,12 @@ class ShopifyGraphQLDataFormatter
     /**
      * Sets the initial data for the class properties.
      */
-    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll)
+    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll, array $locationAttributeMappings = [])
     {
         $this->locationId = $locationId;
         $this->currency = $currency;
         $this->settingMapping = $settings;
         $this->attributeAll = $attributeAll;
+        $this->locationAttributeMappings = $locationAttributeMappings;
     }
 }

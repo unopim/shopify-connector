@@ -99,6 +99,9 @@ return [
                 'back-btn' => 'Back',
                 'channel' => 'Publishing (Sales channels)',
                 'locations' => 'Location List',
+                'location_inventory_title' => 'Location-wise Inventory',
+                'location_inventory_info' => 'Map a quantity attribute for each location to send location-wise stock. Locations left blank are skipped.',
+                'location_inventory_attribute' => 'Quantity Attribute',
             ],
             'edit' => [
                 'title' => 'Edit Credential',

@@ -95,6 +95,9 @@ return [
                 'back-btn' => 'Retour',
                 'channel' => 'Publication (Canaux de vente)',
                 'locations' => 'Liste des emplacements',
+                'location_inventory_title' => 'Inventaire par emplacement',
+                'location_inventory_info' => 'Associez un attribut de quantité à chaque emplacement pour envoyer le stock par emplacement. Les emplacements laissés vides sont ignorés.',
+                'location_inventory_attribute' => 'Attribut de quantité',
             ],
             'edit' => [
                 'title' => 'Modifier l\'identifiant',

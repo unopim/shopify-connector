@@ -95,6 +95,9 @@ return [
                 'back-btn' => 'Zurück',
                 'channel' => 'Veröffentlichung (Verkaufskanäle)',
                 'locations' => 'Standortliste',
+                'location_inventory_title' => 'Standortbezogener Bestand',
+                'location_inventory_info' => 'Ordnen Sie jedem Standort ein Mengen-Attribut zu, um den Bestand pro Standort zu senden. Leer gelassene Standorte werden übersprungen.',
+                'location_inventory_attribute' => 'Mengen-Attribut',
             ],
             'edit' => [
                 'title' => 'Anmeldeinformationen bearbeiten',

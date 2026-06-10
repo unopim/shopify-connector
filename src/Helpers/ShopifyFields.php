@@ -41,13 +41,6 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: number, metric',
         ], [
-            'name' => 'inventoryQuantity',
-            'label' => 'shopify::app.shopify.fields.quantity',
-            'types' => [
-                'number',
-            ],
-            'tooltip' => 'supported attributes types: number (Default value will export in case of product creation only**)',
-        ], [
             'name' => 'inventoryTracked',
             'label' => 'shopify::app.shopify.fields.inventory_tracked',
             'types' => [

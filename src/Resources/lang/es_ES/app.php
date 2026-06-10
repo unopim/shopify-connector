@@ -95,6 +95,9 @@ return [
                 'back-btn' => 'Volver',
                 'channel' => 'Publicación (Canales de venta)',
                 'locations' => 'Lista de Localizaciones',
+                'location_inventory_title' => 'Inventario por ubicación',
+                'location_inventory_info' => 'Asigna un atributo de cantidad a cada ubicación para enviar el stock por ubicación. Las ubicaciones en blanco se omiten.',
+                'location_inventory_attribute' => 'Atributo de cantidad',
             ],
             'edit' => [
                 'title' => 'Editar Credencial',

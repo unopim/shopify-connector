@@ -34,8 +34,6 @@ class CoreProductBulkPayloadBuilder
 
     protected ?string $shopifyDefaultLocale = null;
 
-    protected ?string $locationId = null;
-
     protected ?string $currency = null;
 
     protected ?string $jobChannel = null;
@@ -97,7 +95,6 @@ class CoreProductBulkPayloadBuilder
                     'media' => true,
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
                     'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
-                    'location_id' => $this->locationId,
                 ],
                 'lines' => $manifestLines,
             ],
@@ -131,7 +128,6 @@ class CoreProductBulkPayloadBuilder
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code')->all();
-        $this->locationId = $this->credential?->extras['locations'] ?? null;
 
         $defaultLanguage = array_values(array_filter($this->credential?->storeLocales ?? [], function ($language) {
             return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
@@ -141,10 +137,11 @@ class CoreProductBulkPayloadBuilder
         $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
 
         $this->shopifyGraphQLDataFormatter->setInitialData(
-            $this->locationId ?? '',
+            '',
             $this->currency ?? 'USD',
             $this->settingMapping,
-            $this->attributesAll
+            $this->attributesAll,
+            $this->credential?->extras['locationAttributeMappings'] ?? []
         );
     }
 

@@ -1583,6 +1583,28 @@ class Importer extends AbstractImporter
             $classifyAttribute($attribute, $unoAttr, $value, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
         }
 
+        // Per-location inventory → mapped UnoPim attributes (reverse of export locationAttributeMappings).
+        $locationAttributeMappings = $this->credential?->extras['locationAttributeMappings'] ?? [];
+        foreach ($variantData['node']['inventoryItem']['inventoryLevels']['edges'] ?? [] as $levelEdge) {
+            $level = $levelEdge['node'] ?? [];
+            $locationId = $level['location']['id'] ?? null;
+            $attrCode = $locationId ? ($locationAttributeMappings[$locationId] ?? null) : null;
+
+            if (! $attrCode || ! isset($this->attributes[$attrCode])) {
+                continue;
+            }
+
+            $available = 0;
+            foreach ($level['quantities'] ?? [] as $quantity) {
+                if (($quantity['name'] ?? null) === 'available') {
+                    $available = $quantity['quantity'] ?? 0;
+                    break;
+                }
+            }
+
+            $classifyAttribute($this->attributes[$attrCode], $attrCode, (string) $available, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
+        }
+
         $vcommon['sku'] = preg_replace('/[^A-Za-z0-9_-]/', '', $variantData['node']['sku']);
 
         // Return merged results

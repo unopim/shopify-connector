@@ -84,6 +84,10 @@ return [
                   edges {
                     node {
                       id
+                      quantities(names: ["available"]) {
+                        name
+                        quantity
+                      }
                       location {
                         id
                         name
