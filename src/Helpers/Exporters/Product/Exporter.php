@@ -48,6 +48,31 @@ class Exporter extends AbstractExporter
 
     public const NOT_EXIST_PRODUCT_VARIANT = 'Product variant does not exist';
 
+    public const PHASE_FORMATTING = 'formatting';
+
+    public const PHASE_PRODUCT_CREATION = 'product';
+
+    public const PHASE_PUBLISHING = 'publishing';
+
+    public const PHASE_TRANSLATION = 'translations';
+
+    public const PHASE_MEDIA = 'media';
+
+    public const PHASES = [
+        self::PHASE_FORMATTING,
+        self::PHASE_PRODUCT_CREATION,
+        self::PHASE_PUBLISHING,
+        self::PHASE_TRANSLATION,
+        self::PHASE_MEDIA,
+    ];
+
+    public const PHASE_BULK_OPERATION = [
+        self::PHASE_PRODUCT_CREATION => BulkOperationService::CORE_PRODUCT_PHASE,
+        self::PHASE_PUBLISHING => self::PHASE_PUBLISHING,
+        self::PHASE_TRANSLATION => self::PHASE_TRANSLATION,
+        self::PHASE_MEDIA => self::PHASE_MEDIA,
+    ];
+
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
 
     protected $seoFileds = ['metafields_global_title_tag', 'metafields_global_description_tag'];
@@ -66,7 +91,7 @@ class Exporter extends AbstractExporter
      */
     protected ?int $totalExportProductCount = null;
 
-    public const BATCH_SIZE = 500;
+    public const BATCH_SIZE = 10000;
 
     /**
      * @var array
@@ -289,6 +314,127 @@ class Exporter extends AbstractExporter
     }
 
     /**
+     * @param  array  $stats  the default batch-derived stats payload
+     * @param  string  $state  the batch state the tracker is polling for
+     */
+    public function overrideStats(array $stats, string $state): array
+    {
+        $phase = $this->resolveCurrentPhase();
+        $progress = $phase !== null ? $this->phaseProgress($phase) : null;
+
+        if ($progress !== null) {
+            $stats['progress'] = $progress;
+            $stats['current_phase'] = $phase;
+            $stats['object_count'] = $this->phaseObjectCount($phase);
+
+            return $stats;
+        }
+
+        if ($this->export->state === ExportHelper::STATE_COMPLETED) {
+            $stats['progress'] = 100;
+        }
+
+        return $stats;
+    }
+
+    protected function phaseObjectCount(string $phase): ?int
+    {
+        $bulkPhase = self::PHASE_BULK_OPERATION[$phase] ?? null;
+
+        if ($bulkPhase === null) {
+            return null;
+        }
+
+        $query = $this->shopifyBulkOperationRepository
+            ->where('job_track_id', $this->export->id);
+
+        if ($bulkPhase === BulkOperationService::CORE_PRODUCT_PHASE) {
+            $query->where(function ($inner) use ($bulkPhase) {
+                $inner->where('phase', $bulkPhase)->orWhereNull('phase');
+            });
+        } else {
+            $query->where('phase', $bulkPhase);
+        }
+
+        $bulkOperation = $query->orderBy('id', 'desc')->first();
+
+        return $bulkOperation && $bulkOperation->object_count !== null
+            ? (int) $bulkOperation->object_count
+            : null;
+    }
+
+    protected function phaseProgress(string $phase): ?int
+    {
+        $index = array_search($phase, self::PHASES, true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        return (int) round((($index + 1) / count(self::PHASES)) * 100);
+    }
+
+    protected function resolveCurrentPhase(): ?string
+    {
+        $summary = is_array($this->export->summary) ? $this->export->summary : [];
+        $livePhase = $summary['current_phase'] ?? null;
+
+        if (in_array($livePhase, [self::PHASE_PUBLISHING, self::PHASE_TRANSLATION, self::PHASE_MEDIA], true)) {
+            return $livePhase;
+        }
+
+        $coreOp = $this->shopifyBulkOperationRepository
+            ->where('job_track_id', $this->export->id)
+            ->where(function ($query) {
+                $query->where('phase', BulkOperationService::CORE_PRODUCT_PHASE)
+                    ->orWhereNull('phase');
+            })
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (! $coreOp) {
+            if (in_array($livePhase, self::PHASES, true)) {
+                return $livePhase;
+            }
+
+            return $this->export->state === ExportHelper::STATE_COMPLETED
+                ? null
+                : self::PHASE_FORMATTING;
+        }
+
+        $meta = is_array($coreOp->meta) ? $coreOp->meta : [];
+        $followUpsEnabled = config('shopify-bulk-operations.dispatch_followup_phases', false);
+
+        if ($followUpsEnabled
+            && $this->export->state === ExportHelper::STATE_COMPLETED
+            && ! empty($meta['follow_up_phases_enabled'])
+            && (int) ($meta['unfinished_phase_jobs'] ?? 0) === 0
+        ) {
+            return self::PHASE_MEDIA;
+        }
+
+        if (! $followUpsEnabled && $coreOp->status === 'completed') {
+            return null;
+        }
+
+        return self::PHASE_PRODUCT_CREATION;
+    }
+
+    protected function markExportPhase(string $phase): void
+    {
+        $summary = is_array($this->export->summary) ? $this->export->summary : [];
+
+        if (($summary['current_phase'] ?? null) === $phase) {
+            return;
+        }
+
+        $summary['current_phase'] = $phase;
+
+        $this->export->summary = $summary;
+        $this->export->save();
+    }
+
+    /**
      * Count the product rows this export will actually process: simple products,
      * configurable parents, AND every variant of those configurables.
      *
@@ -422,7 +568,13 @@ class Exporter extends AbstractExporter
      */
     protected function submitCoreBulkOperation(JobTrackBatchContract $batch): void
     {
+        // Phase 1 — formatting the products into the bulk payload.
+        $this->markExportPhase(self::PHASE_FORMATTING);
+
         $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export);
+
+        // Phase 2 — payload built; products are now being created on Shopify.
+        $this->markExportPhase(self::PHASE_PRODUCT_CREATION);
         // Do NOT seed batch summary with the builder's line count — that's
         // "submitted to Shopify", not "accepted by Shopify". For a 10k-product
         // bulk op the gap is minutes, during which the UI would show 10000 as

@@ -3,7 +3,8 @@
 return [
     'tracker' => [
         'phase' => [
-            'product' => 'Product Exporting',
+            'formatting' => 'Formatting Products',
+            'product' => 'Product Creation Process',
             'publishing' => 'Publishing Products',
             'collections' => 'Collection Assigning',
             'translations' => 'Translation Adding',

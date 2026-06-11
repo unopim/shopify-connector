@@ -276,23 +276,29 @@ class CoreProductBulkPayloadBuilder
 
         foreach ($group['variants'] as $variantRow) {
             $categoryCodes = array_merge($variantRow['values']['categories'] ?? [], $categoryCodes);
-            $variantMapping = $this->findMapping($variantRow['sku']);
-            $variantMergedFields = $this->getAllAttributeValues($variantRow);
+            if ($variantRow['sku'] === $productSku) {
+                $variantMapping = $productMapping;
+                $variantMergedFields = $productMergedFields;
+                $formattedVariant = $formattedProduct;
+            } else {
+                $variantMapping = $this->findMapping($variantRow['sku']);
+                $variantMergedFields = $this->getAllAttributeValues($variantRow);
+                $formattedVariant = $this->shopifyGraphQLDataFormatter->formatDataForGraphql(
+                    $variantMergedFields,
+                    $this->exportMapping->mapping ?? [],
+                    $this->shopifyDefaultLocale ?? 'en',
+                    $parentMergedFields,
+                    $this->productMetaFieldMapping,
+                    $this->variantMetaFieldMapping
+                );
+            }
             $optionValues = $this->buildVariantOptionValues($parentData, $variantMergedFields);
-            $formattedVariant = $this->shopifyGraphQLDataFormatter->formatDataForGraphql(
-                $variantMergedFields,
-                $this->exportMapping->mapping ?? [],
-                $this->shopifyDefaultLocale ?? 'en',
-                $parentMergedFields,
-                $this->productMetaFieldMapping,
-                $this->variantMetaFieldMapping
-            );
 
             $variants[] = $this->normalizeVariantInput(
                 $formattedVariant['variant'] ?? [],
                 ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [],
                 $optionValues,
-                $this->resolveVariantGid($variantMapping[0]['externalId'] ?? null),
+                $variantMapping[0]['externalId'] ?? null,
                 ! empty($parentData)
             );
             $variantManifest[] = [
