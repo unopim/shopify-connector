@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Anmeldeinformationen',
                 'export-mappings' => 'Export-Zuordnungen',
+                'collection-mappings' => 'Sammlungszuordnungen',
                 'import-mappings' => 'Importzuordnungen',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => 'Sammlungszuordnungen',
+                    'back-btn' => 'Zurück',
+                    'save' => 'Speichern',
+                    'created' => 'Sammlungszuordnung erfolgreich gespeichert',
+                    'save_failed' => 'Speichern der Sammlungszuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                    'validation' => [
+                        'title_required' => 'Bitte ordnen Sie dem Titel ein Kategorieattribut zu.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Sammlung für Kategorie :code wird übersprungen: Das zugeordnete Titelattribut ist leer.',
+                    ],
+                    'images' => [
+                        'title' => 'Sammlungsbild-Zuordnung',
+                        'label' => 'Bildattribut',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Produktsortierung',
+                        'placeholder' => 'Sortierreihenfolge auswählen',
+                        'tooltip' => 'Gilt für alle exportierten Sammlungen.',
+                        'options' => [
+                            'manual' => 'Manuell',
+                            'best_selling' => 'Bestseller',
+                            'alpha_asc' => 'Alphabetisch (A-Z)',
+                            'alpha_desc' => 'Alphabetisch (Z-A)',
+                            'price_asc' => 'Preis (aufsteigend)',
+                            'price_desc' => 'Preis (absteigend)',
+                            'created' => 'Erstellungsdatum (älteste zuerst)',
+                            'created_desc' => 'Erstellungsdatum (neueste zuerst)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => 'Grundpreis',
                     'quantity_value' => 'Gesamtmenge',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'SEO-Titel',
             'seo_description' => 'SEO-Beschreibung',
             'handle' => 'Handle',
+            'collection_type' => 'Sammlungstyp',
             'taxable' => 'Besteuerbar',
             'inventory_cost' => 'Lagerkosten',
         ],

@@ -34,6 +34,7 @@ return [
                 'shopify' => 'شوبفاي',
                 'credentials' => 'بيانات الاعتماد',
                 'export-mappings' => 'تعيينات التصدير',
+                'collection-mappings' => 'تعيينات المجموعات',
                 'import-mappings' => 'استيراد التعيينات',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => 'تعيينات المجموعات',
+                    'back-btn' => 'رجوع',
+                    'save' => 'حفظ',
+                    'created' => 'تم حفظ تعيين المجموعة بنجاح',
+                    'save_failed' => 'فشل حفظ تعيين المجموعة. يرجى تشغيل أمر تثبيت Shopify.',
+                    'validation' => [
+                        'title_required' => 'يرجى تعيين سمة فئة للعنوان.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'تم تخطي المجموعة للفئة :code: سمة العنوان المعينة فارغة.',
+                    ],
+                    'images' => [
+                        'title' => 'تعيين صورة المجموعة',
+                        'label' => 'سمة الصورة',
+                    ],
+                    'sort_order' => [
+                        'label' => 'ترتيب فرز المنتجات',
+                        'placeholder' => 'اختر ترتيب الفرز',
+                        'tooltip' => 'ينطبق على جميع المجموعات المصدَّرة.',
+                        'options' => [
+                            'manual' => 'يدوي',
+                            'best_selling' => 'الأكثر مبيعاً',
+                            'alpha_asc' => 'أبجدياً (أ-ي)',
+                            'alpha_desc' => 'أبجدياً (ي-أ)',
+                            'price_asc' => 'السعر (من الأقل إلى الأعلى)',
+                            'price_desc' => 'السعر (من الأعلى إلى الأقل)',
+                            'created' => 'تاريخ الإنشاء (الأقدم أولاً)',
+                            'created_desc' => 'تاريخ الإنشاء (الأحدث أولاً)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => 'سعر الوحدة',
                     'quantity_value' => 'المبلغ الإجمالي',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'عنوان SEO',
             'seo_description' => 'وصف SEO',
             'handle' => 'معالجة',
+            'collection_type' => 'نوع المجموعة',
             'taxable' => 'قابل للضريبة',
             'inventory_cost' => 'تكلفة المخزون',
         ],

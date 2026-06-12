@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Credentials',
                 'export-mappings' => 'Export Mappings',
+                'collection-mappings' => 'Collection Mappings',
                 'import-mappings' => 'Import Mappings',
                 'meta-fields' => 'Metafield Definitions',
                 'settings' => 'Settings',
@@ -180,6 +181,39 @@ return [
                     'reference_unit' => 'Base measure unit',
                     'auto' => 'Auto (same as total amount unit)',
                 ],
+
+                'collection' => [
+                    'title' => 'Collection Mappings',
+                    'back-btn' => 'Back',
+                    'save' => 'Save',
+                    'created' => 'Collection Mapping saved successfully',
+                    'save_failed' => 'Collection mapping save failed. Please run the Shopify install command.',
+                    'validation' => [
+                        'title_required' => 'Please map a category attribute for Title.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Skipping collection for category :code: the mapped Title attribute is empty.',
+                    ],
+                    'images' => [
+                        'title' => 'Collection Image Mapping',
+                        'label' => 'Image Attribute',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Product Sort Order',
+                        'placeholder' => 'Select sort order',
+                        'tooltip' => 'Applies to all exported collections.',
+                        'options' => [
+                            'manual' => 'Manual',
+                            'best_selling' => 'Best Selling',
+                            'alpha_asc' => 'Alphabetical (A-Z)',
+                            'alpha_desc' => 'Alphabetical (Z-A)',
+                            'price_asc' => 'Price (low to high)',
+                            'price_desc' => 'Price (high to low)',
+                            'created' => 'Date created (oldest first)',
+                            'created_desc' => 'Date created (newest first)',
+                        ],
+                    ],
+                ],
             ],
 
             'settings' => [
@@ -265,6 +299,7 @@ return [
             'seo_title' => 'SEO Title',
             'seo_description' => 'SEO Description',
             'handle' => 'Handle',
+            'collection_type' => 'Collection Type',
             'taxable' => 'Taxable',
             'inventory_cost' => 'Cost per item',
 

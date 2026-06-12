@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shopify\Http\Controllers\CollectionMappingController;
 use Webkul\Shopify\Http\Controllers\CredentialController;
 use Webkul\Shopify\Http\Controllers\ImportMappingController;
 use Webkul\Shopify\Http\Controllers\MappingController;
@@ -65,6 +66,12 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
                 Route::post('create', 'store')->name('shopify.export-mappings.create');
             });
 
+            Route::controller(CollectionMappingController::class)->prefix('collection-mapping')->group(function () {
+                Route::get('{id}', 'index')->name('admin.shopify.collection-mappings');
+
+                Route::post('create', 'store')->name('shopify.collection-mappings.create');
+            });
+
         });
 
         Route::prefix('import')->group(function () {
@@ -78,6 +85,8 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
         Route::controller(OptionController::class)->group(function () {
 
             Route::get('get-attribute', 'listAttributes')->name('admin.shopify.get-attribute');
+
+            Route::get('get-category-field', 'listCategoryFields')->name('admin.shopify.get-category-field');
 
             Route::get('get-image-attribute', 'listImageAttributes')->name('admin.shopify.get-image-attribute');
 

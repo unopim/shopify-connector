@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'प्रमाण पत्र',
                 'export-mappings' => 'निर्यात मानचित्रण',
+                'collection-mappings' => 'कलेक्शन मैपिंग्स',
                 'import-mappings' => 'आयात मैपिंग्स',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => 'कलेक्शन मैपिंग्स',
+                    'back-btn' => 'वापस',
+                    'save' => 'सहेजें',
+                    'created' => 'कलेक्शन मैपिंग सफलतापूर्वक सहेजी गई',
+                    'save_failed' => 'कलेक्शन मैपिंग सहेजने में विफल। कृपया Shopify इंस्टॉल कमांड चलाएं।',
+                    'validation' => [
+                        'title_required' => 'कृपया शीर्षक के लिए एक श्रेणी विशेषता मैप करें।',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'श्रेणी :code के लिए कलेक्शन छोड़ा जा रहा है: मैप की गई शीर्षक विशेषता खाली है।',
+                    ],
+                    'images' => [
+                        'title' => 'कलेक्शन छवि मैपिंग',
+                        'label' => 'छवि विशेषता',
+                    ],
+                    'sort_order' => [
+                        'label' => 'उत्पाद क्रम',
+                        'placeholder' => 'क्रम चुनें',
+                        'tooltip' => 'सभी निर्यात की गई कलेक्शनों पर लागू होता है।',
+                        'options' => [
+                            'manual' => 'मैनुअल',
+                            'best_selling' => 'सर्वाधिक बिकने वाले',
+                            'alpha_asc' => 'वर्णानुक्रम (A-Z)',
+                            'alpha_desc' => 'वर्णानुक्रम (Z-A)',
+                            'price_asc' => 'मूल्य (कम से अधिक)',
+                            'price_desc' => 'मूल्य (अधिक से कम)',
+                            'created' => 'निर्माण तिथि (पुराने पहले)',
+                            'created_desc' => 'निर्माण तिथि (नए पहले)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => 'इकाई मूल्य',
                     'quantity_value' => 'कुल मात्रा',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'SEO शीर्षक',
             'seo_description' => 'SEO विवरण',
             'handle' => 'Handle',
+            'collection_type' => 'कलेक्शन प्रकार',
             'taxable' => 'कर योग्य',
             'inventory_cost' => 'भंडार लागत',
         ],

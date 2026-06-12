@@ -72,6 +72,8 @@ class Importer extends AbstractImporter
 
     protected $importMapping;
 
+    protected $collectionMapping;
+
     public function __construct(
         protected JobTrackBatchRepository $importBatchRepository,
         protected CategoryRepository $categoryRepository,
@@ -118,6 +120,8 @@ class Importer extends AbstractImporter
         }
 
         $this->importMapping = $this->shopifyExportmapping->find(3);
+
+        $this->collectionMapping = $this->shopifyExportmapping->find(4);
 
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
     }
@@ -198,16 +202,15 @@ class Importer extends AbstractImporter
     public function saveCategoryData(JobTrackBatchContract $batch): bool
     {
         $this->initFilters();
-        $collectionData = array_column($batch->data, 'node');
-        $this->categoryStorage->load(Arr::pluck($collectionData, 'handle'));
-        $categories = [];
-        foreach ($batch->data as $rowData) {
-            /**
-             * Prepare categories for import
-             */
-            $this->prepareCategories($rowData, $categories);
+        if (! empty($this->collectionMapping?->mapping['collection_mapping']['title'])) {
+            $collectionData = array_column($batch->data, 'node');
+            $this->categoryStorage->load(Arr::pluck($collectionData, 'handle'));
+            $categories = [];
+            foreach ($batch->data as $rowData) {
+                $this->prepareCategories($rowData, $categories);
+            }
+            $this->saveCategories($categories);
         }
-        $this->saveCategories($categories);
         /**
          * Update import batch summary
          */
@@ -224,88 +227,128 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Prepare categories for import
+     * Prepare categories for import (mapping-driven from the id=4 collection mapping).
      */
     public function prepareCategories(array $collection, &$category)
     {
-        $categ = $this->categoryRepository->findOneByField('code', $collection['node']['handle']);
+        $node = $collection['node'];
+        $fieldMap = $this->collectionMapping?->mapping['collection_mapping'] ?? [];
+
+        $categ = $this->categoryRepository->findOneByField('code', $node['handle']);
 
         $data = [
-            'code' => $collection['node']['handle'],
+            'code' => $node['handle'],
             'parent_id' => $categ?->parent_id ?? $this->rootCategoryId,
             'additional_data' => $categ ? $categ->toArray()['additional_data'] : [],
         ];
 
-        $localizedTitles = [
-            $this->locale => $collection['node']['title'] ?? '',
+        $values = [
+            $fieldMap['title'] => $node['title'] ?? '',
         ];
 
-        $localizedDescriptions = [
-            $this->locale => $collection['node']['descriptionHtml'] ?? '',
-        ];
-        $shopifyLocaleForCurrent = array_search($this->locale, (array) ($this->credential?->storelocaleMapping ?? []), true);
-        $defaultShopifyLocale = collect((array) ($this->credential?->storeLocales ?? []))
-            ->firstWhere('defaultlocale', true)['locale'] ?? null;
-        $isDefaultShopifyLocale = ! empty($shopifyLocaleForCurrent) && $shopifyLocaleForCurrent === $defaultShopifyLocale;
+        if (! empty($fieldMap['descriptionHtml'])) {
+            $values[$fieldMap['descriptionHtml']] = $node['descriptionHtml'] ?? '';
+        }
 
-        if (! empty($collection['node']['id']) && ! empty($shopifyLocaleForCurrent)) {
-            try {
-                $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credentialArray, [
-                    'resourceId' => $collection['node']['id'],
-                    'locale' => $shopifyLocaleForCurrent,
-                ]);
+        if (! empty($fieldMap['seoTitle'])) {
+            $values[$fieldMap['seoTitle']] = $node['seo']['title'] ?? '';
+        }
 
-                $translations = collect($response['body']['data']['translatableResource']['translations'] ?? []);
-                $title = $translations->firstWhere('key', 'title')['value'] ?? null;
+        if (! empty($fieldMap['seoDescription'])) {
+            $values[$fieldMap['seoDescription']] = $node['seo']['description'] ?? '';
+        }
 
-                if (! empty($title)) {
-                    $localizedTitles[$this->locale] = $title;
-                }
+        if (! empty($fieldMap['handle'])) {
+            $values[$fieldMap['handle']] = $node['handle'] ?? '';
+        }
 
-                $descriptionTranslation = $translations->firstWhere('key', 'body_html');
+        if (! empty($fieldMap['collectionType'])) {
+            $values[$fieldMap['collectionType']] = empty($node['ruleSet']) ? 'false' : 'true';
+        }
 
-                if ($descriptionTranslation !== null) {
-                    $localizedDescriptions[$this->locale] = (string) ($descriptionTranslation['value'] ?? '');
-                } elseif (! $isDefaultShopifyLocale) {
-                    $localizedDescriptions[$this->locale] = '';
-                }
-            } catch (\Throwable $e) {
-                // Keep default title fallback.
-            }
+        $this->applyCollectionTranslations($node, $fieldMap, $values);
+
+        foreach ($values as $code => $value) {
+            $this->writeCategoryFieldValue($data, $code, $value);
         }
 
         $this->mapCollectionImage($collection, $data);
 
-        $categoryMapping = $this->checkMappingInDb(['code' => $collection['node']['handle']]);
-        if (! $categoryMapping) {
-            $this->parentMapping($collection['node']['handle'], $collection['node']['id'], $this->import->id);
+        if (! $this->checkMappingInDb(['code' => $node['handle']])) {
+            $this->parentMapping($node['handle'], $node['id'], $this->import->id);
         }
 
-        $this->setLocalizedCategoryContent($data, $localizedTitles, $localizedDescriptions);
-
         if ($categ) {
-            $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'] ?? [], $category['update'][$collection['node']['handle']]['additional_data'] ?? []);
-            $category['update'][$collection['node']['handle']] = array_merge($category['update'][$collection['node']['handle']] ?? [], $data);
+            $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'] ?? [], $category['update'][$node['handle']]['additional_data'] ?? []);
+            $category['update'][$node['handle']] = array_merge($category['update'][$node['handle']] ?? [], $data);
         } else {
-            $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'], $category['insert'][$collection['node']['handle']]['additional_data'] ?? []);
-
-            $category['insert'][$collection['node']['handle']] = array_merge($category['insert'][$collection['node']['handle']] ?? [], $data);
+            $data['additional_data'] = $this->mergeCategoryFieldValues($data['additional_data'], $category['insert'][$node['handle']]['additional_data'] ?? []);
+            $category['insert'][$node['handle']] = array_merge($category['insert'][$node['handle']] ?? [], $data);
         }
     }
 
     /**
-     * Set localized category fields from Shopify payload.
+     * Write a resolved value into the category field's correct bucket
+     * (locale_specific for value-per-locale fields, common otherwise).
      */
-    protected function setLocalizedCategoryContent(array &$data, array $localizedTitles, array $localizedDescriptions): void
+    protected function writeCategoryFieldValue(array &$data, string $code, $value): void
     {
-        foreach ($localizedTitles as $localeCode => $title) {
-            if ($title !== '') {
-                $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$localeCode]['name'] = $title;
-            }
+        $field = $this->getCategoryFieldByCode($code);
+
+        if (! $field) {
+            return;
         }
 
-        foreach ($localizedDescriptions as $localeCode => $description) {
-            $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$localeCode]['description'] = $description;
+        if ($field->value_per_locale) {
+            $data['additional_data'][CategoryRepository::LOCALE_VALUES_KEY][$this->locale][$code] = $value;
+        } else {
+            $data['additional_data'][CategoryRepository::COMMON_VALUES_KEY][$code] = $value;
+        }
+    }
+
+    /**
+     * Override mapped text values with the current locale's Shopify translations.
+     * For a non-default Shopify locale with no translation, the value is cleared
+     * so the default-locale text is not copied across locales.
+     */
+    protected function applyCollectionTranslations(array $node, array $fieldMap, array &$values): void
+    {
+        $shopifyLocale = array_search($this->locale, (array) ($this->credential?->storelocaleMapping ?? []), true);
+
+        if (empty($node['id']) || empty($shopifyLocale)) {
+            return;
+        }
+
+        $keyToCode = array_filter([
+            'title' => $fieldMap['title'] ?? null,
+            'body_html' => $fieldMap['descriptionHtml'] ?? null,
+            'meta_title' => $fieldMap['seoTitle'] ?? null,
+            'meta_description' => $fieldMap['seoDescription'] ?? null,
+        ]);
+
+        $defaultShopifyLocale = collect((array) ($this->credential?->storeLocales ?? []))
+            ->firstWhere('defaultlocale', true)['locale'] ?? null;
+        $isDefault = $shopifyLocale === $defaultShopifyLocale;
+
+        try {
+            $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credentialArray, [
+                'resourceId' => $node['id'],
+                'locale' => $shopifyLocale,
+            ]);
+
+            $translations = collect($response['body']['data']['translatableResource']['translations'] ?? []);
+
+            foreach ($keyToCode as $key => $code) {
+                $translated = $translations->firstWhere('key', $key);
+
+                if ($translated !== null) {
+                    $values[$code] = (string) ($translated['value'] ?? '');
+                } elseif (! $isDefault) {
+                    $values[$code] = '';
+                }
+            }
+        } catch (\Throwable $e) {
+            // Keep default-locale values on translation fetch failure.
         }
     }
 
@@ -425,6 +468,12 @@ class Importer extends AbstractImporter
     protected function resolveCategoryMediaFields(): array
     {
         $mediaAttributes = [];
+
+        $collectionMediaMapping = $this->collectionMapping?->mapping['mediaMapping']['mediaAttributes'] ?? [];
+        if (! is_array($collectionMediaMapping)) {
+            $collectionMediaMapping = explode(',', (string) $collectionMediaMapping);
+        }
+        $mediaAttributes = array_merge($mediaAttributes, $collectionMediaMapping);
 
         $newMapping = $this->importMapping?->mapping['mediaMapping']['mediaAttributes'] ?? [];
         if (! is_array($newMapping)) {

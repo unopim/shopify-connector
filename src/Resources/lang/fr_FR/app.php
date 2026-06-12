@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Identifiants',
                 'export-mappings' => 'Mappages d\'exportation',
+                'collection-mappings' => 'Mappages de collections',
                 'import-mappings' => 'Importer les correspondances',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => 'Mappages de collections',
+                    'back-btn' => 'Retour',
+                    'save' => 'Enregistrer',
+                    'created' => 'Mappage de collection enregistré avec succès',
+                    'save_failed' => 'Échec de l\'enregistrement du mappage de collection. Veuillez exécuter la commande d\'installation Shopify.',
+                    'validation' => [
+                        'title_required' => 'Veuillez mapper un attribut de catégorie pour le Titre.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Collection ignorée pour la catégorie :code : l\'attribut Titre mappé est vide.',
+                    ],
+                    'images' => [
+                        'title' => 'Mappage de l\'image de collection',
+                        'label' => 'Attribut d\'image',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Ordre de tri des produits',
+                        'placeholder' => 'Sélectionner l\'ordre de tri',
+                        'tooltip' => 'S\'applique à toutes les collections exportées.',
+                        'options' => [
+                            'manual' => 'Manuel',
+                            'best_selling' => 'Meilleures ventes',
+                            'alpha_asc' => 'Alphabétique (A-Z)',
+                            'alpha_desc' => 'Alphabétique (Z-A)',
+                            'price_asc' => 'Prix (croissant)',
+                            'price_desc' => 'Prix (décroissant)',
+                            'created' => 'Date de création (plus anciens d\'abord)',
+                            'created_desc' => 'Date de création (plus récents d\'abord)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => 'Prix unitaire',
                     'quantity_value' => 'Quantité totale',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'Titre SEO',
             'seo_description' => 'Description SEO',
             'handle' => 'Handle',
+            'collection_type' => 'Type de collection',
             'taxable' => 'Imposable',
             'inventory_cost' => 'Coût des stocks',
         ],

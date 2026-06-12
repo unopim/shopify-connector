@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Credenciales',
                 'export-mappings' => 'Mapeos de Exportación',
+                'collection-mappings' => 'Mapeos de Colecciones',
                 'import-mappings' => 'Mapas de importación',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => 'Mapeos de Colecciones',
+                    'back-btn' => 'Atrás',
+                    'save' => 'Guardar',
+                    'created' => 'Mapeo de colección guardado correctamente',
+                    'save_failed' => 'Error al guardar el mapeo de colección. Por favor, ejecute el comando de instalación de Shopify.',
+                    'validation' => [
+                        'title_required' => 'Por favor, asigne un atributo de categoría para el Título.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Se omite la colección para la categoría :code: el atributo de Título asignado está vacío.',
+                    ],
+                    'images' => [
+                        'title' => 'Mapeo de Imagen de Colección',
+                        'label' => 'Atributo de Imagen',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Orden de Productos',
+                        'placeholder' => 'Seleccione el orden',
+                        'tooltip' => 'Se aplica a todas las colecciones exportadas.',
+                        'options' => [
+                            'manual' => 'Manual',
+                            'best_selling' => 'Más vendidos',
+                            'alpha_asc' => 'Alfabético (A-Z)',
+                            'alpha_desc' => 'Alfabético (Z-A)',
+                            'price_asc' => 'Precio (de menor a mayor)',
+                            'price_desc' => 'Precio (de mayor a menor)',
+                            'created' => 'Fecha de creación (más antiguos primero)',
+                            'created_desc' => 'Fecha de creación (más recientes primero)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => 'Precio por unidad',
                     'quantity_value' => 'Cantidad total',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'Título SEO',
             'seo_description' => 'Descripción SEO',
             'handle' => 'Manejar',
+            'collection_type' => 'Tipo de Colección',
             'taxable' => 'Gravable',
             'inventory_cost' => 'Costo de Inventario',
         ],

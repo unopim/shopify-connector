@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => '凭据',
                 'export-mappings' => '导出映射',
+                'collection-mappings' => '系列映射',
                 'import-mappings' => '导入映射',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -167,6 +168,39 @@ return [
                     ],
                 ],
 
+                'collection' => [
+                    'title' => '系列映射',
+                    'back-btn' => '返回',
+                    'save' => '保存',
+                    'created' => '系列映射保存成功',
+                    'save_failed' => '系列映射保存失败。请运行 Shopify 安装命令。',
+                    'validation' => [
+                        'title_required' => '请为标题映射一个分类属性。',
+                    ],
+                    'errors' => [
+                        'empty_title' => '跳过分类 :code 的系列：映射的标题属性为空。',
+                    ],
+                    'images' => [
+                        'title' => '系列图片映射',
+                        'label' => '图片属性',
+                    ],
+                    'sort_order' => [
+                        'label' => '产品排序',
+                        'placeholder' => '选择排序方式',
+                        'tooltip' => '适用于所有导出的系列。',
+                        'options' => [
+                            'manual' => '手动',
+                            'best_selling' => '最畅销',
+                            'alpha_asc' => '字母顺序 (A-Z)',
+                            'alpha_desc' => '字母顺序 (Z-A)',
+                            'price_asc' => '价格 (从低到高)',
+                            'price_desc' => '价格 (从高到低)',
+                            'created' => '创建日期 (最早优先)',
+                            'created_desc' => '创建日期 (最新优先)',
+                        ],
+                    ],
+                ],
+
                 'unit_price' => [
                     'title' => '单位价格',
                     'quantity_value' => '总量',
@@ -256,6 +290,7 @@ return [
             'seo_title' => 'SEO 标题',
             'seo_description' => 'SEO 描述',
             'handle' => 'Handle',
+            'collection_type' => '系列类型',
             'taxable' => '应税',
             'inventory_cost' => '库存成本',
         ],

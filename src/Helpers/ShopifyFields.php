@@ -144,6 +144,97 @@ class ShopifyFields
     }
 
     /**
+     * Shopify collection mapping fields (category field -> collection field).
+     *
+     * @var array
+     */
+    public $collectionMappingFields = [
+        [
+            'name' => 'title',
+            'label' => 'shopify::app.shopify.fields.name',
+            'types' => ['text'],
+            'tooltip' => 'supported attributes types: text',
+        ], [
+            'name' => 'descriptionHtml',
+            'label' => 'shopify::app.shopify.fields.description',
+            'types' => ['textarea', 'text'],
+            'tooltip' => 'supported attributes types: text, textarea',
+        ], [
+            'name' => 'seoTitle',
+            'label' => 'shopify::app.shopify.fields.seo_title',
+            'types' => ['text', 'textarea'],
+            'tooltip' => 'supported attributes types: text, textarea',
+        ], [
+            'name' => 'seoDescription',
+            'label' => 'shopify::app.shopify.fields.seo_description',
+            'types' => ['text', 'textarea'],
+            'tooltip' => 'supported attributes types: text, textarea',
+        ], [
+            'name' => 'handle',
+            'label' => 'shopify::app.shopify.fields.handle',
+            'types' => ['text'],
+            'tooltip' => 'supported attributes types: text (falls back to category code if empty)',
+        ], [
+            'name' => 'collectionType',
+            'label' => 'shopify::app.shopify.fields.collection_type',
+            'types' => ['boolean'],
+            'tooltip' => 'supported attributes types: yes/no. Yes => Smart collection (default rule auto-added); No or unmapped => Manual.',
+        ],
+    ];
+
+    /**
+     * Get Shopify collection mapping fields.
+     */
+    public function getCollectionMappingField(): array
+    {
+        return $this->collectionMappingFields;
+    }
+
+    /**
+     * Shopify collection sort order: enum value => translation key.
+     * Single source of truth for the Product Sort dropdown and its validation.
+     *
+     * @var array<string, string>
+     */
+    public const COLLECTION_SORT_ORDER_OPTIONS = [
+        'MANUAL' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.manual',
+        'BEST_SELLING' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.best_selling',
+        'ALPHA_ASC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_asc',
+        'ALPHA_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_desc',
+        'PRICE_ASC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_asc',
+        'PRICE_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_desc',
+        'CREATED' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.created',
+        'CREATED_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.created_desc',
+    ];
+
+    /**
+     * Sort order options shaped for the admin select control (id/name).
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    public function getCollectionSortOrderOptions(): array
+    {
+        return array_map(
+            fn (string $enum, string $labelKey): array => [
+                'id' => $enum,
+                'name' => trans($labelKey),
+            ],
+            array_keys(self::COLLECTION_SORT_ORDER_OPTIONS),
+            array_values(self::COLLECTION_SORT_ORDER_OPTIONS),
+        );
+    }
+
+    /**
+     * Valid Shopify collection sort order enum values.
+     *
+     * @return array<int, string>
+     */
+    public function getCollectionSortOrderValues(): array
+    {
+        return array_keys(self::COLLECTION_SORT_ORDER_OPTIONS);
+    }
+
+    /**
      * Shopify product status options: enum value => translation key.
      * Single source of truth for the export status dropdown. The exported
      * status is one of these enum values; labels are translatable.

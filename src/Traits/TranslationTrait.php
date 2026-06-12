@@ -251,7 +251,8 @@ trait TranslationTrait
         array $rawData,
         ShopifyCredentialsConfig $credential,
         array $credentialAsArray,
-        array $collectionResult
+        array $collectionResult,
+        array $fieldMap = []
     ): void {
         if (! empty($collectionResult)) {
             $storeloacleMapping = $credential->storelocaleMapping;
@@ -265,24 +266,51 @@ trait TranslationTrait
                 }
 
                 $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $unopimLocaleCode);
-                $descriptionValue = $localeSpecificFields['description'] ?? '';
-                if ($descriptionValue === '') {
-                    $descriptionValue = '<p></p>';
+
+                if (! empty($fieldMap['title']) && ! empty($localeSpecificFields[$fieldMap['title']])) {
+                    $formatedVariable['translations'][] = [
+                        'key' => 'title',
+                        'value' => $localeSpecificFields[$fieldMap['title']],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => hash('sha256', $collectionResult['title']),
+                    ];
                 }
 
-                $formatedVariable['translations'][] = [
-                    'key' => 'title',
-                    'value' => $localeSpecificFields['name'] ?? $rawData['code'] ?? '',
-                    'locale' => $shopifyLocaleCode,
-                    'translatableContentDigest' => hash('sha256', $collectionResult['title']),
-                ];
+                if (! empty($fieldMap['descriptionHtml']) && ! empty($localeSpecificFields[$fieldMap['descriptionHtml']])) {
+                    $formatedVariable['translations'][] = [
+                        'key' => 'body_html',
+                        'value' => $localeSpecificFields[$fieldMap['descriptionHtml']],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
+                    ];
+                }
 
-                $formatedVariable['translations'][] = [
-                    'key' => 'body_html',
-                    'value' => $descriptionValue,
-                    'locale' => $shopifyLocaleCode,
-                    'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
-                ];
+                if (! empty($fieldMap['seoTitle']) && ! empty($localeSpecificFields[$fieldMap['seoTitle']])) {
+                    $formatedVariable['translations'][] = [
+                        'key' => 'meta_title',
+                        'value' => $localeSpecificFields[$fieldMap['seoTitle']],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => hash('sha256', $collectionResult['seo']['title'] ?? ''),
+                    ];
+                }
+
+                if (! empty($fieldMap['seoDescription']) && ! empty($localeSpecificFields[$fieldMap['seoDescription']])) {
+                    $formatedVariable['translations'][] = [
+                        'key' => 'meta_description',
+                        'value' => $localeSpecificFields[$fieldMap['seoDescription']],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => hash('sha256', $collectionResult['seo']['description'] ?? ''),
+                    ];
+                }
+
+                if (! empty($fieldMap['handle']) && ! empty($localeSpecificFields[$fieldMap['handle']])) {
+                    $formatedVariable['translations'][] = [
+                        'key' => 'handle',
+                        'value' => $localeSpecificFields[$fieldMap['handle']],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => hash('sha256', $collectionResult['handle'] ?? ''),
+                    ];
+                }
             }
             if (! empty($formatedVariable['translations'])) {
                 $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
