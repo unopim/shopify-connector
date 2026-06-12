@@ -1000,7 +1000,6 @@
 
         @php
             $shopifyPhaseLabels = [
-                'formatting'   => trans('shopify::app.tracker.phase.formatting'),
                 'product'      => trans('shopify::app.tracker.phase.product'),
                 'publishing'   => trans('shopify::app.tracker.phase.publishing'),
                 'translations' => trans('shopify::app.tracker.phase.translations'),
@@ -1036,29 +1035,14 @@
 
                 computed: {
                     currentPhaseLabel() {
-                        const phase = this.stats?.current_phase
-                            ?? this.importResource?.summary?.current_phase;
+                        const phase = this.importResource?.summary?.current_phase;
                         return phase ? (this.phaseLabels[phase] ?? null) : null;
                     },
-                    currentObjectCount() {
-
-                        const count = this.stats?.object_count;
-                        return (count === null || count === undefined) ? null : count;
-                    },
-                    currentPhaseStatus() {
-                        // e.g. "Publishing Products — 500 Objects" while a count exists.
-                        if (! this.currentPhaseLabel) {
-                            return null;
-                        }
-                        return this.currentObjectCount !== null
-                            ? `${this.currentPhaseLabel} — ${this.currentObjectCount}`
-                            : this.currentPhaseLabel;
-                    },
                     exportingHeadline() {
-                        return this.currentPhaseStatus || this.defaultExportInfo;
+                        return this.currentPhaseLabel || this.defaultExportInfo;
                     },
                     exportingFooterLabel() {
-                        return this.currentPhaseStatus || this.defaultExportStep;
+                        return this.currentPhaseLabel || this.defaultExportStep;
                     },
                 },
 

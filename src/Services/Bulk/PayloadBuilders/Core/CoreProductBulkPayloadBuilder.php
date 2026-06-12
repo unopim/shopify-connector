@@ -9,6 +9,7 @@ use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
+use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
@@ -122,6 +123,16 @@ class CoreProductBulkPayloadBuilder
             $jobTrack->save();
 
             throw new InvalidCredential;
+        }
+
+        if (! $this->credential->storeLocales) {
+            $jobTrack->state = Export::STATE_FAILED;
+
+            $jobTrack->errors = [trans('shopify::app.shopify.export.errors.invalid-locale')];
+
+            $jobTrack->save();
+
+            throw new InvalidLocale;
         }
 
         $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
