@@ -246,20 +246,21 @@ class Importer extends AbstractImporter
             $fieldMap['title'] => $node['title'] ?? '',
         ];
 
-        if (! empty($fieldMap['descriptionHtml'])) {
-            $values[$fieldMap['descriptionHtml']] = $node['descriptionHtml'] ?? '';
-        }
+        /**
+         * Direct mapping key => Shopify node value. Each is written only when
+         * the field is mapped, preserving the original insertion order.
+         */
+        $directFields = [
+            'descriptionHtml' => $node['descriptionHtml'] ?? '',
+            'seoTitle' => $node['seo']['title'] ?? '',
+            'seoDescription' => $node['seo']['description'] ?? '',
+            'handle' => $node['handle'] ?? '',
+        ];
 
-        if (! empty($fieldMap['seoTitle'])) {
-            $values[$fieldMap['seoTitle']] = $node['seo']['title'] ?? '';
-        }
-
-        if (! empty($fieldMap['seoDescription'])) {
-            $values[$fieldMap['seoDescription']] = $node['seo']['description'] ?? '';
-        }
-
-        if (! empty($fieldMap['handle'])) {
-            $values[$fieldMap['handle']] = $node['handle'] ?? '';
+        foreach ($directFields as $mapKey => $value) {
+            if (! empty($fieldMap[$mapKey])) {
+                $values[$fieldMap[$mapKey]] = $value;
+            }
         }
 
         if (! empty($fieldMap['collectionType'])) {

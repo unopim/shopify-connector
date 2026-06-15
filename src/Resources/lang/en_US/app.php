@@ -182,6 +182,25 @@ return [
                     'auto' => 'Auto (same as total amount unit)',
                 ],
 
+                'tabs' => [
+                    'general' => 'General',
+                    'taxonomy' => 'Category Taxonomy',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Category Taxonomy Mapping',
+                    'header_category' => 'UnoPim Category',
+                    'header_taxonomy' => 'Shopify Taxonomy',
+                    'category_placeholder' => 'Select category',
+                    'taxonomy_placeholder' => 'Search Shopify taxonomy',
+                    'add_btn' => 'Add',
+                    'save_btn' => 'Save',
+                    'saved' => 'Category taxonomy mapping saved successfully',
+                    'save_failed' => 'Failed to save category taxonomy mapping',
+                    'empty' => 'No mappings yet. Add one below.',
+                    'already_mapped' => 'This category is already mapped',
+                ],
+
                 'collection' => [
                     'title' => 'Collection Mappings',
                     'back-btn' => 'Back',

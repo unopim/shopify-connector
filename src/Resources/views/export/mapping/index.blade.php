@@ -1,11 +1,37 @@
-<x-admin::layouts.with-history>
+@php
+    $currentTab = request('history') !== null ? 'history' : request('tab', 'general');
+@endphp
+
+<x-admin::layouts.with-history :active-tab="$currentTab === 'taxonomy' ? 'taxonomy' : 'general'">
     <x-slot:entityName>
         shopify_exportmapping
     </x-slot>
     <x-slot:title>
         @lang('shopify::app.shopify.export.mapping.title')
     </x-slot>
+
+    {{-- Add the Category Taxonomy link into the layout's own tab strip --}}
+    <x-slot:tabs>
+        <a href="?tab=taxonomy">
+            <div class="{{ $currentTab === 'taxonomy' ? '-mb-px border-violet-700 border-b-2 transition' : '' }} pb-3.5 px-2.5 text-base font-medium text-gray-600 dark:text-gray-300 cursor-pointer">
+                @lang('shopify::app.shopify.export.mapping.tabs.taxonomy')
+            </div>
+        </a>
+    </x-slot:tabs>
+
+    {{-- General tab content (rendered by the layout when activeTab === 'general') --}}
     <v-create-attributes-mappings></v-create-attributes-mappings>
+
+    {{-- Category Taxonomy tab content --}}
+    <x-slot:tabContents>
+        @if ($currentTab === 'taxonomy')
+            <v-shopify-category-taxonomy-mapping
+                :initial-rows='@json($taxonomyMappings)'
+                save-url="{{ route('shopify.category-taxonomy-mappings.create') }}"
+            ></v-shopify-category-taxonomy-mapping>
+        @endif
+    </x-slot:tabContents>
+
     @pushOnce('scripts')
     <script
         type="text/x-template"
@@ -431,6 +457,191 @@
                     }    
                 }
             }
+        });
+    </script>
+
+    <script type="text/x-template" id="v-shopify-category-taxonomy-mapping-template">
+        <div>
+            <div class="flex justify-between items-center mb-5">
+                <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
+                    @lang('shopify::app.shopify.export.mapping.taxonomy.title')
+                </p>
+                <button type="button" class="primary-button" @click="save" :disabled="saving">
+                    @lang('shopify::app.shopify.export.mapping.taxonomy.save_btn')
+                </button>
+            </div>
+
+            <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 font-bold text-gray-600 dark:text-gray-300">
+                    <p>@lang('shopify::app.shopify.export.mapping.taxonomy.header_category')</p>
+                    <p>@lang('shopify::app.shopify.export.mapping.taxonomy.header_taxonomy')</p>
+                    <p></p>
+                </div>
+
+                <div v-if="!rows.length" class="px-4 py-6 text-gray-500 dark:text-gray-400">
+                    @lang('shopify::app.shopify.export.mapping.taxonomy.empty')
+                </div>
+
+                <div
+                    v-for="(row, index) in rows"
+                    :key="row.category_id"
+                    class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300"
+                >
+                    <p class="break-words" v-text="row.category_label"></p>
+                    <p class="break-words" v-text="row.taxonomy_path"></p>
+                    <span class="icon-delete text-2xl cursor-pointer" @click="removeRow(index)"></span>
+                </div>
+
+                <div v-if="showPicker" class="flex gap-2.5 items-center px-4 py-4">
+                    <div class="flex-1">
+                        <x-admin::form.control-group class="!mb-0">
+                            <x-admin::form.control-group.control
+                                type="select"
+                                name="taxonomy_category_picker"
+                                track-by="id"
+                                label-by="label"
+                                async="true"
+                                :list-route="route('admin.shopify.get-categories')"
+                                ::query-params="{ exclude_ids: mappedCategoryIds }"
+                                v-on:select-option="onCategoryPicked"
+                                :placeholder="trans('shopify::app.shopify.export.mapping.taxonomy.category_placeholder')"
+                            />
+                        </x-admin::form.control-group>
+                    </div>
+
+                    <div class="flex-1">
+                        <x-admin::form.control-group class="!mb-0">
+                            <x-admin::form.control-group.control
+                                type="select"
+                                name="taxonomy_node_picker"
+                                track-by="id"
+                                label-by="label"
+                                async="true"
+                                :list-route="route('admin.shopify.get-taxonomy-nodes')"
+                                v-on:select-option="onTaxonomyPicked"
+                                :placeholder="trans('shopify::app.shopify.export.mapping.taxonomy.taxonomy_placeholder')"
+                            />
+                        </x-admin::form.control-group>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="secondary-button shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="!canAdd"
+                        @click="addRow"
+                    >
+                        @lang('shopify::app.shopify.export.mapping.taxonomy.add_btn')
+                    </button>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script type="module">
+        app.component('v-shopify-category-taxonomy-mapping', {
+            template: '#v-shopify-category-taxonomy-mapping-template',
+
+            props: ['initialRows', 'saveUrl'],
+
+            data() {
+                return {
+                    rows: Array.isArray(this.initialRows) ? [...this.initialRows] : [],
+                    pickedCategory: null,
+                    pickedTaxonomy: null,
+                    showPicker: true,
+                    saving: false,
+                };
+            },
+
+            computed: {
+                canAdd() {
+                    return !! (this.pickedCategory && this.pickedTaxonomy);
+                },
+
+                mappedCategoryIds() {
+                    return this.rows.map(r => r.category_id);
+                },
+            },
+
+            methods: {
+                extract(event) {
+                    const val = event?.target?.value ?? event;
+                    if (! val) return null;
+                    if (typeof val === 'string') {
+                        try { return JSON.parse(val); } catch (e) { return null; }
+                    }
+                    return val;
+                },
+
+                onCategoryPicked(event) {
+                    this.pickedCategory = this.extract(event);
+                },
+
+                onTaxonomyPicked(event) {
+                    this.pickedTaxonomy = this.extract(event);
+                },
+
+                addRow() {
+                    if (! this.canAdd) return;
+
+                    const catId = this.pickedCategory.id;
+
+                    if (this.rows.some(r => String(r.category_id) === String(catId))) {
+                        this.$emitter.emit('add-flash', {
+                            type: 'warning',
+                            message: "@lang('shopify::app.shopify.export.mapping.taxonomy.already_mapped')",
+                        });
+
+                        return;
+                    }
+
+                    this.rows.push({
+                        category_id: catId,
+                        category_label: this.pickedCategory.label,
+                        taxonomy_id: this.pickedTaxonomy.id,
+                        taxonomy_path: this.pickedTaxonomy.label,
+                    });
+
+                    this.pickedCategory = null;
+                    this.pickedTaxonomy = null;
+                    this.remountPicker();
+                },
+
+                removeRow(index) {
+                    this.rows.splice(index, 1);
+                    this.remountPicker();
+                },
+
+                remountPicker() {
+                    // Destroy + recreate the picker block so both selects (and their
+                    // VeeValidate field state) reset and the category exclude list refreshes.
+                    this.showPicker = false;
+                    this.$nextTick(() => { this.showPicker = true; });
+                },
+
+                save() {
+                    if (this.saving) return;
+                    this.saving = true;
+
+                    const mappings = {};
+                    this.rows.forEach(r => { mappings[r.category_id] = r.taxonomy_id; });
+
+                    this.$axios.post(this.saveUrl, { mappings })
+                        .then(response => {
+                            this.$emitter.emit('add-flash', {
+                                type: 'success',
+                                message: response.data.message,
+                            });
+                        })
+                        .catch(() => {
+                            this.$emitter.emit('add-flash', {
+                                type: 'error',
+                                message: "@lang('shopify::app.shopify.export.mapping.taxonomy.save_failed')",
+                            });
+                        })
+                        .finally(() => { this.saving = false; });
+                },
+            },
         });
     </script>
     @endPushOnce

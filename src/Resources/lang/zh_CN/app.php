@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => '常规',
+                    'taxonomy' => '类别分类',
+                ],
+
+                'taxonomy' => [
+                    'title' => '类别分类映射',
+                    'header_category' => 'UnoPim 类别',
+                    'header_taxonomy' => 'Shopify 分类',
+                    'category_placeholder' => '选择类别',
+                    'taxonomy_placeholder' => '搜索 Shopify 分类',
+                    'add_btn' => '添加',
+                    'save_btn' => '保存',
+                    'saved' => '类别分类映射保存成功',
+                    'save_failed' => '类别分类映射保存失败',
+                    'empty' => '暂无映射。请在下方添加。',
+                    'already_mapped' => '此类别已映射',
+                ],
+
                 'collection' => [
                     'title' => '系列映射',
                     'back-btn' => '返回',

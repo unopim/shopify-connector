@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => 'सामान्य',
+                    'taxonomy' => 'श्रेणी वर्गीकरण',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'श्रेणी वर्गीकरण मैपिंग',
+                    'header_category' => 'UnoPim श्रेणी',
+                    'header_taxonomy' => 'Shopify वर्गीकरण',
+                    'category_placeholder' => 'श्रेणी चुनें',
+                    'taxonomy_placeholder' => 'Shopify वर्गीकरण खोजें',
+                    'add_btn' => 'जोड़ें',
+                    'save_btn' => 'सहेजें',
+                    'saved' => 'श्रेणी वर्गीकरण मैपिंग सफलतापूर्वक सहेजी गई',
+                    'save_failed' => 'श्रेणी वर्गीकरण मैपिंग सहेजने में विफल',
+                    'empty' => 'अभी कोई मैपिंग नहीं। नीचे एक जोड़ें।',
+                    'already_mapped' => 'यह श्रेणी पहले से मैप की गई है',
+                ],
+
                 'collection' => [
                     'title' => 'कलेक्शन मैपिंग्स',
                     'back-btn' => 'वापस',

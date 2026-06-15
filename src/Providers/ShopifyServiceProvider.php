@@ -95,5 +95,8 @@ class ShopifyServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/saas.php', 'shopify.saas'
         );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/shopify_taxonomy.php', 'shopify_taxonomy'
+        );
     }
 }

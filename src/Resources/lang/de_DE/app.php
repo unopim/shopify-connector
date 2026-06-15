@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => 'Allgemein',
+                    'taxonomy' => 'Kategorie-Taxonomie',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Kategorie-Taxonomie-Zuordnung',
+                    'header_category' => 'UnoPim-Kategorie',
+                    'header_taxonomy' => 'Shopify-Taxonomie',
+                    'category_placeholder' => 'Kategorie auswählen',
+                    'taxonomy_placeholder' => 'Shopify-Taxonomie suchen',
+                    'add_btn' => 'Hinzufügen',
+                    'save_btn' => 'Speichern',
+                    'saved' => 'Kategorie-Taxonomie-Zuordnung erfolgreich gespeichert',
+                    'save_failed' => 'Speichern der Kategorie-Taxonomie-Zuordnung fehlgeschlagen',
+                    'empty' => 'Noch keine Zuordnungen. Fügen Sie unten eine hinzu.',
+                    'already_mapped' => 'Diese Kategorie ist bereits zugeordnet',
+                ],
+
                 'collection' => [
                     'title' => 'Sammlungszuordnungen',
                     'back-btn' => 'Zurück',

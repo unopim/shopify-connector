@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => 'General',
+                    'taxonomy' => 'Taxonomía de categorías',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Asignación de taxonomía de categorías',
+                    'header_category' => 'Categoría de UnoPim',
+                    'header_taxonomy' => 'Taxonomía de Shopify',
+                    'category_placeholder' => 'Seleccionar categoría',
+                    'taxonomy_placeholder' => 'Buscar taxonomía de Shopify',
+                    'add_btn' => 'Añadir',
+                    'save_btn' => 'Guardar',
+                    'saved' => 'Asignación de taxonomía de categorías guardada correctamente',
+                    'save_failed' => 'Error al guardar la asignación de taxonomía de categorías',
+                    'empty' => 'Aún no hay asignaciones. Añade una abajo.',
+                    'already_mapped' => 'Esta categoría ya está asignada',
+                ],
+
                 'collection' => [
                     'title' => 'Mapeos de Colecciones',
                     'back-btn' => 'Atrás',

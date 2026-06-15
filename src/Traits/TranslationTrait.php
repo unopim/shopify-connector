@@ -260,6 +260,20 @@ trait TranslationTrait
                 'id' => $collectionResult['id'],
                 'translations' => [],
             ];
+
+            /**
+             * Map of collection mapping key => Shopify translation key and the
+             * digest source. Digests are computed once since $collectionResult
+             * is constant across locales.
+             */
+            $translatableFields = [
+                'title' => ['key' => 'title', 'digest' => hash('sha256', $collectionResult['title'] ?? '')],
+                'descriptionHtml' => ['key' => 'body_html', 'digest' => hash('sha256', $collectionResult['descriptionHtml'] ?? '')],
+                'seoTitle' => ['key' => 'meta_title', 'digest' => hash('sha256', $collectionResult['seo']['title'] ?? '')],
+                'seoDescription' => ['key' => 'meta_description', 'digest' => hash('sha256', $collectionResult['seo']['description'] ?? '')],
+                'handle' => ['key' => 'handle', 'digest' => hash('sha256', $collectionResult['handle'] ?? '')],
+            ];
+
             foreach ($storeloacleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
                 if ($locale == $unopimLocaleCode) {
                     continue;
@@ -267,48 +281,18 @@ trait TranslationTrait
 
                 $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $unopimLocaleCode);
 
-                if (! empty($fieldMap['title']) && ! empty($localeSpecificFields[$fieldMap['title']])) {
-                    $formatedVariable['translations'][] = [
-                        'key' => 'title',
-                        'value' => $localeSpecificFields[$fieldMap['title']],
-                        'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => hash('sha256', $collectionResult['title']),
-                    ];
-                }
+                foreach ($translatableFields as $mapKey => $meta) {
+                    $code = $fieldMap[$mapKey] ?? null;
 
-                if (! empty($fieldMap['descriptionHtml']) && ! empty($localeSpecificFields[$fieldMap['descriptionHtml']])) {
-                    $formatedVariable['translations'][] = [
-                        'key' => 'body_html',
-                        'value' => $localeSpecificFields[$fieldMap['descriptionHtml']],
-                        'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
-                    ];
-                }
+                    if (empty($code) || empty($localeSpecificFields[$code])) {
+                        continue;
+                    }
 
-                if (! empty($fieldMap['seoTitle']) && ! empty($localeSpecificFields[$fieldMap['seoTitle']])) {
                     $formatedVariable['translations'][] = [
-                        'key' => 'meta_title',
-                        'value' => $localeSpecificFields[$fieldMap['seoTitle']],
+                        'key' => $meta['key'],
+                        'value' => $localeSpecificFields[$code],
                         'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => hash('sha256', $collectionResult['seo']['title'] ?? ''),
-                    ];
-                }
-
-                if (! empty($fieldMap['seoDescription']) && ! empty($localeSpecificFields[$fieldMap['seoDescription']])) {
-                    $formatedVariable['translations'][] = [
-                        'key' => 'meta_description',
-                        'value' => $localeSpecificFields[$fieldMap['seoDescription']],
-                        'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => hash('sha256', $collectionResult['seo']['description'] ?? ''),
-                    ];
-                }
-
-                if (! empty($fieldMap['handle']) && ! empty($localeSpecificFields[$fieldMap['handle']])) {
-                    $formatedVariable['translations'][] = [
-                        'key' => 'handle',
-                        'value' => $localeSpecificFields[$fieldMap['handle']],
-                        'locale' => $shopifyLocaleCode,
-                        'translatableContentDigest' => hash('sha256', $collectionResult['handle'] ?? ''),
+                        'translatableContentDigest' => $meta['digest'],
                     ];
                 }
             }

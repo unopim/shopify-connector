@@ -343,23 +343,20 @@ class Exporter extends AbstractExporter
         $titleCode = $fieldMap['title'] ?? null;
         $category['title'] = $titleCode ? ($merged[$titleCode] ?? '') : '';
 
-        if (! empty($fieldMap['descriptionHtml']) && ! empty($merged[$fieldMap['descriptionHtml']])) {
-            $category['descriptionHtml'] = $merged[$fieldMap['descriptionHtml']];
+        foreach (['descriptionHtml' => 'descriptionHtml', 'handle' => 'handle'] as $mapKey => $payloadKey) {
+            if (! empty($fieldMap[$mapKey]) && ! empty($merged[$fieldMap[$mapKey]])) {
+                $category[$payloadKey] = $merged[$fieldMap[$mapKey]];
+            }
         }
 
         $seo = [];
-        if (! empty($fieldMap['seoTitle']) && ! empty($merged[$fieldMap['seoTitle']])) {
-            $seo['title'] = $merged[$fieldMap['seoTitle']];
-        }
-        if (! empty($fieldMap['seoDescription']) && ! empty($merged[$fieldMap['seoDescription']])) {
-            $seo['description'] = $merged[$fieldMap['seoDescription']];
+        foreach (['seoTitle' => 'title', 'seoDescription' => 'description'] as $mapKey => $seoKey) {
+            if (! empty($fieldMap[$mapKey]) && ! empty($merged[$fieldMap[$mapKey]])) {
+                $seo[$seoKey] = $merged[$fieldMap[$mapKey]];
+            }
         }
         if (! empty($seo)) {
             $category['seo'] = $seo;
-        }
-
-        if (! empty($fieldMap['handle']) && ! empty($merged[$fieldMap['handle']])) {
-            $category['handle'] = $merged[$fieldMap['handle']];
         }
 
         if (! empty($config['sort_order'])) {

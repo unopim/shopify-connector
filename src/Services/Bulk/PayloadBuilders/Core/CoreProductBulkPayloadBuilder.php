@@ -10,6 +10,7 @@ use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
+use Webkul\Shopify\Models\ShopifyCategoryTaxonomyMapping;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
@@ -27,6 +28,9 @@ class CoreProductBulkPayloadBuilder
     protected mixed $exportMapping = null;
 
     protected mixed $settingMapping = null;
+
+    /** @var array<string, ?string> */
+    protected array $resolvedTaxonomyCache = [];
 
     protected array $productMetaFieldMapping = [];
 
@@ -303,6 +307,12 @@ class CoreProductBulkPayloadBuilder
         if (! empty($productCollections)) {
             $productInput['collections'] = $productCollections;
         }
+
+        $taxonomyCategory = $this->resolveTaxonomyCategory($categoryCodes);
+        if ($taxonomyCategory !== null) {
+            $productInput['category'] = $taxonomyCategory;
+        }
+
         $productInput['variants'] = $variants;
 
         return [
@@ -558,6 +568,40 @@ class CoreProductBulkPayloadBuilder
         }
 
         return array_values(array_unique($collectionIds));
+    }
+
+    /**
+     * Resolve a product's category codes to the deepest mapped Shopify taxonomy GID.
+     * Returns null when none of the product's categories are mapped.
+     *
+     * @param  array<int, string>  $categoryCodes
+     */
+    protected function resolveTaxonomyCategory(array $categoryCodes): ?string
+    {
+        $codes = array_values(array_unique(array_filter($categoryCodes)));
+
+        if ($codes === []) {
+            return null;
+        }
+
+        sort($codes);
+        $cacheKey = implode('|', $codes);
+
+        if (array_key_exists($cacheKey, $this->resolvedTaxonomyCache)) {
+            return $this->resolvedTaxonomyCache[$cacheKey];
+        }
+
+        $mapped = ShopifyCategoryTaxonomyMapping::query()
+            ->whereIn('unopim_category_id', function ($q) use ($codes) {
+                $q->select('id')->from('categories')->whereIn('code', $codes);
+            })
+            ->get(['taxonomy_id', 'taxonomy_path']);
+
+        $resolved = $mapped->isEmpty()
+            ? null
+            : $mapped->sortByDesc(fn ($r) => substr_count((string) $r->taxonomy_path, ' > '))->first()->taxonomy_id;
+
+        return $this->resolvedTaxonomyCache[$cacheKey] = $resolved;
     }
 
     /**

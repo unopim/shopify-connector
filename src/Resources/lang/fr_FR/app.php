@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => 'Général',
+                    'taxonomy' => 'Taxonomie des catégories',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Mappage de la taxonomie des catégories',
+                    'header_category' => 'Catégorie UnoPim',
+                    'header_taxonomy' => 'Taxonomie Shopify',
+                    'category_placeholder' => 'Sélectionner une catégorie',
+                    'taxonomy_placeholder' => 'Rechercher la taxonomie Shopify',
+                    'add_btn' => 'Ajouter',
+                    'save_btn' => 'Enregistrer',
+                    'saved' => 'Mappage de la taxonomie des catégories enregistré avec succès',
+                    'save_failed' => 'Échec de l\'enregistrement du mappage de la taxonomie des catégories',
+                    'empty' => 'Aucun mappage pour le moment. Ajoutez-en un ci-dessous.',
+                    'already_mapped' => 'Cette catégorie est déjà mappée',
+                ],
+
                 'collection' => [
                     'title' => 'Mappages de collections',
                     'back-btn' => 'Retour',

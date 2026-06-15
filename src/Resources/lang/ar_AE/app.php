@@ -168,6 +168,25 @@ return [
                     ],
                 ],
 
+                'tabs' => [
+                    'general' => 'عام',
+                    'taxonomy' => 'تصنيف الفئات',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'تعيين تصنيف الفئات',
+                    'header_category' => 'فئة UnoPim',
+                    'header_taxonomy' => 'تصنيف Shopify',
+                    'category_placeholder' => 'اختر الفئة',
+                    'taxonomy_placeholder' => 'ابحث في تصنيف Shopify',
+                    'add_btn' => 'إضافة',
+                    'save_btn' => 'حفظ',
+                    'saved' => 'تم حفظ تعيين تصنيف الفئات بنجاح',
+                    'save_failed' => 'فشل حفظ تعيين تصنيف الفئات',
+                    'empty' => 'لا توجد تعيينات بعد. أضف واحدًا أدناه.',
+                    'already_mapped' => 'هذه الفئة معينة بالفعل',
+                ],
+
                 'collection' => [
                     'title' => 'تعيينات المجموعات',
                     'back-btn' => 'رجوع',
