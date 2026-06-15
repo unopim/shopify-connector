@@ -21,7 +21,7 @@ return [
     */
     'productImportBulkQueryCore' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id
@@ -84,6 +84,10 @@ return [
                   edges {
                     node {
                       id
+                      quantities(names: ["available"]) {
+                        name
+                        quantity
+                      }
                       location {
                         id
                         name
@@ -140,7 +144,7 @@ GRAPHQL,
     */
     'productImportBulkQueryRelations' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id

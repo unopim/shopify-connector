@@ -7,11 +7,14 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\Category\Repositories\CategoryFieldRepository;
+use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\Core\Repositories\CurrencyRepository;
 use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
+use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
 
 class OptionController extends Controller
 {
@@ -29,6 +32,8 @@ class OptionController extends Controller
         protected AttributeGroupRepository $attributeGroupRepository,
         protected AttributeFamilyRepository $attributeFamilyRepository,
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
+        protected CategoryFieldRepository $categoryFieldRepository,
+        protected CategoryRepository $categoryRepository,
     ) {}
 
     /**
@@ -234,7 +239,7 @@ class OptionController extends Controller
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
             $attributeRepository = in_array('number', $entityName)
-                ? $attributeRepository->whereIn('validation', $entityName)
+                ? $attributeRepository->whereIn('validation', $entityName)->where('type', '!=', 'price')
                 : $attributeRepository->whereIn('type', $entityName);
         }
 
@@ -291,6 +296,52 @@ class OptionController extends Controller
             'options' => $formattedoptions,
             'page' => $attributes->currentPage(),
             'lastPage' => $attributes->lastPage(),
+        ]);
+    }
+
+    /**
+     * List active category fields for collection mapping, type-filtered by entityName.
+     */
+    public function listCategoryFields(): JsonResponse
+    {
+        $entityName = request()->get('entityName');
+        $query = request()->get('query') ?? '';
+        $page = request()->get('page');
+        $identifiers = request()->input('identifiers');
+
+        $repository = $this->categoryFieldRepository->where('status', 1);
+
+        if (! empty($entityName)) {
+            $types = json_decode($entityName);
+            $repository = $repository->whereIn('type', is_array($types) ? $types : [$types]);
+        }
+
+        if (! empty($identifiers['columnName']) && isset($identifiers['values'])) {
+            $values = $identifiers['values'];
+            $repository = $repository->whereIn($identifiers['columnName'], is_array($values) ? $values : [$values]);
+        } elseif (! empty($query)) {
+            $repository = $repository->where('code', 'LIKE', '%'.$query.'%');
+        }
+
+        $fields = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+        $currentLocaleCode = core()->getRequestedLocaleCode();
+        $formattedoptions = [];
+
+        foreach ($fields as $field) {
+            $translatedLabel = $field->translate($currentLocaleCode)?->name;
+            $formattedoptions[] = [
+                'id' => $field->id,
+                'code' => $field->code,
+                'type' => $field->type,
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$field->code}]",
+            ];
+        }
+
+        return new JsonResponse([
+            'options' => $formattedoptions,
+            'page' => $fields->currentPage(),
+            'lastPage' => $fields->lastPage(),
         ]);
     }
 
@@ -540,5 +591,104 @@ class OptionController extends Controller
         return new JsonResponse([
             'options' => $formattedoptions,
         ]);
+    }
+
+    /**
+     * Async list of UnoPim categories (with breadcrumb labels) for taxonomy mapping.
+     */
+    public function listCategories(): JsonResponse
+    {
+        $query = (string) (request()->get('query') ?? '');
+        $page = (int) (request()->get('page') ?: 1);
+        $identifiers = request()->input('identifiers');
+        $excludeIds = array_filter(array_map('intval', (array) request()->get('exclude_ids', [])));
+        $locale = core()->getRequestedLocaleCode();
+
+        $all = $this->categoryRepository->all();
+        $byId = $all->keyBy('id');
+
+        $rows = $all
+            ->when(! empty($excludeIds), fn ($c) => $c->reject(fn ($cat) => in_array($cat->id, $excludeIds, true)))
+            ->when(
+                ! empty($identifiers['values']),
+                fn ($c) => $c->whereIn('id', array_map('intval', (array) $identifiers['values']))
+            )
+            ->map(fn ($cat) => [
+                'id' => $cat->id,
+                'code' => $cat->code,
+                'label' => $this->categoryBreadcrumb($cat, $byId, $locale),
+            ])
+            ->values();
+
+        if (empty($identifiers['values']) && $query !== '') {
+            $needle = strtolower($query);
+            $rows = $rows->filter(fn ($r) => str_contains(strtolower($r['label']), $needle))->values();
+        }
+
+        $perPage = 20;
+        $total = $rows->count();
+        $slice = $rows->slice(($page - 1) * $perPage, $perPage)->values();
+
+        return new JsonResponse([
+            'options' => $slice->all(),
+            'page' => $page,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ]);
+    }
+
+    /**
+     * Async list of Shopify taxonomy nodes from the bundled file.
+     */
+    public function listTaxonomyNodes(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $query = (string) (request()->get('query') ?? '');
+        $page = (int) (request()->get('page') ?: 1);
+        $identifiers = request()->input('identifiers');
+
+        $all = collect($loader->all());
+
+        if (! empty($identifiers['values'])) {
+            $ids = (array) $identifiers['values'];
+            $matched = $all->filter(fn ($e) => in_array($e['id'], $ids, true));
+        } elseif ($query !== '') {
+            $needle = strtolower($query);
+            $matched = $all->filter(fn ($e) => str_contains(strtolower($e['path']), $needle));
+        } else {
+            $matched = $all;
+        }
+
+        $matched = $matched->values();
+        $perPage = 50;
+        $total = $matched->count();
+        $slice = $matched->slice(($page - 1) * $perPage, $perPage)
+            ->map(fn ($e) => ['id' => $e['id'], 'code' => $e['id'], 'label' => $e['path']])
+            ->values();
+
+        return new JsonResponse([
+            'options' => $slice->all(),
+            'page' => $page,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ]);
+    }
+
+    /**
+     * Build a "Parent > Child > Leaf" breadcrumb for a category (root node excluded).
+     */
+    protected function categoryBreadcrumb(object $category, $byId, string $locale): string
+    {
+        $labels = [];
+        $cursor = $category;
+        $guard = 0;
+
+        while ($cursor && $guard++ < 20) {
+            if ($cursor->parent_id !== null) {
+                $name = $cursor->additional_data['locale_specific'][$locale]['name'] ?? null;
+                $labels[] = ! empty($name) ? $name : "[{$cursor->code}]";
+            }
+
+            $cursor = $cursor->parent_id ? $byId->get($cursor->parent_id) : null;
+        }
+
+        return implode(' > ', array_reverse($labels)) ?: "[{$category->code}]";
     }
 }

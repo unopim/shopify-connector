@@ -10,6 +10,7 @@ use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
+use Webkul\Shopify\Models\ShopifyCategoryTaxonomyMapping;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
@@ -28,13 +29,14 @@ class CoreProductBulkPayloadBuilder
 
     protected mixed $settingMapping = null;
 
+    /** @var array<string, ?string> */
+    protected array $resolvedTaxonomyCache = [];
+
     protected array $productMetaFieldMapping = [];
 
     protected array $variantMetaFieldMapping = [];
 
     protected ?string $shopifyDefaultLocale = null;
-
-    protected ?string $locationId = null;
 
     protected ?string $currency = null;
 
@@ -97,7 +99,6 @@ class CoreProductBulkPayloadBuilder
                     'media' => true,
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
                     'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
-                    'location_id' => $this->locationId,
                 ],
                 'lines' => $manifestLines,
             ],
@@ -131,7 +132,6 @@ class CoreProductBulkPayloadBuilder
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code')->all();
-        $this->locationId = $this->credential?->extras['locations'] ?? null;
 
         $defaultLanguage = array_values(array_filter($this->credential?->storeLocales ?? [], function ($language) {
             return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
@@ -141,10 +141,11 @@ class CoreProductBulkPayloadBuilder
         $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
 
         $this->shopifyGraphQLDataFormatter->setInitialData(
-            $this->locationId ?? '',
+            '',
             $this->currency ?? 'USD',
             $this->settingMapping,
-            $this->attributesAll
+            $this->attributesAll,
+            $this->credential?->extras['locationAttributeMappings'] ?? []
         );
     }
 
@@ -306,6 +307,12 @@ class CoreProductBulkPayloadBuilder
         if (! empty($productCollections)) {
             $productInput['collections'] = $productCollections;
         }
+
+        $taxonomyCategory = $this->resolveTaxonomyCategory($categoryCodes);
+        if ($taxonomyCategory !== null) {
+            $productInput['category'] = $taxonomyCategory;
+        }
+
         $productInput['variants'] = $variants;
 
         return [
@@ -482,6 +489,8 @@ class CoreProductBulkPayloadBuilder
             // Inventory quantities are synced inline through productSet; there is
             // no separate inventory phase, so this is the single source of truth.
             'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
+            'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present
@@ -559,6 +568,40 @@ class CoreProductBulkPayloadBuilder
         }
 
         return array_values(array_unique($collectionIds));
+    }
+
+    /**
+     * Resolve a product's category codes to the deepest mapped Shopify taxonomy GID.
+     * Returns null when none of the product's categories are mapped.
+     *
+     * @param  array<int, string>  $categoryCodes
+     */
+    protected function resolveTaxonomyCategory(array $categoryCodes): ?string
+    {
+        $codes = array_values(array_unique(array_filter($categoryCodes)));
+
+        if ($codes === []) {
+            return null;
+        }
+
+        sort($codes);
+        $cacheKey = implode('|', $codes);
+
+        if (array_key_exists($cacheKey, $this->resolvedTaxonomyCache)) {
+            return $this->resolvedTaxonomyCache[$cacheKey];
+        }
+
+        $mapped = ShopifyCategoryTaxonomyMapping::query()
+            ->whereIn('unopim_category_id', function ($q) use ($codes) {
+                $q->select('id')->from('categories')->whereIn('code', $codes);
+            })
+            ->get(['taxonomy_id', 'taxonomy_path']);
+
+        $resolved = $mapped->isEmpty()
+            ? null
+            : $mapped->sortByDesc(fn ($r) => substr_count((string) $r->taxonomy_path, ' > '))->first()->taxonomy_id;
+
+        return $this->resolvedTaxonomyCache[$cacheKey] = $resolved;
     }
 
     /**

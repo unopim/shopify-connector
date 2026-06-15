@@ -34,6 +34,7 @@ return [
                 'shopify' => 'شوبفاي',
                 'credentials' => 'بيانات الاعتماد',
                 'export-mappings' => 'تعيينات التصدير',
+                'collection-mappings' => 'تعيينات المجموعات',
                 'import-mappings' => 'استيراد التعيينات',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -95,6 +96,9 @@ return [
                 'back-btn' => 'عودة',
                 'channel' => 'قناة البيع',
                 'locations' => 'قائمة المواقع',
+                'location_inventory_title' => 'المخزون حسب الموقع',
+                'location_inventory_info' => 'قم بربط سمة كمية لكل موقع لإرسال المخزون حسب الموقع. يتم تجاهل المواقع المتروكة فارغة.',
+                'location_inventory_attribute' => 'سمة الكمية',
             ],
             'edit' => [
                 'title' => 'تحرير بيانات الاعتماد',
@@ -133,6 +137,10 @@ return [
                 'attribute' => 'خاصية',
                 'fixed-value' => 'قيمة ثابتة',
                 'save_failed' => 'فشل حفظ تعيين التصدير. يرجى تشغيل أمر تثبيت Shopify.',
+                'validation' => [
+                    'name_required' => 'يرجى تعيين سمة أو تحديد قيمة ثابتة للاسم.',
+                    'status_required' => 'يرجى اختيار حالة المنتج.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +153,80 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'حالة المنتج',
+                    'label' => 'حالة Shopify',
+                    'placeholder' => 'اختر حالة المنتج',
+                    'tooltip' => 'يُطبَّق على جميع المنتجات المصدَّرة.',
+                    'options' => [
+                        'active' => 'نشط',
+                        'draft' => 'مسودة',
+                        'archived' => 'مؤرشف',
+                        'unlisted' => 'غير مدرج',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'عام',
+                    'taxonomy' => 'تصنيف الفئات',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'تعيين تصنيف الفئات',
+                    'header_category' => 'فئة UnoPim',
+                    'header_taxonomy' => 'تصنيف Shopify',
+                    'category_placeholder' => 'اختر الفئة',
+                    'taxonomy_placeholder' => 'ابحث في تصنيف Shopify',
+                    'add_btn' => 'إضافة',
+                    'save_btn' => 'حفظ',
+                    'saved' => 'تم حفظ تعيين تصنيف الفئات بنجاح',
+                    'save_failed' => 'فشل حفظ تعيين تصنيف الفئات',
+                    'empty' => 'لا توجد تعيينات بعد. أضف واحدًا أدناه.',
+                    'already_mapped' => 'هذه الفئة معينة بالفعل',
+                ],
+
+                'collection' => [
+                    'title' => 'تعيينات المجموعات',
+                    'back-btn' => 'رجوع',
+                    'save' => 'حفظ',
+                    'created' => 'تم حفظ تعيين المجموعة بنجاح',
+                    'save_failed' => 'فشل حفظ تعيين المجموعة. يرجى تشغيل أمر تثبيت Shopify.',
+                    'validation' => [
+                        'title_required' => 'يرجى تعيين سمة فئة للعنوان.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'تم تخطي المجموعة للفئة :code: سمة العنوان المعينة فارغة.',
+                    ],
+                    'images' => [
+                        'title' => 'تعيين صورة المجموعة',
+                        'label' => 'سمة الصورة',
+                    ],
+                    'sort_order' => [
+                        'label' => 'ترتيب فرز المنتجات',
+                        'placeholder' => 'اختر ترتيب الفرز',
+                        'tooltip' => 'ينطبق على جميع المجموعات المصدَّرة.',
+                        'options' => [
+                            'manual' => 'يدوي',
+                            'best_selling' => 'الأكثر مبيعاً',
+                            'alpha_asc' => 'أبجدياً (أ-ي)',
+                            'alpha_desc' => 'أبجدياً (ي-أ)',
+                            'price_asc' => 'السعر (من الأقل إلى الأعلى)',
+                            'price_desc' => 'السعر (من الأعلى إلى الأقل)',
+                            'created' => 'تاريخ الإنشاء (الأقدم أولاً)',
+                            'created_desc' => 'تاريخ الإنشاء (الأحدث أولاً)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'سعر الوحدة',
+                    'quantity_value' => 'المبلغ الإجمالي',
+                    'quantity_unit' => 'وحدة المبلغ الإجمالي',
+                    'reference_value' => 'القياس الأساسي',
+                    'reference_unit' => 'وحدة القياس الأساسي',
+                    'auto' => 'تلقائي (نفس وحدة المبلغ الإجمالي)',
                 ],
             ],
             'settings' => [
@@ -227,6 +309,7 @@ return [
             'seo_title' => 'عنوان SEO',
             'seo_description' => 'وصف SEO',
             'handle' => 'معالجة',
+            'collection_type' => 'نوع المجموعة',
             'taxable' => 'قابل للضريبة',
             'inventory_cost' => 'تكلفة المخزون',
         ],
@@ -236,6 +319,13 @@ return [
             'channel' => 'القناة',
             'currency' => 'العملة',
             'productfilter' => 'مرشح المنتج (SKU)',
+            'status' => 'الحالة',
+            'enable' => 'تفعيل',
+            'disable' => 'تعطيل',
+            'active' => 'نشط',
+            'draft' => 'مسودة',
+            'archived' => 'مؤرشف',
+            'unlisted' => 'غير مدرج',
             'locale' => 'اللغة',
             'attribute-groups' => 'مجموعات السمات',
         ],

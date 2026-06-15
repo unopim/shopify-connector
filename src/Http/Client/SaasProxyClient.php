@@ -135,12 +135,14 @@ class SaasProxyClient implements ShopifyClient
             'method' => 'GET',
             'connection' => 'collections',
             'defaults' => ['first' => 10],
+            'override' => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
         'GetCollectionsByCursor' => [
             'path' => '/graphql/api/collections.json',
             'method' => 'GET',
             'connection' => 'collections',
             'rename' => ['afterCursor' => 'after'],
+            'override' => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
 
         // --- Attribute / Family import ------------------------------------

@@ -455,14 +455,14 @@ class CredentialController extends Controller
 
         $extras = is_array($credential->extras) ? $credential->extras : [];
 
-        $extras['locations'] = $requestData['locations'] ?? null;
-
         $extras['salesChannel'] = $requestData['salesChannel'] ?? null;
+
+        $extras['locationAttributeMappings'] = array_filter($requestData['locationAttributeMappings'] ?? []);
 
         $requestData['extras'] = $extras;
 
         unset($requestData['salesChannel']);
-        unset($requestData['locations']);
+        unset($requestData['locationAttributeMappings']);
 
         $this->shopifyRepository->update($requestData, $id);
 

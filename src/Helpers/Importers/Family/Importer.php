@@ -183,7 +183,8 @@ class Importer extends AbstractImporter
 
         $simpleProductFamilyId = $importMapping['family_variant'] ?? null;
         unset($importMapping['family_variant']);
-        $metaFieldAllAttr = array_merge($optionWithVariant, array_unique($this->defintiionMapping), array_values($importMapping), $allImageAttr);
+        $locationAttrCodes = array_values($this->credential?->extras['locationAttributeMappings'] ?? []);
+        $metaFieldAllAttr = array_merge($optionWithVariant, array_unique($this->defintiionMapping), array_values($importMapping), $allImageAttr, $locationAttrCodes);
         $metaFieldAllAttr[] = 'sku';
         $metaFieldAttrIds = $this->attributeRepository->whereIn('code', $metaFieldAllAttr)->pluck('id')->toArray();
         if ($simpleProductFamilyId) {
@@ -268,7 +269,8 @@ class Importer extends AbstractImporter
             unset($importMappingAttr['images']);
             unset($importMappingAttr['family_variant']);
 
-            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->defintiionMapping);
+            $locationAttrCodes = array_values($this->credential?->extras['locationAttributeMappings'] ?? []);
+            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->defintiionMapping, $locationAttrCodes);
 
             $attrId = [];
 

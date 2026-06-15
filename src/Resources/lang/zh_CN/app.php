@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => '凭据',
                 'export-mappings' => '导出映射',
+                'collection-mappings' => '系列映射',
                 'import-mappings' => '导入映射',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -95,6 +96,9 @@ return [
                 'back-btn' => '返回',
                 'channel' => '发布渠道（销售渠道）',
                 'locations' => '位置列表',
+                'location_inventory_title' => '按地点库存',
+                'location_inventory_info' => '为每个地点映射一个数量属性，以按地点发送库存。留空的地点将被跳过。',
+                'location_inventory_attribute' => '数量属性',
             ],
             'edit' => [
                 'title' => '编辑凭据',
@@ -133,6 +137,10 @@ return [
                 'attribute' => '属性',
                 'fixed-value' => '固定值',
                 'save_failed' => '导出映射保存失败。 请运行 Shopify 安装命令。',
+                'validation' => [
+                    'name_required' => '请为名称映射一个属性或设置一个固定值。',
+                    'status_required' => '请选择产品状态。',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +153,80 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => '产品状态',
+                    'label' => 'Shopify 状态',
+                    'placeholder' => '选择产品状态',
+                    'tooltip' => '应用于所有导出的产品。',
+                    'options' => [
+                        'active' => '上架',
+                        'draft' => '草稿',
+                        'archived' => '已归档',
+                        'unlisted' => '未列出',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => '常规',
+                    'taxonomy' => '类别分类',
+                ],
+
+                'taxonomy' => [
+                    'title' => '类别分类映射',
+                    'header_category' => 'UnoPim 类别',
+                    'header_taxonomy' => 'Shopify 分类',
+                    'category_placeholder' => '选择类别',
+                    'taxonomy_placeholder' => '搜索 Shopify 分类',
+                    'add_btn' => '添加',
+                    'save_btn' => '保存',
+                    'saved' => '类别分类映射保存成功',
+                    'save_failed' => '类别分类映射保存失败',
+                    'empty' => '暂无映射。请在下方添加。',
+                    'already_mapped' => '此类别已映射',
+                ],
+
+                'collection' => [
+                    'title' => '系列映射',
+                    'back-btn' => '返回',
+                    'save' => '保存',
+                    'created' => '系列映射保存成功',
+                    'save_failed' => '系列映射保存失败。请运行 Shopify 安装命令。',
+                    'validation' => [
+                        'title_required' => '请为标题映射一个分类属性。',
+                    ],
+                    'errors' => [
+                        'empty_title' => '跳过分类 :code 的系列：映射的标题属性为空。',
+                    ],
+                    'images' => [
+                        'title' => '系列图片映射',
+                        'label' => '图片属性',
+                    ],
+                    'sort_order' => [
+                        'label' => '产品排序',
+                        'placeholder' => '选择排序方式',
+                        'tooltip' => '适用于所有导出的系列。',
+                        'options' => [
+                            'manual' => '手动',
+                            'best_selling' => '最畅销',
+                            'alpha_asc' => '字母顺序 (A-Z)',
+                            'alpha_desc' => '字母顺序 (Z-A)',
+                            'price_asc' => '价格 (从低到高)',
+                            'price_desc' => '价格 (从高到低)',
+                            'created' => '创建日期 (最早优先)',
+                            'created_desc' => '创建日期 (最新优先)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => '单位价格',
+                    'quantity_value' => '总量',
+                    'quantity_unit' => '总量单位',
+                    'reference_value' => '基准计量',
+                    'reference_unit' => '基准计量单位',
+                    'auto' => '自动（与总量单位相同）',
                 ],
             ],
             'settings' => [
@@ -227,6 +309,7 @@ return [
             'seo_title' => 'SEO 标题',
             'seo_description' => 'SEO 描述',
             'handle' => 'Handle',
+            'collection_type' => '系列类型',
             'taxable' => '应税',
             'inventory_cost' => '库存成本',
         ],
@@ -236,6 +319,13 @@ return [
             'channel' => '渠道',
             'currency' => '货币',
             'productfilter' => '产品过滤器 (SKU)',
+            'status' => '状态',
+            'enable' => '启用',
+            'disable' => '禁用',
+            'active' => '上架',
+            'draft' => '草稿',
+            'archived' => '已归档',
+            'unlisted' => '未列出',
             'locale' => '语言区域',
             'attribute-groups' => '属性组',
         ],

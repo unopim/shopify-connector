@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'प्रमाण पत्र',
                 'export-mappings' => 'निर्यात मानचित्रण',
+                'collection-mappings' => 'कलेक्शन मैपिंग्स',
                 'import-mappings' => 'आयात मैपिंग्स',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -95,6 +96,9 @@ return [
                 'back-btn' => 'वापस',
                 'channel' => 'प्रकाशन (बिक्री चैनल)',
                 'locations' => 'स्थान सूची',
+                'location_inventory_title' => 'स्थान-वार इन्वेंटरी',
+                'location_inventory_info' => 'प्रत्येक स्थान के लिए एक मात्रा विशेषता मैप करें ताकि स्थान-वार स्टॉक भेजा जा सके। खाली छोड़े गए स्थान छोड़ दिए जाते हैं।',
+                'location_inventory_attribute' => 'मात्रा विशेषता',
             ],
             'edit' => [
                 'title' => 'प्रमाण पत्र संपादित करें',
@@ -133,6 +137,10 @@ return [
                 'attribute' => 'विशेषता',
                 'fixed-value' => 'स्थिर मान',
                 'save_failed' => 'निर्यात मानचित्रण सहेजना विफल रहा। कृपया Shopify इंस्टॉल कमांड चलाएं।',
+                'validation' => [
+                    'name_required' => 'कृपया नाम के लिए कोई एट्रिब्यूट मैप करें या एक स्थिर मान सेट करें।',
+                    'status_required' => 'कृपया एक उत्पाद स्थिति चुनें।',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +153,80 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'उत्पाद स्थिति',
+                    'label' => 'Shopify स्थिति',
+                    'placeholder' => 'उत्पाद स्थिति चुनें',
+                    'tooltip' => 'सभी निर्यात किए गए उत्पादों पर लागू होता है।',
+                    'options' => [
+                        'active' => 'सक्रिय',
+                        'draft' => 'ड्राफ्ट',
+                        'archived' => 'संग्रहीत',
+                        'unlisted' => 'असूचीबद्ध',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'सामान्य',
+                    'taxonomy' => 'श्रेणी वर्गीकरण',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'श्रेणी वर्गीकरण मैपिंग',
+                    'header_category' => 'UnoPim श्रेणी',
+                    'header_taxonomy' => 'Shopify वर्गीकरण',
+                    'category_placeholder' => 'श्रेणी चुनें',
+                    'taxonomy_placeholder' => 'Shopify वर्गीकरण खोजें',
+                    'add_btn' => 'जोड़ें',
+                    'save_btn' => 'सहेजें',
+                    'saved' => 'श्रेणी वर्गीकरण मैपिंग सफलतापूर्वक सहेजी गई',
+                    'save_failed' => 'श्रेणी वर्गीकरण मैपिंग सहेजने में विफल',
+                    'empty' => 'अभी कोई मैपिंग नहीं। नीचे एक जोड़ें।',
+                    'already_mapped' => 'यह श्रेणी पहले से मैप की गई है',
+                ],
+
+                'collection' => [
+                    'title' => 'कलेक्शन मैपिंग्स',
+                    'back-btn' => 'वापस',
+                    'save' => 'सहेजें',
+                    'created' => 'कलेक्शन मैपिंग सफलतापूर्वक सहेजी गई',
+                    'save_failed' => 'कलेक्शन मैपिंग सहेजने में विफल। कृपया Shopify इंस्टॉल कमांड चलाएं।',
+                    'validation' => [
+                        'title_required' => 'कृपया शीर्षक के लिए एक श्रेणी विशेषता मैप करें।',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'श्रेणी :code के लिए कलेक्शन छोड़ा जा रहा है: मैप की गई शीर्षक विशेषता खाली है।',
+                    ],
+                    'images' => [
+                        'title' => 'कलेक्शन छवि मैपिंग',
+                        'label' => 'छवि विशेषता',
+                    ],
+                    'sort_order' => [
+                        'label' => 'उत्पाद क्रम',
+                        'placeholder' => 'क्रम चुनें',
+                        'tooltip' => 'सभी निर्यात की गई कलेक्शनों पर लागू होता है।',
+                        'options' => [
+                            'manual' => 'मैनुअल',
+                            'best_selling' => 'सर्वाधिक बिकने वाले',
+                            'alpha_asc' => 'वर्णानुक्रम (A-Z)',
+                            'alpha_desc' => 'वर्णानुक्रम (Z-A)',
+                            'price_asc' => 'मूल्य (कम से अधिक)',
+                            'price_desc' => 'मूल्य (अधिक से कम)',
+                            'created' => 'निर्माण तिथि (पुराने पहले)',
+                            'created_desc' => 'निर्माण तिथि (नए पहले)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'इकाई मूल्य',
+                    'quantity_value' => 'कुल मात्रा',
+                    'quantity_unit' => 'कुल मात्रा इकाई',
+                    'reference_value' => 'आधार माप',
+                    'reference_unit' => 'आधार माप इकाई',
+                    'auto' => 'स्वतः (कुल मात्रा इकाई के समान)',
                 ],
             ],
             'settings' => [
@@ -227,6 +309,7 @@ return [
             'seo_title' => 'SEO शीर्षक',
             'seo_description' => 'SEO विवरण',
             'handle' => 'Handle',
+            'collection_type' => 'कलेक्शन प्रकार',
             'taxable' => 'कर योग्य',
             'inventory_cost' => 'भंडार लागत',
         ],
@@ -236,6 +319,13 @@ return [
             'channel' => 'चैनल',
             'currency' => 'मुद्रा',
             'productfilter' => 'उत्पाद फ़िल्टर (SKU)',
+            'status' => 'स्थिति',
+            'enable' => 'सक्षम करें',
+            'disable' => 'अक्षम करें',
+            'active' => 'सक्रिय',
+            'draft' => 'ड्राफ्ट',
+            'archived' => 'संग्रहीत',
+            'unlisted' => 'असूचीबद्ध',
             'locale' => 'भाषा',
             'attribute-groups' => 'गुण समूह',
         ],

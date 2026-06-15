@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Credentials',
                 'export-mappings' => 'Export Mappings',
+                'collection-mappings' => 'Collection Mappings',
                 'import-mappings' => 'Import Mappings',
                 'meta-fields' => 'Metafield Definitions',
                 'settings' => 'Settings',
@@ -99,6 +100,9 @@ return [
                 'back-btn' => 'Back',
                 'channel' => 'Publishing (Sales channels)',
                 'locations' => 'Location List',
+                'location_inventory_title' => 'Location-wise Inventory',
+                'location_inventory_info' => 'Map a quantity attribute for each location to send location-wise stock. Locations left blank are skipped.',
+                'location_inventory_attribute' => 'Quantity Attribute',
             ],
             'edit' => [
                 'title' => 'Edit Credential',
@@ -137,6 +141,10 @@ return [
                 'attribute' => 'UnoPim Attribute',
                 'fixed-value' => 'Fixed Value',
                 'save_failed' => 'Export mapping save failed. Please run the Shopify install command.',
+                'validation' => [
+                    'name_required' => 'Please map an attribute or set a fixed value for Name.',
+                    'status_required' => 'Please select a product status.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -150,6 +158,80 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'Product Status',
+                    'label' => 'Shopify Status',
+                    'placeholder' => 'Select product status',
+                    'tooltip' => 'Applies to all exported products.',
+                    'options' => [
+                        'active' => 'Active',
+                        'draft' => 'Draft',
+                        'archived' => 'Archived',
+                        'unlisted' => 'Unlisted',
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Unit Price',
+                    'quantity_value' => 'Total amount',
+                    'quantity_unit' => 'Total amount unit',
+                    'reference_value' => 'Base measure',
+                    'reference_unit' => 'Base measure unit',
+                    'auto' => 'Auto (same as total amount unit)',
+                ],
+
+                'tabs' => [
+                    'general' => 'General',
+                    'taxonomy' => 'Category Taxonomy',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Category Taxonomy Mapping',
+                    'header_category' => 'UnoPim Category',
+                    'header_taxonomy' => 'Shopify Taxonomy',
+                    'category_placeholder' => 'Select category',
+                    'taxonomy_placeholder' => 'Search Shopify taxonomy',
+                    'add_btn' => 'Add',
+                    'save_btn' => 'Save',
+                    'saved' => 'Category taxonomy mapping saved successfully',
+                    'save_failed' => 'Failed to save category taxonomy mapping',
+                    'empty' => 'No mappings yet. Add one below.',
+                    'already_mapped' => 'This category is already mapped',
+                ],
+
+                'collection' => [
+                    'title' => 'Collection Mappings',
+                    'back-btn' => 'Back',
+                    'save' => 'Save',
+                    'created' => 'Collection Mapping saved successfully',
+                    'save_failed' => 'Collection mapping save failed. Please run the Shopify install command.',
+                    'validation' => [
+                        'title_required' => 'Please map a category attribute for Title.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Skipping collection for category :code: the mapped Title attribute is empty.',
+                    ],
+                    'images' => [
+                        'title' => 'Collection Image Mapping',
+                        'label' => 'Image Attribute',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Product Sort Order',
+                        'placeholder' => 'Select sort order',
+                        'tooltip' => 'Applies to all exported collections.',
+                        'options' => [
+                            'manual' => 'Manual',
+                            'best_selling' => 'Best Selling',
+                            'alpha_asc' => 'Alphabetical (A-Z)',
+                            'alpha_desc' => 'Alphabetical (Z-A)',
+                            'price_asc' => 'Price (low to high)',
+                            'price_desc' => 'Price (high to low)',
+                            'created' => 'Date created (oldest first)',
+                            'created_desc' => 'Date created (newest first)',
+                        ],
+                    ],
                 ],
             ],
 
@@ -236,6 +318,7 @@ return [
             'seo_title' => 'SEO Title',
             'seo_description' => 'SEO Description',
             'handle' => 'Handle',
+            'collection_type' => 'Collection Type',
             'taxable' => 'Taxable',
             'inventory_cost' => 'Cost per item',
 
@@ -246,6 +329,13 @@ return [
             'channel' => 'Channel',
             'currency' => 'Currency',
             'productfilter' => 'Product Filter (SKU)',
+            'status' => 'Status',
+            'enable' => 'Enable',
+            'disable' => 'Disable',
+            'active' => 'Active',
+            'draft' => 'Draft',
+            'archived' => 'Archived',
+            'unlisted' => 'Unlisted',
             'locale' => 'Locale',
             'attribute-groups' => 'Attribute Groups',
         ],

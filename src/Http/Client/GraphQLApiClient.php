@@ -144,17 +144,17 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
         'createCollection' => [
-            'query' => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'query' => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
         'manualCollectionGetting' => [
-            'query' => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } } } } }',
+            'query' => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
             'method' => 'POST',
         ],
 
         'GetCollectionsByCursor' => [
-            'query' => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } } } } }',
+            'query' => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
             'method' => 'POST',
         ],
 
@@ -169,7 +169,7 @@ class GraphQLApiClient
         ],
 
         'updateCollection' => [
-            'query' => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'query' => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
@@ -189,7 +189,7 @@ class GraphQLApiClient
         ],
 
         'createProduct' => [
-            'query' => 'mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!] ) { productCreate(product: $product, media: $media) { product { id title handle resourcePublications(first: 30) { edges { node { publication { id } } } } media(first: 60) { nodes { id } } options { id name values optionValues { id name } } variants(first: 30) { edges { node { id }  } } } userErrors { field message } } }',
+            'query' => 'mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!] ) { productCreate(product: $product, media: $media) { product { id title handle resourcePublications(first: 30) { edges { node { publication { id } } } } media(first: 60) { nodes { id } } options { id name values optionValues { id name } } variants(first: 30) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
@@ -249,7 +249,7 @@ class GraphQLApiClient
         ],
 
         'productUpdate' => [
-            'query' => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
+            'query' => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
@@ -303,17 +303,17 @@ class GraphQLApiClient
         ],
 
         'productAllvalueGetting' => [
-            'query' => 'query { products(first: 20, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } } seo { title description } metafields(first: 100) { edges { node { id namespace type key value } } } } } } }',
+            'query' => 'query { products(first: 20, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } } seo { title description } metafields(first: 100) { edges { node { id namespace type key value } } } } } } }',
             'method' => 'POST',
         ],
 
         'gettingRemaingVariant' => [
-            'query' => 'query GetProductVariants($productId: ID!, $after: String) { product(id: $productId) { title variants(first: 30, after: $after) { edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } pageInfo { hasNextPage } } } }',
+            'query' => 'query GetProductVariants($productId: ID!, $after: String) { product(id: $productId) { title variants(first: 30, after: $after) { edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } pageInfo { hasNextPage } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGettingByCursor' => [
-            'query' => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key type value } } } } } } }',
+            'query' => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key type value } } } } } } }',
             'method' => 'POST',
         ],
 

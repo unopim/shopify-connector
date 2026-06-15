@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Anmeldeinformationen',
                 'export-mappings' => 'Export-Zuordnungen',
+                'collection-mappings' => 'Sammlungszuordnungen',
                 'import-mappings' => 'Importzuordnungen',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -95,6 +96,9 @@ return [
                 'back-btn' => 'Zurück',
                 'channel' => 'Veröffentlichung (Verkaufskanäle)',
                 'locations' => 'Standortliste',
+                'location_inventory_title' => 'Standortbezogener Bestand',
+                'location_inventory_info' => 'Ordnen Sie jedem Standort ein Mengen-Attribut zu, um den Bestand pro Standort zu senden. Leer gelassene Standorte werden übersprungen.',
+                'location_inventory_attribute' => 'Mengen-Attribut',
             ],
             'edit' => [
                 'title' => 'Anmeldeinformationen bearbeiten',
@@ -133,6 +137,10 @@ return [
                 'attribute' => 'Attribut',
                 'fixed-value' => 'Fester Wert',
                 'save_failed' => 'Speichern der Exportzuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                'validation' => [
+                    'name_required' => 'Bitte ordnen Sie ein Attribut zu oder legen Sie einen festen Wert für den Namen fest.',
+                    'status_required' => 'Bitte wählen Sie einen Produktstatus aus.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +153,80 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'Produktstatus',
+                    'label' => 'Shopify-Status',
+                    'placeholder' => 'Produktstatus auswählen',
+                    'tooltip' => 'Gilt für alle exportierten Produkte.',
+                    'options' => [
+                        'active' => 'Aktiv',
+                        'draft' => 'Entwurf',
+                        'archived' => 'Archiviert',
+                        'unlisted' => 'Nicht gelistet',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'Allgemein',
+                    'taxonomy' => 'Kategorie-Taxonomie',
+                ],
+
+                'taxonomy' => [
+                    'title' => 'Kategorie-Taxonomie-Zuordnung',
+                    'header_category' => 'UnoPim-Kategorie',
+                    'header_taxonomy' => 'Shopify-Taxonomie',
+                    'category_placeholder' => 'Kategorie auswählen',
+                    'taxonomy_placeholder' => 'Shopify-Taxonomie suchen',
+                    'add_btn' => 'Hinzufügen',
+                    'save_btn' => 'Speichern',
+                    'saved' => 'Kategorie-Taxonomie-Zuordnung erfolgreich gespeichert',
+                    'save_failed' => 'Speichern der Kategorie-Taxonomie-Zuordnung fehlgeschlagen',
+                    'empty' => 'Noch keine Zuordnungen. Fügen Sie unten eine hinzu.',
+                    'already_mapped' => 'Diese Kategorie ist bereits zugeordnet',
+                ],
+
+                'collection' => [
+                    'title' => 'Sammlungszuordnungen',
+                    'back-btn' => 'Zurück',
+                    'save' => 'Speichern',
+                    'created' => 'Sammlungszuordnung erfolgreich gespeichert',
+                    'save_failed' => 'Speichern der Sammlungszuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                    'validation' => [
+                        'title_required' => 'Bitte ordnen Sie dem Titel ein Kategorieattribut zu.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Sammlung für Kategorie :code wird übersprungen: Das zugeordnete Titelattribut ist leer.',
+                    ],
+                    'images' => [
+                        'title' => 'Sammlungsbild-Zuordnung',
+                        'label' => 'Bildattribut',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Produktsortierung',
+                        'placeholder' => 'Sortierreihenfolge auswählen',
+                        'tooltip' => 'Gilt für alle exportierten Sammlungen.',
+                        'options' => [
+                            'manual' => 'Manuell',
+                            'best_selling' => 'Bestseller',
+                            'alpha_asc' => 'Alphabetisch (A-Z)',
+                            'alpha_desc' => 'Alphabetisch (Z-A)',
+                            'price_asc' => 'Preis (aufsteigend)',
+                            'price_desc' => 'Preis (absteigend)',
+                            'created' => 'Erstellungsdatum (älteste zuerst)',
+                            'created_desc' => 'Erstellungsdatum (neueste zuerst)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Grundpreis',
+                    'quantity_value' => 'Gesamtmenge',
+                    'quantity_unit' => 'Einheit der Gesamtmenge',
+                    'reference_value' => 'Grundmaß',
+                    'reference_unit' => 'Grundmaßeinheit',
+                    'auto' => 'Automatisch (wie Einheit der Gesamtmenge)',
                 ],
             ],
             'settings' => [
@@ -227,6 +309,7 @@ return [
             'seo_title' => 'SEO-Titel',
             'seo_description' => 'SEO-Beschreibung',
             'handle' => 'Handle',
+            'collection_type' => 'Sammlungstyp',
             'taxable' => 'Besteuerbar',
             'inventory_cost' => 'Lagerkosten',
         ],
@@ -236,6 +319,13 @@ return [
             'channel' => 'Kanal',
             'currency' => 'Währung',
             'productfilter' => 'Produktfilter (SKU)',
+            'status' => 'Status',
+            'enable' => 'Aktivieren',
+            'disable' => 'Deaktivieren',
+            'active' => 'Aktiv',
+            'draft' => 'Entwurf',
+            'archived' => 'Archiviert',
+            'unlisted' => 'Nicht gelistet',
             'locale' => 'Sprache',
             'attribute-groups' => 'Attributgruppen',
         ],

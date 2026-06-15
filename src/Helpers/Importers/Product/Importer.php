@@ -106,6 +106,11 @@ class Importer extends AbstractImporter
      */
     private $currency;
 
+    /**
+     * Optional Shopify product-status import filter: 'enable', 'disable', or null (all).
+     */
+    private ?string $statusFilter = null;
+
     protected $importMapping;
 
     protected $defintiionMapping;
@@ -287,6 +292,8 @@ class Importer extends AbstractImporter
 
         $this->currency = $filters['currency'] ?? null;
 
+        $this->statusFilter = $filters['status'] ?? null;
+
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
@@ -299,6 +306,7 @@ class Importer extends AbstractImporter
      */
     public function getSource()
     {
+
         $this->initFilters();
         if (! $this->credential?->active) {
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.disabled-credential'));
@@ -312,6 +320,7 @@ class Importer extends AbstractImporter
                     app(BulkProductFetcher::class),
                     $this->credentialArray,
                     $this->shopifyLocale,
+                    $this->statusFilter,
                 );
             } catch (\Throwable $e) {
                 Log::warning(
@@ -1507,6 +1516,7 @@ class Importer extends AbstractImporter
             $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
             if (! $optionForShopify) {
+
                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
 
                 return null;
@@ -1568,6 +1578,28 @@ class Importer extends AbstractImporter
             }
 
             $classifyAttribute($attribute, $unoAttr, $value, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
+        }
+
+        // Per-location inventory → mapped UnoPim attributes (reverse of export locationAttributeMappings).
+        $locationAttributeMappings = $this->credential?->extras['locationAttributeMappings'] ?? [];
+        foreach ($variantData['node']['inventoryItem']['inventoryLevels']['edges'] ?? [] as $levelEdge) {
+            $level = $levelEdge['node'] ?? [];
+            $locationId = $level['location']['id'] ?? null;
+            $attrCode = $locationId ? ($locationAttributeMappings[$locationId] ?? null) : null;
+
+            if (! $attrCode || ! isset($this->attributes[$attrCode])) {
+                continue;
+            }
+
+            $available = 0;
+            foreach ($level['quantities'] ?? [] as $quantity) {
+                if (($quantity['name'] ?? null) === 'available') {
+                    $available = $quantity['quantity'] ?? 0;
+                    break;
+                }
+            }
+
+            $classifyAttribute($this->attributes[$attrCode], $attrCode, (string) $available, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
         }
 
         $vcommon['sku'] = preg_replace('/[^A-Za-z0-9_-]/', '', $variantData['node']['sku']);

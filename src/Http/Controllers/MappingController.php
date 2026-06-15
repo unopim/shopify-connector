@@ -8,6 +8,7 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Helpers\ShopifyFields;
 use Webkul\Shopify\Http\Requests\ExportMappingForm;
+use Webkul\Shopify\Models\ShopifyCategoryTaxonomyMapping;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 
 class MappingController extends Controller
@@ -27,6 +28,7 @@ class MappingController extends Controller
     public function index(): View
     {
         $mappingFields = (new ShopifyFields)->getMappingField();
+        $statusOptions = (new ShopifyFields)->getStatusOptions();
         $shopifyMapping = $this->shopifyExportMappingRepository->first();
 
         $object = (new ShoifyMetaFieldType);
@@ -57,7 +59,22 @@ class MappingController extends Controller
             $mediaMapping[$row] = $value;
         }
 
-        return view('shopify::export.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
+        $unitPriceUnitOptions = (new ShopifyFields)->getUnitPriceUnitOptions();
+        $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
+
+        $locale = core()->getRequestedLocaleCode();
+        $taxonomyMappings = ShopifyCategoryTaxonomyMapping::with('category')->get()->map(function ($row) use ($locale) {
+            $name = $row->category?->additional_data['locale_specific'][$locale]['name'] ?? null;
+
+            return [
+                'category_id' => $row->unopim_category_id,
+                'category_label' => $name ?: ('['.($row->category?->code ?? $row->unopim_category_id).']'),
+                'taxonomy_id' => $row->taxonomy_id,
+                'taxonomy_path' => $row->taxonomy_path,
+            ];
+        })->values();
+
+        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify', 'taxonomyMappings'));
     }
 
     /**
@@ -74,6 +91,8 @@ class MappingController extends Controller
         $this->formatMediaMapping($filteredData, $mappingFields);
 
         $this->formatUnitMapping($filteredData, $mappingFields);
+
+        $this->formatUnitPriceMapping($request, $filteredData, $mappingFields);
 
         foreach ($filteredData as $row => $value) {
 
@@ -129,5 +148,31 @@ class MappingController extends Controller
         $mappingFields['unit']['weight'] = $filteredData['weightunit'] ?? null;
         $mappingFields['unit']['volume'] = $filteredData['volumeunit'] ?? null;
         $mappingFields['unit']['dimension'] = $filteredData['dimensionunit'] ?? null;
+    }
+
+    /**
+     * Extract the Unit Price fields into mapping['unit_price'] and drop them from
+     * $filteredData. Read from the request so a falsy show/reference value survives
+     * array_filter(). Skipped when both quantity attributes are not set (blank = no-op).
+     */
+    public function formatUnitPriceMapping(ExportMappingForm $request, array &$filteredData, array &$mappingFields)
+    {
+        foreach (['unit_price_quantity_value', 'unit_price_quantity_unit', 'unit_price_reference_value', 'unit_price_reference_unit'] as $key) {
+            unset($filteredData[$key]);
+        }
+
+        $quantityValueAttr = $request->input('unit_price_quantity_value');
+        $quantityUnitAttr = $request->input('unit_price_quantity_unit');
+
+        if (empty($quantityValueAttr) || empty($quantityUnitAttr)) {
+            return;
+        }
+
+        $mappingFields['unit_price'] = [
+            'quantityValueAttr' => $quantityValueAttr,
+            'quantityUnitAttr' => $quantityUnitAttr,
+            'referenceValue' => (int) ($request->input('unit_price_reference_value') ?: 100),
+            'referenceUnit' => $request->input('unit_price_reference_unit') ?: 'AUTO',
+        ];
     }
 }
