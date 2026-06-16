@@ -374,7 +374,14 @@ return [
                 'dimension' => 'Dimension',
                 'weight' => 'Weight',
                 'volume' => 'Volume',
+                'email' => 'Электронная почта',
+                'image_file' => 'Изображение (Файл)',
+                'file' => 'Файл',
+                'video' => 'Видео (Файл)',
             ],
+
+            'content-type' => 'Тип содержимого файла',
+
             'edit' => [
                 'title' => 'Edit Metafield Definition',
                 'back-btn' => 'Back',

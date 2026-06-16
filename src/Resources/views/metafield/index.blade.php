@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file'];
                                     @endphp
                                 <x-admin::form.control-group.control
                                     type="select"
@@ -152,6 +152,19 @@
                                 />
 
                                 <x-admin::form.control-group.error control-name="type"/>
+                            </x-admin::form.control-group>
+
+                            {{-- File content type — only for file_reference metafields (Image/File/Video) --}}
+                            <x-admin::form.control-group v-if="key === 'file_reference'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.content-type')
+                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.control
+                                    type="text"
+                                    name="content_type"
+                                    v-model="contentType"
+                                    readonly
+                                />
                             </x-admin::form.control-group>
 
                             <x-admin::form.control-group v-if=" (urlvalidation == true)">
@@ -453,6 +466,7 @@
                         smartCollectionCondition: null,
                         storefronts: 'Read',
                         contentTypeName: null,
+                        contentType: '',
                         key: null,
                         urlvalidation: false,
                         width: null,
@@ -532,6 +546,7 @@
                             var key = parsedEvent?.id;
                             this.key = key;
                             this.contentTypeName = parsedEvent?.name;
+                            this.contentType = parsedEvent?.content_type ?? '';
                             var contentTypeData = this.metaFieldTypeInShopify[key];
                             this.contenttypeSelect = contentTypeData?.list ? 1 : 0;
                             if (parsedEvent?.id === 'single_line_text_field' || parsedEvent?.id === 'number_integer' || parsedEvent?.id == 'number_decimal' || parsedEvent?.id === 'multi_line_text_field' || parsedEvent?.id === 'rating' || parsedEvent?.id == 'dimension' || parsedEvent?.id == 'volume' || parsedEvent?.id == 'weight') {

@@ -374,7 +374,14 @@ return [
                 'dimension' => 'Dimensión',
                 'weight' => 'Peso',
                 'volume' => 'Volumen',
+                'email' => 'Correo electrónico',
+                'image_file' => 'Imagen (Archivo)',
+                'file' => 'Archivo',
+                'video' => 'Vídeo (Archivo)',
             ],
+
+            'content-type' => 'Tipo de contenido del archivo',
+
             'edit' => [
                 'title' => 'Editar definición de Metacampo',
                 'back-btn' => 'Atrás',

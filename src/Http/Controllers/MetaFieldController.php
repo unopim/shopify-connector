@@ -148,6 +148,10 @@ class MetaFieldController extends Controller
             $validationValue['minunit'] = ! empty($data['minunit']) ? $data['minunit'] : null;
         }
 
+        if (($data['type'] ?? null) === 'file_reference' && ! empty($data['content_type'])) {
+            $validationValue['content_type'] = $data['content_type'];
+        }
+
         if (! empty($validationValue)) {
             $data['validations'] = json_encode($validationValue, true);
         }
@@ -325,6 +329,10 @@ class MetaFieldController extends Controller
                 $validationValue['maxunit'] = ! empty($requestData['maxunit']) ? $requestData['maxunit'] : null;
                 $validationValue['minunit'] = ! empty($requestData['minunit']) ? $requestData['minunit'] : null;
             }
+        }
+
+        if (($requestData['type'] ?? null) === 'file_reference' && ! empty($requestData['content_type'])) {
+            $validationValue['content_type'] = $requestData['content_type'];
         }
 
         if (! empty($validationValue)) {

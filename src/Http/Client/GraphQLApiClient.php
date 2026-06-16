@@ -135,6 +135,16 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
+        'fileCreate' => [
+            'query' => 'mutation fileCreate($files: [FileCreateInput!]!) { fileCreate(files: $files) { files { id fileStatus alt createdAt ... on MediaImage { image { width height } } } userErrors { field message } } }',
+            'method' => 'POST',
+        ],
+
+        'getFileById' => [
+            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } } }',
+            'method' => 'POST',
+        ],
+
         'productSet' => [
             'query' => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle variants(first: 250) { nodes { id sku inventoryItem { id } } } } userErrors { code field message } } }',
             'method' => 'POST',

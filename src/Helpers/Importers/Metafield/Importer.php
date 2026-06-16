@@ -53,6 +53,7 @@ class Importer extends AbstractImporter
         'weight' => 'text',
         'volume' => 'text',
         'date' => 'date',
+        'file_reference' => 'image',
     ];
 
     protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
@@ -236,6 +237,14 @@ class Importer extends AbstractImporter
                 $attributeFormate['validation'] = 'decimal';
             }
 
+            if ($metafieldType === 'file_reference') {
+                $fileTypes = (string) (collect($attribute['node']['validations'] ?? [])
+                    ->firstWhere('name', 'file_type_options')['value'] ?? '');
+                $attributeFormate['type'] = (str_contains($fileTypes, 'Image') && ! str_contains($fileTypes, 'Video'))
+                    ? 'image'
+                    : 'file';
+            }
+
             $data = $this->formatDataForMetafield($attribute);
 
             $existing = $this->shopifyMetaFieldRepository
@@ -282,6 +291,15 @@ class Importer extends AbstractImporter
                 'min' => (string) $scaleMin,
                 'max' => (string) $scaleMax,
             ]);
+        }
+
+        if (str_contains($typeName, 'file_reference')) {
+            $fileTypes = (string) (collect($node['validations'] ?? [])
+                ->firstWhere('name', 'file_type_options')['value'] ?? '');
+            $contentType = str_contains($fileTypes, 'Image') ? 'IMAGE'
+                : (str_contains($fileTypes, 'Video') ? 'VIDEO' : 'FILE');
+
+            $data['validations'] = json_encode(['content_type' => $contentType]);
         }
 
         return $data;

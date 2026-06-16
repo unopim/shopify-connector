@@ -89,6 +89,7 @@ class SaasProxyClient implements ShopifyClient
             'method' => 'POST',
             'field' => 'stagedUploadsCreate',
         ],
+
         'bulkOperationRunMutation' => [
             'path' => '/graphql/api/bulkOperationRunMutation.json',
             'method' => 'POST',

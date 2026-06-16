@@ -374,7 +374,14 @@ return [
                 'dimension' => '尺寸',
                 'weight' => '重量',
                 'volume' => '体积',
+                'email' => '电子邮件',
+                'image_file' => '图片（文件）',
+                'file' => '文件',
+                'video' => '视频（文件）',
             ],
+
+            'content-type' => '文件内容类型',
+
             'edit' => [
                 'title' => 'Edit Metafield Definition',
                 'back-btn' => 'Back',

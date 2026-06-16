@@ -374,7 +374,14 @@ return [
                 'dimension' => 'Dimension',
                 'weight' => 'Poids',
                 'volume' => 'Volume',
+                'email' => 'E-mail',
+                'image_file' => 'Image (Fichier)',
+                'file' => 'Fichier',
+                'video' => 'Vidéo (Fichier)',
             ],
+
+            'content-type' => 'Type de contenu du fichier',
+
             'edit' => [
                 'title' => 'Modifier la définition du champ méta',
                 'back-btn' => 'Retour',

@@ -352,6 +352,10 @@ class ShoifyMetaFieldType
                 ],
             ],
         ],
+
+        'file_reference' => [
+            'list' => true,
+        ],
     ];
 
     /**
@@ -514,6 +518,34 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'url',
                     'name' => trans('shopify::app.shopify.metafield.type.url'),
+                ],
+            ],
+
+            'email' => [
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.email'),
+                ],
+            ],
+
+            'image' => [
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.image_file'),
+                    'content_type' => 'IMAGE',
+                ],
+            ],
+
+            'file' => [
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.file'),
+                    'content_type' => 'FILE',
+                ],
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.video'),
+                    'content_type' => 'VIDEO',
                 ],
             ],
         ];

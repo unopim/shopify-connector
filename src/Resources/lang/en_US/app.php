@@ -385,7 +385,13 @@ return [
                 'dimension' => 'Dimension',
                 'weight' => 'Weight',
                 'volume' => 'Volume',
+                'email' => 'Email',
+                'image_file' => 'Image (File)',
+                'file' => 'File',
+                'video' => 'Video (File)',
             ],
+
+            'content-type' => 'File Content Type',
 
             'edit' => [
                 'title' => 'Edit Metafield Definition',

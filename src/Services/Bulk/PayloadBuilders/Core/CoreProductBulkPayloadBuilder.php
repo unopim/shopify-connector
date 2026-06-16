@@ -15,6 +15,7 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
 use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
@@ -50,6 +51,7 @@ class CoreProductBulkPayloadBuilder
         protected AttributeRepository $attributeRepository,
         protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
         protected ProductValueMapper $productValueMapper,
+        protected FileReferenceUploader $fileReferenceUploader,
     ) {}
 
     /**
@@ -61,6 +63,14 @@ class CoreProductBulkPayloadBuilder
         $jobTrackId = $jobTrack->id;
         $products = $this->fetchProducts($batchRows);
         $groupedProducts = $this->groupProducts($products);
+
+        $this->shopifyGraphQLDataFormatter->setFileReferenceMap(
+            $this->fileReferenceUploader->buildGidMap(
+                $this->collectFileReferenceValues($products),
+                $this->credentialAsArray,
+                $jobTrackId,
+            )
+        );
 
         $lines = [];
         $manifestLines = [];
@@ -147,6 +157,53 @@ class CoreProductBulkPayloadBuilder
             $this->attributesAll,
             $this->credential?->extras['locationAttributeMappings'] ?? []
         );
+    }
+
+    /**
+     * Collect unique {path, content_type} pairs for every file_reference
+     * metafield value across the products being exported. Deduped by path so a
+     * shared asset is uploaded once.
+     *
+     * @return array<int, array{path: string, content_type: string}>
+     */
+    protected function collectFileReferenceValues(array $products): array
+    {
+        $fileDefs = array_filter(
+            array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping),
+            fn ($def) => ($def['type'] ?? null) === 'file_reference'
+        );
+
+        if (empty($fileDefs)) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($products as $product) {
+            $rawData = $this->getAllAttributeValues($product);
+
+            foreach ($fileDefs as $def) {
+                $value = $rawData[$def['code']] ?? null;
+
+                if (empty($value)) {
+                    continue;
+                }
+
+                $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
+                if (! $contentType) {
+                    $contentType = ($this->attributesAll[$def['code']]?->type ?? null) === 'image' ? 'IMAGE' : 'FILE';
+                }
+
+                foreach ((array) $value as $single) {
+                    $values[(string) $single] = [
+                        'path' => (string) $single,
+                        'content_type' => $contentType,
+                    ];
+                }
+            }
+        }
+
+        return array_values($values);
     }
 
     /**

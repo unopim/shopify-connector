@@ -28,6 +28,20 @@ class ShopifyGraphQLDataFormatter
 
     protected $attributeAll;
 
+    /** @var array<string, string> assetPath => Shopify File GID */
+    protected array $fileReferenceMap = [];
+
+    /**
+     * Inject the asset-path → File GID map built by FileReferenceUploader before
+     * a product batch is formatted, so file_reference metafields resolve to GIDs.
+     *
+     * @param  array<string, string>  $map
+     */
+    public function setFileReferenceMap(array $map): void
+    {
+        $this->fileReferenceMap = $map;
+    }
+
     /**
      * Formats raw product data for GraphQL API based on export mapping and other parameters.
      * */
@@ -141,6 +155,16 @@ class ShopifyGraphQLDataFormatter
                         ]);
                         break;
 
+                    case 'file_reference':
+                        $gids = array_values(array_filter(array_map(
+                            fn ($v) => $this->fileReferenceMap[(string) $v] ?? null,
+                            (array) ($rawData[$unoAttribute] ?? [])
+                        )));
+                        $metafieldValue = ! empty($field['listvalue'])
+                            ? (empty($gids) ? null : json_encode($gids))
+                            : ($gids[0] ?? null);
+                        break;
+
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
@@ -149,8 +173,14 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 if (! empty($field['listvalue'])) {
-                    $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    if ($type !== 'file_reference') {
+                        $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    }
+                    $type = 'list.'.$type;
+                }
+
+                if ($metafieldValue === null) {
+                    continue;
                 }
 
                 $formatted[] = [

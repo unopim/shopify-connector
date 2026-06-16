@@ -3,11 +3,11 @@
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Webkul\DAM\Models\Directory;
 use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\ProductPhaseDataService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
@@ -66,6 +66,7 @@ class MediaBulkPayloadBuilder
     public function __construct(
         protected ProductPhaseDataService $productPhaseDataService,
         protected ShopifyMappingRepository $shopifyMappingRepository,
+        protected AssetUrlResolver $assetUrlResolver,
     ) {}
 
     /**
@@ -497,27 +498,7 @@ class MediaBulkPayloadBuilder
      */
     protected function resolveMedia(mixed $path): ?array
     {
-        if (! is_string($path) || $path === '') {
-            return null;
-        }
-
-        // The stored value may already be an absolute URL — e.g. an externally
-        // hosted image, or a public S3 URL kept directly in the attribute value.
-        // Use it verbatim; running it through Storage::url() would corrupt it
-        // (the disk base would be prepended to a full URL). The original value is
-        // kept as `path` so re-export dedup still matches on the unchanged source.
-        if ($this->isAbsoluteUrl($path)) {
-            return ['path' => $path, 'url' => str_replace(' ', '%20', $path)];
-        }
-
-        $normalizedPath = ltrim($path, '/');
-        $fullUrl = Storage::url(str_replace(' ', '%20', $normalizedPath));
-
-        if (empty($fullUrl)) {
-            return null;
-        }
-
-        return ['path' => $normalizedPath, 'url' => $fullUrl];
+        return $this->assetUrlResolver->resolveMedia($path);
     }
 
     /**
@@ -526,7 +507,7 @@ class MediaBulkPayloadBuilder
      */
     protected function isAbsoluteUrl(string $value): bool
     {
-        return (bool) preg_match('#^https?://#i', $value);
+        return $this->assetUrlResolver->isAbsoluteUrl($value);
     }
 
     /**
@@ -614,17 +595,7 @@ class MediaBulkPayloadBuilder
      */
     protected function resolveAssetUrl(string $path): string
     {
-        // An asset path may already be an absolute URL (e.g. stored on a remote
-        // host) — use it directly rather than routing through the DAM fetch route.
-        if ($this->isAbsoluteUrl($path)) {
-            return str_replace(' ', '%20', $path);
-        }
-
-        if (! Route::has('admin.dam.file.fetch')) {
-            return '';
-        }
-
-        return route('admin.dam.file.fetch', ['path' => $path]);
+        return $this->assetUrlResolver->resolveAssetUrl($path);
     }
 
     /**

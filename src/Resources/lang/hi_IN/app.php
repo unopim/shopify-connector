@@ -374,7 +374,14 @@ return [
                 'dimension' => 'Dimension',
                 'weight' => 'Weight',
                 'volume' => 'Volume',
+                'email' => 'ईमेल',
+                'image_file' => 'छवि (फ़ाइल)',
+                'file' => 'फ़ाइल',
+                'video' => 'वीडियो (फ़ाइल)',
             ],
+
+            'content-type' => 'फ़ाइल सामग्री प्रकार',
+
             'edit' => [
                 'title' => 'Edit Metafield Definition',
                 'back-btn' => 'Back',

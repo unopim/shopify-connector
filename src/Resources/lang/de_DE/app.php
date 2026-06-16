@@ -374,7 +374,14 @@ return [
                 'dimension' => 'Abmessung',
                 'weight' => 'Gewicht',
                 'volume' => 'Volumen',
+                'email' => 'E-Mail',
+                'image_file' => 'Bild (Datei)',
+                'file' => 'Datei',
+                'video' => 'Video (Datei)',
             ],
+
+            'content-type' => 'Dateiinhaltstyp',
+
             'edit' => [
                 'title' => 'Metafeldd Definition bearbeiten',
                 'back-btn' => 'Zurück',

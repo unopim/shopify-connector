@@ -28,6 +28,7 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
+use Webkul\Shopify\Services\ShopifyClientFactory;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -1188,6 +1189,13 @@ class Importer extends AbstractImporter
                 $source = $unitValue['value'] ?? 0;
             }
 
+            if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
+                $source = $this->resolveFileReferenceValue((string) $source, $unoAttr);
+                if ($source === null) {
+                    continue;
+                }
+            }
+
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
                 $common[$unoAttr] = $source;
             }
@@ -1211,6 +1219,50 @@ class Importer extends AbstractImporter
             $channelSpecific,
             $channelAndLocaleSpecific,
         ];
+    }
+
+    /**
+     * Resolve a file_reference metafield value (a File GID, or JSON array of GIDs
+     * for list types) into stored UnoPim asset path(s) via the existing image
+     * fetch/queue pipeline. Returns null when nothing resolves or the proxy lacks
+     * the file endpoints on SaaS (skipped + logged).
+     */
+    private function resolveFileReferenceValue(string $value, string $unoAttr): ?string
+    {
+        if (! app(ShopifyClientFactory::class)->supportsFileReference($this->credentialArray)) {
+            $this->jobLogger->warning('File metafield import skipped — SaaS proxy file endpoints unavailable.');
+
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+        $ids = array_values(array_filter(is_array($decoded) ? $decoded : [$value]));
+
+        if (empty($ids)) {
+            return null;
+        }
+
+        $response = $this->requestGraphQlApiAction('getFileById', $this->credentialArray, ['ids' => $ids]);
+        $nodes = $response['body']['data']['nodes'] ?? [];
+
+        $path = 'product'.DIRECTORY_SEPARATOR.'metafield'.DIRECTORY_SEPARATOR.$unoAttr.DIRECTORY_SEPARATOR;
+        $stored = [];
+
+        foreach ($nodes as $node) {
+            $url = $node['url'] ?? ($node['image']['url'] ?? null);
+
+            if (! $url) {
+                continue;
+            }
+
+            $resolved = $this->fetchOrQueueImage($url, $path);
+
+            if ($resolved) {
+                $stored[] = $resolved;
+            }
+        }
+
+        return empty($stored) ? null : implode(',', $stored);
     }
 
     public function updateBatchtate(JobTrackBatchContract $batch): void
