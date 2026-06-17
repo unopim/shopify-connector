@@ -63,6 +63,10 @@ return [
               taxable
               inventoryQuantity
               inventoryPolicy
+              unitPriceMeasurement {
+                quantityValue
+                quantityUnit
+              }
               selectedOptions {
                 name
                 value
@@ -170,6 +174,22 @@ GRAPHQL,
               key
               value
               type
+              reference {
+                __typename
+                ... on MediaImage {
+                  image {
+                    url
+                  }
+                }
+                ... on GenericFile {
+                  url
+                }
+                ... on Video {
+                  sources {
+                    url
+                  }
+                }
+              }
             }
           }
         }
@@ -247,6 +267,23 @@ mutation productCreateMediaBulk($productId: ID!, $media: [CreateMediaInput!]!) {
     media { id alt mediaContentType status }
     mediaUserErrors { field message }
     product { id }
+  }
+}
+GRAPHQL,
+
+    'fileCreateBulk' => <<<'GRAPHQL'
+mutation fileCreateBulk($files: [FileCreateInput!]!) {
+  fileCreate(files: $files) {
+    files { id alt }
+    userErrors { field message }
+  }
+}
+GRAPHQL,
+
+    'productVariantAppendMediaBulk' => <<<'GRAPHQL'
+mutation productVariantAppendMediaBulk($productId: ID!, $variantMedia: [ProductVariantAppendMediaInput!]!) {
+  productVariantAppendMedia(productId: $productId, variantMedia: $variantMedia) {
+    userErrors { field message }
   }
 }
 GRAPHQL,

@@ -165,6 +165,22 @@ class ShopifyGraphQLDataFormatter
                             : ($gids[0] ?? null);
                         break;
 
+                    case 'link':
+                        $url = $rawData[$unoAttribute] ?? null;
+                        $textAttr = json_decode($field['validations'] ?? '[]', true)['link_text_attribute'] ?? null;
+                        $text = $textAttr ? ($rawData[$textAttr] ?? null) : null;
+
+                        if (empty($url)) {
+                            $metafieldValue = null;
+                            break;
+                        }
+
+                        $metafieldValue = json_encode(
+                            array_filter(['text' => $text, 'url' => $url], fn ($v) => $v !== null && $v !== ''),
+                            JSON_UNESCAPED_SLASHES
+                        );
+                        break;
+
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
@@ -173,7 +189,7 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 if (! empty($field['listvalue'])) {
-                    if ($type !== 'file_reference') {
+                    if ($type !== 'file_reference' && $type !== 'link') {
                         $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
                     }
                     $type = 'list.'.$type;

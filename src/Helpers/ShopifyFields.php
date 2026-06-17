@@ -292,6 +292,17 @@ class ShopifyFields
     ];
 
     /**
+     * Mapping-form field names that carry unit-price config (stripped before the
+     * generic attribute loop so they never leak into shopify_connector_settings).
+     */
+    public const UNIT_PRICE_FORM_FIELDS = [
+        'unit_price_quantity_value',
+        'unit_price_quantity_unit',
+        'unit_price_reference_value',
+        'unit_price_reference_unit',
+    ];
+
+    /**
      * Valid Shopify unit-price unit enum values.
      *
      * @return array<int, string>
@@ -320,5 +331,66 @@ class ShopifyFields
     public function getUnitPriceMeasure(?string $unit): ?string
     {
         return self::UNIT_PRICE_UNITS[$unit] ?? null;
+    }
+
+    /**
+     * Build the stored unit-price mapping from mapping-form input. Returns null when
+     * either quantity attribute is unset (treated as "not configured"). Reference
+     * value/unit are export-only and included only when $withReference is true.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>|null
+     */
+    public function buildUnitPriceMapping(array $input, bool $withReference): ?array
+    {
+        $quantityValueAttr = $input['unit_price_quantity_value'] ?? null;
+        $quantityUnitAttr = $input['unit_price_quantity_unit'] ?? null;
+
+        if (empty($quantityValueAttr) || empty($quantityUnitAttr)) {
+            return null;
+        }
+
+        $mapping = [
+            'quantityValueAttr' => $quantityValueAttr,
+            'quantityUnitAttr' => $quantityUnitAttr,
+        ];
+
+        if ($withReference) {
+            $mapping['referenceValue'] = (int) (($input['unit_price_reference_value'] ?? null) ?: 100);
+            $mapping['referenceUnit'] = ($input['unit_price_reference_unit'] ?? null) ?: 'AUTO';
+        }
+
+        return $mapping;
+    }
+
+    /**
+     * Reverse of the export unit-price measurement: map a Shopify variant's
+     * unitPriceMeasurement back to UnoPim attribute values. Returns [attributeCode => value]
+     * for the configured quantity-value/unit attributes, or [] when unmapped/invalid.
+     *
+     * @param  array<string, mixed>|null  $measurement  Shopify unitPriceMeasurement node
+     * @param  array<string, mixed>  $config  stored mapping['unit_price']
+     * @return array<string, string>
+     */
+    public function extractUnitPriceFromVariant(?array $measurement, array $config): array
+    {
+        $valueAttr = $config['quantityValueAttr'] ?? null;
+        $unitAttr = $config['quantityUnitAttr'] ?? null;
+
+        if (! $valueAttr || ! $unitAttr || empty($measurement)) {
+            return [];
+        }
+
+        $quantityValue = $measurement['quantityValue'] ?? null;
+        $quantityUnit = strtoupper(trim((string) ($measurement['quantityUnit'] ?? '')));
+
+        if (! is_numeric($quantityValue) || ! in_array($quantityUnit, $this->getUnitPriceUnitValues(), true)) {
+            return [];
+        }
+
+        return [
+            $valueAttr => (string) $quantityValue,
+            $unitAttr => $quantityUnit,
+        ];
     }
 }

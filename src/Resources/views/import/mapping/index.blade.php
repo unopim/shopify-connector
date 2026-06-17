@@ -201,6 +201,57 @@
                         </div>
                     </div>
 
+                    <!----- Unit price mapping ---->
+                    @php
+                        $unitPrice = $unitPriceMapping ?? [];
+                        $unitExamples = implode(', ', array_slice((new \Webkul\Shopify\Helpers\ShopifyFields)->getUnitPriceUnitValues(), 0, 3));
+                    @endphp
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="text-base text-gray-800 dark:text-white font-semibold">
+                                @lang('shopify::app.shopify.export.mapping.unit_price.title')
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <div>
+                                <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_value')</p>
+                                <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_value_info')</p> </div>
+                            </div>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="unit_price_quantity_value"
+                                    track-by="code"
+                                    label-by="label"
+                                    :value="$unitPrice['quantityValueAttr'] ?? ''"
+                                    :entityName="json_encode(['number','decimal'])"
+                                    async=true
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <div>
+                                <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit')</p>
+                                <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit_info', ['units' => $unitExamples])</p> </div>
+                            </div>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="unit_price_quantity_unit"
+                                    track-by="code"
+                                    label-by="label"
+                                    :value="$unitPrice['quantityUnitAttr'] ?? ''"
+                                    :entityName="json_encode(['select','text'])"
+                                    async=true
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+                    </div>
+
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
                         <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="text-base text-gray-800 dark:text-white font-semibold">

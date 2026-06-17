@@ -93,6 +93,25 @@
                         ];
                         $metaType = json_encode($metaType, true);
                         $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
+
+                        $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference']);
+                        $refSource = $validations?->reference_source ?? 'association';
+                        $refAssoc = $validations?->association_type ?? 'related_products';
+                        $refAs = $validations?->reference_as ?? 'product';
+                        $referenceSourceOptions = json_encode([
+                            ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
+                            ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
+                        ]);
+                        $associationTypeOptions = json_encode([
+                            ['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')],
+                            ['id' => 'up_sells', 'name' => trans('shopify::app.shopify.metafield.index.up-sells')],
+                            ['id' => 'cross_sells', 'name' => trans('shopify::app.shopify.metafield.index.cross-sells')],
+                        ]);
+                        $referenceAsOptions = json_encode([
+                            ['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')],
+                            ['id' => 'variant', 'name' => trans('shopify::app.shopify.metafield.index.as-variant')],
+                        ]);
+
                         $one = false;
                         $list = true;
                         if (!$metaField->listvalue){
@@ -118,6 +137,7 @@
                     <x-admin::form.control-group.error control-name="ownerType"/>
                 </x-admin::form.control-group>
 
+                @if (! $isReference)
                 <!-- Unopim Attribute -->
                 <x-admin::form.control-group class="w-[525px]">
                     <x-admin::form.control-group.label class="required">
@@ -165,6 +185,100 @@
                         :value="$metaField?->type"
                     />
                 </x-admin::form.control-group>
+                @endif
+
+                @if ($isReference)
+                    <input type="hidden" name="reference_mode" value="1" />
+
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label class="required">
+                            @lang('shopify::app.shopify.metafield.index.reference-source')
+                        </x-admin::form.control-group.label>
+                        <x-admin::form.control-group.control
+                            type="select"
+                            name="reference_source"
+                            :options="$referenceSourceOptions"
+                            :value="$refSource"
+                            track-by="id"
+                            label-by="name"
+                            @input="handleReferenceSelect($event, 'referenceSource')"
+                        />
+                    </x-admin::form.control-group>
+
+                    <template v-if="referenceSource === 'association'">
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.metafield.index.association-type')
+                            </x-admin::form.control-group.label>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                name="association_type"
+                                :options="$associationTypeOptions"
+                                :value="$refAssoc"
+                                track-by="id"
+                                label-by="name"
+                                @input="handleReferenceSelect($event, 'associationType')"
+                            />
+                        </x-admin::form.control-group>
+
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.metafield.index.reference-as')
+                            </x-admin::form.control-group.label>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                name="reference_as"
+                                :options="$referenceAsOptions"
+                                :value="$refAs"
+                                track-by="id"
+                                label-by="name"
+                                @input="handleReferenceSelect($event, 'referenceAs')"
+                            />
+                        </x-admin::form.control-group>
+                    </template>
+
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.metafield.index.resolved-type')
+                        </x-admin::form.control-group.label>
+                        <input type="text" :value="referenceTypeLabel" readonly
+                            class="flex w-full min-h-[39px] rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300" />
+                        <input type="hidden" name="type" :value="referenceType" />
+                    </x-admin::form.control-group>
+
+                    <x-admin::form.control-group class="w-[525px]">
+                        <div class="flex items-center gap-4">
+                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.control
+                                    type="radio"
+                                    id="ref_listvalue_list"
+                                    name="ref_listvalue"
+                                    value="list"
+                                    for="ref_listvalue_list"
+                                    @change="referenceListChoice = 'list'"
+                                    ::checked="referenceListChoice === 'list'"
+                                />
+                                <x-admin::form.control-group.label for="ref_listvalue_list">
+                                    @lang('shopify::app.shopify.metafield.index.listvalue')
+                                </x-admin::form.control-group.label>
+                            </x-admin::form.control-group>
+                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.control
+                                    type="radio"
+                                    id="ref_listvalue_one"
+                                    name="ref_listvalue"
+                                    value="one"
+                                    for="ref_listvalue_one"
+                                    @change="referenceListChoice = 'one'"
+                                    ::checked="referenceListChoice === 'one'"
+                                />
+                                <x-admin::form.control-group.label for="ref_listvalue_one">
+                                    @lang('shopify::app.shopify.metafield.index.onevalue')
+                                </x-admin::form.control-group.label>
+                            </x-admin::form.control-group>
+                        </div>
+                    </x-admin::form.control-group>
+                @endif
 
                 @if ($metaField?->type == 'url')
                     <x-admin::form.control-group>
@@ -457,12 +571,40 @@
                     return {
                         storefronts: @json($storefronts ?? null),
                         width: @json($width ?? null),
+                        referenceSource: @json($refSource ?? 'association'),
+                        associationType: @json($refAssoc ?? 'related_products'),
+                        referenceAs: @json($refAs ?? 'product'),
+                        referenceListChoice: @json($metaField->listvalue ? 'list' : 'one'),
                     };
+                },
+                computed: {
+                    referenceTypeBase() {
+                        return this.referenceSource === 'categories'
+                            ? 'collection_reference'
+                            : (this.referenceAs === 'variant' ? 'variant_reference' : 'product_reference');
+                    },
+                    referenceTypeLabel() {
+                        const map = {
+                            product_reference: 'Product Reference',
+                            variant_reference: 'Variant Reference',
+                            collection_reference: 'Collection Reference',
+                        };
+                        return map[this.referenceTypeBase] || '';
+                    },
+                    referenceType() {
+                        return this.referenceListChoice === 'list' ? 'list.' + this.referenceTypeBase : this.referenceTypeBase;
+                    },
                 },
                 methods: {
                     togglenableStorefronts() {
                         this.storefronts = this.enableStorefronts ? 'Read' : 'No access';
-                    }
+                    },
+
+                    handleReferenceSelect(event, field) {
+                        if (event && (typeof event === 'string' || event instanceof String)) {
+                            this[field] = JSON.parse(event)?.id;
+                        }
+                    },
                 }
             })
         </script>

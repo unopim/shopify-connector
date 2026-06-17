@@ -54,6 +54,7 @@ class Importer extends AbstractImporter
         'volume' => 'text',
         'date' => 'date',
         'file_reference' => 'image',
+        'link' => 'text',
     ];
 
     protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
@@ -218,6 +219,14 @@ class Importer extends AbstractImporter
 
         foreach ($attributes as $attribute) {
             $metafieldType = $attribute['node']['type']['name'];
+            $baseType = preg_replace('/^list\./', '', $metafieldType);
+
+            if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
+                $this->persistDefinitionIfMissing($attribute);
+
+                continue;
+            }
+
             if (! isset($this->attributeType[$metafieldType])) {
                 continue;
             }
@@ -245,22 +254,26 @@ class Importer extends AbstractImporter
                     : 'file';
             }
 
-            $data = $this->formatDataForMetafield($attribute);
-
-            $existing = $this->shopifyMetaFieldRepository
-                ->findOneWhere([
-                    ['name_space_key', '=', $data['name_space_key']],
-                    ['ownerType', '=', $data['ownerType']],
-                ]);
-
-            if (! $existing) {
-                $this->shopifyMetaFieldRepository->create($data);
-            }
+            $this->persistDefinitionIfMissing($attribute);
 
             $attributesArray[] = $attributeFormate;
         }
 
         return $attributesArray;
+    }
+
+    private function persistDefinitionIfMissing(array $attribute): void
+    {
+        $data = $this->formatDataForMetafield($attribute);
+
+        $existing = $this->shopifyMetaFieldRepository->findOneWhere([
+            ['name_space_key', '=', $data['name_space_key']],
+            ['ownerType', '=', $data['ownerType']],
+        ]);
+
+        if (! $existing) {
+            $this->shopifyMetaFieldRepository->create($data);
+        }
     }
 
     public function formatDataForMetafield(array $metafieldDefinition): array
@@ -300,6 +313,15 @@ class Importer extends AbstractImporter
                 : (str_contains($fileTypes, 'Video') ? 'VIDEO' : 'FILE');
 
             $data['validations'] = json_encode(['content_type' => $contentType]);
+        }
+
+        $referenceBase = preg_replace('/^list\./', '', $typeName);
+        if (in_array($referenceBase, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
+            $data['type'] = $referenceBase;
+            $data['validations'] = json_encode($referenceBase === 'collection_reference'
+                ? ['reference_source' => 'categories']
+                : ['reference_source' => 'association', 'association_type' => 'related_products',
+                    'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
         }
 
         return $data;

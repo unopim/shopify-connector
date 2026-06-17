@@ -236,6 +236,7 @@ class BulkOperationProductIterator implements \Iterator
                 'taxable' => $variant['taxable'] ?? false,
                 'inventoryQuantity' => $variant['inventoryQuantity'] ?? 0,
                 'inventoryPolicy' => $variant['inventoryPolicy'] ?? null,
+                'unitPriceMeasurement' => $variant['unitPriceMeasurement'] ?? null,
                 'selectedOptions' => $variant['selectedOptions'] ?? [],
                 'metafields' => $this->wrapEdges($this->childrenOf($variantId, 'Metafield')),
                 'media' => ['nodes' => $this->mediaNodes($variantId)],

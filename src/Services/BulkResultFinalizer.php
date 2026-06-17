@@ -8,6 +8,7 @@ use Webkul\DataTransfer\Models\JobTrackProxy;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\DataTransfer\Services\JobLogger;
+use Webkul\Shopify\Jobs\RunVariantMediaPhase;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
@@ -467,6 +468,16 @@ class BulkResultFinalizer
         // existing media instead of creating duplicates.
         if ($mutation === 'productCreateMedia') {
             $this->persistMediaMappings($manifest, $results);
+
+            // Chain the variant-media phase now that media IDs exist. Register it as
+            // one more phase job (before this media phase decrements below) so the
+            // core op does not flip to completed before variant images are linked.
+            $coreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
+
+            if ($coreOpId > 0) {
+                $this->phaseProgressTracker->registerPhaseJobsForCore($coreOpId, 1);
+                RunVariantMediaPhase::dispatch($coreOpId);
+            }
         }
 
         if ($bulkOperation->job_track_id && $bulkOperation->phase) {
@@ -546,6 +557,7 @@ class BulkResultFinalizer
             'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
             'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
             'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
+            'productVariantAppendMedia' => $decoded['data']['productVariantAppendMedia']['userErrors'] ?? [],
             default => [],
         };
     }

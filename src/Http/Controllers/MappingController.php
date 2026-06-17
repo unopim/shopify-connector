@@ -152,27 +152,19 @@ class MappingController extends Controller
 
     /**
      * Extract the Unit Price fields into mapping['unit_price'] and drop them from
-     * $filteredData. Read from the request so a falsy show/reference value survives
+     * $filteredData. Read from the request so a falsy reference value survives
      * array_filter(). Skipped when both quantity attributes are not set (blank = no-op).
      */
     public function formatUnitPriceMapping(ExportMappingForm $request, array &$filteredData, array &$mappingFields)
     {
-        foreach (['unit_price_quantity_value', 'unit_price_quantity_unit', 'unit_price_reference_value', 'unit_price_reference_unit'] as $key) {
+        foreach (ShopifyFields::UNIT_PRICE_FORM_FIELDS as $key) {
             unset($filteredData[$key]);
         }
 
-        $quantityValueAttr = $request->input('unit_price_quantity_value');
-        $quantityUnitAttr = $request->input('unit_price_quantity_unit');
+        $unitPrice = (new ShopifyFields)->buildUnitPriceMapping($request->all(), true);
 
-        if (empty($quantityValueAttr) || empty($quantityUnitAttr)) {
-            return;
+        if ($unitPrice) {
+            $mappingFields['unit_price'] = $unitPrice;
         }
-
-        $mappingFields['unit_price'] = [
-            'quantityValueAttr' => $quantityValueAttr,
-            'quantityUnitAttr' => $quantityUnitAttr,
-            'referenceValue' => (int) ($request->input('unit_price_reference_value') ?: 100),
-            'referenceUnit' => $request->input('unit_price_reference_unit') ?: 'AUTO',
-        ];
     }
 }

@@ -286,7 +286,7 @@ class Exporter extends AbstractExporter
             $minunit = $validationDatas['minunit'] ?? null;
             unset($validationDatas['maxunit'], $validationDatas['minunit']);
             foreach ($validationDatas as $key => $validationData) {
-                if ($key === 'content_type') {
+                if (in_array($key, ['content_type', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute'], true)) {
                     continue;
                 }
                 if ($validationData == null) {
@@ -329,7 +329,9 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            $formattedData['capabilities'] = $capabilities;
+            if (! empty($capabilities)) {
+                $formattedData['capabilities'] = $capabilities;
+            }
         }
 
         return $formattedData;

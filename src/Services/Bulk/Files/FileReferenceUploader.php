@@ -175,7 +175,7 @@ class FileReferenceUploader
             return [];
         }
 
-        $mutation = 'mutation call($files: [FileCreateInput!]!) { fileCreate(files: $files) { files { id alt } userErrors { field message } } }';
+        $mutation = config('shopify_bulk_mutations.fileCreateBulk');
 
         try {
             $jsonlPath = $this->bulkOperationService->writeJsonl('shopify/filecreate-'.uniqid().'.jsonl', $lines);

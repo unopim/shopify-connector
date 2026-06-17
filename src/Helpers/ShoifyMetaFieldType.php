@@ -356,6 +356,22 @@ class ShoifyMetaFieldType
         'file_reference' => [
             'list' => true,
         ],
+
+        'product_reference' => [
+            'list' => true,
+        ],
+
+        'variant_reference' => [
+            'list' => true,
+        ],
+
+        'collection_reference' => [
+            'list' => true,
+        ],
+
+        'link' => [
+            'list' => true,
+        ],
     ];
 
     /**
@@ -382,6 +398,10 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'url',
                     'name' => trans('shopify::app.shopify.metafield.type.url'),
+                ],
+                [
+                    'id' => 'link',
+                    'name' => trans('shopify::app.shopify.metafield.type.link'),
                 ],
                 [
                     'id' => 'multi_line_text_field',

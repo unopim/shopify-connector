@@ -298,6 +298,68 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
+     * @return array<int, array{namespace: string, key: string, type: string, value: string}>
+     */
+    protected function buildReferenceMetafields(array $productRow): array
+    {
+        $defs = array_filter(
+            $this->productMetaFieldMapping,
+            fn ($d) => in_array($d['type'] ?? '', ['product_reference', 'variant_reference', 'collection_reference'], true)
+        );
+
+        if (empty($defs)) {
+            return [];
+        }
+
+        $values = $productRow['values'] ?? [];
+        $metafields = [];
+
+        foreach ($defs as $def) {
+            $cfg = json_decode($def['validations'] ?? '[]', true) ?: [];
+
+            if ($def['type'] === 'collection_reference') {
+                $gids = $this->resolveCollectionIds($values['categories'] ?? []);
+            } else {
+                $assocType = $cfg['association_type'] ?? 'related_products';
+                $skus = $values['associations'][$assocType] ?? [];
+                $field = ($cfg['reference_as'] ?? 'product') === 'variant' ? 'externalId' : 'relatedId';
+
+                $gids = [];
+                foreach ($skus as $sku) {
+                    $row = ($this->findMapping($sku) ?? [])[0] ?? null;
+                    $gid = $row[$field] ?? null;
+
+                    if ($def['type'] === 'variant_reference' && ! $this->resolveVariantGid($gid)) {
+                        logger()->warning('Shopify: variant_reference skipped — no variant GID', ['sku' => $sku]);
+
+                        continue;
+                    }
+
+                    if ($gid) {
+                        $gids[] = $gid;
+                    }
+                }
+            }
+
+            $gids = array_values(array_unique(array_filter($gids)));
+            if (empty($gids)) {
+                continue;
+            }
+
+            $isList = ! empty($def['listvalue']);
+            $nsKey = explode('.', $def['name_space_key']);
+            $metafields[] = [
+                'namespace' => $nsKey[0],
+                'key' => $nsKey[1],
+                'type' => $isList ? 'list.'.$def['type'] : $def['type'],
+                'value' => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
+            ];
+        }
+
+        return $metafields;
+    }
+
+    /**
      * Build a single productSet payload and manifest line.
      */
     protected function buildPayloadForGroup(array $group, int $jobTrackId): ?array
@@ -325,6 +387,14 @@ class CoreProductBulkPayloadBuilder
             $this->productMetaFieldMapping,
             $this->variantMetaFieldMapping
         );
+
+        $referenceMetafields = $this->buildReferenceMetafields($parentData ?? $firstVariant);
+        if (! empty($referenceMetafields)) {
+            $formattedProduct['metafields'] = array_merge(
+                $formattedProduct['metafields'] ?? [],
+                $referenceMetafields
+            );
+        }
 
         $productInput = $this->normalizeProductInput($formattedProduct, $productOptions);
         $productInput['handle'] = ($productInput['handle'] ?? null) ?: Str::slug(($productInput['title'] ?? null) ?: $productSku);
