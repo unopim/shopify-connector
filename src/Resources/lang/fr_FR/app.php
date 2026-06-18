@@ -365,6 +365,7 @@ return [
                 'reference-as' => 'Référencer en tant que',
                 'as-product' => 'Produit',
                 'as-variant' => 'Variante',
+                'as-collection' => 'Collection',
                 'related' => 'Produits associés',
                 'up-sells' => 'Ventes incitatives',
                 'cross-sells' => 'Ventes croisées',

@@ -111,6 +111,9 @@
                             ['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')],
                             ['id' => 'variant', 'name' => trans('shopify::app.shopify.metafield.index.as-variant')],
                         ]);
+                        $referenceCollectionOptions = json_encode([
+                            ['id' => 'collection', 'name' => trans('shopify::app.shopify.metafield.index.as-collection')],
+                        ]);
 
                         $one = false;
                         $list = true;
@@ -201,6 +204,7 @@
                             :value="$refSource"
                             track-by="id"
                             label-by="name"
+                            disabled="disabled"
                             @input="handleReferenceSelect($event, 'referenceSource')"
                         />
                     </x-admin::form.control-group>
@@ -220,31 +224,42 @@
                                 @input="handleReferenceSelect($event, 'associationType')"
                             />
                         </x-admin::form.control-group>
-
-                        <x-admin::form.control-group class="w-[525px]">
-                            <x-admin::form.control-group.label class="required">
-                                @lang('shopify::app.shopify.metafield.index.reference-as')
-                            </x-admin::form.control-group.label>
-                            <x-admin::form.control-group.control
-                                type="select"
-                                name="reference_as"
-                                :options="$referenceAsOptions"
-                                :value="$refAs"
-                                track-by="id"
-                                label-by="name"
-                                @input="handleReferenceSelect($event, 'referenceAs')"
-                            />
-                        </x-admin::form.control-group>
                     </template>
 
-                    <x-admin::form.control-group class="w-[525px]">
+                    {{-- Type: Product/Variant when source is association, Collection when categories. Disabled on edit. --}}
+                    <x-admin::form.control-group class="w-[525px]" v-if="referenceSource === 'association'">
                         <x-admin::form.control-group.label class="required">
                             @lang('shopify::app.shopify.metafield.index.resolved-type')
                         </x-admin::form.control-group.label>
-                        <input type="text" :value="referenceTypeLabel" readonly
-                            class="flex w-full min-h-[39px] rounded-md border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300" />
-                        <input type="hidden" name="type" :value="referenceType" />
+                        <x-admin::form.control-group.control
+                            type="select"
+                            name="reference_as"
+                            :options="$referenceAsOptions"
+                            :value="$refAs"
+                            track-by="id"
+                            label-by="name"
+                            disabled="disabled"
+                            @input="handleReferenceSelect($event, 'referenceAs')"
+                        />
                     </x-admin::form.control-group>
+
+                    <x-admin::form.control-group class="w-[525px]" v-if="referenceSource === 'categories'">
+                        <x-admin::form.control-group.label class="required">
+                            @lang('shopify::app.shopify.metafield.index.resolved-type')
+                        </x-admin::form.control-group.label>
+                        <x-admin::form.control-group.control
+                            type="select"
+                            name="reference_as"
+                            :options="$referenceCollectionOptions"
+                            :value="json_encode(['id' => 'collection', 'name' => trans('shopify::app.shopify.metafield.index.as-collection')])"
+                            track-by="id"
+                            label-by="name"
+                            disabled="disabled"
+                            @input="handleReferenceSelect($event, 'referenceAs')"
+                        />
+                    </x-admin::form.control-group>
+
+                    <input type="hidden" name="type" :value="referenceType" />
 
                     <x-admin::form.control-group class="w-[525px]">
                         <div class="flex items-center gap-4">
@@ -341,7 +356,8 @@
                         id="attribute"
                         name="attribute"
                         rules="required"
-                        :value="old('attribute') ?? $metaField->attribute"
+                        v-model="attribute"
+                        readonly
                         :label="trans('shopify::app.shopify.metafield.index.attribute')"
                         :placeholder="trans('shopify::app.shopify.metafield.index.attribute')"
                     />
@@ -357,8 +373,8 @@
                         type="text"
                         id="name_space_key"
                         name="name_space_key"
-                        :value="old('name_space_key') ?? $metaField->name_space_key"
-                        disabled="disabled"
+                        v-model="name_space_key"
+                        readonly
                         :label="trans('shopify::app.shopify.metafield.index.name_space_key')"
                         :placeholder="trans('shopify::app.shopify.metafield.index.name_space_key')"
                     />
@@ -575,6 +591,8 @@
                         associationType: @json($refAssoc ?? 'related_products'),
                         referenceAs: @json($refAs ?? 'product'),
                         referenceListChoice: @json($metaField->listvalue ? 'list' : 'one'),
+                        attribute: @json($metaField->attribute ?? ''),
+                        name_space_key: @json($metaField->name_space_key ?? ''),
                     };
                 },
                 computed: {
@@ -603,7 +621,32 @@
                     handleReferenceSelect(event, field) {
                         if (event && (typeof event === 'string' || event instanceof String)) {
                             this[field] = JSON.parse(event)?.id;
+
+                            // Keep the Type (reference_as) in sync with the source:
+                            // categories => collection, association defaults to product.
+                            if (field === 'referenceSource') {
+                                this.referenceAs = this.referenceSource === 'categories' ? 'collection' : 'product';
+                            }
+
+                            this.applyReferenceNaming();
                         }
+                    },
+
+                    applyReferenceNaming() {
+                        if (! this.referenceSource) {
+                            return;
+                        }
+                        let key, name;
+                        if (this.referenceSource === 'categories') {
+                            key = 'collections';
+                            name = 'Collections';
+                        } else {
+                            const labels = { related_products: 'Related products', up_sells: 'Up-sells', cross_sells: 'Cross-sells' };
+                            key = this.associationType + (this.referenceAs === 'variant' ? '_variant' : '');
+                            name = (labels[this.associationType] ?? this.associationType) + (this.referenceAs === 'variant' ? ' (Variant)' : '');
+                        }
+                        this.name_space_key = 'custom.' + key;
+                        this.attribute = name;
                     },
                 }
             })

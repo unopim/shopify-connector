@@ -365,6 +365,7 @@ return [
                 'reference-as' => 'الإشارة كـ',
                 'as-product' => 'منتج',
                 'as-variant' => 'متغير',
+                'as-collection' => 'مجموعة',
                 'related' => 'منتجات ذات صلة',
                 'up-sells' => 'منتجات أعلى',
                 'cross-sells' => 'منتجات تكميلية',

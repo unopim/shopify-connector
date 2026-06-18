@@ -365,6 +365,7 @@ return [
                 'reference-as' => 'Ссылаться как',
                 'as-product' => 'Товар',
                 'as-variant' => 'Вариант',
+                'as-collection' => 'Коллекция',
                 'related' => 'Сопутствующие товары',
                 'up-sells' => 'Допродажи',
                 'cross-sells' => 'Перекрёстные продажи',

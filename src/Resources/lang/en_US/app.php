@@ -375,6 +375,7 @@ return [
                 'reference-as' => 'Reference as',
                 'as-product' => 'Product',
                 'as-variant' => 'Variant',
+                'as-collection' => 'Collection',
                 'related' => 'Related',
                 'up-sells' => 'Up-sells',
                 'cross-sells' => 'Cross-sells',

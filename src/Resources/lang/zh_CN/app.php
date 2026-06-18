@@ -365,6 +365,7 @@ return [
                 'reference-as' => '引用为',
                 'as-product' => '产品',
                 'as-variant' => '变体',
+                'as-collection' => '系列',
                 'related' => '相关产品',
                 'up-sells' => '追加销售',
                 'cross-sells' => '交叉销售',
