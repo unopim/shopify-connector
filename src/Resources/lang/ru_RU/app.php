@@ -368,7 +368,7 @@ return [
                 'related' => 'Сопутствующие товары',
                 'up-sells' => 'Допродажи',
                 'cross-sells' => 'Перекрёстные продажи',
-                'resolved-type' => 'Итоговый тип Shopify',
+                'resolved-type' => 'Тип',
                 'anchor-text' => 'Текст ссылки',
                 'unit' => [
                     'minvalue' => '',

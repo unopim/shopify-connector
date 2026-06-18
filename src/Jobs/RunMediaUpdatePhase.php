@@ -9,23 +9,28 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
-use Webkul\Shopify\Services\Bulk\Phases\Export\MediaPhaseService;
+use Webkul\Shopify\Services\Bulk\Phases\Export\MediaUpdatePhaseService;
 use Webkul\Shopify\Services\BulkOperationResultReader;
 use Webkul\Shopify\Services\PhaseProgressTracker;
 use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
-class RunMediaPhase implements ShouldQueue
+/**
+ * Runs the media-update phase: updates already-mapped product images whose source
+ * path changed. Dispatched as a sibling of the media phase with the core bulk
+ * operation id, mirroring the other follow-up phase jobs.
+ */
+class RunMediaUpdatePhase implements ShouldQueue
 {
     use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected const PHASE = 'media';
+    protected const PHASE = 'media_update';
 
     public function __construct(protected int $bulkOperationId) {}
 
     public function handle(
         ShopifyBulkOperationRepository $repository,
         BulkOperationResultReader $resultReader,
-        MediaPhaseService $phaseService,
+        MediaUpdatePhaseService $phaseService,
         PhaseProgressTracker $tracker,
     ): void {
         $bulkOperation = $repository->find($this->bulkOperationId);
@@ -47,14 +52,6 @@ class RunMediaPhase implements ShouldQueue
         }
 
         $this->storeResult($bulkOperation, $result);
-
-        // Chain the media_update phase only when build() actually found images to
-        // update. Register it (+1) BEFORE this media phase decrements below so the
-        // core op does not flip to completed before the updates run.
-        if ($phaseService->hasPendingUpdate()) {
-            $tracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
-            RunMediaUpdatePhase::dispatch((int) $bulkOperation->id);
-        }
 
         if (empty($result['phase_bulk_operation_id'])) {
             $tracker->markFinishedForCore((int) $bulkOperation->id, $bulkOperation->job_track_id, self::PHASE);

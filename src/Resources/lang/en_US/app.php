@@ -378,7 +378,7 @@ return [
                 'related' => 'Related',
                 'up-sells' => 'Up-sells',
                 'cross-sells' => 'Cross-sells',
-                'resolved-type' => 'Resolved Shopify type',
+                'resolved-type' => 'Type',
                 'anchor-text' => 'Anchor text',
                 'unit' => [
                     'minvalue' => '',

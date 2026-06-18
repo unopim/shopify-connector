@@ -368,7 +368,7 @@ return [
                 'related' => 'منتجات ذات صلة',
                 'up-sells' => 'منتجات أعلى',
                 'cross-sells' => 'منتجات تكميلية',
-                'resolved-type' => 'نوع Shopify الناتج',
+                'resolved-type' => 'النوع',
                 'anchor-text' => 'نص الرابط',
                 'unit' => [
                     'minvalue' => '',

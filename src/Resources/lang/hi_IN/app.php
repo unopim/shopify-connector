@@ -368,7 +368,7 @@ return [
                 'related' => 'संबंधित उत्पाद',
                 'up-sells' => 'अप-सेल',
                 'cross-sells' => 'क्रॉस-सेल',
-                'resolved-type' => 'परिणामी Shopify प्रकार',
+                'resolved-type' => 'प्रकार',
                 'anchor-text' => 'एंकर टेक्स्ट',
                 'unit' => [
                     'minvalue' => '',

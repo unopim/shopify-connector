@@ -182,7 +182,7 @@
                                 </template>
 
                                 <x-admin::form.control-group v-if="referenceSource">
-                                    <x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.label class="required">
                                         @lang('shopify::app.shopify.metafield.index.resolved-type')
                                     </x-admin::form.control-group.label>
                                     <input type="text" :value="referenceTypeLabel" readonly
@@ -635,6 +635,12 @@
                 watch: {
                     referenceMode(on) {
                         if (on) {
+                            // Reference types don't use the generic admin-filterable /
+                            // smart-collection toggles; clear any state a previously
+                            // selected type (e.g. single line text) left behind so they
+                            // don't linger when reference mode is switched on.
+                            this.adminFilterable = null;
+                            this.smartCollectionCondition = null;
                             this.applyReferenceNaming();
                         }
                     },

@@ -368,7 +368,7 @@ return [
                 'related' => '相关产品',
                 'up-sells' => '追加销售',
                 'cross-sells' => '交叉销售',
-                'resolved-type' => '解析的 Shopify 类型',
+                'resolved-type' => '类型',
                 'anchor-text' => '锚文本',
                 'unit' => [
                     'minvalue' => '',

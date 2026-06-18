@@ -48,6 +48,7 @@ it('should update the export mapping', function () {
         'descriptionHtml' => $description->code,
         'price' => $price->code,
         'weight' => $weight->code,
+        'status' => 'ACTIVE',
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)
@@ -68,6 +69,7 @@ it('should update the export mapping with metafield mapping', function () {
         'descriptionHtml' => $description->code,
         'price' => $price->code,
         'weight' => $weight->code,
+        'status' => 'ACTIVE',
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)

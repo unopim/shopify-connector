@@ -287,4 +287,13 @@ mutation productVariantAppendMediaBulk($productId: ID!, $variantMedia: [ProductV
   }
 }
 GRAPHQL,
+
+    'productUpdateMediaBulk' => <<<'GRAPHQL'
+mutation productUpdateMediaBulk($productId: ID!, $media: [UpdateMediaInput!]!) {
+  productUpdateMedia(productId: $productId, media: $media) {
+    media { id alt }
+    mediaUserErrors { field message }
+  }
+}
+GRAPHQL,
 ];

@@ -368,7 +368,7 @@ return [
                 'related' => 'Productos relacionados',
                 'up-sells' => 'Ventas adicionales',
                 'cross-sells' => 'Ventas cruzadas',
-                'resolved-type' => 'Tipo de Shopify resultante',
+                'resolved-type' => 'Tipo',
                 'anchor-text' => 'Texto del enlace',
                 'unit' => [
                     'minvalue' => '',

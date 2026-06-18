@@ -238,7 +238,7 @@
                     </template>
 
                     <x-admin::form.control-group class="w-[525px]">
-                        <x-admin::form.control-group.label>
+                        <x-admin::form.control-group.label class="required">
                             @lang('shopify::app.shopify.metafield.index.resolved-type')
                         </x-admin::form.control-group.label>
                         <input type="text" :value="referenceTypeLabel" readonly
@@ -290,7 +290,7 @@
                         </x-admin::form.control-group.label>
                     </x-admin::form.control-group>
                 @endif
-                @if ($listValue)
+                @if ($listValue && ! $isReference)
                     <div class="flex items-center gap-4">
                         <x-admin::form.control-group class="{{ !(bool) $one ? 'opacity-25' : '' }}">
                             <x-admin::form.control-group.control

@@ -480,6 +480,12 @@ class BulkResultFinalizer
             }
         }
 
+        // Refresh the stored mapping `code` (attribute + new path) for media the
+        // media_update phase updated, so the next export sees the new path.
+        if ($mutation === 'productUpdateMedia') {
+            $this->refreshMediaUpdateMappings($manifest, $results);
+        }
+
         if ($bulkOperation->job_track_id && $bulkOperation->phase) {
             $parentCoreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
 
@@ -557,6 +563,7 @@ class BulkResultFinalizer
             'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
             'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
             'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
+            'productUpdateMedia' => $decoded['data']['productUpdateMedia']['mediaUserErrors'] ?? [],
             'productVariantAppendMedia' => $decoded['data']['productVariantAppendMedia']['userErrors'] ?? [],
             default => [],
         };
@@ -691,6 +698,46 @@ class BulkResultFinalizer
                     (int) $jobTrackId,
                     $shopUrl,
                 );
+            }
+        }
+    }
+
+    /**
+     * Rewrite the stored mapping `code` for media updated by a productUpdateMedia
+     * bulk operation.
+     *
+     * The phase manifest carries a code-refresh plan keyed by Shopify media GID
+     * (computed by MediaBulkPayloadBuilder::build, persisted by the media phase).
+     * Each successfully
+     * updated media node is matched back to its mapping row by GID and its `code`
+     * rewritten to the new (attribute + path), so the next export skips it instead
+     * of updating again.
+     */
+    protected function refreshMediaUpdateMappings(array $manifest, array $results): void
+    {
+        $updatePlan = $manifest['media_update_plan'] ?? [];
+
+        if (empty($updatePlan)) {
+            return;
+        }
+
+        foreach ($results as $line) {
+            $decoded = json_decode($line, true) ?: [];
+            $payload = $decoded['data']['productUpdateMedia'] ?? [];
+
+            if (! empty($payload['mediaUserErrors'])) {
+                continue;
+            }
+
+            foreach ($payload['media'] ?? [] as $media) {
+                $mediaId = $media['id'] ?? null;
+                $refresh = $mediaId ? ($updatePlan[$mediaId] ?? null) : null;
+
+                if (! $refresh || empty($refresh['rowId']) || ! isset($refresh['code'])) {
+                    continue;
+                }
+
+                $this->shopifyMappingRepository->update(['code' => $refresh['code']], $refresh['rowId']);
             }
         }
     }
