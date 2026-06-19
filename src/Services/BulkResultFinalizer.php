@@ -223,6 +223,18 @@ class BulkResultFinalizer
             $this->shopifyMappingRepository->delete($mapping->id);
         }
 
+        if (! empty($cleared)) {
+            $staleMedia = $this->shopifyMappingRepository
+                ->where('apiUrl', $shopUrl)
+                ->where('entityType', 'productImage')
+                ->whereIn('relatedSource', $cleared)
+                ->get();
+
+            foreach ($staleMedia as $media) {
+                $this->shopifyMappingRepository->delete($media->id);
+            }
+        }
+
         return $cleared;
     }
 
