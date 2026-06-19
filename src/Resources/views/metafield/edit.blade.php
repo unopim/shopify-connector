@@ -270,7 +270,7 @@
                                     name="ref_listvalue"
                                     value="list"
                                     for="ref_listvalue_list"
-                                    @change="referenceListChoice = 'list'"
+                                    disabled="disabled"
                                     ::checked="referenceListChoice === 'list'"
                                 />
                                 <x-admin::form.control-group.label for="ref_listvalue_list">
@@ -284,7 +284,7 @@
                                     name="ref_listvalue"
                                     value="one"
                                     for="ref_listvalue_one"
-                                    @change="referenceListChoice = 'one'"
+                                    disabled="disabled"
                                     ::checked="referenceListChoice === 'one'"
                                 />
                                 <x-admin::form.control-group.label for="ref_listvalue_one">
@@ -397,7 +397,7 @@
 
                     <x-admin::form.control-group.error control-name="description"/>
                 </x-admin::form.control-group>
-                @if ($typeofminmx == 'text' && $minvalueLabel)
+                @if (! $isReference && $typeofminmx == 'text' && $minvalueLabel)
                 <div>
                     <div :class="{ 'flex items-center gap-2':  width != null }">
                     @php
@@ -470,7 +470,7 @@
                     </div>
                 </div>
                 @endif
-                @if ($typeofminmx == 'date' && $minvalueLabel)
+                @if (! $isReference && $typeofminmx == 'date' && $minvalueLabel)
                 <div>
                     <x-admin::form.control-group class="w-[525px]">
                     <x-admin::form.control-group.label>

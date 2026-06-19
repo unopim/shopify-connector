@@ -62,10 +62,12 @@ class VariantMediaPhaseService extends BasePhaseService
         foreach ($byProduct as $productId => $variants) {
             $variantMedia = [];
             foreach ($variants as $variantGid => $mediaIds) {
-                $variantMedia[] = [
-                    'variantId' => $variantGid,
-                    'mediaIds' => array_values(array_unique($mediaIds)),
-                ];
+                foreach (array_values(array_unique($mediaIds)) as $mediaId) {
+                    $variantMedia[] = [
+                        'variantId' => $variantGid,
+                        'mediaIds' => [$mediaId],
+                    ];
+                }
             }
 
             $lines[] = json_encode(['productId' => $productId, 'variantMedia' => $variantMedia]);

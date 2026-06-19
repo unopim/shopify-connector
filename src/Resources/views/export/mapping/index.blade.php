@@ -223,7 +223,7 @@
                                 <x-admin::form.control-group.control
                                     type="text"
                                     name="unit_price_reference_value"
-                                    :value="$unitPrice['referenceValue'] ?? 100"
+                                    :value="$unitPrice['referenceValue'] ?? ''"
                                 />
                             </x-admin::form.control-group>
                         </div>
@@ -236,7 +236,7 @@
                                     name="unit_price_reference_unit"
                                     track-by="id"
                                     label-by="name"
-                                    :value="$unitPrice['referenceUnit'] ?? 'AUTO'"
+                                    :value="$unitPrice['referenceUnit'] ?? ''"
                                     :options="json_encode($referenceUnitOptions, true)"
                                 />
                             </x-admin::form.control-group>

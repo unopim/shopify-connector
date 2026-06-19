@@ -356,8 +356,13 @@ class ShopifyFields
         ];
 
         if ($withReference) {
-            $mapping['referenceValue'] = (int) (($input['unit_price_reference_value'] ?? null) ?: 100);
-            $mapping['referenceUnit'] = ($input['unit_price_reference_unit'] ?? null) ?: 'AUTO';
+            // Store the reference value/unit as entered (null when cleared) so they can be
+            // removed. The export payload and the mapping form both fall back to 100/AUTO.
+            $referenceValue = $input['unit_price_reference_value'] ?? null;
+            $referenceUnit = $input['unit_price_reference_unit'] ?? null;
+
+            $mapping['referenceValue'] = ($referenceValue === null || $referenceValue === '') ? null : (int) $referenceValue;
+            $mapping['referenceUnit'] = ($referenceUnit === null || $referenceUnit === '') ? null : $referenceUnit;
         }
 
         return $mapping;

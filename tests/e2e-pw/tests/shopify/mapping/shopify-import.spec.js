@@ -24,9 +24,9 @@ const mappingElements = [
 
 test.describe('UnoPim Shopify import mapping tab Navigation', () => {
     test.beforeEach(async ({ page }) => {
-        // Navigate to the Shopify Credentials Page
-        await page.goto('admin/shopify/credentials');
-        await page.getByRole('link', { name: 'Import Mappings' }).click();
+        // Navigate directly to the Import Mappings page (sidebar sub-menu links are
+        // hover-revealed, so a direct goto is more reliable than clicking them).
+        await page.goto('admin/shopify/import/mapping/3');
         await expect(page.url()).toMatch(/\/admin\/shopify\/import\/mapping\/[0-9]+$/);
     });
 
@@ -59,8 +59,11 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await expect(page.locator('#app')).toContainText('Import Mappings');
         await page.getByRole('button', { name: 'Save' }).click();
         if (await page.getByText('The Choose Family field is required').isVisible({ timeout: 1000 }).catch(() => false)) {
-            await page.getByRole('combobox').filter({ hasText: 'Choose Family' }).first().click();
-            await page.getByText('Default', { exact: true }).click();
+            // Family is an async select; open it within its own group and pick a
+            // value so the option click isn't confused with other "Default" text.
+            const familyGroup = page.locator('p:has-text("Family mapping")').locator('xpath=ancestor::div[contains(@class,"grid")]');
+            await familyGroup.locator('.multiselect').click();
+            await familyGroup.getByText('Default', { exact: true }).click();
         }
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app').getByText('Import Mapping saved successfully', { exact: true })).toBeVisible();
@@ -81,6 +84,6 @@ test.describe('UnoPim Shopify import mapping tab Navigation', () => {
         await page.getByRole('button', { name: 'Save' }).click();
         await expect(page.locator('#app')).toContainText('Import Mapping saved successfully');
         await page.getByRole('link', { name: 'Back' }).click();
-        await page.getByRole('link', { name: 'Import Mappings' }).click();
+        await page.goto('admin/shopify/import/mapping/3');
     });
 });

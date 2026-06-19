@@ -287,7 +287,7 @@
                             </x-admin::form.control-group>
 
                             {{-- File content type — only for file_reference metafields (Image/File/Video) --}}
-                            <x-admin::form.control-group v-if="key === 'file_reference'">
+                            <x-admin::form.control-group v-if="!referenceMode && key === 'file_reference'">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.content-type')
                                 </x-admin::form.control-group.label>
@@ -317,7 +317,7 @@
                                 />
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group v-if=" (urlvalidation == true)">
+                            <x-admin::form.control-group v-if="!referenceMode && urlvalidation == true">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.urlvalidation')
                                 </x-admin::form.control-group.label>
@@ -373,7 +373,6 @@
                                     name="attribute"
                                     rules="required"
                                     v-model="attribute"
-                                    readonly
                                     :label="trans('shopify::app.shopify.metafield.index.attributes')"
                                     :placeholder="trans('shopify::app.shopify.metafield.index.attributes')"
                                 />
@@ -391,7 +390,6 @@
                                     name="name_space_key"
                                     rules="required"
                                     v-model="name_space_key"
-                                    readonly
                                     :label="trans('shopify::app.shopify.metafield.index.name_space_key')"
                                     :placeholder="trans('shopify::app.shopify.metafield.index.name_space_key')"
                                 />
@@ -413,7 +411,7 @@
 
                                 <x-admin::form.control-group.error control-name="description"/>
                             </x-admin::form.control-group>
-                            <div v-if=" (typeofminmx == 'text')">
+                            <div v-if="!referenceMode && typeofminmx == 'text'">
                                 <div :class="{ 'flex items-center gap-2':  width != null }">
                                     <x-admin::form.control-group ::class="width">
                                         <x-admin::form.control-group.label v-text="minvalueLabel">
@@ -478,7 +476,7 @@
                                     </x-admin::form.control-group>
                                 </div>
                             </div>
-                            <div v-if=" (typeofminmx == 'date')">
+                            <div v-if="!referenceMode && typeofminmx == 'date'">
                                 <x-admin::form.control-group>
                                 <x-admin::form.control-group.label v-text="minvalueLabel">
                                 </x-admin::form.control-group.label>
@@ -528,7 +526,7 @@
                                 <x-admin::form.control-group.error control-name="pin"/>
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group v-if=" (adminFilterable == 1)">
+                            <x-admin::form.control-group v-if="!referenceMode && adminFilterable == 1">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.adminFilterable')
                                 </x-admin::form.control-group.label>
@@ -543,7 +541,7 @@
                                     value="1"
                                 />
                             </x-admin::form.control-group>
-                            <x-admin::form.control-group v-if=" (smartCollectionCondition == 1)">
+                            <x-admin::form.control-group v-if="!referenceMode && smartCollectionCondition == 1">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.smartCollectionCondition')
                                 </x-admin::form.control-group.label>
