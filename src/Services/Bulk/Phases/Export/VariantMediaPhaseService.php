@@ -62,6 +62,9 @@ class VariantMediaPhaseService extends BasePhaseService
         foreach ($byProduct as $productId => $variants) {
             $variantMedia = [];
             foreach ($variants as $variantGid => $mediaIds) {
+                // Shopify's productVariantAppendMedia accepts only one mediaId per
+                // variantMedia input ("Only one mediaId is allowed per media input"),
+                // so emit a separate entry for each media linked to the variant.
                 foreach (array_values(array_unique($mediaIds)) as $mediaId) {
                     $variantMedia[] = [
                         'variantId' => $variantGid,

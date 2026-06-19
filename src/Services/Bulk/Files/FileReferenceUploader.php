@@ -64,7 +64,10 @@ class FileReferenceUploader
                 continue;
             }
 
-            $toUpload[$path] = $value['content_type'];
+            $toUpload[$path] = [
+                'content_type' => $value['content_type'],
+                'url' => $value['url'] ?? $this->resolveUrl($path),
+            ];
         }
 
         if (! empty($toUpload)) {
@@ -110,15 +113,15 @@ class FileReferenceUploader
     /**
      * Manual transport — create each file directly and wait until ready.
      *
-     * @param  array<string, string>  $toUpload  path => content type
+     * @param  array<string, array{content_type: string, url: string}>  $toUpload  path => {content type, url}
      * @return array<string, string> path => File GID
      */
     private function createFilesSync(array $toUpload, array $credential): array
     {
         $map = [];
 
-        foreach ($toUpload as $path => $contentType) {
-            $url = $this->resolveUrl($path);
+        foreach ($toUpload as $path => $meta) {
+            $url = $meta['url'] ?? '';
             if ($url === '') {
                 continue;
             }
@@ -126,7 +129,7 @@ class FileReferenceUploader
             $response = $this->requestGraphQlApiAction('fileCreate', $credential, [
                 'files' => [[
                     'alt' => $path,
-                    'contentType' => $contentType,
+                    'contentType' => $meta['content_type'],
                     'originalSource' => $url,
                 ]],
             ]);
@@ -153,20 +156,20 @@ class FileReferenceUploader
      * SaaS transport — create all files with one bulk `fileCreate` operation
      * (`alt` carries the asset path so the result maps back to it).
      *
-     * @param  array<string, string>  $toUpload  path => content type
+     * @param  array<string, array{content_type: string, url: string}>  $toUpload  path => {content type, url}
      * @return array<string, string> path => File GID
      */
     private function createFilesViaBulk(array $toUpload, array $credential): array
     {
         $lines = [];
-        foreach ($toUpload as $path => $contentType) {
-            $url = $this->resolveUrl($path);
+        foreach ($toUpload as $path => $meta) {
+            $url = $meta['url'] ?? '';
             if ($url === '') {
                 continue;
             }
             $lines[] = json_encode(['files' => [[
                 'originalSource' => $url,
-                'contentType' => $contentType,
+                'contentType' => $meta['content_type'],
                 'alt' => $path,
             ]]]);
         }

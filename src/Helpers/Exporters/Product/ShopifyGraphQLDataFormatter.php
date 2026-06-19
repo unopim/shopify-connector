@@ -156,9 +156,13 @@ class ShopifyGraphQLDataFormatter
                         break;
 
                     case 'file_reference':
+                        $rawValue = $rawData[$unoAttribute] ?? [];
+                        $references = ($attribute?->type ?? null) === 'asset'
+                            ? array_filter(array_map('trim', explode(',', (string) $rawValue)))
+                            : (array) $rawValue;
                         $gids = array_values(array_filter(array_map(
                             fn ($v) => $this->fileReferenceMap[(string) $v] ?? null,
-                            (array) ($rawData[$unoAttribute] ?? [])
+                            $references
                         )));
                         $metafieldValue = ! empty($field['listvalue'])
                             ? (empty($gids) ? null : json_encode($gids))

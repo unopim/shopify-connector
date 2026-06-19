@@ -568,6 +568,24 @@ class ShoifyMetaFieldType
                     'content_type' => 'VIDEO',
                 ],
             ],
+
+            'asset' => [
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.image_file'),
+                    'content_type' => 'IMAGE',
+                ],
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.file'),
+                    'content_type' => 'FILE',
+                ],
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.video'),
+                    'content_type' => 'VIDEO',
+                ],
+            ],
         ];
     }
 

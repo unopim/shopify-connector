@@ -310,7 +310,7 @@
                                     async=true
                                     name="mediaAttributes"
                                     :list-route="route('admin.shopify.get-image-attribute')"
-                                    @input="handleDependentChange('mediaType', 'mediaAttributes')"
+                                    @input="syncDependentParam('mediaType', 'mediaAttributes')"
                                     ref="mediaAttributes"
                                     ::disabled="isDisabled()"
                                 />
@@ -436,8 +436,11 @@
                 handleDependentChange(fieldName, dependentFieldName) {
                     let value = this.$refs[fieldName].selectedOption;
                     this.$refs[dependentFieldName].params[fieldName] = value;
-                    console.log(fieldName, value);
                     this.$refs[dependentFieldName].optionsList = '';
+                },
+
+                syncDependentParam(fieldName, dependentFieldName) {
+                    this.$refs[dependentFieldName].params[fieldName] = this.$refs[fieldName].selectedOption;
                 },
                 
                 handleSelectChange(event, fieldName) {

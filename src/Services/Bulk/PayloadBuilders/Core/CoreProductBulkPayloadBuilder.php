@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
@@ -16,6 +17,7 @@ use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
+use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
@@ -52,7 +54,31 @@ class CoreProductBulkPayloadBuilder
         protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
         protected ProductValueMapper $productValueMapper,
         protected FileReferenceUploader $fileReferenceUploader,
+        protected AssetUrlResolver $assetUrlResolver,
     ) {}
+
+    protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+
+    protected ?AssetRepository $resolvedAssetRepository = null;
+
+    protected bool $assetRepositoryResolved = false;
+
+    protected function assetRepository(): ?AssetRepository
+    {
+        if (! $this->assetRepositoryResolved) {
+            $this->assetRepositoryResolved = true;
+
+            if (class_exists(AssetRepository::class)) {
+                try {
+                    $this->resolvedAssetRepository = app(AssetRepository::class);
+                } catch (\Throwable $e) {
+                    $this->resolvedAssetRepository = null;
+                }
+            }
+        }
+
+        return $this->resolvedAssetRepository;
+    }
 
     /**
      * Build JSONL lines and manifest payload for a batch.
@@ -64,13 +90,21 @@ class CoreProductBulkPayloadBuilder
         $products = $this->fetchProducts($batchRows);
         $groupedProducts = $this->groupProducts($products);
 
-        $this->shopifyGraphQLDataFormatter->setFileReferenceMap(
-            $this->fileReferenceUploader->buildGidMap(
-                $this->collectFileReferenceValues($products),
-                $this->credentialAsArray,
-                $jobTrackId,
-            )
+        $fileReference = $this->collectFileReferenceValues($products);
+
+        $fileReferenceMap = $this->fileReferenceUploader->buildGidMap(
+            $fileReference['values'],
+            $this->credentialAsArray,
+            $jobTrackId,
         );
+
+        foreach ($fileReference['aliases'] as $assetId => $path) {
+            if (isset($fileReferenceMap[$path])) {
+                $fileReferenceMap[(string) $assetId] = $fileReferenceMap[$path];
+            }
+        }
+
+        $this->shopifyGraphQLDataFormatter->setFileReferenceMap($fileReferenceMap);
 
         $lines = [];
         $manifestLines = [];
@@ -160,11 +194,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Collect unique {path, content_type} pairs for every file_reference
-     * metafield value across the products being exported. Deduped by path so a
-     * shared asset is uploaded once.
-     *
-     * @return array<int, array{path: string, content_type: string}>
+     * @return array{values: array<int, array{path: string, content_type: string, url: string}>, aliases: array<string, string>}
      */
     protected function collectFileReferenceValues(array $products): array
     {
@@ -174,10 +204,11 @@ class CoreProductBulkPayloadBuilder
         );
 
         if (empty($fileDefs)) {
-            return [];
+            return ['values' => [], 'aliases' => []];
         }
 
         $values = [];
+        $aliases = [];
 
         foreach ($products as $product) {
             $rawData = $this->getAllAttributeValues($product);
@@ -189,21 +220,88 @@ class CoreProductBulkPayloadBuilder
                     continue;
                 }
 
+                $attributeType = $this->attributesAll[$def['code']]?->type ?? null;
+
+                if ($attributeType === 'asset') {
+                    foreach ($this->expandAssetFileReferences($value) as $assetId => $entry) {
+                        $values[$entry['path']] = $entry;
+                        $aliases[(string) $assetId] = $entry['path'];
+                    }
+
+                    continue;
+                }
+
                 $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
                 if (! $contentType) {
-                    $contentType = ($this->attributesAll[$def['code']]?->type ?? null) === 'image' ? 'IMAGE' : 'FILE';
+                    $contentType = $attributeType === 'image' ? 'IMAGE' : 'FILE';
                 }
 
                 foreach ((array) $value as $single) {
-                    $values[(string) $single] = [
-                        'path' => (string) $single,
+                    $path = (string) $single;
+                    $values[$path] = [
+                        'path' => $path,
                         'content_type' => $contentType,
+                        'url' => $this->assetUrlResolver->resolveMedia($path)['url'] ?? '',
                     ];
                 }
             }
         }
 
-        return array_values($values);
+        return ['values' => array_values($values), 'aliases' => $aliases];
+    }
+
+    /**
+     * @return array<int|string, array{path: string, content_type: string, url: string}>
+     */
+    protected function expandAssetFileReferences(mixed $rawValue): array
+    {
+        $assetRepository = $this->assetRepository();
+
+        if (! $assetRepository) {
+            return [];
+        }
+
+        $rawValue = is_array($rawValue) ? implode(',', $rawValue) : (string) $rawValue;
+        $ids = array_filter(array_map('trim', explode(',', $rawValue)));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $entries = [];
+
+        foreach ($assetRepository->whereIn('id', $ids)->get() as $asset) {
+            $asset = is_array($asset) ? $asset : $asset->toArray();
+            $path = $asset['path'] ?? null;
+            $mime = $asset['mime_type'] ?? null;
+
+            if (empty($path) || empty($mime)) {
+                continue;
+            }
+
+            $url = $this->assetUrlResolver->resolveAssetUrl($path);
+
+            if ($url === '') {
+                continue;
+            }
+
+            $entries[$asset['id']] = [
+                'path' => $path,
+                'content_type' => $this->assetFileContentType($mime),
+                'url' => $url,
+            ];
+        }
+
+        return $entries;
+    }
+
+    protected function assetFileContentType(string $mime): string
+    {
+        if (in_array($mime, $this->imageMimeTypes, true)) {
+            return 'IMAGE';
+        }
+
+        return $mime === 'video/mp4' ? 'VIDEO' : 'FILE';
     }
 
     /**

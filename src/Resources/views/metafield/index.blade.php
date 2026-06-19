@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'];
                                         $referenceSourceOptions = json_encode([
                                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
@@ -286,18 +286,12 @@
                                 <x-admin::form.control-group.error control-name="type"/>
                             </x-admin::form.control-group>
 
-                            {{-- File content type — only for file_reference metafields (Image/File/Video) --}}
-                            <x-admin::form.control-group v-if="!referenceMode && key === 'file_reference'">
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.content-type')
-                                </x-admin::form.control-group.label>
-                                <x-admin::form.control-group.control
-                                    type="text"
-                                    name="content_type"
-                                    v-model="contentType"
-                                    readonly
-                                />
-                            </x-admin::form.control-group>
+                            <input
+                                type="hidden"
+                                name="content_type"
+                                :value="contentType"
+                                v-if="!referenceMode && key === 'file_reference'"
+                            />
 
                             <x-admin::form.control-group v-if="!referenceMode && key === 'link'">
                                 <x-admin::form.control-group.label>
@@ -648,10 +642,6 @@
                 watch: {
                     referenceMode(on) {
                         if (on) {
-                            // Reference types don't use the generic admin-filterable /
-                            // smart-collection toggles; clear any state a previously
-                            // selected type (e.g. single line text) left behind so they
-                            // don't linger when reference mode is switched on.
                             this.adminFilterable = null;
                             this.smartCollectionCondition = null;
                             this.applyReferenceNaming();
@@ -718,9 +708,6 @@
                         if (event && (typeof event === 'string' || event instanceof String)) {
                             this[field] = JSON.parse(event)?.id;
 
-                            // Keep the Type (reference_as) in sync with the source so the
-                            // resolved type stays consistent: categories => collection,
-                            // association defaults back to product.
                             if (field === 'referenceSource') {
                                 this.referenceAs = this.referenceSource === 'categories' ? 'collection' : 'product';
                             }

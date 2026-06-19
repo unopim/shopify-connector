@@ -226,7 +226,6 @@
                         </x-admin::form.control-group>
                     </template>
 
-                    {{-- Type: Product/Variant when source is association, Collection when categories. Disabled on edit. --}}
                     <x-admin::form.control-group class="w-[525px]" v-if="referenceSource === 'association'">
                         <x-admin::form.control-group.label class="required">
                             @lang('shopify::app.shopify.metafield.index.resolved-type')
@@ -622,8 +621,6 @@
                         if (event && (typeof event === 'string' || event instanceof String)) {
                             this[field] = JSON.parse(event)?.id;
 
-                            // Keep the Type (reference_as) in sync with the source:
-                            // categories => collection, association defaults to product.
                             if (field === 'referenceSource') {
                                 this.referenceAs = this.referenceSource === 'categories' ? 'collection' : 'product';
                             }
