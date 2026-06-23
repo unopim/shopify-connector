@@ -482,10 +482,10 @@
             </div>
 
             <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
-                <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 font-bold text-gray-600 dark:text-gray-300">
-                    <p>@lang('shopify::app.shopify.export.mapping.taxonomy.header_category')</p>
-                    <p>@lang('shopify::app.shopify.export.mapping.taxonomy.header_taxonomy')</p>
-                    <p></p>
+                <div class="flex gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 font-bold text-gray-600 dark:text-gray-300">
+                    <p class="flex-1">@lang('shopify::app.shopify.export.mapping.taxonomy.header_category')</p>
+                    <p class="flex-1">@lang('shopify::app.shopify.export.mapping.taxonomy.header_taxonomy')</p>
+                    <span class="text-2xl shrink-0"></span>
                 </div>
 
                 <div v-if="!rows.length" class="px-4 py-6 text-gray-500 dark:text-gray-400">
@@ -495,11 +495,11 @@
                 <div
                     v-for="(row, index) in rows"
                     :key="row.category_id"
-                    class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300"
+                    class="flex gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300"
                 >
-                    <p class="break-words" v-text="row.category_label"></p>
-                    <p class="break-words" v-text="row.taxonomy_path"></p>
-                    <span class="icon-delete text-2xl cursor-pointer" @click="removeRow(index)"></span>
+                    <p class="flex-1 break-words" v-text="row.category_label"></p>
+                    <p class="flex-1 break-words" v-text="row.taxonomy_path"></p>
+                    <span class="icon-delete text-2xl cursor-pointer shrink-0" @click="removeRow(index)"></span>
                 </div>
 
                 <div v-if="showPicker" class="flex gap-2.5 items-center px-4 py-4">

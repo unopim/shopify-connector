@@ -265,20 +265,6 @@
                             <x-admin::form.control-group>
                                 <x-admin::form.control-group.control
                                     type="radio"
-                                    id="ref_listvalue_list"
-                                    name="ref_listvalue"
-                                    value="list"
-                                    for="ref_listvalue_list"
-                                    disabled="disabled"
-                                    ::checked="referenceListChoice === 'list'"
-                                />
-                                <x-admin::form.control-group.label for="ref_listvalue_list">
-                                    @lang('shopify::app.shopify.metafield.index.listvalue')
-                                </x-admin::form.control-group.label>
-                            </x-admin::form.control-group>
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.control
-                                    type="radio"
                                     id="ref_listvalue_one"
                                     name="ref_listvalue"
                                     value="one"
@@ -288,6 +274,20 @@
                                 />
                                 <x-admin::form.control-group.label for="ref_listvalue_one">
                                     @lang('shopify::app.shopify.metafield.index.onevalue')
+                                </x-admin::form.control-group.label>
+                            </x-admin::form.control-group>
+                            <x-admin::form.control-group>
+                                <x-admin::form.control-group.control
+                                    type="radio"
+                                    id="ref_listvalue_list"
+                                    name="ref_listvalue"
+                                    value="list"
+                                    for="ref_listvalue_list"
+                                    disabled="disabled"
+                                    ::checked="referenceListChoice === 'list'"
+                                />
+                                <x-admin::form.control-group.label for="ref_listvalue_list">
+                                    @lang('shopify::app.shopify.metafield.index.listvalue')
                                 </x-admin::form.control-group.label>
                             </x-admin::form.control-group>
                         </div>
