@@ -165,11 +165,6 @@ class BulkResultFinalizer
         // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
-
-        if (! empty($manifest['media_created']) && config('shopify-bulk-operations.dispatch_followup_phases', false)) {
-            $this->phaseProgressTracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
-            RunVariantMediaPhase::dispatch((int) $bulkOperation->id);
-        }
     }
 
     /**
@@ -498,6 +493,13 @@ class BulkResultFinalizer
         // existing media instead of creating duplicates.
         if ($mutation === 'productCreateMedia') {
             $this->persistMediaMappings($manifest, $results);
+
+            $coreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
+
+            if ($coreOpId > 0) {
+                $this->phaseProgressTracker->registerPhaseJobsForCore($coreOpId, 1);
+                RunVariantMediaPhase::dispatch($coreOpId);
+            }
         }
 
         // Refresh the stored mapping `code` (attribute + new path) for media the

@@ -399,6 +399,11 @@ class MediaBulkPayloadBuilder
 
     /**
      * Look up a Shopify productId from the local mapping table.
+     *
+     * For a simple product the SKU's mapping row holds the variant GID in
+     * externalId and the product GID in relatedId (the variant sync overwrites the
+     * product sync), so relatedId is preferred and externalId is the parent-row
+     * fallback.
      */
     protected function resolveProductIdFromMapping(string $sku, ?string $shopUrl): ?string
     {
@@ -412,7 +417,7 @@ class MediaBulkPayloadBuilder
             ->where('apiUrl', $shopUrl)
             ->first();
 
-        return $mapping?->externalId ?: null;
+        return $mapping?->relatedId ?: ($mapping?->externalId ?: null);
     }
 
     /**

@@ -548,18 +548,24 @@ class CoreProductBulkPayloadBuilder
 
         $productInput['variants'] = $variants;
 
-        $media = $this->mediaBulkPayloadBuilder->collectProductSetFiles(
-            $productSku,
-            array_column($variantManifest, 'sku'),
-            (int) $this->credential->id,
-            $this->credential->shopUrl,
-            $this->jobChannel ?? 'default',
-            $this->currency ?? 'USD',
-            $this->credentialAsArray,
-        );
+        $mediaPlanItems = [];
 
-        if (! empty($media['files'])) {
-            $productInput['files'] = $media['files'];
+        if (empty($this->credential->extras['saas'])) {
+            $media = $this->mediaBulkPayloadBuilder->collectProductSetFiles(
+                $productSku,
+                array_column($variantManifest, 'sku'),
+                (int) $this->credential->id,
+                $this->credential->shopUrl,
+                $this->jobChannel ?? 'default',
+                $this->currency ?? 'USD',
+                $this->credentialAsArray,
+            );
+
+            if (! empty($media['files'])) {
+                $productInput['files'] = $media['files'];
+            }
+
+            $mediaPlanItems = $media['planItems'];
         }
 
         return [
@@ -573,7 +579,7 @@ class CoreProductBulkPayloadBuilder
                 'product_sku' => $productSku,
                 'product_handle' => $productInput['handle'],
                 'variant_skus' => array_column($variantManifest, 'sku'),
-                'media_plan_items' => $media['planItems'],
+                'media_plan_items' => $mediaPlanItems,
                 'phase_context' => [
                     'publishing' => ! empty($this->credential?->extras['salesChannel']),
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
