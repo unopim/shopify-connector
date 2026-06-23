@@ -456,8 +456,7 @@ class CredentialController extends Controller
         $extras = is_array($credential->extras) ? $credential->extras : [];
 
         $extras['salesChannel'] = $requestData['salesChannel'] ?? null;
-
-        $extras['locationAttributeMappings'] = array_filter($requestData['locationAttributeMappings'] ?? []);
+        $extras['locationAttributeMappings'] = $requestData['locationAttributeMappings'];
 
         $requestData['extras'] = $extras;
 

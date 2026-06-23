@@ -146,7 +146,11 @@ class GraphQLApiClient
         ],
 
         'productSet' => [
-            'query' => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle variants(first: 250) { nodes { id sku inventoryItem { id } } } } userErrors { code field message } } }',
+            'query' => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle media(first: 250) { nodes { id alt } } variants(first: 250) { nodes { id sku inventoryItem { id } } } } userErrors { code field message } } }',
+            'method' => 'POST',
+        ],
+        'getProductsMedia' => [
+            'query' => 'query getProductsMedia($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id media(first: 100) { nodes { id alt } } } } }',
             'method' => 'POST',
         ],
         'createTranslation' => [

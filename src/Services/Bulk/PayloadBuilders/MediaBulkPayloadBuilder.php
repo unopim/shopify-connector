@@ -273,6 +273,66 @@ class MediaBulkPayloadBuilder
     }
 
     /**
+     * Build a product's complete productSet `files` list: existing media referenced
+     * by id (preserved, since productSet deletes media absent from the list), new
+     * media by source. Returns the files plus plan items to persist new mappings.
+     *
+     * @return array{files: array<int, array>, planItems: array<int, array{sku: string, code: string, alt: string}>}
+     */
+    public function collectProductSetFiles(string $productSku, array $variantSkus, int $credentialId, ?string $shopUrl, string $channel = 'default', string $currency = 'USD', array $credential = []): array
+    {
+        $desiredMedia = $this->collectMediaForProduct($productSku, $variantSkus, $credentialId, $channel, $currency);
+
+        if (empty($desiredMedia)) {
+            return ['files' => [], 'planItems' => []];
+        }
+
+        $mappingsBySku = [];
+        $files = [];
+        $planItems = [];
+
+        foreach ($desiredMedia as $item) {
+            $mappings = $mappingsBySku[$item['sku']]
+                ??= $this->getMediaMappings($item['sku'], $shopUrl);
+
+            [$exact, $byAttribute] = $this->matchMapping($mappings, $item['code'], $item['path']);
+
+            $existingGid = $exact['row']->externalId ?? $byAttribute['row']->externalId ?? null;
+
+            if (! empty($existingGid)) {
+                $files[] = ['id' => $existingGid];
+
+                continue;
+            }
+
+            $mediaContentType = $item['mediaContentType'] ?? 'IMAGE';
+            $originalSource = $item['url'] ?? '';
+
+            if ($mediaContentType === 'VIDEO') {
+                $originalSource = $this->stageVideoUpload($item['asset'] ?? [], $credential);
+            }
+
+            if (empty($originalSource)) {
+                continue;
+            }
+
+            $files[] = [
+                'originalSource' => $originalSource,
+                'contentType' => $mediaContentType,
+                'alt' => $item['sku'].' - '.$item['code'],
+            ];
+
+            $planItems[] = [
+                'sku' => $item['sku'],
+                'code' => $this->buildCode($item['code'], $item['path']),
+                'alt' => $item['sku'].' - '.$item['code'],
+            ];
+        }
+
+        return ['files' => $files, 'planItems' => $planItems];
+    }
+
+    /**
      * Resolve a productSet entry to its Shopify product GID and the desired media
      * matched against stored mappings. Used by build()'s single create+update pass.
      *

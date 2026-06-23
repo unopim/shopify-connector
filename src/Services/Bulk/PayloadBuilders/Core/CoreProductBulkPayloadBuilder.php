@@ -18,6 +18,7 @@ use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
+use Webkul\Shopify\Services\Bulk\PayloadBuilders\MediaBulkPayloadBuilder;
 use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
@@ -55,6 +56,7 @@ class CoreProductBulkPayloadBuilder
         protected ProductValueMapper $productValueMapper,
         protected FileReferenceUploader $fileReferenceUploader,
         protected AssetUrlResolver $assetUrlResolver,
+        protected MediaBulkPayloadBuilder $mediaBulkPayloadBuilder,
     ) {}
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -108,6 +110,7 @@ class CoreProductBulkPayloadBuilder
 
         $lines = [];
         $manifestLines = [];
+        $mediaCreated = false;
         $summary = [
             'processed' => count($groupedProducts),
             'created' => 0,
@@ -126,6 +129,10 @@ class CoreProductBulkPayloadBuilder
             $summary['created']++;
             $lines[] = json_encode($payload['variables'], JSON_UNESCAPED_SLASHES);
             $manifestLines[] = $payload['manifest'];
+
+            if (! empty($payload['manifest']['media_plan_items'])) {
+                $mediaCreated = true;
+            }
         }
 
         return [
@@ -138,6 +145,7 @@ class CoreProductBulkPayloadBuilder
                 'channel' => $this->jobChannel,
                 'currency' => $this->currency,
                 'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
+                'media_created' => $mediaCreated,
                 'follow_up_context' => [
                     'publishing' => true,
                     'media' => true,
@@ -540,6 +548,20 @@ class CoreProductBulkPayloadBuilder
 
         $productInput['variants'] = $variants;
 
+        $media = $this->mediaBulkPayloadBuilder->collectProductSetFiles(
+            $productSku,
+            array_column($variantManifest, 'sku'),
+            (int) $this->credential->id,
+            $this->credential->shopUrl,
+            $this->jobChannel ?? 'default',
+            $this->currency ?? 'USD',
+            $this->credentialAsArray,
+        );
+
+        if (! empty($media['files'])) {
+            $productInput['files'] = $media['files'];
+        }
+
         return [
             'variables' => [
                 'identifier' => $productIdentifierId
@@ -551,6 +573,7 @@ class CoreProductBulkPayloadBuilder
                 'product_sku' => $productSku,
                 'product_handle' => $productInput['handle'],
                 'variant_skus' => array_column($variantManifest, 'sku'),
+                'media_plan_items' => $media['planItems'],
                 'phase_context' => [
                     'publishing' => ! empty($this->credential?->extras['salesChannel']),
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,

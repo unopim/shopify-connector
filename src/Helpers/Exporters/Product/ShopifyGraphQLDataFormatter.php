@@ -318,11 +318,10 @@ class ShopifyGraphQLDataFormatter
         }
 
         $list = [];
-
         foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
-            $raw = $rawData[$attributeCode] ?? null;
+            $raw = $rawData[$attributeCode] ?? 0;
 
-            if (empty($locationId) || empty($attributeCode) || ! is_numeric($raw)) {
+            if (empty($locationId) || ! is_numeric($raw)) {
                 continue;
             }
 

@@ -63,6 +63,7 @@ class BulkResultFinalizer
         $failed = [];
         $clearedStaleSkus = [];
         $recreatedSkus = [];
+        $pendingMedia = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -130,8 +131,17 @@ class BulkResultFinalizer
                 );
             }
 
+            if (! empty($manifestLine['media_plan_items']) && ! empty($product['id'])) {
+                $pendingMedia[] = [
+                    'productId' => $product['id'],
+                    'planItems' => $manifestLine['media_plan_items'],
+                ];
+            }
+
             $success++;
         }
+
+        $this->persistBulkMediaMappings($pendingMedia, $credential, $jobTrackId, $shopUrl);
 
         $meta = $bulkOperation->meta ?? [];
         $meta['result_summary'] = [
@@ -155,6 +165,11 @@ class BulkResultFinalizer
         // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+
+        if (! empty($manifest['media_created']) && config('shopify-bulk-operations.dispatch_followup_phases', false)) {
+            $this->phaseProgressTracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
+            RunVariantMediaPhase::dispatch((int) $bulkOperation->id);
+        }
     }
 
     /**
@@ -260,6 +275,7 @@ class BulkResultFinalizer
         }
 
         $variables['identifier'] = ['handle' => $handle];
+        unset($variables['input']['files']);
 
         try {
             $response = $this->requestGraphQlApiAction('productSet', $credential, $variables);
@@ -295,6 +311,8 @@ class BulkResultFinalizer
                 $shopUrl,
             );
         }
+
+        $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
 
         return ['success' => true];
     }
@@ -480,16 +498,6 @@ class BulkResultFinalizer
         // existing media instead of creating duplicates.
         if ($mutation === 'productCreateMedia') {
             $this->persistMediaMappings($manifest, $results);
-
-            // Chain the variant-media phase now that media IDs exist. Register it as
-            // one more phase job (before this media phase decrements below) so the
-            // core op does not flip to completed before variant images are linked.
-            $coreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
-
-            if ($coreOpId > 0) {
-                $this->phaseProgressTracker->registerPhaseJobsForCore($coreOpId, 1);
-                RunVariantMediaPhase::dispatch($coreOpId);
-            }
         }
 
         // Refresh the stored mapping `code` (attribute + new path) for media the
@@ -508,6 +516,111 @@ class BulkResultFinalizer
                     (string) $bulkOperation->phase,
                 );
             }
+        }
+    }
+
+    /**
+     * Persist mappings for media created inline by the core productSet bulk op.
+     *
+     * The bulk result can't carry a media connection (Shopify allows one connection
+     * per bulk mutation), so the created media ids are fetched in batches via a
+     * regular query and matched to each product's plan items by alt.
+     *
+     * @param  array<int, array{productId: string, planItems: array}>  $pendingMedia
+     */
+    protected function persistBulkMediaMappings(array $pendingMedia, array $credential, ?int $jobTrackId, ?string $shopUrl): void
+    {
+        if (empty($pendingMedia) || empty($credential) || empty($jobTrackId) || empty($shopUrl)) {
+            return;
+        }
+
+        $planByProduct = [];
+
+        foreach ($pendingMedia as $entry) {
+            $planByProduct[$entry['productId']] = $entry['planItems'];
+        }
+
+        foreach (array_chunk(array_keys($planByProduct), 50) as $chunk) {
+            try {
+                $response = $this->requestGraphQlApiAction('getProductsMedia', $credential, ['ids' => $chunk]);
+            } catch (\Throwable $e) {
+                continue;
+            }
+
+            foreach ($response['body']['data']['nodes'] ?? [] as $node) {
+                $productId = $node['id'] ?? null;
+
+                if (! $productId || empty($planByProduct[$productId])) {
+                    continue;
+                }
+
+                $idByAlt = [];
+
+                foreach ($node['media']['nodes'] ?? [] as $media) {
+                    $alt = $media['alt'] ?? null;
+
+                    if (is_string($alt) && $alt !== '' && ! empty($media['id'])) {
+                        $idByAlt[$alt] = $media['id'];
+                    }
+                }
+
+                foreach ($planByProduct[$productId] as $item) {
+                    $mediaId = $idByAlt[$item['alt'] ?? ''] ?? null;
+
+                    if (! $mediaId) {
+                        continue;
+                    }
+
+                    $this->syncMediaMapping(
+                        $item['sku'] ?? null,
+                        $item['code'] ?? null,
+                        $mediaId,
+                        $productId,
+                        (int) $jobTrackId,
+                        $shopUrl,
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Persist media mappings for files created inline by productSet, matching the
+     * manifest line's plan items to the returned media nodes by alt.
+     */
+    protected function persistCoreMediaMappings(array $manifestLine, array $product, ?int $jobTrackId, ?string $shopUrl): void
+    {
+        $planItems = $manifestLine['media_plan_items'] ?? [];
+
+        if (empty($planItems) || empty($jobTrackId) || empty($shopUrl)) {
+            return;
+        }
+
+        $idByAlt = [];
+
+        foreach ($product['media']['nodes'] ?? [] as $node) {
+            $alt = $node['alt'] ?? null;
+
+            if (is_string($alt) && $alt !== '' && ! empty($node['id'])) {
+                $idByAlt[$alt] = $node['id'];
+            }
+        }
+
+        foreach ($planItems as $item) {
+            $mediaId = $idByAlt[$item['alt'] ?? ''] ?? null;
+
+            if (! $mediaId) {
+                continue;
+            }
+
+            $this->syncMediaMapping(
+                $item['sku'] ?? null,
+                $item['code'] ?? null,
+                $mediaId,
+                $product['id'] ?? null,
+                (int) $jobTrackId,
+                $shopUrl,
+            );
         }
     }
 
