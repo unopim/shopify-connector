@@ -337,6 +337,9 @@ return [
                 'attribute-label' => 'Unopim-Attribut',
                 'definitionName' => 'Definitionsname',
                 'contentTypeName' => 'Typ',
+                'product-reference' => 'Produktreferenz',
+                'variant-reference' => 'Produktvariantenreferenz',
+                'collection-reference' => 'Sammlungsreferenz',
                 'pin' => 'Pin',
             ],
             'index' => [

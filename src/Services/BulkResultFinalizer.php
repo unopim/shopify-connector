@@ -118,12 +118,14 @@ class BulkResultFinalizer
             );
 
             foreach ($product['variants']['nodes'] ?? [] as $variant) {
-                if (empty($variant['sku']) || empty($variant['id'])) {
+                $variantSku = $variant['sku'] ?: ($variant['inventoryItem']['sku'] ?? null);
+
+                if (empty($variantSku) || empty($variant['id'])) {
                     continue;
                 }
 
                 $this->syncVariantMapping(
-                    $variant['sku'],
+                    $variantSku,
                     $variant['id'],
                     $product['id'],
                     $jobTrackId,
@@ -294,12 +296,14 @@ class BulkResultFinalizer
         );
 
         foreach ($product['variants']['nodes'] ?? [] as $variant) {
-            if (empty($variant['sku']) || empty($variant['id'])) {
+            $variantSku = $variant['sku'] ?: ($variant['inventoryItem']['sku'] ?? null);
+
+            if (empty($variantSku) || empty($variant['id'])) {
                 continue;
             }
 
             $this->syncVariantMapping(
-                $variant['sku'],
+                $variantSku,
                 $variant['id'],
                 $product['id'],
                 $jobTrackId,

@@ -337,6 +337,9 @@ return [
                 'attribute-label' => 'سمة Unopim',
                 'definitionName' => 'اسم التعريف',
                 'contentTypeName' => 'نوع',
+                'product-reference' => 'مرجع المنتج',
+                'variant-reference' => 'مرجع متغير المنتج',
+                'collection-reference' => 'مرجع المجموعة',
                 'pin' => 'دبوس',
             ],
             'index' => [

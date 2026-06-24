@@ -231,6 +231,7 @@ mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetIn
           sku
           inventoryItem {
             id
+            sku
           }
         }
       }

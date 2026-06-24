@@ -406,10 +406,10 @@ class CoreProductBulkPayloadBuilder
     /**
      * @return array<int, array{namespace: string, key: string, type: string, value: string}>
      */
-    protected function buildReferenceMetafields(array $productRow): array
+    protected function buildReferenceMetafields(array $productRow, array $metaFieldMapping): array
     {
         $defs = array_filter(
-            $this->productMetaFieldMapping,
+            $metaFieldMapping,
             fn ($d) => in_array($d['type'] ?? '', ['product_reference', 'variant_reference', 'collection_reference'], true)
         );
 
@@ -494,7 +494,7 @@ class CoreProductBulkPayloadBuilder
             $this->variantMetaFieldMapping
         );
 
-        $referenceMetafields = $this->buildReferenceMetafields($parentData ?? $firstVariant);
+        $referenceMetafields = $this->buildReferenceMetafields($parentData ?? $firstVariant, $this->productMetaFieldMapping);
         if (! empty($referenceMetafields)) {
             $formattedProduct['metafields'] = array_merge(
                 $formattedProduct['metafields'] ?? [],
@@ -522,9 +522,17 @@ class CoreProductBulkPayloadBuilder
                 $this->variantMetaFieldMapping
             );
 
+            $variantMetafields = ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [];
+            if (! empty($parentData)) {
+                $variantMetafields = array_merge(
+                    $variantMetafields,
+                    $this->buildReferenceMetafields($variantRow, $this->variantMetaFieldMapping)
+                );
+            }
+
             $variants[] = $this->normalizeVariantInput(
                 $formattedVariant['variant'] ?? [],
-                ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [],
+                $variantMetafields,
                 $optionValues,
                 $this->resolveVariantGid($variantMapping[0]['externalId'] ?? null),
                 ! empty($parentData)
@@ -808,20 +816,15 @@ class CoreProductBulkPayloadBuilder
      */
     protected function resolveCollectionIds(array $categoryCodes): array
     {
-        $collectionIds = [];
-        foreach ($categoryCodes as $code) {
-            $mapping = $this->shopifyMappingRepository->where('code', $code)
-                ->where('entityType', 'category')
-                ->where('apiUrl', $this->credential?->shopUrl)
-                ->get()
-                ->toArray();
-
-            if (! empty($mapping[0]['externalId'])) {
-                $collectionIds[] = $mapping[0]['externalId'];
-            }
-        }
-
-        return array_values(array_unique($collectionIds));
+        return $this->shopifyMappingRepository
+            ->whereIn('code', $categoryCodes)
+            ->where('entityType', 'category')
+            ->where('apiUrl', $this->credential?->shopUrl)
+            ->pluck('externalId')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     /**

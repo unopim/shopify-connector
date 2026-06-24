@@ -337,6 +337,9 @@ return [
                 'attribute-label' => 'UnoPim 属性',
                 'definitionName' => '定义名称',
                 'contentTypeName' => '类型',
+                'product-reference' => '产品引用',
+                'variant-reference' => '产品变体引用',
+                'collection-reference' => '系列引用',
                 'pin' => '固定',
             ],
             'index' => [
