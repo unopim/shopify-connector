@@ -118,7 +118,7 @@ class BulkResultFinalizer
             );
 
             foreach ($product['variants']['nodes'] ?? [] as $variant) {
-                $variantSku = $variant['sku'] ?: ($variant['inventoryItem']['sku'] ?? null);
+                $variantSku = ($variant['sku'] ?? null) ?: ($variant['inventoryItem']['sku'] ?? null);
 
                 if (empty($variantSku) || empty($variant['id'])) {
                     continue;
@@ -267,26 +267,30 @@ class BulkResultFinalizer
     ): array {
         $handle = $manifestLine['product_handle'] ?? null;
 
-        if (empty($variables) || empty($variables['input']) || empty($credential) || empty($handle)) {
+        if (empty($variables) || empty($variables['input']) || empty($credential)) {
             return ['success' => false];
         }
 
-        $variables['identifier'] = ['handle' => $handle];
+        // Adopt the existing product by handle when one is mapped; otherwise create fresh
+        // and let Shopify generate the handle.
+        $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
         unset($variables['input']['files']);
 
-        try {
-            $response = $this->requestGraphQlApiAction('productSet', $credential, $variables);
-        } catch (\Throwable $e) {
-            return ['success' => false, 'errors' => [['message' => 'Recreation failed: '.$e->getMessage()]]];
+        $result = $this->runRecreateProductSet($credential, $variables);
+
+        // The handle is already owned by another (orphan) product: drop it and let Shopify
+        // auto-generate a unique handle so the recreate still succeeds.
+        if (! $result['success'] && $this->hasHandleConflict($result['errors'] ?? [])) {
+            $variables['identifier'] = null;
+            unset($variables['input']['handle']);
+            $result = $this->runRecreateProductSet($credential, $variables);
         }
 
-        $payload = $response['body']['data']['productSet'] ?? [];
-        $userErrors = $payload['userErrors'] ?? [];
-        $product = $payload['product'] ?? [];
-
-        if (! empty($userErrors) || empty($product['id'])) {
-            return ['success' => false, 'errors' => $userErrors];
+        if (! $result['success']) {
+            return ['success' => false, 'errors' => $result['errors'] ?? []];
         }
+
+        $product = $result['product'];
 
         $this->syncProductMapping(
             $manifestLine['product_sku'] ?? null,
@@ -296,7 +300,7 @@ class BulkResultFinalizer
         );
 
         foreach ($product['variants']['nodes'] ?? [] as $variant) {
-            $variantSku = $variant['sku'] ?: ($variant['inventoryItem']['sku'] ?? null);
+            $variantSku = ($variant['sku'] ?? null) ?: ($variant['inventoryItem']['sku'] ?? null);
 
             if (empty($variantSku) || empty($variant['id'])) {
                 continue;
@@ -314,6 +318,44 @@ class BulkResultFinalizer
         $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
 
         return ['success' => true];
+    }
+
+    /**
+     * Run a single productSet recreation request.
+     *
+     * @return array{success: bool, product?: array, errors?: array}
+     */
+    protected function runRecreateProductSet(array $credential, array $variables): array
+    {
+        try {
+            $response = $this->requestGraphQlApiAction('productSet', $credential, $variables);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'errors' => [['message' => 'Recreation failed: '.$e->getMessage()]]];
+        }
+
+        $payload = $response['body']['data']['productSet'] ?? [];
+        $userErrors = $payload['userErrors'] ?? [];
+        $product = $payload['product'] ?? [];
+
+        if (! empty($userErrors) || empty($product['id'])) {
+            return ['success' => false, 'errors' => $userErrors];
+        }
+
+        return ['success' => true, 'product' => $product];
+    }
+
+    /**
+     * Whether the userErrors contain a handle-uniqueness conflict.
+     */
+    protected function hasHandleConflict(array $errors): bool
+    {
+        foreach ($errors as $error) {
+            if (($error['code'] ?? null) === 'HANDLE_NOT_UNIQUE') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

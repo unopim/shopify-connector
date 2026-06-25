@@ -503,7 +503,11 @@ class CoreProductBulkPayloadBuilder
         }
 
         $productInput = $this->normalizeProductInput($formattedProduct, $productOptions);
-        $productInput['handle'] = ($productInput['handle'] ?? null) ?: Str::slug(($productInput['title'] ?? null) ?: $productSku);
+        // Only send a handle when one is mapped; otherwise let Shopify auto-generate it from
+        // the title. Slugify so it matches Shopify's stored handle for recreate-by-handle.
+        if (! empty($productInput['handle'])) {
+            $productInput['handle'] = Str::slug($productInput['handle']);
+        }
 
         $variantManifest = [];
         $variants = [];
@@ -578,14 +582,16 @@ class CoreProductBulkPayloadBuilder
 
         return [
             'variables' => [
-                'identifier' => $productIdentifierId
-                    ? ['id' => $productIdentifierId]
-                    : ['handle' => $productInput['handle']],
+                'identifier' => match (true) {
+                    (bool) $productIdentifierId => ['id' => $productIdentifierId],
+                    ! empty($productInput['handle']) => ['handle' => $productInput['handle']],
+                    default => null,
+                },
                 'input' => $productInput,
             ],
             'manifest' => [
                 'product_sku' => $productSku,
-                'product_handle' => $productInput['handle'],
+                'product_handle' => $productInput['handle'] ?? null,
                 'variant_skus' => array_column($variantManifest, 'sku'),
                 'media_plan_items' => $mediaPlanItems,
                 'phase_context' => [
