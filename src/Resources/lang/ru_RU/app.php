@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Учетные данные',
                 'export-mappings' => 'Экспортные сопоставления',
+                'collection-mappings' => 'Сопоставления коллекций',
                 'import-mappings' => 'Импорт маппингов',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -55,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Версия: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Таксономия Shopify',
+            'taxonomy-select-placeholder' => 'Выберите категорию',
+            'only-one' => 'Разрешён только один атрибут таксономии Shopify.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Сопоставление локалей',
@@ -95,6 +102,9 @@ return [
                 'back-btn' => 'Назад',
                 'channel' => 'Публикация (каналы продаж)',
                 'locations' => 'Список местоположений',
+                'location_inventory_title' => 'Запасы по местоположению',
+                'location_inventory_info' => 'Сопоставьте атрибут количества для каждого местоположения, чтобы отправлять запасы по местоположениям. Пустые местоположения пропускаются.',
+                'location_inventory_attribute' => 'Атрибут количества',
             ],
             'edit' => [
                 'title' => 'Редактировать учетные данные',
@@ -133,6 +143,10 @@ return [
                 'attribute' => 'Атрибут',
                 'fixed-value' => 'Фиксированное значение',
                 'save_failed' => 'Не удалось сохранить сопоставление экспорта. Пожалуйста, выполните команду установки Shopify.',
+                'validation' => [
+                    'name_required' => 'Пожалуйста, сопоставьте атрибут или задайте фиксированное значение для имени.',
+                    'status_required' => 'Пожалуйста, выберите статус товара.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +159,67 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'Статус товара',
+                    'label' => 'Статус Shopify',
+                    'placeholder' => 'Выберите статус товара',
+                    'tooltip' => 'Применяется ко всем экспортируемым товарам.',
+                    'options' => [
+                        'active' => 'Активный',
+                        'draft' => 'Черновик',
+                        'archived' => 'Архивирован',
+                        'unlisted' => 'Не в списке',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'Общие',
+                ],
+
+                'collection' => [
+                    'title' => 'Сопоставления коллекций',
+                    'back-btn' => 'Назад',
+                    'save' => 'Сохранить',
+                    'created' => 'Сопоставление коллекции успешно сохранено',
+                    'save_failed' => 'Не удалось сохранить сопоставление коллекции. Пожалуйста, выполните команду установки Shopify.',
+                    'validation' => [
+                        'title_required' => 'Пожалуйста, сопоставьте атрибут категории для Заголовка.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Пропуск коллекции для категории :code: сопоставленный атрибут Заголовка пуст.',
+                    ],
+                    'images' => [
+                        'title' => 'Сопоставление изображения коллекции',
+                        'label' => 'Атрибут изображения',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Порядок сортировки товаров',
+                        'placeholder' => 'Выберите порядок сортировки',
+                        'tooltip' => 'Применяется ко всем экспортируемым коллекциям.',
+                        'options' => [
+                            'manual' => 'Вручную',
+                            'best_selling' => 'Бестселлеры',
+                            'alpha_asc' => 'По алфавиту (А-Я)',
+                            'alpha_desc' => 'По алфавиту (Я-А)',
+                            'price_asc' => 'Цена (по возрастанию)',
+                            'price_desc' => 'Цена (по убыванию)',
+                            'created' => 'Дата создания (сначала старые)',
+                            'created_desc' => 'Дата создания (сначала новые)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Цена за единицу',
+                    'quantity_value' => 'Общее количество',
+                    'quantity_unit' => 'Единица общего количества',
+                    'quantity_value_info' => 'Выберите атрибут типа число или десятичное.',
+                    'quantity_unit_info' => 'Выберите атрибут типа текст или список. Его значение должно соответствовать допустимой единице (например, :units); другие значения не экспортируются.',
+                    'reference_value' => 'Базовая мера',
+                    'reference_unit' => 'Единица базовой меры',
+                    'auto' => 'Авто (как единица общего количества)',
                 ],
             ],
             'settings' => [
@@ -227,6 +302,7 @@ return [
             'seo_title' => 'SEO заголовок',
             'seo_description' => 'SEO описание',
             'handle' => 'Идентификатор',
+            'collection_type' => 'Тип коллекции',
             'taxable' => 'Облагается налогом',
             'inventory_cost' => 'Стоимость инвентаря',
         ],
@@ -236,6 +312,13 @@ return [
             'channel' => 'Канал',
             'currency' => 'Валюта',
             'productfilter' => 'Фильтр продуктов (SKU)',
+            'status' => 'Статус',
+            'enable' => 'Включить',
+            'disable' => 'Отключить',
+            'active' => 'Активный',
+            'draft' => 'Черновик',
+            'archived' => 'Архивирован',
+            'unlisted' => 'Не в списке',
             'locale' => 'Языковая локаль',
             'attribute-groups' => 'Группы атрибутов',
         ],
@@ -245,6 +328,9 @@ return [
                 'attribute-label' => 'Unopim Attribute',
                 'definitionName' => 'Definition name',
                 'contentTypeName' => 'Type',
+                'product-reference' => 'Ссылка на товар',
+                'variant-reference' => 'Ссылка на вариант товара',
+                'collection-reference' => 'Ссылка на коллекцию',
                 'pin' => 'Pin',
             ],
             'index' => [
@@ -265,6 +351,29 @@ return [
                 'adminFilterable' => 'Filtering for products',
                 'smartCollectionCondition' => 'Smart collections',
                 'storefronts' => 'Storefronts access',
+                'reference' => 'Связь',
+                'reference-source' => 'Источник связи',
+                'association' => 'Ассоциация',
+                'association-type' => 'Тип ассоциации',
+                'categories' => 'Категории',
+                'reference-as' => 'Ссылаться как',
+                'as-product' => 'Товар',
+                'as-variant' => 'Вариант',
+                'as-collection' => 'Коллекция',
+                'related' => 'Сопутствующие товары',
+                'up-sells' => 'Допродажи',
+                'cross-sells' => 'Перекрёстные продажи',
+                'resolved-type' => 'Тип',
+                'anchor-text' => 'Текст ссылки',
+                'taxonomy-category' => 'Категория таксономии',
+                'taxonomy-assign' => 'Назначить категории',
+                'taxonomy-edit' => 'Изменить',
+                'taxonomy-search' => 'Поиск',
+                'taxonomy-root' => 'Все',
+                'taxonomy-loading' => 'Загрузка…',
+                'taxonomy-selected' => 'выбрано',
+                'taxonomy-cancel' => 'Отмена',
+                'taxonomy-done' => 'Готово',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',
@@ -284,7 +393,15 @@ return [
                 'dimension' => 'Dimension',
                 'weight' => 'Weight',
                 'volume' => 'Volume',
+                'email' => 'Электронная почта',
+                'image_file' => 'Изображение (Файл)',
+                'file' => 'Файл',
+                'video' => 'Видео (Файл)',
+                'link' => 'Ссылка',
             ],
+
+            'content-type' => 'Тип содержимого файла',
+
             'edit' => [
                 'title' => 'Edit Metafield Definition',
                 'back-btn' => 'Back',

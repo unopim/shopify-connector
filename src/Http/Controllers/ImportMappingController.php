@@ -45,7 +45,9 @@ class ImportMappingController extends Controller
             $mediaMapping[$row] = $value;
         }
 
-        return view('shopify::import.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyMapping', 'shopifyCredentials', 'mediaMapping'));
+        $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
+
+        return view('shopify::import.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyMapping', 'shopifyCredentials', 'mediaMapping', 'unitPriceMapping'));
     }
 
     /**
@@ -58,6 +60,7 @@ class ImportMappingController extends Controller
         $filteredData = array_filter($filteredData, fn ($key) => ! str_starts_with($key, 'default_'), ARRAY_FILTER_USE_KEY);
         $mappingFieldss['mapping'] = [];
         $this->formatMediaMapping($filteredData, $mappingFields);
+        $this->formatUnitPriceMapping($filteredData, $mappingFields);
         $duplicates = array_filter(array_count_values($filteredData), fn ($count) => $count > 1);
         $duplicateKeys = array_keys(array_filter($filteredData, fn ($value) => isset($duplicates[$value])));
 
@@ -116,6 +119,24 @@ class ImportMappingController extends Controller
 
             unset($filteredData[$attributes]);
             unset($filteredData[$type]);
+        }
+    }
+
+    /**
+     * Extract the import Unit Price mapping (quantity value/unit attributes only) into
+     * mapping['unit_price'] and drop the fields so they never leak into the generic
+     * attribute loop. Reference value/unit are export-only and intentionally skipped.
+     */
+    public function formatUnitPriceMapping(array &$filteredData, array &$mappingFields)
+    {
+        $unitPrice = (new ShopifyFields)->buildUnitPriceMapping($filteredData, false);
+
+        foreach (ShopifyFields::UNIT_PRICE_FORM_FIELDS as $key) {
+            unset($filteredData[$key]);
+        }
+
+        if ($unitPrice) {
+            $mappingFields['unit_price'] = $unitPrice;
         }
     }
 }

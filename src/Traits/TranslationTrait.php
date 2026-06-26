@@ -251,7 +251,8 @@ trait TranslationTrait
         array $rawData,
         ShopifyCredentialsConfig $credential,
         array $credentialAsArray,
-        array $collectionResult
+        array $collectionResult,
+        array $fieldMap = []
     ): void {
         if (! empty($collectionResult)) {
             $storeloacleMapping = $credential->storelocaleMapping;
@@ -259,30 +260,41 @@ trait TranslationTrait
                 'id' => $collectionResult['id'],
                 'translations' => [],
             ];
+
+            /**
+             * Map of collection mapping key => Shopify translation key and the
+             * digest source. Digests are computed once since $collectionResult
+             * is constant across locales.
+             */
+            $translatableFields = [
+                'title' => ['key' => 'title', 'digest' => hash('sha256', $collectionResult['title'] ?? '')],
+                'descriptionHtml' => ['key' => 'body_html', 'digest' => hash('sha256', $collectionResult['descriptionHtml'] ?? '')],
+                'seoTitle' => ['key' => 'meta_title', 'digest' => hash('sha256', $collectionResult['seo']['title'] ?? '')],
+                'seoDescription' => ['key' => 'meta_description', 'digest' => hash('sha256', $collectionResult['seo']['description'] ?? '')],
+                'handle' => ['key' => 'handle', 'digest' => hash('sha256', $collectionResult['handle'] ?? '')],
+            ];
+
             foreach ($storeloacleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
                 if ($locale == $unopimLocaleCode) {
                     continue;
                 }
 
                 $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $unopimLocaleCode);
-                $descriptionValue = $localeSpecificFields['description'] ?? '';
-                if ($descriptionValue === '') {
-                    $descriptionValue = '<p></p>';
+
+                foreach ($translatableFields as $mapKey => $meta) {
+                    $code = $fieldMap[$mapKey] ?? null;
+
+                    if (empty($code) || empty($localeSpecificFields[$code])) {
+                        continue;
+                    }
+
+                    $formatedVariable['translations'][] = [
+                        'key' => $meta['key'],
+                        'value' => $localeSpecificFields[$code],
+                        'locale' => $shopifyLocaleCode,
+                        'translatableContentDigest' => $meta['digest'],
+                    ];
                 }
-
-                $formatedVariable['translations'][] = [
-                    'key' => 'title',
-                    'value' => $localeSpecificFields['name'] ?? $rawData['code'] ?? '',
-                    'locale' => $shopifyLocaleCode,
-                    'translatableContentDigest' => hash('sha256', $collectionResult['title']),
-                ];
-
-                $formatedVariable['translations'][] = [
-                    'key' => 'body_html',
-                    'value' => $descriptionValue,
-                    'locale' => $shopifyLocaleCode,
-                    'translatableContentDigest' => hash('sha256', $collectionResult['descriptionHtml'] ?? ''),
-                ];
             }
             if (! empty($formatedVariable['translations'])) {
                 $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);

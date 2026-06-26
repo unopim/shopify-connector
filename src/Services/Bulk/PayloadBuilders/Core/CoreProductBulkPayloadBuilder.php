@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
@@ -15,11 +16,18 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
+use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
+use Webkul\Shopify\Services\Bulk\PayloadBuilders\MediaBulkPayloadBuilder;
 use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
 {
     protected array $attributesAll = [];
+
+    protected ?string $taxonomyAttributeCode = null;
+
+    protected ?array $metafieldCategoryConstraintsMap = null;
 
     protected array $credentialAsArray = [];
 
@@ -35,8 +43,6 @@ class CoreProductBulkPayloadBuilder
 
     protected ?string $shopifyDefaultLocale = null;
 
-    protected ?string $locationId = null;
-
     protected ?string $currency = null;
 
     protected ?string $jobChannel = null;
@@ -49,7 +55,33 @@ class CoreProductBulkPayloadBuilder
         protected AttributeRepository $attributeRepository,
         protected ShopifyGraphQLDataFormatter $shopifyGraphQLDataFormatter,
         protected ProductValueMapper $productValueMapper,
+        protected FileReferenceUploader $fileReferenceUploader,
+        protected AssetUrlResolver $assetUrlResolver,
+        protected MediaBulkPayloadBuilder $mediaBulkPayloadBuilder,
     ) {}
+
+    protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+
+    protected ?AssetRepository $resolvedAssetRepository = null;
+
+    protected bool $assetRepositoryResolved = false;
+
+    protected function assetRepository(): ?AssetRepository
+    {
+        if (! $this->assetRepositoryResolved) {
+            $this->assetRepositoryResolved = true;
+
+            if (class_exists(AssetRepository::class)) {
+                try {
+                    $this->resolvedAssetRepository = app(AssetRepository::class);
+                } catch (\Throwable $e) {
+                    $this->resolvedAssetRepository = null;
+                }
+            }
+        }
+
+        return $this->resolvedAssetRepository;
+    }
 
     /**
      * Build JSONL lines and manifest payload for a batch.
@@ -61,8 +93,25 @@ class CoreProductBulkPayloadBuilder
         $products = $this->fetchProducts($batchRows);
         $groupedProducts = $this->groupProducts($products);
 
+        $fileReference = $this->collectFileReferenceValues($products);
+
+        $fileReferenceMap = $this->fileReferenceUploader->buildGidMap(
+            $fileReference['values'],
+            $this->credentialAsArray,
+            $jobTrackId,
+        );
+
+        foreach ($fileReference['aliases'] as $assetId => $path) {
+            if (isset($fileReferenceMap[$path])) {
+                $fileReferenceMap[(string) $assetId] = $fileReferenceMap[$path];
+            }
+        }
+
+        $this->shopifyGraphQLDataFormatter->setFileReferenceMap($fileReferenceMap);
+
         $lines = [];
         $manifestLines = [];
+        $mediaCreated = false;
         $summary = [
             'processed' => count($groupedProducts),
             'created' => 0,
@@ -81,6 +130,10 @@ class CoreProductBulkPayloadBuilder
             $summary['created']++;
             $lines[] = json_encode($payload['variables'], JSON_UNESCAPED_SLASHES);
             $manifestLines[] = $payload['manifest'];
+
+            if (! empty($payload['manifest']['media_plan_items'])) {
+                $mediaCreated = true;
+            }
         }
 
         return [
@@ -93,12 +146,12 @@ class CoreProductBulkPayloadBuilder
                 'channel' => $this->jobChannel,
                 'currency' => $this->currency,
                 'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
+                'media_created' => $mediaCreated,
                 'follow_up_context' => [
                     'publishing' => true,
                     'media' => true,
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
                     'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
-                    'location_id' => $this->locationId,
                 ],
                 'lines' => $manifestLines,
             ],
@@ -142,7 +195,6 @@ class CoreProductBulkPayloadBuilder
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code')->all();
-        $this->locationId = $this->credential?->extras['locations'] ?? null;
 
         $defaultLanguage = array_values(array_filter($this->credential?->storeLocales ?? [], function ($language) {
             return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
@@ -152,11 +204,123 @@ class CoreProductBulkPayloadBuilder
         $this->credentialAsArray = $this->credential?->toApiArray() ?? [];
 
         $this->shopifyGraphQLDataFormatter->setInitialData(
-            $this->locationId ?? '',
+            '',
             $this->currency ?? 'USD',
             $this->settingMapping,
-            $this->attributesAll
+            $this->attributesAll,
+            $this->credential?->extras['locationAttributeMappings'] ?? []
         );
+    }
+
+    /**
+     * @return array{values: array<int, array{path: string, content_type: string, url: string}>, aliases: array<string, string>}
+     */
+    protected function collectFileReferenceValues(array $products): array
+    {
+        $fileDefs = array_filter(
+            array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping),
+            fn ($def) => ($def['type'] ?? null) === 'file_reference'
+        );
+
+        if (empty($fileDefs)) {
+            return ['values' => [], 'aliases' => []];
+        }
+
+        $values = [];
+        $aliases = [];
+
+        foreach ($products as $product) {
+            $rawData = $this->getAllAttributeValues($product);
+
+            foreach ($fileDefs as $def) {
+                $value = $rawData[$def['code']] ?? null;
+
+                if (empty($value)) {
+                    continue;
+                }
+
+                $attributeType = $this->attributesAll[$def['code']]?->type ?? null;
+
+                if ($attributeType === 'asset') {
+                    foreach ($this->expandAssetFileReferences($value) as $assetId => $entry) {
+                        $values[$entry['path']] = $entry;
+                        $aliases[(string) $assetId] = $entry['path'];
+                    }
+
+                    continue;
+                }
+
+                $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
+                if (! $contentType) {
+                    $contentType = $attributeType === 'image' ? 'IMAGE' : 'FILE';
+                }
+
+                foreach ((array) $value as $single) {
+                    $path = (string) $single;
+                    $values[$path] = [
+                        'path' => $path,
+                        'content_type' => $contentType,
+                        'url' => $this->assetUrlResolver->resolveMedia($path)['url'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        return ['values' => array_values($values), 'aliases' => $aliases];
+    }
+
+    /**
+     * @return array<int|string, array{path: string, content_type: string, url: string}>
+     */
+    protected function expandAssetFileReferences(mixed $rawValue): array
+    {
+        $assetRepository = $this->assetRepository();
+
+        if (! $assetRepository) {
+            return [];
+        }
+
+        $rawValue = is_array($rawValue) ? implode(',', $rawValue) : (string) $rawValue;
+        $ids = array_filter(array_map('trim', explode(',', $rawValue)));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $entries = [];
+
+        foreach ($assetRepository->whereIn('id', $ids)->get() as $asset) {
+            $asset = is_array($asset) ? $asset : $asset->toArray();
+            $path = $asset['path'] ?? null;
+            $mime = $asset['mime_type'] ?? null;
+
+            if (empty($path) || empty($mime)) {
+                continue;
+            }
+
+            $url = $this->assetUrlResolver->resolveAssetUrl($path);
+
+            if ($url === '') {
+                continue;
+            }
+
+            $entries[$asset['id']] = [
+                'path' => $path,
+                'content_type' => $this->assetFileContentType($mime),
+                'url' => $url,
+            ];
+        }
+
+        return $entries;
+    }
+
+    protected function assetFileContentType(string $mime): string
+    {
+        if (in_array($mime, $this->imageMimeTypes, true)) {
+            return 'IMAGE';
+        }
+
+        return $mime === 'video/mp4' ? 'VIDEO' : 'FILE';
     }
 
     /**
@@ -251,6 +415,68 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
+     * @return array<int, array{namespace: string, key: string, type: string, value: string}>
+     */
+    protected function buildReferenceMetafields(array $productRow, array $metaFieldMapping): array
+    {
+        $defs = array_filter(
+            $metaFieldMapping,
+            fn ($d) => in_array($d['type'] ?? '', ['product_reference', 'variant_reference', 'collection_reference'], true)
+        );
+
+        if (empty($defs)) {
+            return [];
+        }
+
+        $values = $productRow['values'] ?? [];
+        $metafields = [];
+
+        foreach ($defs as $def) {
+            $cfg = json_decode($def['validations'] ?? '[]', true) ?: [];
+
+            if ($def['type'] === 'collection_reference') {
+                $gids = $this->resolveCollectionIds($values['categories'] ?? []);
+            } else {
+                $assocType = $cfg['association_type'] ?? 'related_products';
+                $skus = $values['associations'][$assocType] ?? [];
+                $field = ($cfg['reference_as'] ?? 'product') === 'variant' ? 'externalId' : 'relatedId';
+
+                $gids = [];
+                foreach ($skus as $sku) {
+                    $row = ($this->findMapping($sku) ?? [])[0] ?? null;
+                    $gid = $row[$field] ?? null;
+
+                    if ($def['type'] === 'variant_reference' && ! $this->resolveVariantGid($gid)) {
+                        logger()->warning('Shopify: variant_reference skipped — no variant GID', ['sku' => $sku]);
+
+                        continue;
+                    }
+
+                    if ($gid) {
+                        $gids[] = $gid;
+                    }
+                }
+            }
+
+            $gids = array_values(array_unique(array_filter($gids)));
+            if (empty($gids)) {
+                continue;
+            }
+
+            $isList = ! empty($def['listvalue']);
+            $nsKey = explode('.', $def['name_space_key']);
+            $metafields[] = [
+                'namespace' => $nsKey[0],
+                'key' => $nsKey[1],
+                'type' => $isList ? 'list.'.$def['type'] : $def['type'],
+                'value' => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
+            ];
+        }
+
+        return $metafields;
+    }
+
+    /**
      * Build a single productSet payload and manifest line.
      */
     protected function buildPayloadForGroup(array $group, int $jobTrackId): ?array
@@ -279,8 +505,30 @@ class CoreProductBulkPayloadBuilder
             $this->variantMetaFieldMapping
         );
 
+        $referenceMetafields = $this->buildReferenceMetafields($parentData ?? $firstVariant, $this->productMetaFieldMapping);
+        if (! empty($referenceMetafields)) {
+            $formattedProduct['metafields'] = array_merge(
+                $formattedProduct['metafields'] ?? [],
+                $referenceMetafields
+            );
+        }
+
         $productInput = $this->normalizeProductInput($formattedProduct, $productOptions);
-        $productInput['handle'] = ($productInput['handle'] ?? null) ?: Str::slug(($productInput['title'] ?? null) ?: $productSku);
+        // Only send a handle when one is mapped; otherwise let Shopify auto-generate it from
+        // the title. Slugify so it matches Shopify's stored handle for recreate-by-handle.
+        if (! empty($productInput['handle'])) {
+            $productInput['handle'] = Str::slug($productInput['handle']);
+        }
+
+        $taxonomyCode = $this->taxonomyAttributeCode();
+        $productCategory = $taxonomyCode ? ($productMergedFields[$taxonomyCode] ?? '') : '';
+        $productCategoryShort = $productCategory !== '' ? substr($productCategory, strrpos($productCategory, '/') + 1) : null;
+        if ($productCategory !== '') {
+            $productInput['category'] = $productCategory;
+        }
+        if (! empty($productInput['metafields'])) {
+            $productInput['metafields'] = $this->filterMetafieldsByCategory($productInput['metafields'], $productCategoryShort);
+        }
 
         $variantManifest = [];
         $variants = [];
@@ -305,9 +553,19 @@ class CoreProductBulkPayloadBuilder
             }
             $optionValues = $this->buildVariantOptionValues($parentData, $variantMergedFields);
 
+            $variantMetafields = ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [];
+            if (! empty($parentData)) {
+                $variantMetafields = array_merge(
+                    $variantMetafields,
+                    $this->buildReferenceMetafields($variantRow, $this->variantMetaFieldMapping)
+                );
+            }
+
+            $variantMetafields = $this->filterMetafieldsByCategory($variantMetafields, $productCategoryShort);
+
             $variants[] = $this->normalizeVariantInput(
                 $formattedVariant['variant'] ?? [],
-                ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [],
+                $variantMetafields,
                 $optionValues,
                 $variantMapping[0]['externalId'] ?? null,
                 ! empty($parentData)
@@ -323,19 +581,43 @@ class CoreProductBulkPayloadBuilder
         if (! empty($productCollections)) {
             $productInput['collections'] = $productCollections;
         }
+
         $productInput['variants'] = $variants;
+
+        $mediaPlanItems = [];
+
+        if (empty($this->credential->extras['saas'])) {
+            $media = $this->mediaBulkPayloadBuilder->collectProductSetFiles(
+                $productSku,
+                array_column($variantManifest, 'sku'),
+                (int) $this->credential->id,
+                $this->credential->shopUrl,
+                $this->jobChannel ?? 'default',
+                $this->currency ?? 'USD',
+                $this->credentialAsArray,
+            );
+
+            if (! empty($media['files'])) {
+                $productInput['files'] = $media['files'];
+            }
+
+            $mediaPlanItems = $media['planItems'];
+        }
 
         return [
             'variables' => [
-                'identifier' => $productIdentifierId
-                    ? ['id' => $productIdentifierId]
-                    : ['handle' => $productInput['handle']],
+                'identifier' => match (true) {
+                    (bool) $productIdentifierId => ['id' => $productIdentifierId],
+                    ! empty($productInput['handle']) => ['handle' => $productInput['handle']],
+                    default => null,
+                },
                 'input' => $productInput,
             ],
             'manifest' => [
                 'product_sku' => $productSku,
-                'product_handle' => $productInput['handle'],
+                'product_handle' => $productInput['handle'] ?? null,
                 'variant_skus' => array_column($variantManifest, 'sku'),
+                'media_plan_items' => $mediaPlanItems,
                 'phase_context' => [
                     'publishing' => ! empty($this->credential?->extras['salesChannel']),
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
@@ -499,6 +781,8 @@ class CoreProductBulkPayloadBuilder
             // Inventory quantities are synced inline through productSet; there is
             // no separate inventory phase, so this is the single source of truth.
             'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
+            'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present
@@ -562,20 +846,80 @@ class CoreProductBulkPayloadBuilder
      */
     protected function resolveCollectionIds(array $categoryCodes): array
     {
-        $collectionIds = [];
-        foreach ($categoryCodes as $code) {
-            $mapping = $this->shopifyMappingRepository->where('code', $code)
-                ->where('entityType', 'category')
-                ->where('apiUrl', $this->credential?->shopUrl)
-                ->get()
-                ->toArray();
+        return $this->shopifyMappingRepository
+            ->whereIn('code', $categoryCodes)
+            ->where('entityType', 'category')
+            ->where('apiUrl', $this->credential?->shopUrl)
+            ->pluck('externalId')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+    }
 
-            if (! empty($mapping[0]['externalId'])) {
-                $collectionIds[] = $mapping[0]['externalId'];
+    protected function taxonomyAttributeCode(): ?string
+    {
+        if ($this->taxonomyAttributeCode !== null) {
+            return $this->taxonomyAttributeCode ?: null;
+        }
+
+        $attribute = collect($this->attributesAll)->first(fn ($attribute) => $attribute->type === 'shopify_taxonomy');
+
+        return $this->taxonomyAttributeCode = ($attribute->code ?? '');
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    protected function metafieldCategoryConstraints(): array
+    {
+        if ($this->metafieldCategoryConstraintsMap !== null) {
+            return $this->metafieldCategoryConstraintsMap;
+        }
+
+        $map = [];
+
+        foreach (array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping) as $definition) {
+            $categories = $definition['taxonomy_category'] ?? [];
+
+            if (is_string($categories)) {
+                $categories = json_decode($categories, true) ?: [];
+            }
+
+            $categories = (array) $categories;
+
+            if ($categories !== [] && ! empty($definition['name_space_key'])) {
+                $map[$definition['name_space_key']] = array_map(
+                    fn ($gid) => substr((string) $gid, strrpos((string) $gid, '/') + 1),
+                    $categories
+                );
             }
         }
 
-        return array_values(array_unique($collectionIds));
+        return $this->metafieldCategoryConstraintsMap = $map;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $metafields
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filterMetafieldsByCategory(array $metafields, ?string $categoryShort): array
+    {
+        $constraints = $this->metafieldCategoryConstraints();
+
+        if ($constraints === []) {
+            return $metafields;
+        }
+
+        return array_values(array_filter($metafields, function ($metafield) use ($constraints, $categoryShort) {
+            $nameSpaceKey = ($metafield['namespace'] ?? '').'.'.($metafield['key'] ?? '');
+
+            if (! isset($constraints[$nameSpaceKey])) {
+                return true;
+            }
+
+            return $categoryShort !== null && in_array($categoryShort, $constraints[$nameSpaceKey], true);
+        }));
     }
 
     /**

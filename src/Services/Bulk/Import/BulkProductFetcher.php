@@ -28,6 +28,8 @@ class BulkProductFetcher
 
     public const LOCALE_NONE = '__NONE__';
 
+    public const PRODUCT_FILTER_PLACEHOLDER = '%PRODUCT_FILTER%';
+
     /**
      * Ordered list of bulk-query template config keys to fetch sequentially.
      * Only the first uses the locale placeholder — relations pass has no
@@ -47,7 +49,7 @@ class BulkProductFetcher
      *
      * @return array<int,string> absolute file paths
      */
-    public function fetch(array $credential, ?string $shopifyLocale): array
+    public function fetch(array $credential, ?string $shopifyLocale, ?string $statusFilter = null): array
     {
         $paths = [];
 
@@ -58,7 +60,7 @@ class BulkProductFetcher
                 throw new \RuntimeException("Shopify bulk import query template '{$key}' is not configured.");
             }
 
-            $query = $this->resolveQuery($template, $shopifyLocale);
+            $query = $this->resolveQuery($template, $shopifyLocale, $statusFilter);
 
             $operation = $this->submit($credential, $query);
             $url = $this->pollUntilComplete($credential, $operation['id']);
@@ -76,13 +78,42 @@ class BulkProductFetcher
      * If no locale is mapped, %LOCALE% is replaced with a sentinel that yields
      * an empty translations array on Shopify's side.
      */
-    protected function resolveQuery(string $template, ?string $shopifyLocale): string
+    protected function resolveQuery(string $template, ?string $shopifyLocale, ?string $statusFilter = null): string
     {
         $locale = $shopifyLocale !== null && $shopifyLocale !== ''
             ? $shopifyLocale
             : self::LOCALE_NONE;
 
-        return str_replace(self::LOCALE_PLACEHOLDER, addslashes($locale), $template);
+        $template = str_replace(self::LOCALE_PLACEHOLDER, addslashes($locale), $template);
+
+        return str_replace(
+            self::PRODUCT_FILTER_PLACEHOLDER,
+            $this->buildProductFilterClause($statusFilter),
+            $template
+        );
+    }
+
+    /**
+     * Map the import's status filter to a Shopify search-syntax clause for the
+     * top-level products connection. Returns the full argument group including
+     * parentheses, or an empty string when no filter applies.
+     *
+     * Only hardcoded literals are emitted — the raw $statusFilter is never
+     * interpolated, so there is no query-injection surface. The filter mirrors
+     * the four Shopify product statuses; regardless of the filter, an imported
+     * product's UnoPim flag is set by ACTIVE -> enabled, everything else -> disabled.
+     */
+    protected function buildProductFilterClause(?string $statusFilter): string
+    {
+        $query = match ($statusFilter) {
+            'active' => 'status:active',
+            'draft' => 'status:draft',
+            'archived' => 'status:archived',
+            'unlisted' => 'status:unlisted',
+            default => null,
+        };
+
+        return $query === null ? '' : '(query: "'.$query.'")';
     }
 
     /**

@@ -41,4 +41,30 @@ class ShopifyClientFactory
 
         return new ManualShopifyClient($credential, $this->accessTokenManager);
     }
+
+    /**
+     * Whether file_reference metafields can be uploaded for this credential.
+     *
+     * File uploads need Shopify's `fileCreate`/`getFileById` operations. Manual
+     * credentials call Shopify directly and always support them. SaaS routes
+     * through the proxy, which does not yet expose those endpoints, so file
+     * metafields are skipped there until the proxy ships them. Flip this to a
+     * plain `true` once the proxy is confirmed.
+     */
+    public function supportsFileReference(array $credential): bool
+    {
+        return empty($credential['extras']['saas']);
+    }
+
+    /**
+     * Whether the credential is routed through the SaaS proxy.
+     *
+     * File uploads diverge by transport: manual credentials call `fileCreate`
+     * directly per file, while SaaS routes through the proxy and must batch them
+     * through a bulk operation (the single `fileCreate` op is not proxied).
+     */
+    public function isSaas(array $credential): bool
+    {
+        return ! empty($credential['extras']['saas']);
+    }
 }

@@ -34,6 +34,7 @@ return [
                 'shopify' => 'شوبفاي',
                 'credentials' => 'بيانات الاعتماد',
                 'export-mappings' => 'تعيينات التصدير',
+                'collection-mappings' => 'تعيينات المجموعات',
                 'import-mappings' => 'استيراد التعيينات',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -55,6 +56,12 @@ return [
             ],
         ],
         'version' => 'الإصدار: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'تصنيف Shopify',
+            'taxonomy-select-placeholder' => 'اختر فئة',
+            'only-one' => 'يُسمح بسمة تصنيف Shopify واحدة فقط.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'تعيين اللغات',
@@ -95,6 +102,9 @@ return [
                 'back-btn' => 'عودة',
                 'channel' => 'قناة البيع',
                 'locations' => 'قائمة المواقع',
+                'location_inventory_title' => 'المخزون حسب الموقع',
+                'location_inventory_info' => 'قم بربط سمة كمية لكل موقع لإرسال المخزون حسب الموقع. يتم تجاهل المواقع المتروكة فارغة.',
+                'location_inventory_attribute' => 'سمة الكمية',
             ],
             'edit' => [
                 'title' => 'تحرير بيانات الاعتماد',
@@ -133,6 +143,10 @@ return [
                 'attribute' => 'خاصية',
                 'fixed-value' => 'قيمة ثابتة',
                 'save_failed' => 'فشل حفظ تعيين التصدير. يرجى تشغيل أمر تثبيت Shopify.',
+                'validation' => [
+                    'name_required' => 'يرجى تعيين سمة أو تحديد قيمة ثابتة للاسم.',
+                    'status_required' => 'يرجى اختيار حالة المنتج.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +159,67 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'حالة المنتج',
+                    'label' => 'حالة Shopify',
+                    'placeholder' => 'اختر حالة المنتج',
+                    'tooltip' => 'يُطبَّق على جميع المنتجات المصدَّرة.',
+                    'options' => [
+                        'active' => 'نشط',
+                        'draft' => 'مسودة',
+                        'archived' => 'مؤرشف',
+                        'unlisted' => 'غير مدرج',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'عام',
+                ],
+
+                'collection' => [
+                    'title' => 'تعيينات المجموعات',
+                    'back-btn' => 'رجوع',
+                    'save' => 'حفظ',
+                    'created' => 'تم حفظ تعيين المجموعة بنجاح',
+                    'save_failed' => 'فشل حفظ تعيين المجموعة. يرجى تشغيل أمر تثبيت Shopify.',
+                    'validation' => [
+                        'title_required' => 'يرجى تعيين سمة فئة للعنوان.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'تم تخطي المجموعة للفئة :code: سمة العنوان المعينة فارغة.',
+                    ],
+                    'images' => [
+                        'title' => 'تعيين صورة المجموعة',
+                        'label' => 'سمة الصورة',
+                    ],
+                    'sort_order' => [
+                        'label' => 'ترتيب فرز المنتجات',
+                        'placeholder' => 'اختر ترتيب الفرز',
+                        'tooltip' => 'ينطبق على جميع المجموعات المصدَّرة.',
+                        'options' => [
+                            'manual' => 'يدوي',
+                            'best_selling' => 'الأكثر مبيعاً',
+                            'alpha_asc' => 'أبجدياً (أ-ي)',
+                            'alpha_desc' => 'أبجدياً (ي-أ)',
+                            'price_asc' => 'السعر (من الأقل إلى الأعلى)',
+                            'price_desc' => 'السعر (من الأعلى إلى الأقل)',
+                            'created' => 'تاريخ الإنشاء (الأقدم أولاً)',
+                            'created_desc' => 'تاريخ الإنشاء (الأحدث أولاً)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'سعر الوحدة',
+                    'quantity_value' => 'المبلغ الإجمالي',
+                    'quantity_unit' => 'وحدة المبلغ الإجمالي',
+                    'quantity_value_info' => 'اختر سمة من نوع رقم أو عدد عشري.',
+                    'quantity_unit_info' => 'اختر سمة من نوع نص أو قائمة. يجب أن تطابق قيمتها وحدة صالحة (مثل :units)؛ القيم الأخرى لا يتم تصديرها.',
+                    'reference_value' => 'القياس الأساسي',
+                    'reference_unit' => 'وحدة القياس الأساسي',
+                    'auto' => 'تلقائي (نفس وحدة المبلغ الإجمالي)',
                 ],
             ],
             'settings' => [
@@ -227,6 +302,7 @@ return [
             'seo_title' => 'عنوان SEO',
             'seo_description' => 'وصف SEO',
             'handle' => 'معالجة',
+            'collection_type' => 'نوع المجموعة',
             'taxable' => 'قابل للضريبة',
             'inventory_cost' => 'تكلفة المخزون',
         ],
@@ -236,6 +312,13 @@ return [
             'channel' => 'القناة',
             'currency' => 'العملة',
             'productfilter' => 'مرشح المنتج (SKU)',
+            'status' => 'الحالة',
+            'enable' => 'تفعيل',
+            'disable' => 'تعطيل',
+            'active' => 'نشط',
+            'draft' => 'مسودة',
+            'archived' => 'مؤرشف',
+            'unlisted' => 'غير مدرج',
             'locale' => 'اللغة',
             'attribute-groups' => 'مجموعات السمات',
         ],
@@ -245,6 +328,9 @@ return [
                 'attribute-label' => 'سمة Unopim',
                 'definitionName' => 'اسم التعريف',
                 'contentTypeName' => 'نوع',
+                'product-reference' => 'مرجع المنتج',
+                'variant-reference' => 'مرجع متغير المنتج',
+                'collection-reference' => 'مرجع المجموعة',
                 'pin' => 'دبوس',
             ],
             'index' => [
@@ -265,6 +351,29 @@ return [
                 'adminFilterable' => 'التصفية للمنتجات',
                 'smartCollectionCondition' => 'مجموعات ذكية',
                 'storefronts' => 'الوصول إلى الواجهات الأمامية',
+                'reference' => 'مرجع',
+                'reference-source' => 'مصدر المرجع',
+                'association' => 'الارتباط',
+                'association-type' => 'نوع الارتباط',
+                'categories' => 'الفئات',
+                'reference-as' => 'الإشارة كـ',
+                'as-product' => 'منتج',
+                'as-variant' => 'متغير',
+                'as-collection' => 'مجموعة',
+                'related' => 'منتجات ذات صلة',
+                'up-sells' => 'منتجات أعلى',
+                'cross-sells' => 'منتجات تكميلية',
+                'resolved-type' => 'النوع',
+                'anchor-text' => 'نص الرابط',
+                'taxonomy-category' => 'فئة التصنيف',
+                'taxonomy-assign' => 'تعيين الفئات',
+                'taxonomy-edit' => 'تعديل',
+                'taxonomy-search' => 'بحث',
+                'taxonomy-root' => 'الكل',
+                'taxonomy-loading' => 'جارٍ التحميل…',
+                'taxonomy-selected' => 'محدد',
+                'taxonomy-cancel' => 'إلغاء',
+                'taxonomy-done' => 'تم',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',
@@ -284,7 +393,15 @@ return [
                 'dimension' => 'أبعاد',
                 'weight' => 'وزن',
                 'volume' => 'حجم',
+                'email' => 'بريد إلكتروني',
+                'image_file' => 'صورة (ملف)',
+                'file' => 'ملف',
+                'video' => 'فيديو (ملف)',
+                'link' => 'رابط',
             ],
+
+            'content-type' => 'نوع محتوى الملف',
+
             'edit' => [
                 'title' => 'تحرير تعريف الحقل الوصفي',
                 'back-btn' => 'رجوع',

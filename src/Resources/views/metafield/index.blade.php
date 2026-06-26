@@ -87,7 +87,23 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'];
+                                        $referenceSourceOptions = json_encode([
+                                            ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
+                                            ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
+                                        ]);
+                                        $associationTypeOptions = json_encode([
+                                            ['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')],
+                                            ['id' => 'up_sells', 'name' => trans('shopify::app.shopify.metafield.index.up-sells')],
+                                            ['id' => 'cross_sells', 'name' => trans('shopify::app.shopify.metafield.index.cross-sells')],
+                                        ]);
+                                        $referenceAsOptions = json_encode([
+                                            ['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')],
+                                            ['id' => 'variant', 'name' => trans('shopify::app.shopify.metafield.index.as-variant')],
+                                        ]);
+                                        $referenceCollectionOptions = json_encode([
+                                            ['id' => 'collection', 'name' => trans('shopify::app.shopify.metafield.index.as-collection')],
+                                        ]);
                                     @endphp
                                 <x-admin::form.control-group.control
                                     type="select"
@@ -105,8 +121,124 @@
                                 <x-admin::form.control-group.error control-name="ownerType"/>
                             </x-admin::form.control-group>
 
-                            <!-- Unopim Attribute -->
                             <x-admin::form.control-group>
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.reference')
+                                </x-admin::form.control-group.label>
+                                <input type="hidden" name="reference_mode" value="0" />
+                                <x-admin::form.control-group.control
+                                    type="switch"
+                                    name="reference_mode"
+                                    value="1"
+                                    v-model="referenceMode"
+                                />
+                            </x-admin::form.control-group>
+
+                            <template v-if="referenceMode">
+                                <x-admin::form.control-group>
+                                    <x-admin::form.control-group.label class="required">
+                                        @lang('shopify::app.shopify.metafield.index.reference-source')
+                                    </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="select"
+                                        name="reference_source"
+                                        :options="$referenceSourceOptions"
+                                        :placeholder="trans('shopify::app.shopify.metafield.index.reference-source')"
+                                        track-by="id"
+                                        label-by="name"
+                                        @input="handleReferenceSelect($event, 'referenceSource')"
+                                    />
+                                </x-admin::form.control-group>
+
+                                <template v-if="referenceSource === 'association'">
+                                    <x-admin::form.control-group>
+                                        <x-admin::form.control-group.label class="required">
+                                            @lang('shopify::app.shopify.metafield.index.association-type')
+                                        </x-admin::form.control-group.label>
+                                        <x-admin::form.control-group.control
+                                            type="select"
+                                            name="association_type"
+                                            :options="$associationTypeOptions"
+                                            :value="json_encode(['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')])"
+                                            :placeholder="trans('shopify::app.shopify.metafield.index.association-type')"
+                                            track-by="id"
+                                            label-by="name"
+                                            @input="handleReferenceSelect($event, 'associationType')"
+                                        />
+                                    </x-admin::form.control-group>
+                                </template>
+
+                                {{-- Type: Product/Variant when source is association, Collection when categories. --}}
+                                <x-admin::form.control-group v-if="referenceSource === 'association'">
+                                    <x-admin::form.control-group.label class="required">
+                                        @lang('shopify::app.shopify.metafield.index.resolved-type')
+                                    </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="select"
+                                        name="reference_as"
+                                        :options="$referenceAsOptions"
+                                        :value="json_encode(['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')])"
+                                        :placeholder="trans('shopify::app.shopify.metafield.index.resolved-type')"
+                                        track-by="id"
+                                        label-by="name"
+                                        @input="handleReferenceSelect($event, 'referenceAs')"
+                                    />
+                                </x-admin::form.control-group>
+
+                                <x-admin::form.control-group v-if="referenceSource === 'categories'">
+                                    <x-admin::form.control-group.label class="required">
+                                        @lang('shopify::app.shopify.metafield.index.resolved-type')
+                                    </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="select"
+                                        name="reference_as"
+                                        :options="$referenceCollectionOptions"
+                                        :value="json_encode(['id' => 'collection', 'name' => trans('shopify::app.shopify.metafield.index.as-collection')])"
+                                        :placeholder="trans('shopify::app.shopify.metafield.index.resolved-type')"
+                                        track-by="id"
+                                        label-by="name"
+                                        @input="handleReferenceSelect($event, 'referenceAs')"
+                                    />
+                                </x-admin::form.control-group>
+
+                                <input type="hidden" name="type" :value="referenceType" v-if="referenceSource" />
+
+                                <x-admin::form.control-group v-if="referenceSource">
+                                    <div class="flex items-center gap-4">
+                                        <x-admin::form.control-group>
+                                            <x-admin::form.control-group.control
+                                                type="radio"
+                                                id="ref_listvalue_one"
+                                                name="ref_listvalue"
+                                                value="one"
+                                                for="ref_listvalue_one"
+                                                @change="referenceListChoice = 'one'"
+                                                ::checked="referenceListChoice === 'one'"
+                                            />
+                                            <x-admin::form.control-group.label for="ref_listvalue_one">
+                                                @lang('shopify::app.shopify.metafield.index.onevalue')
+                                            </x-admin::form.control-group.label>
+                                        </x-admin::form.control-group>
+                                        <x-admin::form.control-group>
+                                            <x-admin::form.control-group.control
+                                                type="radio"
+                                                id="ref_listvalue_list"
+                                                name="ref_listvalue"
+                                                value="list"
+                                                for="ref_listvalue_list"
+                                                @change="referenceListChoice = 'list'"
+                                                ::checked="referenceListChoice === 'list'"
+                                            />
+                                            <x-admin::form.control-group.label for="ref_listvalue_list">
+                                                @lang('shopify::app.shopify.metafield.index.listvalue')
+                                            </x-admin::form.control-group.label>
+                                        </x-admin::form.control-group>
+                                    </div>
+                                </x-admin::form.control-group>
+                            </template>
+
+                            <!-- Unopim Attribute -->
+                            <x-admin::form.control-group v-if="!referenceMode">
                                 <x-admin::form.control-group.label class="required">
                                     @lang('shopify::app.shopify.metafield.index.attribute')
                                 </x-admin::form.control-group.label>
@@ -129,9 +261,16 @@
                                 <x-admin::form.control-group.error control-name="code" />
                             </x-admin::form.control-group>
 
+                            <x-admin::form.control-group v-if="!referenceMode && ownerType === 'PRODUCT'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.taxonomy-category')
+                                </x-admin::form.control-group.label>
+
+                                <v-taxonomy-category-picker :initial="[]"></v-taxonomy-category-picker>
+                            </x-admin::form.control-group>
 
                             <!-- Content Type -->
-                            <x-admin::form.control-group>
+                            <x-admin::form.control-group v-if="!referenceMode">
                                 <x-admin::form.control-group.label class="required">
                                     @lang('shopify::app.shopify.metafield.index.ContentTypeName')
                                 </x-admin::form.control-group.label>
@@ -154,7 +293,32 @@
                                 <x-admin::form.control-group.error control-name="type"/>
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group v-if=" (urlvalidation == true)">
+                            <input
+                                type="hidden"
+                                name="content_type"
+                                :value="contentType"
+                                v-if="!referenceMode && key === 'file_reference'"
+                            />
+
+                            <x-admin::form.control-group v-if="!referenceMode && key === 'link'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.anchor-text')
+                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    id="link_text_attribute"
+                                    name="link_text_attribute"
+                                    track-by="code"
+                                    label-by="label"
+                                    :label="trans('shopify::app.shopify.metafield.index.anchor-text')"
+                                    async=true
+                                    :entityName="json_encode($attributeType)"
+                                    :placeholder="trans('shopify::app.shopify.metafield.index.anchor-text')"
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+
+                            <x-admin::form.control-group v-if="!referenceMode && urlvalidation == true">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.urlvalidation')
                                 </x-admin::form.control-group.label>
@@ -163,7 +327,7 @@
                                 </x-admin::form.control-group.label>
                             </x-admin::form.control-group>
 
-                            <div class="flex items-center gap-4" v-if=" (contenttypeSelect == 1)">
+                            <div class="flex items-center gap-4" v-if=" (contenttypeSelect == 1) && !referenceMode">
                                 <x-admin::form.control-group>
                                     <x-admin::form.control-group.control
                                         type="radio"
@@ -248,7 +412,7 @@
 
                                 <x-admin::form.control-group.error control-name="description"/>
                             </x-admin::form.control-group>
-                            <div v-if=" (typeofminmx == 'text')">
+                            <div v-if="!referenceMode && typeofminmx == 'text'">
                                 <div :class="{ 'flex items-center gap-2':  width != null }">
                                     <x-admin::form.control-group ::class="width">
                                         <x-admin::form.control-group.label v-text="minvalueLabel">
@@ -313,7 +477,7 @@
                                     </x-admin::form.control-group>
                                 </div>
                             </div>
-                            <div v-if=" (typeofminmx == 'date')">
+                            <div v-if="!referenceMode && typeofminmx == 'date'">
                                 <x-admin::form.control-group>
                                 <x-admin::form.control-group.label v-text="minvalueLabel">
                                 </x-admin::form.control-group.label>
@@ -363,7 +527,7 @@
                                 <x-admin::form.control-group.error control-name="pin"/>
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group v-if=" (adminFilterable == 1)">
+                            <x-admin::form.control-group v-if="!referenceMode && adminFilterable == 1">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.adminFilterable')
                                 </x-admin::form.control-group.label>
@@ -378,7 +542,7 @@
                                     value="1"
                                 />
                             </x-admin::form.control-group>
-                            <x-admin::form.control-group v-if=" (smartCollectionCondition == 1)">
+                            <x-admin::form.control-group v-if="!referenceMode && smartCollectionCondition == 1">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.smartCollectionCondition')
                                 </x-admin::form.control-group.label>
@@ -437,7 +601,8 @@
                 template: '#v-metafield-template',
                 data() {
                     return {
-                        contenttypeSelect: null,  
+                        contenttypeSelect: null,
+                        ownerType: '',
                         attribute: "",
                         name_space_key: "",
                         contentTypeOptions:  [],
@@ -453,10 +618,43 @@
                         smartCollectionCondition: null,
                         storefronts: 'Read',
                         contentTypeName: null,
+                        contentType: '',
                         key: null,
                         urlvalidation: false,
                         width: null,
+                        referenceMode: false,
+                        referenceSource: '',
+                        associationType: 'related_products',
+                        referenceAs: 'product',
+                        referenceListChoice: 'one',
                     };
+                },
+                computed: {
+                    referenceTypeBase() {
+                        return this.referenceSource === 'categories'
+                            ? 'collection_reference'
+                            : (this.referenceAs === 'variant' ? 'variant_reference' : 'product_reference');
+                    },
+                    referenceTypeLabel() {
+                        const map = {
+                            product_reference: 'Product Reference',
+                            variant_reference: 'Variant Reference',
+                            collection_reference: 'Collection Reference',
+                        };
+                        return map[this.referenceTypeBase] || '';
+                    },
+                    referenceType() {
+                        return this.referenceListChoice === 'list' ? 'list.' + this.referenceTypeBase : this.referenceTypeBase;
+                    },
+                },
+                watch: {
+                    referenceMode(on) {
+                        if (on) {
+                            this.adminFilterable = null;
+                            this.smartCollectionCondition = null;
+                            this.applyReferenceNaming();
+                        }
+                    },
                 },
                 methods: {
                     create(params, { setErrors }) {
@@ -514,6 +712,35 @@
                         }
                     },
 
+                    handleReferenceSelect(event, field) {
+                        if (event && (typeof event === 'string' || event instanceof String)) {
+                            this[field] = JSON.parse(event)?.id;
+
+                            if (field === 'referenceSource') {
+                                this.referenceAs = this.referenceSource === 'categories' ? 'collection' : 'product';
+                            }
+
+                            this.applyReferenceNaming();
+                        }
+                    },
+
+                    applyReferenceNaming() {
+                        if (! this.referenceMode || ! this.referenceSource) {
+                            return;
+                        }
+                        let key, name;
+                        if (this.referenceSource === 'categories') {
+                            key = 'collections';
+                            name = 'Collections';
+                        } else {
+                            const labels = { related_products: 'Related products', up_sells: 'Up-sells', cross_sells: 'Cross-sells' };
+                            key = this.associationType + (this.referenceAs === 'variant' ? '_variant' : '');
+                            name = (labels[this.associationType] ?? this.associationType) + (this.referenceAs === 'variant' ? ' (Variant)' : '');
+                        }
+                        this.name_space_key = 'custom.' + key;
+                        this.attribute = name;
+                    },
+
                     handleSelectChange(event, FieldType) {
                         if (event && typeof event === 'string' || event instanceof String) {
                             var parsedEvent = JSON.parse(event);
@@ -532,6 +759,7 @@
                             var key = parsedEvent?.id;
                             this.key = key;
                             this.contentTypeName = parsedEvent?.name;
+                            this.contentType = parsedEvent?.content_type ?? '';
                             var contentTypeData = this.metaFieldTypeInShopify[key];
                             this.contenttypeSelect = contentTypeData?.list ? 1 : 0;
                             if (parsedEvent?.id === 'single_line_text_field' || parsedEvent?.id === 'number_integer' || parsedEvent?.id == 'number_decimal' || parsedEvent?.id === 'multi_line_text_field' || parsedEvent?.id === 'rating' || parsedEvent?.id == 'dimension' || parsedEvent?.id == 'volume' || parsedEvent?.id == 'weight') {
@@ -586,5 +814,7 @@
                 }
             })
         </script>
+
+        @include('shopify::metafield._taxonomy-picker')
     @endPushOnce
 </x-admin::layouts>

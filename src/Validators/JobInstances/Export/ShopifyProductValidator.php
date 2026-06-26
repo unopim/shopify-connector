@@ -13,6 +13,7 @@ class ShopifyProductValidator extends JobValidator
         'filters.credentials' => 'required|integer|min:0',
         'filters.channel' => 'required',
         'filters.currency' => 'required',
+        'filters.status' => 'nullable|in:enable,disable',
     ];
 
     /**
@@ -22,6 +23,7 @@ class ShopifyProductValidator extends JobValidator
         'filters.credentials' => 'Credentials',
         'filters.channel' => 'Channel',
         'filters.currency' => 'Currency',
+        'filters.status' => 'Status',
     ];
 
     public function getValidatorRule(): array

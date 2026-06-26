@@ -119,6 +119,7 @@ it('should update the shopify credential successfully', function () {
         'storeLocales' => json_encode([['locale' => 'en', 'primary' => true]]),
         'salesChannel' => 'online',
         'locations' => 'location1',
+        'locationAttributeMappings' => [],
         'apiVersion' => '2023-04',
     ];
 

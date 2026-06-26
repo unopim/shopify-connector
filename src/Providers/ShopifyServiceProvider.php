@@ -6,6 +6,8 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\ValidationException;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
@@ -42,6 +44,21 @@ class ShopifyServiceProvider extends ServiceProvider
 
         Event::listen('unopim.admin.layout.head', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::style');
+        });
+
+        Event::listen('unopim.admin.products.dynamic-attribute-fields.control.shopify_taxonomy.before', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::catalog.products.taxonomy-control');
+        });
+
+        Event::listen('catalog.attribute.create.before', static function () {
+            if (
+                request()->input('type') === 'shopify_taxonomy'
+                && app(AttributeRepository::class)->findWhere(['type' => 'shopify_taxonomy'])->isNotEmpty()
+            ) {
+                throw ValidationException::withMessages([
+                    'type' => trans('shopify::app.shopify.attribute.only-one'),
+                ]);
+            }
         });
 
         Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
@@ -94,6 +111,12 @@ class ShopifyServiceProvider extends ServiceProvider
         );
         $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/saas.php', 'shopify.saas'
+        );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/shopify_taxonomy.php', 'shopify_taxonomy'
+        );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/attribute_types.php', 'attribute_types'
         );
     }
 }

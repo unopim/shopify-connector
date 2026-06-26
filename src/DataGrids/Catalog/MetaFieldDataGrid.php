@@ -71,7 +71,15 @@ class MetaFieldDataGrid extends DataGrid
             'searchable' => true,
             'filterable' => true,
             'sortable' => true,
-            'closure' => fn ($row) => ! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type,
+            'closure' => function ($row) {
+                $referenceLabels = [
+                    'product_reference' => trans('shopify::app.shopify.metafield.datagrid.product-reference'),
+                    'variant_reference' => trans('shopify::app.shopify.metafield.datagrid.variant-reference'),
+                    'collection_reference' => trans('shopify::app.shopify.metafield.datagrid.collection-reference'),
+                ];
+
+                return $referenceLabels[$row->type] ?? (! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type);
+            },
         ]);
 
         $this->addColumn([

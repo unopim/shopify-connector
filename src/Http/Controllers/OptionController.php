@@ -7,11 +7,13 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\Category\Repositories\CategoryFieldRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\Core\Repositories\CurrencyRepository;
 use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
+use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
 
 class OptionController extends Controller
 {
@@ -29,6 +31,7 @@ class OptionController extends Controller
         protected AttributeGroupRepository $attributeGroupRepository,
         protected AttributeFamilyRepository $attributeFamilyRepository,
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
+        protected CategoryFieldRepository $categoryFieldRepository,
     ) {}
 
     /**
@@ -234,7 +237,7 @@ class OptionController extends Controller
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
             $attributeRepository = in_array('number', $entityName)
-                ? $attributeRepository->whereIn('validation', $entityName)
+                ? $attributeRepository->whereIn('validation', $entityName)->where('type', '!=', 'price')
                 : $attributeRepository->whereIn('type', $entityName);
         }
 
@@ -291,6 +294,52 @@ class OptionController extends Controller
             'options' => $formattedoptions,
             'page' => $attributes->currentPage(),
             'lastPage' => $attributes->lastPage(),
+        ]);
+    }
+
+    /**
+     * List active category fields for collection mapping, type-filtered by entityName.
+     */
+    public function listCategoryFields(): JsonResponse
+    {
+        $entityName = request()->get('entityName');
+        $query = request()->get('query') ?? '';
+        $page = request()->get('page');
+        $identifiers = request()->input('identifiers');
+
+        $repository = $this->categoryFieldRepository->where('status', 1);
+
+        if (! empty($entityName)) {
+            $types = json_decode($entityName);
+            $repository = $repository->whereIn('type', is_array($types) ? $types : [$types]);
+        }
+
+        if (! empty($identifiers['columnName']) && isset($identifiers['values'])) {
+            $values = $identifiers['values'];
+            $repository = $repository->whereIn($identifiers['columnName'], is_array($values) ? $values : [$values]);
+        } elseif (! empty($query)) {
+            $repository = $repository->where('code', 'LIKE', '%'.$query.'%');
+        }
+
+        $fields = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+        $currentLocaleCode = core()->getRequestedLocaleCode();
+        $formattedoptions = [];
+
+        foreach ($fields as $field) {
+            $translatedLabel = $field->translate($currentLocaleCode)?->name;
+            $formattedoptions[] = [
+                'id' => $field->id,
+                'code' => $field->code,
+                'type' => $field->type,
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$field->code}]",
+            ];
+        }
+
+        return new JsonResponse([
+            'options' => $formattedoptions,
+            'page' => $fields->currentPage(),
+            'lastPage' => $fields->lastPage(),
         ]);
     }
 
@@ -540,5 +589,44 @@ class OptionController extends Controller
         return new JsonResponse([
             'options' => $formattedoptions,
         ]);
+    }
+
+    public function listTaxonomyTree(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $query = trim((string) (request()->get('query') ?? ''));
+
+        if ($query !== '') {
+            $options = array_map(
+                fn ($e) => ['id' => $e['id'], 'name' => $e['path'], 'path' => $e['path'], 'hasChildren' => false],
+                $loader->search($query)
+            );
+
+            return new JsonResponse(['options' => $options]);
+        }
+
+        $parent = (string) (request()->get('parent') ?? '');
+
+        $rows = $parent === '' ? $loader->topLevel() : $loader->children($parent);
+
+        $options = array_map(
+            fn ($r) => ['id' => $r['id'], 'name' => $r['name'], 'path' => $r['name'], 'hasChildren' => $r['hasChildren']],
+            $rows
+        );
+
+        return new JsonResponse(['options' => $options]);
+    }
+
+    public function listTaxonomyDescendants(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $id = (string) (request()->get('id') ?? '');
+
+        return new JsonResponse(['ids' => $id === '' ? [] : $loader->descendants($id)]);
+    }
+
+    public function listTaxonomyNames(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $ids = (array) request()->get('ids', []);
+
+        return new JsonResponse(['names' => $loader->namesFor($ids)]);
     }
 }

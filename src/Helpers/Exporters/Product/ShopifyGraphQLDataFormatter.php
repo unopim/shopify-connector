@@ -2,17 +2,21 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Webkul\Shopify\Helpers\ShopifyFields;
+
 class ShopifyGraphQLDataFormatter
 {
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
 
     protected $seoFields = ['metafields_global_title_tag', 'metafields_global_description_tag'];
 
-    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
+    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price'];
 
     protected $currency = 'USD';
 
     protected $locationId = null;
+
+    protected $locationAttributeMappings = [];
 
     protected $separators = [
         'colon' => ': ',
@@ -23,6 +27,20 @@ class ShopifyGraphQLDataFormatter
     protected $settingMapping;
 
     protected $attributeAll;
+
+    /** @var array<string, string> assetPath => Shopify File GID */
+    protected array $fileReferenceMap = [];
+
+    /**
+     * Inject the asset-path → File GID map built by FileReferenceUploader before
+     * a product batch is formatted, so file_reference metafields resolve to GIDs.
+     *
+     * @param  array<string, string>  $map
+     */
+    public function setFileReferenceMap(array $map): void
+    {
+        $this->fileReferenceMap = $map;
+    }
 
     /**
      * Formats raw product data for GraphQL API based on export mapping and other parameters.
@@ -35,14 +53,16 @@ class ShopifyGraphQLDataFormatter
         $productMetaField = [],
         $variantMetaField = [],
     ): array {
-        $status = $this->getStatus($rawData, $parentData);
+        $configuredStatus = $exportMapping['shopify_connector_settings']['status'] ?? null;
+
+        $status = $this->getStatus($rawData, $parentData, $configuredStatus);
 
         $formatted = [
             'title' => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
         ];
 
-        if ($this->locationId) {
+        if ($this->locationId && empty($this->locationAttributeMappings)) {
             $formatted['variant']['inventoryQuantities']['locationId'] = $this->locationId;
             $formatted['variant']['inventoryQuantities']['name'] = 'available';
             $formatted['variant']['inventoryQuantities']['quantity'] = 0;
@@ -50,6 +70,10 @@ class ShopifyGraphQLDataFormatter
 
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
+
+        $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
+
+        $this->applyLocationInventory($formatted, $rawData);
 
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
@@ -131,6 +155,36 @@ class ShopifyGraphQLDataFormatter
                         ]);
                         break;
 
+                    case 'file_reference':
+                        $rawValue = $rawData[$unoAttribute] ?? [];
+                        $references = ($attribute?->type ?? null) === 'asset'
+                            ? array_filter(array_map('trim', explode(',', (string) $rawValue)))
+                            : (array) $rawValue;
+                        $gids = array_values(array_filter(array_map(
+                            fn ($v) => $this->fileReferenceMap[(string) $v] ?? null,
+                            $references
+                        )));
+                        $metafieldValue = ! empty($field['listvalue'])
+                            ? (empty($gids) ? null : json_encode($gids))
+                            : ($gids[0] ?? null);
+                        break;
+
+                    case 'link':
+                        $url = $rawData[$unoAttribute] ?? null;
+                        $textAttr = json_decode($field['validations'] ?? '[]', true)['link_text_attribute'] ?? null;
+                        $text = $textAttr ? ($rawData[$textAttr] ?? null) : null;
+
+                        if (empty($url)) {
+                            $metafieldValue = null;
+                            break;
+                        }
+
+                        $metafieldValue = json_encode(
+                            array_filter(['text' => $text, 'url' => $url], fn ($v) => $v !== null && $v !== ''),
+                            JSON_UNESCAPED_SLASHES
+                        );
+                        break;
+
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
@@ -139,8 +193,14 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 if (! empty($field['listvalue'])) {
-                    $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    if ($type !== 'file_reference' && $type !== 'link') {
+                        $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    }
+                    $type = 'list.'.$type;
+                }
+
+                if ($metafieldValue === null) {
+                    continue;
                 }
 
                 $formatted[] = [
@@ -172,10 +232,20 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Get status of the product
-     * */
-    protected function getStatus(array $rawData, array $parentData): string
+     * Resolve the Shopify product status.
+     *
+     * When the export mapping defines a status, that value overrides every
+     * product (static override). Otherwise fall back to the legacy mapping of
+     * the UnoPim product flag: enabled -> ACTIVE, disabled -> DRAFT.
+     */
+    protected function getStatus(array $rawData, array $parentData, ?string $configuredStatus = null): string
     {
+        if ($configuredStatus !== null
+            && in_array($configuredStatus, (new ShopifyFields)->getStatusEnumValues(), true)
+        ) {
+            return $configuredStatus;
+        }
+
         $status = 'ACTIVE';
 
         if (! empty($rawData['status']) && $rawData['status'] == 'false') {
@@ -191,6 +261,80 @@ class ShopifyGraphQLDataFormatter
         }
 
         return $status;
+    }
+
+    /**
+     * Build the variant unitPriceMeasurement from mapping['unit_price'] and always
+     * show the unit price. Skips when unconfigured, quantity is non-positive, the unit
+     * is not a Shopify enum, or a non-AUTO reference unit is a different measure.
+     */
+    protected function applyUnitPriceMeasurement(array &$formatted, array $rawData, array $exportMapping): void
+    {
+        $cfg = $exportMapping['unit_price'] ?? null;
+
+        if (empty($cfg) || empty($cfg['quantityValueAttr']) || empty($cfg['quantityUnitAttr'])) {
+            return;
+        }
+
+        $rawQuantityValue = $rawData[$cfg['quantityValueAttr']] ?? null;
+        $quantityUnit = strtoupper(trim((string) ($rawData[$cfg['quantityUnitAttr']] ?? '')));
+
+        $fields = new ShopifyFields;
+
+        if (! is_numeric($rawQuantityValue) || (float) $rawQuantityValue <= 0
+            || ! in_array($quantityUnit, $fields->getUnitPriceUnitValues(), true)
+        ) {
+            return;
+        }
+
+        $quantityValue = (float) $rawQuantityValue;
+
+        $referenceUnit = ($cfg['referenceUnit'] ?? 'AUTO') === 'AUTO' ? $quantityUnit : $cfg['referenceUnit'];
+
+        if ($fields->getUnitPriceMeasure($referenceUnit) !== $fields->getUnitPriceMeasure($quantityUnit)) {
+            return;
+        }
+
+        $formatted['variant']['unitPriceMeasurement'] = [
+            'quantityValue' => $quantityValue,
+            'quantityUnit' => $quantityUnit,
+            'referenceValue' => (int) ($cfg['referenceValue'] ?? 100),
+            'referenceUnit' => $referenceUnit,
+        ];
+
+        $formatted['variant']['showUnitPrice'] = true;
+    }
+
+    /**
+     * Build the variant inventoryQuantities list from the per-location attribute map
+     * (credential extras['locationAttributeMappings']). One 'available' entry per mapped
+     * location whose attribute value is numeric. Replaces the single-location shape;
+     * no-op when no per-location mappings are configured.
+     */
+    protected function applyLocationInventory(array &$formatted, array $rawData): void
+    {
+        if (empty($this->locationAttributeMappings)) {
+            return;
+        }
+
+        $list = [];
+        foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
+            $raw = $rawData[$attributeCode] ?? 0;
+
+            if (empty($locationId) || ! is_numeric($raw)) {
+                continue;
+            }
+
+            $list[] = [
+                'locationId' => $locationId,
+                'name' => 'available',
+                'quantity' => (int) $raw,
+            ];
+        }
+
+        if (! empty($list)) {
+            $formatted['variant']['inventoryQuantities'] = $list;
+        }
     }
 
     /**
@@ -306,7 +450,7 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
@@ -423,7 +567,7 @@ class ShopifyGraphQLDataFormatter
                 $formatted['variant']['compareAtPrice'] = (int) $defaultValue;
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) $defaultValue;
                 }
                 break;
@@ -467,11 +611,12 @@ class ShopifyGraphQLDataFormatter
     /**
      * Sets the initial data for the class properties.
      */
-    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll)
+    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll, array $locationAttributeMappings = [])
     {
         $this->locationId = $locationId;
         $this->currency = $currency;
         $this->settingMapping = $settings;
         $this->attributeAll = $attributeAll;
+        $this->locationAttributeMappings = $locationAttributeMappings;
     }
 }

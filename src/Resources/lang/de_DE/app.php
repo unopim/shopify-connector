@@ -34,6 +34,7 @@ return [
                 'shopify' => 'Shopify',
                 'credentials' => 'Anmeldeinformationen',
                 'export-mappings' => 'Export-Zuordnungen',
+                'collection-mappings' => 'Sammlungszuordnungen',
                 'import-mappings' => 'Importzuordnungen',
                 'meta-fields' => 'Metafield Definitions',
                 'metafield-definitions' => 'Metafield Definitions',
@@ -55,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Version: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Shopify-Taxonomie',
+            'taxonomy-select-placeholder' => 'Kategorie auswählen',
+            'only-one' => 'Nur ein Shopify-Taxonomie-Attribut ist erlaubt.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Sprachzuordnung',
@@ -95,6 +102,9 @@ return [
                 'back-btn' => 'Zurück',
                 'channel' => 'Veröffentlichung (Verkaufskanäle)',
                 'locations' => 'Standortliste',
+                'location_inventory_title' => 'Standortbezogener Bestand',
+                'location_inventory_info' => 'Ordnen Sie jedem Standort ein Mengen-Attribut zu, um den Bestand pro Standort zu senden. Leer gelassene Standorte werden übersprungen.',
+                'location_inventory_attribute' => 'Mengen-Attribut',
             ],
             'edit' => [
                 'title' => 'Anmeldeinformationen bearbeiten',
@@ -133,6 +143,10 @@ return [
                 'attribute' => 'Attribut',
                 'fixed-value' => 'Fester Wert',
                 'save_failed' => 'Speichern der Exportzuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                'validation' => [
+                    'name_required' => 'Bitte ordnen Sie ein Attribut zu oder legen Sie einen festen Wert für den Namen fest.',
+                    'status_required' => 'Bitte wählen Sie einen Produktstatus aus.',
+                ],
                 'images' => [
                     'title' => 'Shopify Media Mapping',
                     'label' => [
@@ -145,6 +159,67 @@ return [
                     'weight' => 'Unit Weight',
                     'volume' => 'Unit Volume',
                     'dimension' => 'Unit Dimension',
+                ],
+
+                'status' => [
+                    'title' => 'Produktstatus',
+                    'label' => 'Shopify-Status',
+                    'placeholder' => 'Produktstatus auswählen',
+                    'tooltip' => 'Gilt für alle exportierten Produkte.',
+                    'options' => [
+                        'active' => 'Aktiv',
+                        'draft' => 'Entwurf',
+                        'archived' => 'Archiviert',
+                        'unlisted' => 'Nicht gelistet',
+                    ],
+                ],
+
+                'tabs' => [
+                    'general' => 'Allgemein',
+                ],
+
+                'collection' => [
+                    'title' => 'Sammlungszuordnungen',
+                    'back-btn' => 'Zurück',
+                    'save' => 'Speichern',
+                    'created' => 'Sammlungszuordnung erfolgreich gespeichert',
+                    'save_failed' => 'Speichern der Sammlungszuordnung fehlgeschlagen. Bitte führen Sie den Shopify-Installationsbefehl aus.',
+                    'validation' => [
+                        'title_required' => 'Bitte ordnen Sie dem Titel ein Kategorieattribut zu.',
+                    ],
+                    'errors' => [
+                        'empty_title' => 'Sammlung für Kategorie :code wird übersprungen: Das zugeordnete Titelattribut ist leer.',
+                    ],
+                    'images' => [
+                        'title' => 'Sammlungsbild-Zuordnung',
+                        'label' => 'Bildattribut',
+                    ],
+                    'sort_order' => [
+                        'label' => 'Produktsortierung',
+                        'placeholder' => 'Sortierreihenfolge auswählen',
+                        'tooltip' => 'Gilt für alle exportierten Sammlungen.',
+                        'options' => [
+                            'manual' => 'Manuell',
+                            'best_selling' => 'Bestseller',
+                            'alpha_asc' => 'Alphabetisch (A-Z)',
+                            'alpha_desc' => 'Alphabetisch (Z-A)',
+                            'price_asc' => 'Preis (aufsteigend)',
+                            'price_desc' => 'Preis (absteigend)',
+                            'created' => 'Erstellungsdatum (älteste zuerst)',
+                            'created_desc' => 'Erstellungsdatum (neueste zuerst)',
+                        ],
+                    ],
+                ],
+
+                'unit_price' => [
+                    'title' => 'Grundpreis',
+                    'quantity_value' => 'Gesamtmenge',
+                    'quantity_unit' => 'Einheit der Gesamtmenge',
+                    'quantity_value_info' => 'Wählen Sie ein Attribut vom Typ Zahl oder Dezimal.',
+                    'quantity_unit_info' => 'Wählen Sie ein Attribut vom Typ Text oder Auswahl. Sein Wert muss einer gültigen Einheit entsprechen (z. B. :units); andere Werte werden nicht exportiert.',
+                    'reference_value' => 'Grundmaß',
+                    'reference_unit' => 'Grundmaßeinheit',
+                    'auto' => 'Automatisch (wie Einheit der Gesamtmenge)',
                 ],
             ],
             'settings' => [
@@ -227,6 +302,7 @@ return [
             'seo_title' => 'SEO-Titel',
             'seo_description' => 'SEO-Beschreibung',
             'handle' => 'Handle',
+            'collection_type' => 'Sammlungstyp',
             'taxable' => 'Besteuerbar',
             'inventory_cost' => 'Lagerkosten',
         ],
@@ -236,6 +312,13 @@ return [
             'channel' => 'Kanal',
             'currency' => 'Währung',
             'productfilter' => 'Produktfilter (SKU)',
+            'status' => 'Status',
+            'enable' => 'Aktivieren',
+            'disable' => 'Deaktivieren',
+            'active' => 'Aktiv',
+            'draft' => 'Entwurf',
+            'archived' => 'Archiviert',
+            'unlisted' => 'Nicht gelistet',
             'locale' => 'Sprache',
             'attribute-groups' => 'Attributgruppen',
         ],
@@ -245,6 +328,9 @@ return [
                 'attribute-label' => 'Unopim-Attribut',
                 'definitionName' => 'Definitionsname',
                 'contentTypeName' => 'Typ',
+                'product-reference' => 'Produktreferenz',
+                'variant-reference' => 'Produktvariantenreferenz',
+                'collection-reference' => 'Sammlungsreferenz',
                 'pin' => 'Pin',
             ],
             'index' => [
@@ -265,6 +351,29 @@ return [
                 'adminFilterable' => 'Filterung für Produkte',
                 'smartCollectionCondition' => 'Intelligente Sammlungen',
                 'storefronts' => 'Storefront-Zugriff',
+                'reference' => 'Referenz',
+                'reference-source' => 'Referenzquelle',
+                'association' => 'Verknüpfung',
+                'association-type' => 'Verknüpfungstyp',
+                'categories' => 'Kategorien',
+                'reference-as' => 'Referenzieren als',
+                'as-product' => 'Produkt',
+                'as-variant' => 'Variante',
+                'as-collection' => 'Kollektion',
+                'related' => 'Ähnliche Produkte',
+                'up-sells' => 'Up-Sells',
+                'cross-sells' => 'Cross-Sells',
+                'resolved-type' => 'Typ',
+                'anchor-text' => 'Ankertext',
+                'taxonomy-category' => 'Taxonomie-Kategorie',
+                'taxonomy-assign' => 'Kategorien zuweisen',
+                'taxonomy-edit' => 'Bearbeiten',
+                'taxonomy-search' => 'Suchen',
+                'taxonomy-root' => 'Alle',
+                'taxonomy-loading' => 'Wird geladen…',
+                'taxonomy-selected' => 'ausgewählt',
+                'taxonomy-cancel' => 'Abbrechen',
+                'taxonomy-done' => 'Fertig',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',
@@ -284,7 +393,15 @@ return [
                 'dimension' => 'Abmessung',
                 'weight' => 'Gewicht',
                 'volume' => 'Volumen',
+                'email' => 'E-Mail',
+                'image_file' => 'Bild (Datei)',
+                'file' => 'Datei',
+                'video' => 'Video (Datei)',
+                'link' => 'Link',
             ],
+
+            'content-type' => 'Dateiinhaltstyp',
+
             'edit' => [
                 'title' => 'Metafeldd Definition bearbeiten',
                 'back-btn' => 'Zurück',

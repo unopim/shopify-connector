@@ -43,9 +43,10 @@ class BulkOperationProductIterator implements \Iterator
         BulkProductFetcher $fetcher,
         array $credential,
         protected ?string $shopifyLocale = null,
+        protected ?string $statusFilter = null,
     ) {
         try {
-            $jsonlPaths = $fetcher->fetch($credential, $shopifyLocale);
+            $jsonlPaths = $fetcher->fetch($credential, $shopifyLocale, $statusFilter);
         } catch (\Throwable $e) {
             Log::error('Shopify bulk import fetch failed', ['message' => $e->getMessage()]);
             throw $e;
@@ -235,6 +236,7 @@ class BulkOperationProductIterator implements \Iterator
                 'taxable' => $variant['taxable'] ?? false,
                 'inventoryQuantity' => $variant['inventoryQuantity'] ?? 0,
                 'inventoryPolicy' => $variant['inventoryPolicy'] ?? null,
+                'unitPriceMeasurement' => $variant['unitPriceMeasurement'] ?? null,
                 'selectedOptions' => $variant['selectedOptions'] ?? [],
                 'metafields' => $this->wrapEdges($this->childrenOf($variantId, 'Metafield')),
                 'media' => ['nodes' => $this->mediaNodes($variantId)],

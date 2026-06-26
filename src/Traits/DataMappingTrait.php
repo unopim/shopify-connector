@@ -141,7 +141,7 @@ trait DataMappingTrait
 
                 $this->shopifyMappingRepository->create($mappingData);
             }
-        } else {
+        } elseif (! empty($data[0][$entityFound]['id'])) {
             $mappingData = [
                 'entityType' => self::UNOPIM_ENTITY_NAME,
                 'code' => $item['code'],
@@ -151,6 +151,10 @@ trait DataMappingTrait
             ];
 
             $this->shopifyMappingRepository->update($mappingData, $mapping[0]['id']);
+        } else {
+            // Update failed (userErrors, collection null): return the response so the
+            // caller skips and logs instead of crashing on a null collection.
+            return $data[0];
         }
 
         return $response;

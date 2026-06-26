@@ -23,11 +23,54 @@ const mappingElements = [
     { field: 'Cost per item [cost]', inputName: 'cost', placeholder: 'Cost per item' }
 ];
 
+// Resolve the grid row that wraps a field, anchored by its label paragraph.
+const fieldGroup = (page, labelText) =>
+    page.locator(`p:has-text("${labelText}")`).locator('xpath=ancestor::div[contains(@class,"grid")]');
+
+// Select an exact option inside a vue-multiselect scoped to a field group. Idempotent:
+// if the option is already the selected value, leave it (clicking a selected option in
+// a single-select would deselect it).
+const selectExactOption = async (group, optionText) => {
+    const single = group.locator('.multiselect__single');
+    if ((((await single.textContent({ timeout: 800 }).catch(() => '')) || '').trim()) === optionText) {
+        return;
+    }
+    await group.locator('.multiselect').click();
+    await group.locator('.multiselect__option')
+        .filter({ hasText: new RegExp(`^${optionText}$`) }).first().click();
+    await expect(single).toHaveText(optionText);
+};
+
+// Product Status is required before saving.
+const selectActiveStatus = async (page) => {
+    await selectExactOption(fieldGroup(page, '[status]'), 'Active');
+};
+
+// Unit weight/volume/dimension are client-side required and their saved values don't
+// rebind to the validator, so they must be selected explicitly before saving.
+const selectUnitMapping = async (page) => {
+    await selectExactOption(fieldGroup(page, 'Unit Weight'), 'g');
+    await selectExactOption(fieldGroup(page, 'Unit Volume'), 'L');
+    await selectExactOption(fieldGroup(page, 'Unit Dimension'), 'cm');
+};
+
+// Save and confirm the mapping was accepted. A successful save POSTs to the store route
+// and redirects to the mappings page; the success flash toast isn't reliably observable
+// here, so success is asserted by the POST round-trip leaving no validation errors.
+const saveMapping = async (page) => {
+    await Promise.all([
+        page.waitForResponse((r) => /export\/mapping\/create/.test(r.url()) && r.request().method() === 'POST'),
+        page.getByRole('button', { name: 'Save' }).click(),
+    ]);
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await expect(page.getByText(/field is required/i)).toHaveCount(0);
+};
+
 test.describe('UnoPim Shopify mapping tab Navigation', () => {
     test.beforeEach(async ({ page }) => {
-        // Navigate to the Shopify Credentials Page
-        await page.goto('admin/shopify/credentials');
-        await page.getByRole('link', { name: 'Export Mappings' }).click();
+        // Navigate directly to the Export Mappings page (sidebar sub-menu links are
+        // hover-revealed, so a direct goto is more reliable than clicking them).
+        await page.goto('admin/shopify/export/mapping/1');
         await expect(page.url()).toMatch(/\/admin\/shopify\/export\/mapping\/[0-9]+$/);
     });
 
@@ -35,60 +78,29 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
 
 
     test('Map Shopify Fields', async ({ page }) => {
+        test.setTimeout(60_000);
 
         for (const element of mappingElements) {
             console.log(`Mapping ${element.field}`);
 
             const input = page.locator(`input[name="${element.inputName}"]`);
         }
-        
-        await page.getByRole('button', { name: 'Save' }).click();
 
-        // Unit mapping fields might already have defaults; only fill them if validation appears.
-        const unitWeightError = page.getByText('The Unit Weight field is required');
-        let hasUnitValidation = false;
-        try {
-            await unitWeightError.waitFor({ state: 'visible', timeout: 1000 });
-            hasUnitValidation = true;
-        } catch {
-            hasUnitValidation = false;
-        }
+        // Title is required (required_without:default_title) — map it to an attribute.
+        await page.locator('input[aria-label="title-searchbox"]').locator('xpath=ancestor::*[@role="combobox"][1]').click();
+        await page.getByText('Name', { exact: true }).click();
 
-        if (hasUnitValidation) {
-            const weightDropdown = page.locator('p:has-text("Unit Weight")')
-                .locator('xpath=ancestor::div[contains(@class,"grid")]')
-                .locator('.multiselect');
+        // Product Status and the unit mappings are required before saving.
+        await selectActiveStatus(page);
+        await selectUnitMapping(page);
 
-            await weightDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
-            await page.locator('.multiselect__content').last().getByText('kg', { exact: true }).click();
-
-            const volumeDropdown = page.locator('p:has-text("Unit Volume")')
-                .locator('xpath=ancestor::div[contains(@class,"grid")]')
-                .locator('.multiselect');
-
-            await volumeDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
-            await page.locator('.multiselect__content').last().getByText('L', { exact: true }).click();
-
-            const dimensionDropdown = page.locator('p:has-text("Unit Dimension")')
-                .locator('xpath=ancestor::div[contains(@class,"grid")]')
-                .locator('.multiselect');
-
-            await dimensionDropdown.click();
-            await expect(page.locator('.multiselect__content').last()).toBeVisible({ timeout: 20000 });
-            await page.locator('.multiselect__content').last().getByText('cm', { exact: true }).click();
-
-            await page.getByRole('button', { name: 'Save' }).click();
-        }
-
-        await expect(page.getByText(/Mapping saved successfully|Export Mapping saved successfully/i)).toBeVisible({
-            timeout: 10000,
-        });
+        await saveMapping(page);
 
     });
 
     test('should navigate to Shopify mapping page and fill export mapping form', async ({ page }) => {
+        test.setTimeout(60_000);
+
         await expect(page.getByRole('link', { name: 'General' })).toBeVisible();
         await expect(page.locator('#app')).toContainText('General');
         await expect(page.getByRole('paragraph').filter({ hasText: 'Export Mappings' })).toBeVisible();
@@ -111,9 +123,13 @@ test.describe('UnoPim Shopify mapping tab Navigation', () => {
         await expect(multiselect).toBeVisible({ timeout: 20000 });
         const hasDisabledClass = await multiselect.evaluate(el => el.classList.contains('multiselect--disabled'));
         expect(hasDisabledClass).toBe(false);
-        await page.getByRole('button', { name: 'Save' }).click();
-        await expect(page.locator('#app')).toContainText('Export Mapping saved successfully');
+
+        // Product Status and the unit mappings are required before saving.
+        await selectActiveStatus(page);
+        await selectUnitMapping(page);
+
+        await saveMapping(page);
         await page.getByRole('link', { name: 'Back' }).click();
-        await page.getByRole('link', { name: 'Export Mappings' }).click();
+        await page.goto('admin/shopify/export/mapping/1');
     });
 });

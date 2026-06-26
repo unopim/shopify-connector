@@ -32,6 +32,11 @@ return [
         'route' => 'admin.shopify.export-mappings',
         'sort' => 2,
     ], [
+        'key' => 'shopify.collection-mappings',
+        'name' => 'shopify::app.components.layouts.sidebar.collection-mappings',
+        'route' => 'admin.shopify.collection-mappings',
+        'sort' => 3,
+    ], [
         'key' => 'shopify.import-mappings',
         'name' => 'shopify::app.components.layouts.sidebar.import-mappings',
         'route' => 'admin.shopify.import-mappings',

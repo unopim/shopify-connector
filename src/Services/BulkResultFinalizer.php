@@ -8,6 +8,7 @@ use Webkul\DataTransfer\Models\JobTrackProxy;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\DataTransfer\Services\JobLogger;
+use Webkul\Shopify\Jobs\RunVariantMediaPhase;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
@@ -62,6 +63,7 @@ class BulkResultFinalizer
         $failed = [];
         $clearedStaleSkus = [];
         $recreatedSkus = [];
+        $pendingMedia = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -116,12 +118,14 @@ class BulkResultFinalizer
             );
 
             foreach ($product['variants']['nodes'] ?? [] as $variant) {
-                if (empty($variant['sku']) || empty($variant['id'])) {
+                $variantSku = ($variant['sku'] ?? null) ?: ($variant['inventoryItem']['sku'] ?? null);
+
+                if (empty($variantSku) || empty($variant['id'])) {
                     continue;
                 }
 
                 $this->syncVariantMapping(
-                    $variant['sku'],
+                    $variantSku,
                     $variant['id'],
                     $product['id'],
                     $jobTrackId,
@@ -129,8 +133,17 @@ class BulkResultFinalizer
                 );
             }
 
+            if (! empty($manifestLine['media_plan_items']) && ! empty($product['id'])) {
+                $pendingMedia[] = [
+                    'productId' => $product['id'],
+                    'planItems' => $manifestLine['media_plan_items'],
+                ];
+            }
+
             $success++;
         }
+
+        $this->persistBulkMediaMappings($pendingMedia, $credential, $jobTrackId, $shopUrl);
 
         $meta = $bulkOperation->meta ?? [];
         $meta['result_summary'] = [
@@ -222,6 +235,18 @@ class BulkResultFinalizer
             $this->shopifyMappingRepository->delete($mapping->id);
         }
 
+        if (! empty($cleared)) {
+            $staleMedia = $this->shopifyMappingRepository
+                ->where('apiUrl', $shopUrl)
+                ->where('entityType', 'productImage')
+                ->whereIn('relatedSource', $cleared)
+                ->get();
+
+            foreach ($staleMedia as $media) {
+                $this->shopifyMappingRepository->delete($media->id);
+            }
+        }
+
         return $cleared;
     }
 
@@ -242,12 +267,66 @@ class BulkResultFinalizer
     ): array {
         $handle = $manifestLine['product_handle'] ?? null;
 
-        if (empty($variables) || empty($variables['input']) || empty($credential) || empty($handle)) {
+        if (empty($variables) || empty($variables['input']) || empty($credential)) {
             return ['success' => false];
         }
 
-        $variables['identifier'] = ['handle' => $handle];
+        // Adopt the existing product by handle when one is mapped; otherwise create fresh
+        // and let Shopify generate the handle.
+        $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
+        unset($variables['input']['files']);
 
+        $result = $this->runRecreateProductSet($credential, $variables);
+
+        // The handle is already owned by another (orphan) product: drop it and let Shopify
+        // auto-generate a unique handle so the recreate still succeeds.
+        if (! $result['success'] && $this->hasHandleConflict($result['errors'] ?? [])) {
+            $variables['identifier'] = null;
+            unset($variables['input']['handle']);
+            $result = $this->runRecreateProductSet($credential, $variables);
+        }
+
+        if (! $result['success']) {
+            return ['success' => false, 'errors' => $result['errors'] ?? []];
+        }
+
+        $product = $result['product'];
+
+        $this->syncProductMapping(
+            $manifestLine['product_sku'] ?? null,
+            $product['id'],
+            $jobTrackId,
+            $shopUrl,
+        );
+
+        foreach ($product['variants']['nodes'] ?? [] as $variant) {
+            $variantSku = ($variant['sku'] ?? null) ?: ($variant['inventoryItem']['sku'] ?? null);
+
+            if (empty($variantSku) || empty($variant['id'])) {
+                continue;
+            }
+
+            $this->syncVariantMapping(
+                $variantSku,
+                $variant['id'],
+                $product['id'],
+                $jobTrackId,
+                $shopUrl,
+            );
+        }
+
+        $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Run a single productSet recreation request.
+     *
+     * @return array{success: bool, product?: array, errors?: array}
+     */
+    protected function runRecreateProductSet(array $credential, array $variables): array
+    {
         try {
             $response = $this->requestGraphQlApiAction('productSet', $credential, $variables);
         } catch (\Throwable $e) {
@@ -262,28 +341,21 @@ class BulkResultFinalizer
             return ['success' => false, 'errors' => $userErrors];
         }
 
-        $this->syncProductMapping(
-            $manifestLine['product_sku'] ?? null,
-            $product['id'],
-            $jobTrackId,
-            $shopUrl,
-        );
+        return ['success' => true, 'product' => $product];
+    }
 
-        foreach ($product['variants']['nodes'] ?? [] as $variant) {
-            if (empty($variant['sku']) || empty($variant['id'])) {
-                continue;
+    /**
+     * Whether the userErrors contain a handle-uniqueness conflict.
+     */
+    protected function hasHandleConflict(array $errors): bool
+    {
+        foreach ($errors as $error) {
+            if (($error['code'] ?? null) === 'HANDLE_NOT_UNIQUE') {
+                return true;
             }
-
-            $this->syncVariantMapping(
-                $variant['sku'],
-                $variant['id'],
-                $product['id'],
-                $jobTrackId,
-                $shopUrl,
-            );
         }
 
-        return ['success' => true];
+        return false;
     }
 
     /**
@@ -467,6 +539,19 @@ class BulkResultFinalizer
         // existing media instead of creating duplicates.
         if ($mutation === 'productCreateMedia') {
             $this->persistMediaMappings($manifest, $results);
+
+            $coreOpId = (int) (($bulkOperation->meta ?? [])['parent_bulk_operation_id'] ?? 0);
+
+            if ($coreOpId > 0) {
+                $this->phaseProgressTracker->registerPhaseJobsForCore($coreOpId, 1);
+                RunVariantMediaPhase::dispatch($coreOpId);
+            }
+        }
+
+        // Refresh the stored mapping `code` (attribute + new path) for media the
+        // media_update phase updated, so the next export sees the new path.
+        if ($mutation === 'productUpdateMedia') {
+            $this->refreshMediaUpdateMappings($manifest, $results);
         }
 
         if ($bulkOperation->job_track_id && $bulkOperation->phase) {
@@ -479,6 +564,111 @@ class BulkResultFinalizer
                     (string) $bulkOperation->phase,
                 );
             }
+        }
+    }
+
+    /**
+     * Persist mappings for media created inline by the core productSet bulk op.
+     *
+     * The bulk result can't carry a media connection (Shopify allows one connection
+     * per bulk mutation), so the created media ids are fetched in batches via a
+     * regular query and matched to each product's plan items by alt.
+     *
+     * @param  array<int, array{productId: string, planItems: array}>  $pendingMedia
+     */
+    protected function persistBulkMediaMappings(array $pendingMedia, array $credential, ?int $jobTrackId, ?string $shopUrl): void
+    {
+        if (empty($pendingMedia) || empty($credential) || empty($jobTrackId) || empty($shopUrl)) {
+            return;
+        }
+
+        $planByProduct = [];
+
+        foreach ($pendingMedia as $entry) {
+            $planByProduct[$entry['productId']] = $entry['planItems'];
+        }
+
+        foreach (array_chunk(array_keys($planByProduct), 50) as $chunk) {
+            try {
+                $response = $this->requestGraphQlApiAction('getProductsMedia', $credential, ['ids' => $chunk]);
+            } catch (\Throwable $e) {
+                continue;
+            }
+
+            foreach ($response['body']['data']['nodes'] ?? [] as $node) {
+                $productId = $node['id'] ?? null;
+
+                if (! $productId || empty($planByProduct[$productId])) {
+                    continue;
+                }
+
+                $idByAlt = [];
+
+                foreach ($node['media']['nodes'] ?? [] as $media) {
+                    $alt = $media['alt'] ?? null;
+
+                    if (is_string($alt) && $alt !== '' && ! empty($media['id'])) {
+                        $idByAlt[$alt] = $media['id'];
+                    }
+                }
+
+                foreach ($planByProduct[$productId] as $item) {
+                    $mediaId = $idByAlt[$item['alt'] ?? ''] ?? null;
+
+                    if (! $mediaId) {
+                        continue;
+                    }
+
+                    $this->syncMediaMapping(
+                        $item['sku'] ?? null,
+                        $item['code'] ?? null,
+                        $mediaId,
+                        $productId,
+                        (int) $jobTrackId,
+                        $shopUrl,
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Persist media mappings for files created inline by productSet, matching the
+     * manifest line's plan items to the returned media nodes by alt.
+     */
+    protected function persistCoreMediaMappings(array $manifestLine, array $product, ?int $jobTrackId, ?string $shopUrl): void
+    {
+        $planItems = $manifestLine['media_plan_items'] ?? [];
+
+        if (empty($planItems) || empty($jobTrackId) || empty($shopUrl)) {
+            return;
+        }
+
+        $idByAlt = [];
+
+        foreach ($product['media']['nodes'] ?? [] as $node) {
+            $alt = $node['alt'] ?? null;
+
+            if (is_string($alt) && $alt !== '' && ! empty($node['id'])) {
+                $idByAlt[$alt] = $node['id'];
+            }
+        }
+
+        foreach ($planItems as $item) {
+            $mediaId = $idByAlt[$item['alt'] ?? ''] ?? null;
+
+            if (! $mediaId) {
+                continue;
+            }
+
+            $this->syncMediaMapping(
+                $item['sku'] ?? null,
+                $item['code'] ?? null,
+                $mediaId,
+                $product['id'] ?? null,
+                (int) $jobTrackId,
+                $shopUrl,
+            );
         }
     }
 
@@ -546,6 +736,8 @@ class BulkResultFinalizer
             'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
             'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
             'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
+            'productUpdateMedia' => $decoded['data']['productUpdateMedia']['mediaUserErrors'] ?? [],
+            'productVariantAppendMedia' => $decoded['data']['productVariantAppendMedia']['userErrors'] ?? [],
             default => [],
         };
     }
@@ -679,6 +871,46 @@ class BulkResultFinalizer
                     (int) $jobTrackId,
                     $shopUrl,
                 );
+            }
+        }
+    }
+
+    /**
+     * Rewrite the stored mapping `code` for media updated by a productUpdateMedia
+     * bulk operation.
+     *
+     * The phase manifest carries a code-refresh plan keyed by Shopify media GID
+     * (computed by MediaBulkPayloadBuilder::build, persisted by the media phase).
+     * Each successfully
+     * updated media node is matched back to its mapping row by GID and its `code`
+     * rewritten to the new (attribute + path), so the next export skips it instead
+     * of updating again.
+     */
+    protected function refreshMediaUpdateMappings(array $manifest, array $results): void
+    {
+        $updatePlan = $manifest['media_update_plan'] ?? [];
+
+        if (empty($updatePlan)) {
+            return;
+        }
+
+        foreach ($results as $line) {
+            $decoded = json_decode($line, true) ?: [];
+            $payload = $decoded['data']['productUpdateMedia'] ?? [];
+
+            if (! empty($payload['mediaUserErrors'])) {
+                continue;
+            }
+
+            foreach ($payload['media'] ?? [] as $media) {
+                $mediaId = $media['id'] ?? null;
+                $refresh = $mediaId ? ($updatePlan[$mediaId] ?? null) : null;
+
+                if (! $refresh || empty($refresh['rowId']) || ! isset($refresh['code'])) {
+                    continue;
+                }
+
+                $this->shopifyMappingRepository->update(['code' => $refresh['code']], $refresh['rowId']);
             }
         }
     }

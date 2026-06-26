@@ -21,7 +21,7 @@ return [
     */
     'productImportBulkQueryCore' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id
@@ -63,6 +63,10 @@ return [
               taxable
               inventoryQuantity
               inventoryPolicy
+              unitPriceMeasurement {
+                quantityValue
+                quantityUnit
+              }
               selectedOptions {
                 name
                 value
@@ -84,6 +88,10 @@ return [
                   edges {
                     node {
                       id
+                      quantities(names: ["available"]) {
+                        name
+                        quantity
+                      }
                       location {
                         id
                         name
@@ -140,7 +148,7 @@ GRAPHQL,
     */
     'productImportBulkQueryRelations' => <<<'GRAPHQL'
 {
-  products {
+  products%PRODUCT_FILTER% {
     edges {
       node {
         id
@@ -166,6 +174,22 @@ GRAPHQL,
               key
               value
               type
+              reference {
+                __typename
+                ... on MediaImage {
+                  image {
+                    url
+                  }
+                }
+                ... on GenericFile {
+                  url
+                }
+                ... on Video {
+                  sources {
+                    url
+                  }
+                }
+              }
             }
           }
         }
@@ -207,6 +231,7 @@ mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetIn
           sku
           inventoryItem {
             id
+            sku
           }
         }
       }
@@ -243,6 +268,32 @@ mutation productCreateMediaBulk($productId: ID!, $media: [CreateMediaInput!]!) {
     media { id alt mediaContentType status }
     mediaUserErrors { field message }
     product { id }
+  }
+}
+GRAPHQL,
+
+    'fileCreateBulk' => <<<'GRAPHQL'
+mutation fileCreateBulk($files: [FileCreateInput!]!) {
+  fileCreate(files: $files) {
+    files { id alt }
+    userErrors { field message }
+  }
+}
+GRAPHQL,
+
+    'productVariantAppendMediaBulk' => <<<'GRAPHQL'
+mutation productVariantAppendMediaBulk($productId: ID!, $variantMedia: [ProductVariantAppendMediaInput!]!) {
+  productVariantAppendMedia(productId: $productId, variantMedia: $variantMedia) {
+    userErrors { field message }
+  }
+}
+GRAPHQL,
+
+    'productUpdateMediaBulk' => <<<'GRAPHQL'
+mutation productUpdateMediaBulk($productId: ID!, $media: [UpdateMediaInput!]!) {
+  productUpdateMedia(productId: $productId, media: $media) {
+    media { id alt }
+    mediaUserErrors { field message }
   }
 }
 GRAPHQL,

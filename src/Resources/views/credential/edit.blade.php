@@ -187,34 +187,6 @@
 
                         <x-admin::form.control-group.error control-name="salesChannel" />
                     </x-admin::form.control-group>
-                    <x-admin::form.control-group class="mb-4 w-[525px]">
-                        <x-admin::form.control-group.label class="required">
-                            @lang('shopify::app.shopify.credential.index.locations')
-                        </x-admin::form.control-group.label>
-
-                        @php
-                            $selectLocation = ! empty($salesChannel['locations'])
-                                ? explode(',', $salesChannel['locations'])[0]
-                                : '';
-                            $locationAll = array_column($locationAll, 'node');
-                            $publocationAll = json_encode($locationAll, true);
-                        @endphp
-
-                        <x-admin::form.control-group.control
-                            type="select"
-                            id="locations"
-                            name="locations"
-                            rules="required"
-                            :label="trans('shopify::app.shopify.credential.index.locations')"
-                            :placeholder="trans('shopify::app.shopify.credential.index.locations')"
-                            :value="$selectLocation"
-                            :options="$publocationAll"
-                            track-by="id"
-                            label-by="name"
-                        />
-
-                        <x-admin::form.control-group.error control-name="locations" />
-                    </x-admin::form.control-group>
                         <!-- Enable/Disable -->
                         <x-admin::form.control-group>
                             <x-admin::form.control-group.label>
@@ -233,6 +205,43 @@
                                 :checked="(boolean) $credential->active"
                             />
                     </x-admin::form.control-group>
+                </div>
+
+                <!-- Location-wise Inventory mapping -->
+                @php
+                    $locationAll = array_column($locationAll, 'node');
+                    $locationAttributeMappings = $credential->extras['locationAttributeMappings'] ?? [];
+                @endphp
+                <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
+                    <p class="text-base text-gray-800 dark:text-white font-semibold mb-1">
+                        @lang('shopify::app.shopify.credential.index.location_inventory_title')
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        @lang('shopify::app.shopify.credential.index.location_inventory_info')
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300">
+                        <p class="break-words font-bold">@lang('shopify::app.shopify.credential.index.locations')</p>
+                        <p class="break-words font-bold">@lang('shopify::app.shopify.credential.index.location_inventory_attribute')</p>
+                    </div>
+
+                    @foreach ($locationAll as $location)
+                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <p class="break-words">{{ $location['name'] }}</p>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    name="locationAttributeMappings[{{ $location['id'] }}]"
+                                    track-by="code"
+                                    label-by="label"
+                                    :value="$locationAttributeMappings[$location['id']] ?? ''"
+                                    :entity-name="json_encode(['number','decimal'])"
+                                    async=true
+                                    :list-route="route('admin.shopify.get-attribute')"
+                                />
+                            </x-admin::form.control-group>
+                        </div>
+                    @endforeach
                 </div>
                 <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
                     <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
