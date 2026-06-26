@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Version: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Shopify-Taxonomie',
+            'taxonomy-select-placeholder' => 'Kategorie auswählen',
+            'only-one' => 'Nur ein Shopify-Taxonomie-Attribut ist erlaubt.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Sprachzuordnung',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'Allgemein',
-                    'taxonomy' => 'Kategorie-Taxonomie',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'Kategorie-Taxonomie-Zuordnung',
-                    'header_category' => 'UnoPim-Kategorie',
-                    'header_taxonomy' => 'Shopify-Taxonomie',
-                    'category_placeholder' => 'Kategorie auswählen',
-                    'taxonomy_placeholder' => 'Shopify-Taxonomie suchen',
-                    'add_btn' => 'Hinzufügen',
-                    'save_btn' => 'Speichern',
-                    'saved' => 'Kategorie-Taxonomie-Zuordnung erfolgreich gespeichert',
-                    'save_failed' => 'Speichern der Kategorie-Taxonomie-Zuordnung fehlgeschlagen',
-                    'empty' => 'Noch keine Zuordnungen. Fügen Sie unten eine hinzu.',
-                    'already_mapped' => 'Diese Kategorie ist bereits zugeordnet',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'Cross-Sells',
                 'resolved-type' => 'Typ',
                 'anchor-text' => 'Ankertext',
+                'taxonomy-category' => 'Taxonomie-Kategorie',
+                'taxonomy-assign' => 'Kategorien zuweisen',
+                'taxonomy-edit' => 'Bearbeiten',
+                'taxonomy-search' => 'Suchen',
+                'taxonomy-root' => 'Alle',
+                'taxonomy-loading' => 'Wird geladen…',
+                'taxonomy-selected' => 'ausgewählt',
+                'taxonomy-cancel' => 'Abbrechen',
+                'taxonomy-done' => 'Fertig',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

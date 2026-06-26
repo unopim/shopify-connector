@@ -113,4 +113,118 @@ class ShopifyTaxonomyLoader
 
         return null;
     }
+
+    /** @var array<string, array{id: string, name: string, parent: string}>|null */
+    private ?array $index = null;
+
+    /** @var array<string, array<int, string>>|null */
+    private ?array $childrenByParent = null;
+
+    private function buildIndex(): void
+    {
+        if ($this->index !== null) {
+            return;
+        }
+
+        $this->index = [];
+        $this->childrenByParent = [];
+
+        foreach ($this->all() as $entry) {
+            $short = substr($entry['id'], strrpos($entry['id'], '/') + 1);
+            $parent = str_contains($short, '-') ? substr($short, 0, strrpos($short, '-')) : '';
+            $name = str_contains($entry['path'], ' > ')
+                ? substr($entry['path'], strrpos($entry['path'], ' > ') + 3)
+                : $entry['path'];
+
+            $this->index[$short] = ['id' => $entry['id'], 'name' => $name, 'parent' => $parent];
+            $this->childrenByParent[$parent][] = $short;
+        }
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, hasChildren: bool}>
+     */
+    public function topLevel(): array
+    {
+        return $this->childrenOfShort('');
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, hasChildren: bool}>
+     */
+    public function children(string $gid): array
+    {
+        return $this->childrenOfShort(substr($gid, strrpos($gid, '/') + 1));
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, hasChildren: bool}>
+     */
+    private function childrenOfShort(string $parentShort): array
+    {
+        $this->buildIndex();
+
+        $rows = [];
+
+        foreach ($this->childrenByParent[$parentShort] ?? [] as $short) {
+            $rows[] = [
+                'id' => $this->index[$short]['id'],
+                'name' => $this->index[$short]['name'],
+                'hasChildren' => ! empty($this->childrenByParent[$short]),
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => strcmp($a['name'], $b['name']));
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function descendants(string $gid): array
+    {
+        $this->buildIndex();
+
+        $short = substr($gid, strrpos($gid, '/') + 1);
+
+        if (! isset($this->index[$short])) {
+            return [];
+        }
+
+        $ids = [$this->index[$short]['id']];
+        $stack = [$short];
+
+        while ($stack !== []) {
+            $current = array_pop($stack);
+
+            foreach ($this->childrenByParent[$current] ?? [] as $childShort) {
+                $ids[] = $this->index[$childShort]['id'];
+                $stack[] = $childShort;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param  array<int, string>  $gids
+     * @return array<string, string>
+     */
+    public function namesFor(array $gids): array
+    {
+        $this->buildIndex();
+
+        $names = [];
+
+        foreach ($gids as $gid) {
+            $short = substr($gid, strrpos($gid, '/') + 1);
+
+            if (isset($this->index[$short])) {
+                $names[$gid] = $this->index[$short]['name'];
+            }
+        }
+
+        return $names;
+    }
 }

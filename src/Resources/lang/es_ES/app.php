@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Versión: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Taxonomía de Shopify',
+            'taxonomy-select-placeholder' => 'Seleccionar una categoría',
+            'only-one' => 'Solo se permite un atributo de Taxonomía de Shopify.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Mapeo de Locales',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'General',
-                    'taxonomy' => 'Taxonomía de categorías',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'Asignación de taxonomía de categorías',
-                    'header_category' => 'Categoría de UnoPim',
-                    'header_taxonomy' => 'Taxonomía de Shopify',
-                    'category_placeholder' => 'Seleccionar categoría',
-                    'taxonomy_placeholder' => 'Buscar taxonomía de Shopify',
-                    'add_btn' => 'Añadir',
-                    'save_btn' => 'Guardar',
-                    'saved' => 'Asignación de taxonomía de categorías guardada correctamente',
-                    'save_failed' => 'Error al guardar la asignación de taxonomía de categorías',
-                    'empty' => 'Aún no hay asignaciones. Añade una abajo.',
-                    'already_mapped' => 'Esta categoría ya está asignada',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'Ventas cruzadas',
                 'resolved-type' => 'Tipo',
                 'anchor-text' => 'Texto del enlace',
+                'taxonomy-category' => 'Categoría de taxonomía',
+                'taxonomy-assign' => 'Asignar categorías',
+                'taxonomy-edit' => 'Editar',
+                'taxonomy-search' => 'Buscar',
+                'taxonomy-root' => 'Todas',
+                'taxonomy-loading' => 'Cargando…',
+                'taxonomy-selected' => 'seleccionado',
+                'taxonomy-cancel' => 'Cancelar',
+                'taxonomy-done' => 'Hecho',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

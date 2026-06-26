@@ -334,7 +334,64 @@ class Exporter extends AbstractExporter
             }
         }
 
+        $desired = array_values(array_filter(array_map(
+            fn ($gid) => substr((string) $gid, strrpos((string) $gid, '/') + 1),
+            (array) ($rowData['taxonomy_category'] ?? [])
+        )));
+
+        if (empty($this->credentialArray['extras']['saas'])) {
+            if ($desired !== []) {
+                $formattedData['pin'] = false;
+            }
+
+            if (! $id && $desired !== []) {
+                $formattedData['constraints'] = ['key' => 'category', 'values' => $desired];
+            } elseif ($id) {
+                $current = $this->fetchCurrentCategoryConstraint($rowData);
+                $toCreate = array_values(array_diff($desired, $current));
+                $toDelete = array_values(array_diff($current, $desired));
+
+                if ($toCreate !== [] || $toDelete !== []) {
+                    $values = array_merge(
+                        array_map(fn ($v) => ['create' => $v], $toCreate),
+                        array_map(fn ($v) => ['delete' => $v], $toDelete)
+                    );
+
+                    $formattedData['constraintsUpdates'] = ['key' => 'category', 'values' => $values];
+                }
+            }
+        }
+
         return $formattedData;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fetchCurrentCategoryConstraint(array $rowData): array
+    {
+        $nsKey = explode('.', $rowData['name_space_key'] ?? '', 2);
+
+        if (count($nsKey) !== 2) {
+            return [];
+        }
+
+        $response = $this->requestGraphQlApiAction('metafieldDefinitionConstraint', $this->credentialArray, [
+            'ownerType' => ($rowData['ownerType'] ?? '') === 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
+            'namespace' => $nsKey[0],
+            'key' => $nsKey[1],
+        ]);
+
+        $node = $response['body']['data']['metafieldDefinitions']['nodes'][0] ?? null;
+
+        if (! $node || ($node['constraints']['key'] ?? null) !== 'category') {
+            return [];
+        }
+
+        return array_map(
+            fn ($v) => $v['value'],
+            $node['constraints']['values']['nodes'] ?? []
+        );
     }
 
     /**

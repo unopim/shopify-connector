@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => '版本: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Shopify 分类法',
+            'taxonomy-select-placeholder' => '选择类别',
+            'only-one' => '只允许一个 Shopify 分类法属性。',
+        ],
         'credential' => [
             'export' => [
                 'locales' => '语言映射',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => '常规',
-                    'taxonomy' => '类别分类',
-                ],
-
-                'taxonomy' => [
-                    'title' => '类别分类映射',
-                    'header_category' => 'UnoPim 类别',
-                    'header_taxonomy' => 'Shopify 分类',
-                    'category_placeholder' => '选择类别',
-                    'taxonomy_placeholder' => '搜索 Shopify 分类',
-                    'add_btn' => '添加',
-                    'save_btn' => '保存',
-                    'saved' => '类别分类映射保存成功',
-                    'save_failed' => '类别分类映射保存失败',
-                    'empty' => '暂无映射。请在下方添加。',
-                    'already_mapped' => '此类别已映射',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => '交叉销售',
                 'resolved-type' => '类型',
                 'anchor-text' => '锚文本',
+                'taxonomy-category' => '分类法类别',
+                'taxonomy-assign' => '分配类别',
+                'taxonomy-edit' => '编辑',
+                'taxonomy-search' => '搜索',
+                'taxonomy-root' => '全部',
+                'taxonomy-loading' => '加载中…',
+                'taxonomy-selected' => '已选择',
+                'taxonomy-cancel' => '取消',
+                'taxonomy-done' => '完成',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

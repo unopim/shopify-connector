@@ -197,6 +197,11 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
 
+        'metafieldDefinitionConstraint' => [
+            'query' => 'query MetafieldDefinitionConstraint($ownerType: MetafieldOwnerType!, $namespace: String!, $key: String!) { metafieldDefinitions(first: 1, ownerType: $ownerType, namespace: $namespace, key: $key) { nodes { constraints { key values(first: 250) { nodes { value } } } } } }',
+            'method' => 'POST',
+        ],
+
         'getOneProduct' => [
             'query' => '{ products(first: 1) { edges { node { id title descriptionHtml createdAt updatedAt } } } }',
             'method' => 'POST',

@@ -8,7 +8,6 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Helpers\ShopifyFields;
 use Webkul\Shopify\Http\Requests\ExportMappingForm;
-use Webkul\Shopify\Models\ShopifyCategoryTaxonomyMapping;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 
 class MappingController extends Controller
@@ -62,19 +61,7 @@ class MappingController extends Controller
         $unitPriceUnitOptions = (new ShopifyFields)->getUnitPriceUnitOptions();
         $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
 
-        $locale = core()->getRequestedLocaleCode();
-        $taxonomyMappings = ShopifyCategoryTaxonomyMapping::with('category')->get()->map(function ($row) use ($locale) {
-            $name = $row->category?->additional_data['locale_specific'][$locale]['name'] ?? null;
-
-            return [
-                'category_id' => $row->unopim_category_id,
-                'category_label' => $name ?: ('['.($row->category?->code ?? $row->unopim_category_id).']'),
-                'taxonomy_id' => $row->taxonomy_id,
-                'taxonomy_path' => $row->taxonomy_path,
-            ];
-        })->values();
-
-        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify', 'taxonomyMappings'));
+        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
     }
 
     /**

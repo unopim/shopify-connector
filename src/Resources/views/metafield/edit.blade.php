@@ -380,6 +380,15 @@
 
                     <x-admin::form.control-group.error control-name="name_space_key"/>
                 </x-admin::form.control-group>
+                @if ($metaField?->ownerType === 'PRODUCT')
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.metafield.index.taxonomy-category')
+                        </x-admin::form.control-group.label>
+
+                        <v-taxonomy-category-picker :initial='@json($taxonomyOptions)'></v-taxonomy-category-picker>
+                    </x-admin::form.control-group>
+                @endif
                 <x-admin::form.control-group class="w-[525px]">
                     <x-admin::form.control-group.label>
                         @lang('shopify::app.shopify.metafield.index.description')
@@ -648,5 +657,7 @@
                 }
             })
         </script>
+
+        @include('shopify::metafield._taxonomy-picker')
     @endPushOnce
 </x-admin::layouts.with-history>

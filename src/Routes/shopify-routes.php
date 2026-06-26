@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Webkul\Shopify\Http\Controllers\CategoryTaxonomyMappingController;
 use Webkul\Shopify\Http\Controllers\CollectionMappingController;
 use Webkul\Shopify\Http\Controllers\CredentialController;
 use Webkul\Shopify\Http\Controllers\ImportMappingController;
@@ -73,10 +72,6 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
                 Route::post('create', 'store')->name('shopify.collection-mappings.create');
             });
 
-            Route::controller(CategoryTaxonomyMappingController::class)->prefix('category-taxonomy-mapping')->group(function () {
-                Route::post('create', 'store')->name('shopify.category-taxonomy-mappings.create');
-            });
-
         });
 
         Route::prefix('import')->group(function () {
@@ -93,9 +88,11 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
 
             Route::get('get-category-field', 'listCategoryFields')->name('admin.shopify.get-category-field');
 
-            Route::get('get-categories', 'listCategories')->name('admin.shopify.get-categories');
+            Route::get('get-taxonomy-tree', 'listTaxonomyTree')->name('admin.shopify.get-taxonomy-tree');
 
-            Route::get('get-taxonomy-nodes', 'listTaxonomyNodes')->name('admin.shopify.get-taxonomy-nodes');
+            Route::get('get-taxonomy-descendants', 'listTaxonomyDescendants')->name('admin.shopify.get-taxonomy-descendants');
+
+            Route::get('get-taxonomy-names', 'listTaxonomyNames')->name('admin.shopify.get-taxonomy-names');
 
             Route::get('get-image-attribute', 'listImageAttributes')->name('admin.shopify.get-image-attribute');
 

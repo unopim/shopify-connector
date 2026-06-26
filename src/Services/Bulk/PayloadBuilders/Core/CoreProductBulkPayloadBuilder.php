@@ -11,7 +11,6 @@ use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
-use Webkul\Shopify\Models\ShopifyCategoryTaxonomyMapping;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
@@ -25,6 +24,10 @@ class CoreProductBulkPayloadBuilder
 {
     protected array $attributesAll = [];
 
+    protected ?string $taxonomyAttributeCode = null;
+
+    protected ?array $metafieldCategoryConstraintsMap = null;
+
     protected array $credentialAsArray = [];
 
     protected mixed $credential = null;
@@ -32,9 +35,6 @@ class CoreProductBulkPayloadBuilder
     protected mixed $exportMapping = null;
 
     protected mixed $settingMapping = null;
-
-    /** @var array<string, ?string> */
-    protected array $resolvedTaxonomyCache = [];
 
     protected array $productMetaFieldMapping = [];
 
@@ -509,6 +509,16 @@ class CoreProductBulkPayloadBuilder
             $productInput['handle'] = Str::slug($productInput['handle']);
         }
 
+        $taxonomyCode = $this->taxonomyAttributeCode();
+        $productCategory = $taxonomyCode ? ($productMergedFields[$taxonomyCode] ?? '') : '';
+        $productCategoryShort = $productCategory !== '' ? substr($productCategory, strrpos($productCategory, '/') + 1) : null;
+        if ($productCategory !== '') {
+            $productInput['category'] = $productCategory;
+        }
+        if (! empty($productInput['metafields'])) {
+            $productInput['metafields'] = $this->filterMetafieldsByCategory($productInput['metafields'], $productCategoryShort);
+        }
+
         $variantManifest = [];
         $variants = [];
 
@@ -534,6 +544,8 @@ class CoreProductBulkPayloadBuilder
                 );
             }
 
+            $variantMetafields = $this->filterMetafieldsByCategory($variantMetafields, $productCategoryShort);
+
             $variants[] = $this->normalizeVariantInput(
                 $formattedVariant['variant'] ?? [],
                 $variantMetafields,
@@ -551,11 +563,6 @@ class CoreProductBulkPayloadBuilder
         $productCollections = $this->resolveCollectionIds($categoryCodes);
         if (! empty($productCollections)) {
             $productInput['collections'] = $productCollections;
-        }
-
-        $taxonomyCategory = $this->resolveTaxonomyCategory($categoryCodes);
-        if ($taxonomyCategory !== null) {
-            $productInput['category'] = $taxonomyCategory;
         }
 
         $productInput['variants'] = $variants;
@@ -833,38 +840,69 @@ class CoreProductBulkPayloadBuilder
             ->toArray();
     }
 
-    /**
-     * Resolve a product's category codes to the deepest mapped Shopify taxonomy GID.
-     * Returns null when none of the product's categories are mapped.
-     *
-     * @param  array<int, string>  $categoryCodes
-     */
-    protected function resolveTaxonomyCategory(array $categoryCodes): ?string
+    protected function taxonomyAttributeCode(): ?string
     {
-        $codes = array_values(array_unique(array_filter($categoryCodes)));
-
-        if ($codes === []) {
-            return null;
+        if ($this->taxonomyAttributeCode !== null) {
+            return $this->taxonomyAttributeCode ?: null;
         }
 
-        sort($codes);
-        $cacheKey = implode('|', $codes);
+        $attribute = collect($this->attributesAll)->first(fn ($attribute) => $attribute->type === 'shopify_taxonomy');
 
-        if (array_key_exists($cacheKey, $this->resolvedTaxonomyCache)) {
-            return $this->resolvedTaxonomyCache[$cacheKey];
+        return $this->taxonomyAttributeCode = ($attribute->code ?? '');
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    protected function metafieldCategoryConstraints(): array
+    {
+        if ($this->metafieldCategoryConstraintsMap !== null) {
+            return $this->metafieldCategoryConstraintsMap;
         }
 
-        $mapped = ShopifyCategoryTaxonomyMapping::query()
-            ->whereIn('unopim_category_id', function ($q) use ($codes) {
-                $q->select('id')->from('categories')->whereIn('code', $codes);
-            })
-            ->get(['taxonomy_id', 'taxonomy_path']);
+        $map = [];
 
-        $resolved = $mapped->isEmpty()
-            ? null
-            : $mapped->sortByDesc(fn ($r) => substr_count((string) $r->taxonomy_path, ' > '))->first()->taxonomy_id;
+        foreach (array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping) as $definition) {
+            $categories = $definition['taxonomy_category'] ?? [];
 
-        return $this->resolvedTaxonomyCache[$cacheKey] = $resolved;
+            if (is_string($categories)) {
+                $categories = json_decode($categories, true) ?: [];
+            }
+
+            $categories = (array) $categories;
+
+            if ($categories !== [] && ! empty($definition['name_space_key'])) {
+                $map[$definition['name_space_key']] = array_map(
+                    fn ($gid) => substr((string) $gid, strrpos((string) $gid, '/') + 1),
+                    $categories
+                );
+            }
+        }
+
+        return $this->metafieldCategoryConstraintsMap = $map;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $metafields
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filterMetafieldsByCategory(array $metafields, ?string $categoryShort): array
+    {
+        $constraints = $this->metafieldCategoryConstraints();
+
+        if ($constraints === []) {
+            return $metafields;
+        }
+
+        return array_values(array_filter($metafields, function ($metafield) use ($constraints, $categoryShort) {
+            $nameSpaceKey = ($metafield['namespace'] ?? '').'.'.($metafield['key'] ?? '');
+
+            if (! isset($constraints[$nameSpaceKey])) {
+                return true;
+            }
+
+            return $categoryShort !== null && in_array($categoryShort, $constraints[$nameSpaceKey], true);
+        }));
     }
 
     /**

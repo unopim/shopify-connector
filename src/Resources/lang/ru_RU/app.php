@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Версия: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Таксономия Shopify',
+            'taxonomy-select-placeholder' => 'Выберите категорию',
+            'only-one' => 'Разрешён только один атрибут таксономии Shopify.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Сопоставление локалей',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'Общие',
-                    'taxonomy' => 'Таксономия категорий',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'Сопоставление таксономии категорий',
-                    'header_category' => 'Категория UnoPim',
-                    'header_taxonomy' => 'Таксономия Shopify',
-                    'category_placeholder' => 'Выберите категорию',
-                    'taxonomy_placeholder' => 'Поиск таксономии Shopify',
-                    'add_btn' => 'Добавить',
-                    'save_btn' => 'Сохранить',
-                    'saved' => 'Сопоставление таксономии категорий успешно сохранено',
-                    'save_failed' => 'Не удалось сохранить сопоставление таксономии категорий',
-                    'empty' => 'Пока нет сопоставлений. Добавьте одно ниже.',
-                    'already_mapped' => 'Эта категория уже сопоставлена',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'Перекрёстные продажи',
                 'resolved-type' => 'Тип',
                 'anchor-text' => 'Текст ссылки',
+                'taxonomy-category' => 'Категория таксономии',
+                'taxonomy-assign' => 'Назначить категории',
+                'taxonomy-edit' => 'Изменить',
+                'taxonomy-search' => 'Поиск',
+                'taxonomy-root' => 'Все',
+                'taxonomy-loading' => 'Загрузка…',
+                'taxonomy-selected' => 'выбрано',
+                'taxonomy-cancel' => 'Отмена',
+                'taxonomy-done' => 'Готово',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

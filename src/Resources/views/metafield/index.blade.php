@@ -261,6 +261,13 @@
                                 <x-admin::form.control-group.error control-name="code" />
                             </x-admin::form.control-group>
 
+                            <x-admin::form.control-group v-if="!referenceMode && ownerType === 'PRODUCT'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.taxonomy-category')
+                                </x-admin::form.control-group.label>
+
+                                <v-taxonomy-category-picker :initial="[]"></v-taxonomy-category-picker>
+                            </x-admin::form.control-group>
 
                             <!-- Content Type -->
                             <x-admin::form.control-group v-if="!referenceMode">
@@ -594,7 +601,8 @@
                 template: '#v-metafield-template',
                 data() {
                     return {
-                        contenttypeSelect: null,  
+                        contenttypeSelect: null,
+                        ownerType: '',
                         attribute: "",
                         name_space_key: "",
                         contentTypeOptions:  [],
@@ -806,5 +814,7 @@
                 }
             })
         </script>
+
+        @include('shopify::metafield._taxonomy-picker')
     @endPushOnce
 </x-admin::layouts>

@@ -60,6 +60,12 @@ return [
 
         'version' => 'Version: 1.0.0',
 
+        'attribute' => [
+            'taxonomy-type' => 'Shopify Taxonomy',
+            'taxonomy-select-placeholder' => 'Select a category',
+            'only-one' => 'Only one Shopify Taxonomy attribute is allowed.',
+        ],
+
         'credential' => [
             'export' => [
                 'locales' => 'Locale Mapping',
@@ -186,21 +192,6 @@ return [
 
                 'tabs' => [
                     'general' => 'General',
-                    'taxonomy' => 'Category Taxonomy',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'Category Taxonomy Mapping',
-                    'header_category' => 'UnoPim Category',
-                    'header_taxonomy' => 'Shopify Taxonomy',
-                    'category_placeholder' => 'Select category',
-                    'taxonomy_placeholder' => 'Search Shopify taxonomy',
-                    'add_btn' => 'Add',
-                    'save_btn' => 'Save',
-                    'saved' => 'Category taxonomy mapping saved successfully',
-                    'save_failed' => 'Failed to save category taxonomy mapping',
-                    'empty' => 'No mappings yet. Add one below.',
-                    'already_mapped' => 'This category is already mapped',
                 ],
 
                 'collection' => [
@@ -384,6 +375,15 @@ return [
                 'cross-sells' => 'Cross-sells',
                 'resolved-type' => 'Type',
                 'anchor-text' => 'Anchor text',
+                'taxonomy-category' => 'Taxonomy Category',
+                'taxonomy-assign' => 'Assign categories',
+                'taxonomy-edit' => 'Edit',
+                'taxonomy-search' => 'Search',
+                'taxonomy-root' => 'All',
+                'taxonomy-loading' => 'Loading…',
+                'taxonomy-selected' => 'selected',
+                'taxonomy-cancel' => 'Cancel',
+                'taxonomy-done' => 'Done',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'Version : 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Taxonomie Shopify',
+            'taxonomy-select-placeholder' => 'Sélectionner une catégorie',
+            'only-one' => 'Un seul attribut Taxonomie Shopify est autorisé.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'Mappage de langue',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'Général',
-                    'taxonomy' => 'Taxonomie des catégories',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'Mappage de la taxonomie des catégories',
-                    'header_category' => 'Catégorie UnoPim',
-                    'header_taxonomy' => 'Taxonomie Shopify',
-                    'category_placeholder' => 'Sélectionner une catégorie',
-                    'taxonomy_placeholder' => 'Rechercher la taxonomie Shopify',
-                    'add_btn' => 'Ajouter',
-                    'save_btn' => 'Enregistrer',
-                    'saved' => 'Mappage de la taxonomie des catégories enregistré avec succès',
-                    'save_failed' => 'Échec de l\'enregistrement du mappage de la taxonomie des catégories',
-                    'empty' => 'Aucun mappage pour le moment. Ajoutez-en un ci-dessous.',
-                    'already_mapped' => 'Cette catégorie est déjà mappée',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'Ventes croisées',
                 'resolved-type' => 'Type',
                 'anchor-text' => 'Texte d’ancrage',
+                'taxonomy-category' => 'Catégorie de taxonomie',
+                'taxonomy-assign' => 'Attribuer des catégories',
+                'taxonomy-edit' => 'Modifier',
+                'taxonomy-search' => 'Rechercher',
+                'taxonomy-root' => 'Toutes',
+                'taxonomy-loading' => 'Chargement…',
+                'taxonomy-selected' => 'sélectionné(s)',
+                'taxonomy-cancel' => 'Annuler',
+                'taxonomy-done' => 'Terminé',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

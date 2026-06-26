@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'الإصدار: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'تصنيف Shopify',
+            'taxonomy-select-placeholder' => 'اختر فئة',
+            'only-one' => 'يُسمح بسمة تصنيف Shopify واحدة فقط.',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'تعيين اللغات',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'عام',
-                    'taxonomy' => 'تصنيف الفئات',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'تعيين تصنيف الفئات',
-                    'header_category' => 'فئة UnoPim',
-                    'header_taxonomy' => 'تصنيف Shopify',
-                    'category_placeholder' => 'اختر الفئة',
-                    'taxonomy_placeholder' => 'ابحث في تصنيف Shopify',
-                    'add_btn' => 'إضافة',
-                    'save_btn' => 'حفظ',
-                    'saved' => 'تم حفظ تعيين تصنيف الفئات بنجاح',
-                    'save_failed' => 'فشل حفظ تعيين تصنيف الفئات',
-                    'empty' => 'لا توجد تعيينات بعد. أضف واحدًا أدناه.',
-                    'already_mapped' => 'هذه الفئة معينة بالفعل',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'منتجات تكميلية',
                 'resolved-type' => 'النوع',
                 'anchor-text' => 'نص الرابط',
+                'taxonomy-category' => 'فئة التصنيف',
+                'taxonomy-assign' => 'تعيين الفئات',
+                'taxonomy-edit' => 'تعديل',
+                'taxonomy-search' => 'بحث',
+                'taxonomy-root' => 'الكل',
+                'taxonomy-loading' => 'جارٍ التحميل…',
+                'taxonomy-selected' => 'محدد',
+                'taxonomy-cancel' => 'إلغاء',
+                'taxonomy-done' => 'تم',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

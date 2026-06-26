@@ -56,6 +56,12 @@ return [
             ],
         ],
         'version' => 'संस्करण: 1.0.0',
+
+        'attribute' => [
+            'taxonomy-type' => 'Shopify वर्गीकरण',
+            'taxonomy-select-placeholder' => 'एक श्रेणी चुनें',
+            'only-one' => 'केवल एक Shopify वर्गीकरण एट्रिब्यूट की अनुमति है।',
+        ],
         'credential' => [
             'export' => [
                 'locales' => 'स्थानीय मानचित्रण',
@@ -170,21 +176,6 @@ return [
 
                 'tabs' => [
                     'general' => 'सामान्य',
-                    'taxonomy' => 'श्रेणी वर्गीकरण',
-                ],
-
-                'taxonomy' => [
-                    'title' => 'श्रेणी वर्गीकरण मैपिंग',
-                    'header_category' => 'UnoPim श्रेणी',
-                    'header_taxonomy' => 'Shopify वर्गीकरण',
-                    'category_placeholder' => 'श्रेणी चुनें',
-                    'taxonomy_placeholder' => 'Shopify वर्गीकरण खोजें',
-                    'add_btn' => 'जोड़ें',
-                    'save_btn' => 'सहेजें',
-                    'saved' => 'श्रेणी वर्गीकरण मैपिंग सफलतापूर्वक सहेजी गई',
-                    'save_failed' => 'श्रेणी वर्गीकरण मैपिंग सहेजने में विफल',
-                    'empty' => 'अभी कोई मैपिंग नहीं। नीचे एक जोड़ें।',
-                    'already_mapped' => 'यह श्रेणी पहले से मैप की गई है',
                 ],
 
                 'collection' => [
@@ -374,6 +365,15 @@ return [
                 'cross-sells' => 'क्रॉस-सेल',
                 'resolved-type' => 'प्रकार',
                 'anchor-text' => 'एंकर टेक्स्ट',
+                'taxonomy-category' => 'वर्गीकरण श्रेणी',
+                'taxonomy-assign' => 'श्रेणियाँ असाइन करें',
+                'taxonomy-edit' => 'संपादित करें',
+                'taxonomy-search' => 'खोजें',
+                'taxonomy-root' => 'सभी',
+                'taxonomy-loading' => 'लोड हो रहा है…',
+                'taxonomy-selected' => 'चयनित',
+                'taxonomy-cancel' => 'रद्द करें',
+                'taxonomy-done' => 'हो गया',
                 'unit' => [
                     'minvalue' => '',
                     'maxvalue' => '',

@@ -10,6 +10,7 @@ use Webkul\Shopify\DataGrids\Catalog\MetaFieldDataGrid;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Http\Requests\MetaFieldForm;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
 
 class MetaFieldController extends Controller
 {
@@ -311,7 +312,16 @@ class MetaFieldController extends Controller
         $metaFieldType = $object->getMetaFieldType();
         $metaFieldTypeInShopify = $object->getMetaFieldTypeInShopify();
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify'));
+        $taxonomyOptions = [];
+        $saved = (array) ($metaField->taxonomy_category ?? []);
+        if ($saved !== []) {
+            $names = app(ShopifyTaxonomyLoader::class)->namesFor($saved);
+            foreach ($saved as $gid) {
+                $taxonomyOptions[] = ['id' => $gid, 'label' => $names[$gid] ?? $gid];
+            }
+        }
+
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions'));
     }
 
     /**
