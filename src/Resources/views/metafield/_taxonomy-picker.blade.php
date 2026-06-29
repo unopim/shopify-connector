@@ -1,6 +1,6 @@
 <script type="text/x-template" id="v-taxonomy-category-picker-template">
     <div>
-        <input type="hidden" name="taxonomy_category[]" :value="id" v-for="id in selectedIds" :key="id" />
+        <input type="hidden" name="taxonomy_category" :value="JSON.stringify(selectedIds)" />
 
         <div class="flex flex-wrap items-center gap-2">
             <span

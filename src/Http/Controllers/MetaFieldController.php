@@ -81,6 +81,11 @@ class MetaFieldController extends Controller
     public function store(MetaFieldForm $request): JsonResponse
     {
         $data = $request->all();
+
+        if (array_key_exists('taxonomy_category', $data)) {
+            $data['taxonomy_category'] = $this->decodeTaxonomyCategory($data['taxonomy_category']);
+        }
+
         $nameSpaceAndKey = ! empty($data['name_space_key']) ? explode('.', $data['name_space_key'], 2) : [];
 
         if (count($nameSpaceAndKey) === 2) {
@@ -333,6 +338,10 @@ class MetaFieldController extends Controller
     {
         $requestData = request()->except(['_token', '_method', 'listvalue']);
 
+        if (array_key_exists('taxonomy_category', $requestData)) {
+            $requestData['taxonomy_category'] = $this->decodeTaxonomyCategory($requestData['taxonomy_category']);
+        }
+
         $referenceMode = request()->boolean('reference_mode');
         if ($referenceMode) {
             $resolvedType = $requestData['type'] ?? 'list.product_reference';
@@ -431,6 +440,11 @@ class MetaFieldController extends Controller
         session()->flash('success', trans('shopify::app.shopify.metafield.update-success'));
 
         return redirect()->route('shopify.metafield.edit', $id);
+    }
+
+    private function decodeTaxonomyCategory(mixed $value): array
+    {
+        return is_string($value) ? (json_decode($value, true) ?: []) : (array) $value;
     }
 
     /**
