@@ -273,6 +273,12 @@ class Importer extends AbstractImporter
 
         if (! $existing) {
             $this->shopifyMetaFieldRepository->create($data);
+
+            return;
+        }
+
+        if (array_key_exists('taxonomy_category', $data)) {
+            $this->shopifyMetaFieldRepository->update(['taxonomy_category' => $data['taxonomy_category']], $existing->id);
         }
     }
 
@@ -322,6 +328,15 @@ class Importer extends AbstractImporter
                 ? ['reference_source' => 'categories']
                 : ['reference_source' => 'association', 'association_type' => 'related_products',
                     'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
+        }
+
+        if (empty($this->credentialArray['extras']['saas'])) {
+            $data['taxonomy_category'] = (($node['constraints']['key'] ?? null) === 'category')
+                ? array_map(
+                    fn ($value) => 'gid://shopify/TaxonomyCategory/'.$value['value'],
+                    $node['constraints']['values']['nodes'] ?? []
+                )
+                : [];
         }
 
         return $data;

@@ -261,7 +261,7 @@
                                 <x-admin::form.control-group.error control-name="code" />
                             </x-admin::form.control-group>
 
-                            <x-admin::form.control-group v-if="!referenceMode && ownerType === 'PRODUCT'">
+                            <x-admin::form.control-group v-if="ownerType === 'PRODUCT'">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.taxonomy-category')
                                 </x-admin::form.control-group.label>

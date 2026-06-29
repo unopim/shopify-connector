@@ -410,7 +410,7 @@ class GraphQLApiClient
         ],
 
         'metafieldDefinitionsProductType' => [
-            'query' => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
+            'query' => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } constraints { key values(first: 250) { nodes { value } } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 

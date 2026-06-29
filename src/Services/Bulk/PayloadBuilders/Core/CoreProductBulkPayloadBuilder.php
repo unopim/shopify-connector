@@ -546,8 +546,6 @@ class CoreProductBulkPayloadBuilder
                 );
             }
 
-            $variantMetafields = $this->filterMetafieldsByCategory($variantMetafields, $productCategoryShort);
-
             $variants[] = $this->normalizeVariantInput(
                 $formattedVariant['variant'] ?? [],
                 $variantMetafields,
@@ -864,7 +862,7 @@ class CoreProductBulkPayloadBuilder
 
         $map = [];
 
-        foreach (array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping) as $definition) {
+        foreach ($this->productMetaFieldMapping as $definition) {
             $categories = $definition['taxonomy_category'] ?? [];
 
             if (is_string($categories)) {
