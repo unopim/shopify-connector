@@ -204,7 +204,6 @@
                             type="select"
                             id="locations"
                             name="locations"
-                            rules="required"
                             :label="trans('shopify::app.shopify.credential.index.locations')"
                             :placeholder="trans('shopify::app.shopify.credential.index.locations')"
                             :value="$selectLocation"

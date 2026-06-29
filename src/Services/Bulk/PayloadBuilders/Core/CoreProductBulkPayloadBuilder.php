@@ -496,9 +496,9 @@ class CoreProductBulkPayloadBuilder
             'inventoryPolicy' => $variantPayload['inventoryPolicy'] ?? null,
             'metafields' => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
             'inventoryItem' => empty($inventoryItem) ? null : $inventoryItem,
-            // Inventory quantities are synced inline through productSet; there is
-            // no separate inventory phase, so this is the single source of truth.
-            'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            'inventoryQuantities' => $variantId
+            ? null
+            : ($variantPayload['inventoryQuantities'] ?? null),
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present
