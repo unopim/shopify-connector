@@ -52,6 +52,7 @@ class ShopifyGraphQLDataFormatter
         array $parentData = [],
         $productMetaField = [],
         $variantMetaField = [],
+        bool $variantExists = false,
     ): array {
         $configuredStatus = $exportMapping['shopify_connector_settings']['status'] ?? null;
 
@@ -73,7 +74,7 @@ class ShopifyGraphQLDataFormatter
 
         $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
 
-        $this->applyLocationInventory($formatted, $rawData);
+        $this->applyLocationInventory($formatted, $rawData, $variantExists);
 
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
@@ -307,11 +308,12 @@ class ShopifyGraphQLDataFormatter
 
     /**
      * Build the variant inventoryQuantities list from the per-location attribute map
-     * (credential extras['locationAttributeMappings']). One 'available' entry per mapped
-     * location whose attribute value is numeric. Replaces the single-location shape;
-     * no-op when no per-location mappings are configured.
+     * (credential extras['locationAttributeMappings']). On create every store location is
+     * activated (mapped+numeric value, otherwise 0) so it can be mapped later; on update
+     * only mapped locations with a numeric value are sent, leaving every other location's
+     * stock untouched. No-op when no per-location mappings are configured.
      */
-    protected function applyLocationInventory(array &$formatted, array $rawData): void
+    protected function applyLocationInventory(array &$formatted, array $rawData, bool $variantExists): void
     {
         if (empty($this->locationAttributeMappings)) {
             return;
@@ -319,16 +321,22 @@ class ShopifyGraphQLDataFormatter
 
         $list = [];
         foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
-            $raw = $rawData[$attributeCode] ?? 0;
+            if (empty($locationId)) {
+                continue;
+            }
 
-            if (empty($locationId) || ! is_numeric($raw)) {
+            $hasValue = $attributeCode !== ''
+                && isset($rawData[$attributeCode])
+                && is_numeric($rawData[$attributeCode]);
+
+            if ($variantExists && ! $hasValue) {
                 continue;
             }
 
             $list[] = [
                 'locationId' => $locationId,
                 'name' => 'available',
-                'quantity' => (int) $raw,
+                'quantity' => $hasValue ? (int) $rawData[$attributeCode] : 0,
             ];
         }
 

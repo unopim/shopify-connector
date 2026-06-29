@@ -525,6 +525,7 @@ class CoreProductBulkPayloadBuilder
         foreach ($group['variants'] as $variantRow) {
             $categoryCodes = array_merge($variantRow['values']['categories'] ?? [], $categoryCodes);
             $variantMapping = $this->findMapping($variantRow['sku']);
+            $variantGid = $this->resolveVariantGid($variantMapping[0]['externalId'] ?? null);
             $variantMergedFields = $this->getAllAttributeValues($variantRow);
             $optionValues = $this->buildVariantOptionValues($parentData, $variantMergedFields);
             $formattedVariant = $this->shopifyGraphQLDataFormatter->formatDataForGraphql(
@@ -533,7 +534,8 @@ class CoreProductBulkPayloadBuilder
                 $this->shopifyDefaultLocale ?? 'en',
                 $parentMergedFields,
                 $this->productMetaFieldMapping,
-                $this->variantMetaFieldMapping
+                $this->variantMetaFieldMapping,
+                $variantGid !== null
             );
 
             $variantMetafields = ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [];
@@ -550,7 +552,7 @@ class CoreProductBulkPayloadBuilder
                 $formattedVariant['variant'] ?? [],
                 $variantMetafields,
                 $optionValues,
-                $this->resolveVariantGid($variantMapping[0]['externalId'] ?? null),
+                $variantGid,
                 ! empty($parentData)
             );
             $variantManifest[] = [
