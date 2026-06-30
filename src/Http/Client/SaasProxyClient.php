@@ -199,7 +199,11 @@ class SaasProxyClient implements ShopifyClient
             'path' => '/graphql/api/metafieldDefinitions.json',
             'method' => 'GET',
             'connection' => 'metafieldDefinitions',
-            'override' => ['first' => 250, 'ownerType' => 'PRODUCT'],
+            'override' => [
+                'first' => 250,
+                'ownerType' => 'PRODUCT',
+                'fields' => 'id namespace key name ownerType pinnedPosition type { name } validations { name type value } constraints { key values(first: 250) { nodes { value } } }',
+            ],
         ],
         'metafieldDefinitionsProductVariantType' => [
             'path' => '/graphql/api/metafieldDefinitions.json',

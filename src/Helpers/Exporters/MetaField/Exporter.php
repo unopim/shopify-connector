@@ -53,6 +53,8 @@ class Exporter extends AbstractExporter
 
     protected bool $exportsFile = false;
 
+    protected ?array $currentConstraintsMap = null;
+
     /**
      * Create a new instance of the exporter.
      */
@@ -339,26 +341,24 @@ class Exporter extends AbstractExporter
             (array) ($rowData['taxonomy_category'] ?? [])
         )));
 
-        if (empty($this->credentialArray['extras']['saas'])) {
-            if ($desired !== []) {
-                $formattedData['pin'] = false;
-            }
+        if ($desired !== []) {
+            $formattedData['pin'] = false;
+        }
 
-            if (! $id && $desired !== []) {
-                $formattedData['constraints'] = ['key' => 'category', 'values' => $desired];
-            } elseif ($id) {
-                $current = $this->fetchCurrentCategoryConstraint($rowData);
-                $toCreate = array_values(array_diff($desired, $current));
-                $toDelete = array_values(array_diff($current, $desired));
+        if (! $id && $desired !== []) {
+            $formattedData['constraints'] = ['key' => 'category', 'values' => $desired];
+        } elseif ($id) {
+            $current = $this->fetchCurrentCategoryConstraint($rowData);
+            $toCreate = array_values(array_diff($desired, $current));
+            $toDelete = array_values(array_diff($current, $desired));
 
-                if ($toCreate !== [] || $toDelete !== []) {
-                    $values = array_merge(
-                        array_map(fn ($v) => ['create' => $v], $toCreate),
-                        array_map(fn ($v) => ['delete' => $v], $toDelete)
-                    );
+            if ($toCreate !== [] || $toDelete !== []) {
+                $values = array_merge(
+                    array_map(fn ($v) => ['create' => $v], $toCreate),
+                    array_map(fn ($v) => ['delete' => $v], $toDelete)
+                );
 
-                    $formattedData['constraintsUpdates'] = ['key' => 'category', 'values' => $values];
-                }
+                $formattedData['constraintsUpdates'] = ['key' => 'category', 'values' => $values];
             }
         }
 
@@ -370,28 +370,48 @@ class Exporter extends AbstractExporter
      */
     private function fetchCurrentCategoryConstraint(array $rowData): array
     {
-        $nsKey = explode('.', $rowData['name_space_key'] ?? '', 2);
+        return $this->currentCategoryConstraints()[$rowData['name_space_key'] ?? ''] ?? [];
+    }
 
-        if (count($nsKey) !== 2) {
-            return [];
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function currentCategoryConstraints(): array
+    {
+        if ($this->currentConstraintsMap !== null) {
+            return $this->currentConstraintsMap;
         }
 
-        $response = $this->requestGraphQlApiAction('metafieldDefinitionConstraint', $this->credentialArray, [
-            'ownerType' => ($rowData['ownerType'] ?? '') === 'PRODUCT' ? 'PRODUCT' : 'PRODUCTVARIANT',
-            'namespace' => $nsKey[0],
-            'key' => $nsKey[1],
-        ]);
+        $map = [];
+        $cursor = null;
 
-        $node = $response['body']['data']['metafieldDefinitions']['nodes'][0] ?? null;
+        do {
+            $response = $this->requestGraphQlApiAction('metafieldDefinitionsProductType', $this->credentialArray, [
+                'first' => 250,
+                'after' => $cursor,
+            ]);
 
-        if (! $node || ($node['constraints']['key'] ?? null) !== 'category') {
-            return [];
-        }
+            $edges = $response['body']['data']['metafieldDefinitions']['edges'] ?? [];
 
-        return array_map(
-            fn ($v) => $v['value'],
-            $node['constraints']['values']['nodes'] ?? []
-        );
+            foreach ($edges as $edge) {
+                $node = $edge['node'] ?? [];
+                $nsKey = ($node['namespace'] ?? '').'.'.($node['key'] ?? '');
+
+                if (($node['constraints']['key'] ?? null) === 'category') {
+                    $map[$nsKey] = array_map(fn ($v) => $v['value'], $node['constraints']['values']['nodes'] ?? []);
+                }
+            }
+
+            $lastCursor = ! empty($edges) ? end($edges)['cursor'] : null;
+
+            if ($cursor === $lastCursor || empty($lastCursor)) {
+                break;
+            }
+
+            $cursor = $lastCursor;
+        } while (! empty($edges));
+
+        return $this->currentConstraintsMap = $map;
     }
 
     /**

@@ -330,7 +330,7 @@ class Importer extends AbstractImporter
                     'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
         }
 
-        if (empty($this->credentialArray['extras']['saas'])) {
+        if (array_key_exists('constraints', $node)) {
             $data['taxonomy_category'] = (($node['constraints']['key'] ?? null) === 'category')
                 ? array_map(
                     fn ($value) => 'gid://shopify/TaxonomyCategory/'.$value['value'],
