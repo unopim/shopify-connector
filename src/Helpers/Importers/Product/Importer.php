@@ -304,7 +304,7 @@ class Importer extends AbstractImporter
 
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
-        $this->defintiionMapping = $this->shopifyMetaFieldRepository->all()->pluck('code')->toArray();
+        $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
     }
 
     /**
