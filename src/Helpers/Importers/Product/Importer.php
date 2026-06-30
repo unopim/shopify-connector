@@ -153,6 +153,8 @@ class Importer extends AbstractImporter
 
     protected $seoFields = ['metafields_global_title_tag', 'metafields_global_description_tag'];
 
+    protected ?string $taxonomyAttributeCode = null;
+
     protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
 
     /**
@@ -221,6 +223,8 @@ class Importer extends AbstractImporter
         $this->attributeFamilies = $this->attributeFamilyRepository->all();
 
         $this->attributes = $this->attributeRepository->all()->keyBy('code');
+
+        $this->taxonomyAttributeCode = $this->attributes->firstWhere('type', 'shopify_taxonomy')?->code;
 
         $this->importMapping = $this->shopifyExportmapping->find(3);
 
@@ -300,7 +304,7 @@ class Importer extends AbstractImporter
 
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
-        $this->defintiionMapping = array_merge(array_keys($this->credential?->extras['productMetafield'] ?? []), array_keys($this->credential?->extras['productVariantMetafield'] ?? []));
+        $this->defintiionMapping = $this->shopifyMetaFieldRepository->all()->pluck('code')->toArray();
     }
 
     /**
@@ -460,6 +464,10 @@ class Importer extends AbstractImporter
 
             $common = array_merge($productCommon, $seoCommon, $metaFieldCommon);
             $common['status'] = $rowData['node']['status'] == 'ACTIVE' ? 'true' : 'false';
+            $taxonomyCategory = $rowData['node']['category']['id'] ?? null;
+            if ($this->taxonomyAttributeCode && $taxonomyCategory) {
+                $common[$this->taxonomyAttributeCode] = $taxonomyCategory;
+            }
             $localeSpecific = array_merge($productLocaleSpecific, $seoLocaleSpecific, $metaFieldLocaleSpecific);
             $channelSpecific = array_merge($productChannelSpecific, $seoChannelSpecific, $metaFieldChannelSpecific);
             $channelAndLocaleSpecific = array_merge($productChannelAndLocaleSpecific, $seoChannelAndLocaleSpecific, $metaFieldChannelAndLocaleSpecific);
@@ -1253,6 +1261,7 @@ class Importer extends AbstractImporter
 
     public function mapMetafieldsAttribute($shopifyMetaFiled, $metaFieldAllAttr): array
     {
+
         $common = [];
         $localeSpecific = [];
         $channelSpecific = [];

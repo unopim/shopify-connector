@@ -33,6 +33,9 @@ return [
         productType
         vendor
         tags
+        category {
+          id
+        }
         publishedAt
         createdAt
         updatedAt

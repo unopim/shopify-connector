@@ -324,9 +324,10 @@ class Importer extends AbstractImporter
         $referenceBase = preg_replace('/^list\./', '', $typeName);
         if (in_array($referenceBase, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
             $data['type'] = $referenceBase;
+            $associationType = in_array($node['key'], ['up_sells', 'cross_sells'], true) ? $node['key'] : 'related_products';
             $data['validations'] = json_encode($referenceBase === 'collection_reference'
                 ? ['reference_source' => 'categories']
-                : ['reference_source' => 'association', 'association_type' => 'related_products',
+                : ['reference_source' => 'association', 'association_type' => $associationType,
                     'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
         }
 

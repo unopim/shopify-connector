@@ -94,6 +94,8 @@
             },
         },
 
+        emits: ['count-change'],
+
         data() {
             return {
                 loading: false,
@@ -130,11 +132,21 @@
             },
         },
 
+        watch: {
+            selectedIds(ids) {
+                this.$emit('count-change', ids.length);
+            },
+        },
+
         created() {
             this.initial.forEach(opt => {
                 this.selected[opt.id] = true;
                 this.labelCache[opt.id] = opt.label;
             });
+        },
+
+        mounted() {
+            this.$emit('count-change', this.selectedIds.length);
         },
 
         methods: {

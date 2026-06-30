@@ -181,6 +181,7 @@ class BulkOperationProductIterator implements \Iterator
             'productType' => $product['productType'] ?? '',
             'vendor' => $product['vendor'] ?? '',
             'tags' => $product['tags'] ?? [],
+            'category' => ['id' => $product['category']['id'] ?? null],
             'publishedAt' => $product['publishedAt'] ?? null,
             'createdAt' => $product['createdAt'] ?? null,
             'updatedAt' => $product['updatedAt'] ?? null,

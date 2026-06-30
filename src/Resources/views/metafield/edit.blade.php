@@ -380,13 +380,33 @@
 
                     <x-admin::form.control-group.error control-name="name_space_key"/>
                 </x-admin::form.control-group>
+                @if ($metaField->type === 'link')
+                    <x-admin::form.control-group class="w-[525px]">
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.metafield.index.anchor-text')
+                        </x-admin::form.control-group.label>
+                        <x-admin::form.control-group.control
+                            type="select"
+                            id="link_text_attribute"
+                            name="link_text_attribute"
+                            track-by="code"
+                            label-by="label"
+                            :value="$linkTextAttribute ?? ''"
+                            :label="trans('shopify::app.shopify.metafield.index.anchor-text')"
+                            async=true
+                            :entityName="json_encode(['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'])"
+                            :placeholder="trans('shopify::app.shopify.metafield.index.anchor-text')"
+                            :list-route="route('admin.shopify.get-attribute')"
+                        />
+                    </x-admin::form.control-group>
+                @endif
                 @if ($metaField?->ownerType === 'PRODUCT')
                     <x-admin::form.control-group class="w-[525px]">
                         <x-admin::form.control-group.label>
                             @lang('shopify::app.shopify.metafield.index.taxonomy-category')
                         </x-admin::form.control-group.label>
 
-                        <v-taxonomy-category-picker :initial='@json($taxonomyOptions)'></v-taxonomy-category-picker>
+                        <v-taxonomy-category-picker :initial='@json($taxonomyOptions)' @count-change="taxonomyCount = $event"></v-taxonomy-category-picker>
                     </x-admin::form.control-group>
                 @endif
                 <x-admin::form.control-group class="w-[525px]">
@@ -512,15 +532,11 @@
                     </x-admin::form.control-group>
                 </div>
                 @endif
-                <x-admin::form.control-group class="w-[525px]">
+                <input type="hidden" name="pin" value="0" />
+                <x-admin::form.control-group class="w-[525px]" v-if="taxonomyCount === 0">
                     <x-admin::form.control-group.label>
                         @lang('shopify::app.shopify.metafield.datagrid.pin')
                     </x-admin::form.control-group.label>
-                    <input 
-                        type="hidden"
-                        name="pin"
-                        value="0"
-                    />
                     <x-admin::form.control-group.control
                         type="switch"
                         name="pin"
@@ -601,6 +617,7 @@
                         referenceListChoice: @json($metaField->listvalue ? 'list' : 'one'),
                         attribute: @json($metaField->attribute ?? ''),
                         name_space_key: @json($metaField->name_space_key ?? ''),
+                        taxonomyCount: {{ count($taxonomyOptions ?? []) }},
                     };
                 },
                 computed: {

@@ -326,7 +326,15 @@ class MetaFieldController extends Controller
             }
         }
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions'));
+        $linkTextAttribute = '';
+        if ($metaField->type === 'link') {
+            $validations = is_string($metaField->validations)
+                ? (json_decode($metaField->validations, true) ?: [])
+                : (array) $metaField->validations;
+            $linkTextAttribute = $validations['link_text_attribute'] ?? '';
+        }
+
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute'));
     }
 
     /**

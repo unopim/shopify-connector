@@ -266,7 +266,7 @@
                                     @lang('shopify::app.shopify.metafield.index.taxonomy-category')
                                 </x-admin::form.control-group.label>
 
-                                <v-taxonomy-category-picker :initial="[]"></v-taxonomy-category-picker>
+                                <v-taxonomy-category-picker :initial="[]" @count-change="taxonomyCount = $event"></v-taxonomy-category-picker>
                             </x-admin::form.control-group>
 
                             <!-- Content Type -->
@@ -509,15 +509,11 @@
                                 </x-admin::form.control-group>
                             </div>
 
-                            <x-admin::form.control-group>
+                            <input type="hidden" name="pin" value="0" />
+                            <x-admin::form.control-group v-if="taxonomyCount === 0">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.datagrid.pin')
                                 </x-admin::form.control-group.label>
-                                <input 
-                                    type="hidden"
-                                    name="pin"
-                                    value="0"
-                                />
                                 <x-admin::form.control-group.control
                                     type="switch"
                                     name="pin"
@@ -609,6 +605,7 @@
                         unitTypeOptions: [],
                         selectedType: "",
                         onevalue: 0,
+                        taxonomyCount: 0,
                         metafieldType: @json($metaFieldType ?? null),
                         metaFieldTypeInShopify: @json($metaFieldTypeInShopify ?? null),
                         typeofminmx: null,
