@@ -356,7 +356,6 @@
                         name="attribute"
                         rules="required"
                         v-model="attribute"
-                        readonly
                         :label="trans('shopify::app.shopify.metafield.index.attribute')"
                         :placeholder="trans('shopify::app.shopify.metafield.index.attribute')"
                     />
@@ -368,12 +367,14 @@
                         @lang('shopify::app.shopify.metafield.index.name_space_key')
                     </x-admin::form.control-group.label>
 
+                    <input type="hidden" name="name_space_key" :value="name_space_key" />
+
                     <x-admin::form.control-group.control
                         type="text"
-                        id="name_space_key"
-                        name="name_space_key"
+                        id="name_space_key_display"
+                        name="name_space_key_display"
                         v-model="name_space_key"
-                        readonly
+                        disabled="disabled"
                         :label="trans('shopify::app.shopify.metafield.index.name_space_key')"
                         :placeholder="trans('shopify::app.shopify.metafield.index.name_space_key')"
                     />
