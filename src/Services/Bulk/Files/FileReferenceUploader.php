@@ -50,6 +50,7 @@ class FileReferenceUploader
 
         $map = [];
         $toUpload = [];
+        $shopUrl = $credential['shopUrl'] ?? '';
 
         foreach ($fileValues as $value) {
             $path = $value['path'];
@@ -57,7 +58,7 @@ class FileReferenceUploader
                 continue;
             }
 
-            $cached = $this->cachedGid($path);
+            $cached = $this->cachedGid($path, $shopUrl);
             if ($cached) {
                 $map[$path] = $cached;
 
@@ -77,28 +78,30 @@ class FileReferenceUploader
 
             foreach ($created as $path => $gid) {
                 $map[$path] = $gid;
-                $this->cacheGid($path, $gid, $jobInstanceId);
+                $this->cacheGid($path, $gid, $jobInstanceId, $shopUrl);
             }
         }
 
         return $map;
     }
 
-    private function cachedGid(string $path): ?string
+    private function cachedGid(string $path, string $shopUrl): ?string
     {
         return $this->mappingRepository->findOneWhere([
             ['entityType', '=', self::ENTITY_TYPE],
             ['code', '=', $path],
+            ['apiUrl', '=', $shopUrl],
         ])?->externalId;
     }
 
-    private function cacheGid(string $path, string $gid, int $jobInstanceId): void
+    private function cacheGid(string $path, string $gid, int $jobInstanceId, string $shopUrl): void
     {
         $this->mappingRepository->create([
             'entityType' => self::ENTITY_TYPE,
             'code' => $path,
             'externalId' => $gid,
             'jobInstanceId' => $jobInstanceId,
+            'apiUrl' => $shopUrl,
         ]);
     }
 
