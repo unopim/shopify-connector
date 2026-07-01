@@ -130,14 +130,15 @@ test.describe.serial('Shopify Create Metafield Definition Page', () => {
     const contentTypeName = page.locator('input[name="ContentTypeName"]');
     await expect(contentTypeName).toBeDisabled();
 
-    // Definition Name and Namespace & Key are readonly on the edit page.
+    // Definition Name is editable on the edit page.
     const definitionNameInput = page.locator('input[name="attribute"]');
     await expect(definitionNameInput).toBeVisible();
-    await expect(definitionNameInput).toHaveAttribute('readonly', '');
+    await expect(definitionNameInput).toBeEditable();
     await expect(definitionNameInput).not.toHaveValue('');
 
-    const nsKeyInput = page.locator('input[name="name_space_key"]');
-    await expect(nsKeyInput).toHaveAttribute('readonly', '');
+    // Namespace & Key is shown disabled; its value is submitted via a hidden input.
+    const nsKeyInput = page.locator('input[name="name_space_key_display"]');
+    await expect(nsKeyInput).toBeDisabled();
     await expect(nsKeyInput).not.toHaveValue('');
 
     const descriptionInput = page.locator('input[name="description"]');

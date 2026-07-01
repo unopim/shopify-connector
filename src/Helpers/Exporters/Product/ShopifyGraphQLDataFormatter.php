@@ -308,30 +308,24 @@ class ShopifyGraphQLDataFormatter
 
     /**
      * Build the variant inventoryQuantities list from the per-location attribute map
-     * (credential extras['locationAttributeMappings']). On create every store location is
-     * activated (mapped+numeric value, otherwise 0) so it can be mapped later; on update
-     * only mapped locations with a numeric value are sent, leaving every other location's
-     * stock untouched. No-op when no per-location mappings are configured.
+     * (credential extras['locationAttributeMappings']). On create only mapped locations
+     * are sent (mapped+numeric value, otherwise 0); unmapped locations are skipped. On
+     * update no location is sent, leaving all stock untouched. No-op when no per-location
+     * mappings are configured.
      */
     protected function applyLocationInventory(array &$formatted, array $rawData, bool $variantExists): void
     {
-        if (empty($this->locationAttributeMappings)) {
+        if (empty($this->locationAttributeMappings) || $variantExists) {
             return;
         }
 
         $list = [];
         foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
-            if (empty($locationId)) {
+            if (empty($locationId) || empty($attributeCode)) {
                 continue;
             }
 
-            $hasValue = $attributeCode !== ''
-                && isset($rawData[$attributeCode])
-                && is_numeric($rawData[$attributeCode]);
-
-            if ($variantExists && ! $hasValue) {
-                continue;
-            }
+            $hasValue = isset($rawData[$attributeCode]) && is_numeric($rawData[$attributeCode]);
 
             $list[] = [
                 'locationId' => $locationId,
