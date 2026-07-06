@@ -11,8 +11,8 @@ class TranslationsBulkPayloadBuilder
         'descriptionHtml' => 'body_html',
         'handle' => 'handle',
         'productType' => 'product_type',
-        'metafields_global_title_tag' => 'metafields.global.title_tag',
-        'metafields_global_description_tag' => 'metafields.global.description_tag',
+        'metafields_global_title_tag' => 'meta_title',
+        'metafields_global_description_tag' => 'meta_description',
     ];
 
     public function __construct(
@@ -159,7 +159,10 @@ class TranslationsBulkPayloadBuilder
                 if (empty($value) || ! is_string($value)) {
                     continue;
                 }
-
+                if ($shopifyField === 'handle') {
+                    $value = strtolower($value).'-'.$shopifyLocaleCode;
+                    $defaultValue = strtolower($defaultValue);
+                }
                 $translations[] = [
                     'key' => $translationKey,
                     'value' => $value,
