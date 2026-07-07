@@ -186,6 +186,10 @@ class ShopifyGraphQLDataFormatter
                         );
                         break;
 
+                    case 'json':
+                        $metafieldValue = $this->encodeJsonMetafield($rawData[$unoAttribute] ?? null);
+                        break;
+
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
@@ -214,6 +218,26 @@ class ShopifyGraphQLDataFormatter
         }
 
         return $formatted;
+    }
+
+    /**
+     * Encode a value for a `json` type metafield. Already-valid JSON is kept as
+     * is; a plain string/scalar is wrapped into a JSON string Shopify accepts.
+     */
+    protected function encodeJsonMetafield(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $value = is_string($value) ? $value : (string) $value;
+
+        json_decode($value);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_SLASHES);
     }
 
     public function formatMetafieldValue($metafieldValue, $attribute, $locale)

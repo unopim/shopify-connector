@@ -320,9 +320,10 @@ class Exporter extends AbstractExporter
         $formattedData['description'] = $rowData['description'] ?? '';
         $formattedData['pin'] = (bool) $rowData['pin'];
 
+        $capabilities = [];
+
         if (! empty($rowData['options'])) {
             $options = json_decode($rowData['options'], true);
-            $capabilities = [];
             foreach ($options as $key => $option) {
                 if (isset($this->shoifyMetaFieldTypeData[$rowData['type']][$key])) {
                     $capabilities[$key] = [
@@ -330,10 +331,14 @@ class Exporter extends AbstractExporter
                     ];
                 }
             }
+        }
 
-            if (! empty($capabilities)) {
-                $formattedData['capabilities'] = $capabilities;
-            }
+        if ($this->isTranslatableType($type) && ! empty($rowData['storefronts'])) {
+            $capabilities['translatable'] = ['enabled' => true];
+        }
+
+        if (! empty($capabilities)) {
+            $formattedData['capabilities'] = $capabilities;
         }
 
         $desired = array_values(array_filter(array_map(
@@ -363,6 +368,11 @@ class Exporter extends AbstractExporter
         }
 
         return $formattedData;
+    }
+
+    protected function isTranslatableType(?string $type): bool
+    {
+        return in_array($type, ['single_line_text_field', 'multi_line_text_field', 'rich_text_field'], true);
     }
 
     /**

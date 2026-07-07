@@ -153,6 +153,10 @@ class GraphQLApiClient
             'query' => 'query getProductsMedia($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id media(first: 100) { nodes { id alt } } } } }',
             'method' => 'POST',
         ],
+        'getProductsMetafields' => [
+            'query' => 'query getProductsMetafields($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id metafields(first: 250) { nodes { id namespace key } } } } }',
+            'method' => 'POST',
+        ],
         'createTranslation' => [
             'query' => 'mutation CreateTranslation($id: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $id, translations: $translations) {  userErrors { message field }  translations {  locale key value }, }}',
             'method' => 'POST',
