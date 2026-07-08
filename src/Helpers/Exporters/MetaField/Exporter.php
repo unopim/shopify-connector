@@ -333,10 +333,6 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if ($this->isTranslatableType($type) && ! empty($rowData['storefronts'])) {
-            $capabilities['translatable'] = ['enabled' => true];
-        }
-
         if (! empty($capabilities)) {
             $formattedData['capabilities'] = $capabilities;
         }
@@ -368,11 +364,6 @@ class Exporter extends AbstractExporter
         }
 
         return $formattedData;
-    }
-
-    protected function isTranslatableType(?string $type): bool
-    {
-        return in_array($type, ['single_line_text_field', 'multi_line_text_field', 'rich_text_field'], true);
     }
 
     /**

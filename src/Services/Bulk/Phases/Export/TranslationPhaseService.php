@@ -39,7 +39,8 @@ class TranslationPhaseService extends BasePhaseService
             $this->manifest['channel'] ?? 'default',
             $this->manifest['currency'] ?? 'USD',
             $storeLocaleMapping,
-            $storeLocales
+            $storeLocales,
+            $this->manifest['metafield_aliases'] ?? []
         );
     }
 

@@ -457,7 +457,11 @@ class Exporter extends AbstractExporter
         }
 
         $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($uploadTarget, $jsonlAbsolutePath);
-        $mutation = config('shopify_bulk_mutations.productSetBulk');
+        $mutation = str_replace(
+            '%PRODUCT_METAFIELDS%',
+            $payload['metafield_selection'] ?? '',
+            config('shopify_bulk_mutations.productSetBulk')
+        );
 
         $operationResponse = $this->bulkOperationService->runMutation($payload['credential'], $mutation, $stagedUploadPath);
         $operationErrors = $operationResponse['userErrors'] ?? [];

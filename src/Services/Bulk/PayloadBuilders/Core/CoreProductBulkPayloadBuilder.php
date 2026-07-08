@@ -22,6 +22,8 @@ use Webkul\Shopify\Services\BulkOperationService;
 
 class CoreProductBulkPayloadBuilder
 {
+    protected const TRANSLATABLE_METAFIELD_TYPES = ['single_line_text_field', 'multi_line_text_field', 'rich_text_field'];
+
     protected array $attributesAll = [];
 
     protected ?string $taxonomyAttributeCode = null;
@@ -135,8 +137,11 @@ class CoreProductBulkPayloadBuilder
             }
         }
 
+        $metafieldSelection = $this->buildTranslatableMetafieldSelection();
+
         return [
             'lines' => $lines,
+            'metafield_selection' => $metafieldSelection['selection'],
             'manifest' => [
                 'job_track_id' => $jobTrackId,
                 'shop_url' => $this->credential?->shopUrl,
@@ -146,6 +151,7 @@ class CoreProductBulkPayloadBuilder
                 'currency' => $this->currency,
                 'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
                 'media_created' => $mediaCreated,
+                'metafield_aliases' => $metafieldSelection['aliases'],
                 'follow_up_context' => [
                     'publishing' => true,
                     'media' => true,
@@ -157,6 +163,42 @@ class CoreProductBulkPayloadBuilder
             'summary' => $summary,
             'credential' => $this->credentialAsArray,
         ];
+    }
+
+    /**
+     * Aliased singular `metafield(namespace, key){ id }` selections injected into the
+     * productSetBulk mutation so each product's translatable metafield instance GIDs
+     * return inline in the core result — no separate (SaaS-unsupported) read needed.
+     * Only emitted when multiple locales are configured (translations are needed).
+     *
+     * @return array{selection: string, aliases: array<string, string>}
+     */
+    protected function buildTranslatableMetafieldSelection(): array
+    {
+        if (count($this->credential?->storelocaleMapping ?? []) < 2) {
+            return ['selection' => '', 'aliases' => []];
+        }
+
+        $selections = [];
+        $aliases = [];
+
+        foreach ($this->productMetaFieldMapping as $def) {
+            if (! empty($def['listvalue']) || ! in_array($def['type'] ?? null, self::TRANSLATABLE_METAFIELD_TYPES, true)) {
+                continue;
+            }
+
+            $nsKey = explode('.', $def['name_space_key'] ?? '', 2);
+
+            if (count($nsKey) !== 2) {
+                continue;
+            }
+
+            $alias = 'mf_'.preg_replace('/[^a-zA-Z0-9]/', '_', $def['name_space_key']);
+            $aliases[$alias] = $def['name_space_key'];
+            $selections[] = sprintf('%s: metafield(namespace: "%s", key: "%s") { id }', $alias, $nsKey[0], $nsKey[1]);
+        }
+
+        return ['selection' => implode("\n      ", $selections), 'aliases' => $aliases];
     }
 
     /**

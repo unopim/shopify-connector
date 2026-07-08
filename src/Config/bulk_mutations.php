@@ -228,6 +228,7 @@ mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetIn
     product {
       id
       handle
+      %PRODUCT_METAFIELDS%
       variants(first: 250) {
         nodes {
           id

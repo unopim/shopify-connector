@@ -3,13 +3,11 @@
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\ProductPhaseDataService;
-use Webkul\Shopify\Services\ShopifyClientFactory;
 
 class TranslationsBulkPayloadBuilder
 {
-    protected const METAFIELD_FETCH_CHUNK = 50;
-
     protected array $translationFieldMap = [
         'title' => 'title',
         'descriptionHtml' => 'body_html',
@@ -21,8 +19,8 @@ class TranslationsBulkPayloadBuilder
 
     public function __construct(
         protected ProductPhaseDataService $productPhaseDataService,
-        protected ShopifyClientFactory $clientFactory,
         protected ShopifyCredentialRepository $credentialRepository,
+        protected ShopifyMappingRepository $mappingRepository,
     ) {}
 
     /**
@@ -43,6 +41,7 @@ class TranslationsBulkPayloadBuilder
      * @param  string  $currency  Currency code
      * @param  array  $storeLocaleMapping  Map: shopifyLocale => unopimLocale
      * @param  array  $storeLocales  Array of locale objects from credential
+     * @param  array<string, string>  $metafieldAliases  Map: resultAlias => namespace.key
      * @return array JSONL lines
      */
     public function build(
@@ -51,7 +50,8 @@ class TranslationsBulkPayloadBuilder
         string $channel,
         string $currency,
         array $storeLocaleMapping,
-        array $storeLocales
+        array $storeLocales,
+        array $metafieldAliases = []
     ): array {
         if (count($storeLocaleMapping) < 2) {
             return [];
@@ -70,31 +70,60 @@ class TranslationsBulkPayloadBuilder
             ? ($storeLocaleMapping[$defaultLanguage['locale']] ?? null)
             : null;
 
-        $productGids = [];
+        $productIdBySku = [];
+        $unresolvedSkus = [];
+        $metafieldGidMap = [];
 
         foreach ($entries as $entry) {
-            if (empty($entry['user_errors']) && ! empty($entry['product']['id']) && ! empty($entry['manifest']['product_sku'])) {
-                $productGids[] = $entry['product']['id'];
+            $sku = $entry['manifest']['product_sku'] ?? null;
+
+            if (! $sku) {
+                continue;
+            }
+
+            $product = $entry['product'] ?? [];
+
+            if (empty($product['id'])) {
+                $unresolvedSkus[$sku] = true;
+
+                continue;
+            }
+
+            $productIdBySku[$sku] = $product['id'];
+
+            // Metafield instance GIDs return inline in the core result under the aliases
+            // injected into productSetBulk — works for manual and SaaS alike, so no
+            // separate metafield read is needed.
+            foreach ($metafieldAliases as $alias => $nameSpaceKey) {
+                $gid = $product[$alias]['id'] ?? null;
+
+                if ($gid) {
+                    $metafieldGidMap[$product['id']][$nameSpaceKey] = $gid;
+                }
             }
         }
 
-        $metafieldGidMap = $this->fetchMetafieldGids($credentialId, $productGids);
+        // Products recreated after a stale-mapping NOT_FOUND are absent from the core
+        // result file (null product id); resolve their GID from the freshly-synced
+        // mapping so their product-level translations are still registered.
+        $unresolvedSkus = array_diff_key($unresolvedSkus, $productIdBySku);
+
+        if (! empty($unresolvedSkus)) {
+            $productIdBySku += $this->resolveProductGidsBySku(array_keys($unresolvedSkus), $credentialId);
+        }
 
         $lines = [];
 
         foreach ($entries as $entry) {
-            if (! empty($entry['user_errors']) || empty($entry['product']['id'])) {
-                continue;
-            }
-
             $productSku = $entry['manifest']['product_sku'] ?? null;
+            $productId = $productSku ? ($productIdBySku[$productSku] ?? null) : null;
 
-            if (! $productSku) {
+            if (! $productId) {
                 continue;
             }
 
             $built = $this->buildTranslationsForProduct(
-                $metafieldGidMap[$entry['product']['id']] ?? [],
+                $metafieldGidMap[$productId] ?? [],
                 $productSku,
                 $credentialId,
                 $channel,
@@ -105,7 +134,7 @@ class TranslationsBulkPayloadBuilder
 
             if (! empty($built['product'])) {
                 $lines[] = json_encode([
-                    'resourceId' => $this->ensureGid($entry['product']['id'], 'Product'),
+                    'resourceId' => $this->ensureGid($productId, 'Product'),
                     'translations' => $built['product'],
                 ], JSON_UNESCAPED_SLASHES);
             }
@@ -122,50 +151,31 @@ class TranslationsBulkPayloadBuilder
     }
 
     /**
-     * Fetch a `productGid => [namespace.key => metafieldGid]` map for the given
-     * products with one batched query per chunk (bulk mutations allow a single
-     * connection, so metafield GIDs are resolved out-of-band here).
+     * Resolve `productSku => productGid` from synced product mappings, for products
+     * absent from the core result file (recreated after a stale-mapping NOT_FOUND).
      *
-     * @param  array<int, string>  $productGids
-     * @return array<string, array<string, string>>
+     * @param  array<int, string>  $skus
+     * @return array<string, string>
      */
-    protected function fetchMetafieldGids(int $credentialId, array $productGids): array
+    protected function resolveProductGidsBySku(array $skus, int $credentialId): array
     {
-        if (empty($productGids)) {
-            return [];
-        }
-
         $credential = $this->credentialRepository->find($credentialId);
 
         if (! $credential) {
             return [];
         }
 
-        $client = $this->clientFactory->make($credential->toApiArray());
         $map = [];
 
-        foreach (array_chunk(array_unique($productGids), self::METAFIELD_FETCH_CHUNK) as $chunk) {
-            $response = $client->request('getProductsMetafields', ['ids' => array_values($chunk)]);
+        foreach ($this->mappingRepository->findWhereIn('code', array_values($skus)) as $row) {
+            if ($row->entityType !== 'product' || $row->apiUrl !== $credential->shopUrl) {
+                continue;
+            }
 
-            foreach ($response['body']['data']['nodes'] ?? [] as $node) {
-                if (empty($node['id'])) {
-                    continue;
-                }
+            $gid = $row->relatedId ?: $row->externalId;
 
-                $keyed = [];
-
-                foreach ($node['metafields']['nodes'] ?? [] as $metafield) {
-                    $namespace = $metafield['namespace'] ?? '';
-                    $key = $metafield['key'] ?? '';
-
-                    if ($namespace !== '' && $key !== '' && ! empty($metafield['id'])) {
-                        $keyed[$namespace.'.'.$key] = $metafield['id'];
-                    }
-                }
-
-                if (! empty($keyed)) {
-                    $map[$node['id']] = $keyed;
-                }
+            if ($gid) {
+                $map[$row->code] = $gid;
             }
         }
 
