@@ -114,14 +114,12 @@ class FileReferenceUploader
     }
 
     /**
-     * Manual transport — create each file directly and wait until ready.
-     *
      * @param  array<string, array{content_type: string, url: string}>  $toUpload  path => {content type, url}
      * @return array<string, string> path => File GID
      */
     private function createFilesSync(array $toUpload, array $credential): array
     {
-        $map = [];
+        $files = [];
 
         foreach ($toUpload as $path => $meta) {
             $url = $meta['url'] ?? '';
@@ -129,24 +127,31 @@ class FileReferenceUploader
                 continue;
             }
 
-            $response = $this->requestGraphQlApiAction('fileCreate', $credential, [
-                'files' => [[
-                    'alt' => $path,
-                    'contentType' => $meta['content_type'],
-                    'originalSource' => $url,
-                ]],
-            ]);
+            $files[] = [
+                'alt' => $path,
+                'contentType' => $meta['content_type'],
+                'originalSource' => $url,
+            ];
+        }
+
+        if (empty($files)) {
+            return [];
+        }
+
+        $map = [];
+
+        foreach (array_chunk($files, 250) as $chunk) {
+            $response = $this->requestGraphQlApiAction('fileCreate', $credential, ['files' => $chunk]);
 
             $errors = $response['body']['data']['fileCreate']['userErrors'] ?? [];
             if (! empty($errors)) {
-                logger()->warning('Shopify fileCreate error', ['path' => $path, 'errors' => $errors]);
-
-                continue;
+                logger()->warning('Shopify fileCreate error', ['errors' => $errors]);
             }
 
-            $gid = $response['body']['data']['fileCreate']['files'][0]['id'] ?? null;
-            if ($gid) {
-                $map[$path] = $gid;
+            foreach ($response['body']['data']['fileCreate']['files'] ?? [] as $file) {
+                if (! empty($file['alt']) && ! empty($file['id'])) {
+                    $map[$file['alt']] = $file['id'];
+                }
             }
         }
 

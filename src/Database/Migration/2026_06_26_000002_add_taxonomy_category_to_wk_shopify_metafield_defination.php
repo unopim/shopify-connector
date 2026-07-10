@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('wk_shopify_metafield_defination', function (Blueprint $table) {
-            $table->string('taxonomy_category', 255)->nullable()->after('apiUrl');
+            $table->longText('taxonomy_category')->nullable()->after('apiUrl');
         });
     }
 

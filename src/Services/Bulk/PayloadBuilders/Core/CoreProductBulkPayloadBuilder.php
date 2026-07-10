@@ -260,7 +260,20 @@ class CoreProductBulkPayloadBuilder
         $values = [];
         $aliases = [];
 
+        $rows = [];
+        $seenParents = [];
+
         foreach ($products as $product) {
+            $rows[] = $product;
+
+            $parent = $product['parent'] ?? null;
+            if ($parent && empty($seenParents[$parent['sku']])) {
+                $seenParents[$parent['sku']] = true;
+                $rows[] = $parent;
+            }
+        }
+
+        foreach ($rows as $product) {
             $rawData = $this->getAllAttributeValues($product);
 
             foreach ($fileDefs as $def) {

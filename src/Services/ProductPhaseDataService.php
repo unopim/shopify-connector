@@ -11,6 +11,15 @@ use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 
 class ProductPhaseDataService
 {
+    /**
+     * Export-wide lookups memoized per credential: these never change within a
+     * job run, so resolving them once removes ~4 queries and a full attribute
+     * hydration from every per-SKU getProductContext() call.
+     *
+     * @var array<int, array>
+     */
+    protected array $sharedContextCache = [];
+
     public function __construct(
         protected ShopifyCredentialRepository $shopifyCredentialRepository,
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
@@ -20,10 +29,14 @@ class ProductPhaseDataService
     ) {}
 
     /**
-     * Return all phase context needed for a given product SKU.
+     * Resolve and memoize the export-wide lookups shared by every SKU.
      */
-    public function getProductContext(string $productSku, int $credentialId, string $channel, string $currency): ?array
+    protected function getSharedContext(int $credentialId): ?array
     {
+        if (isset($this->sharedContextCache[$credentialId])) {
+            return $this->sharedContextCache[$credentialId];
+        }
+
         $credential = $this->shopifyCredentialRepository->find($credentialId);
 
         if (! $credential) {
@@ -34,12 +47,36 @@ class ProductPhaseDataService
             return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
         }))[0] ?? null;
 
-        $shopifyDefaultLocale = $credential->storelocaleMapping[$defaultLanguage['locale'] ?? ''] ?? null;
         $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
-        $exportMapping = $mappings->first();
-        $settingMapping = $mappings->last();
-        $attributesAll = $this->attributeRepository->all()->keyBy('code');
-        $productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
+
+        return $this->sharedContextCache[$credentialId] = [
+            'credential' => $credential,
+            'credential_array' => $credential->toApiArray(),
+            'shopify_default_locale' => $credential->storelocaleMapping[$defaultLanguage['locale'] ?? ''] ?? null,
+            'export_mapping' => $mappings->first(),
+            'setting_mapping' => $mappings->last(),
+            'attributes' => $this->attributeRepository->all()->keyBy('code'),
+            'product_metafields' => $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray(),
+        ];
+    }
+
+    /**
+     * Return all phase context needed for a given product SKU.
+     */
+    public function getProductContext(string $productSku, int $credentialId, string $channel, string $currency): ?array
+    {
+        $shared = $this->getSharedContext($credentialId);
+
+        if (! $shared) {
+            return null;
+        }
+
+        $credential = $shared['credential'];
+        $shopifyDefaultLocale = $shared['shopify_default_locale'];
+        $exportMapping = $shared['export_mapping'];
+        $settingMapping = $shared['setting_mapping'];
+        $attributesAll = $shared['attributes'];
+        $productMetaFieldMapping = $shared['product_metafields'];
 
         $product = DB::table('products')
             ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
@@ -105,7 +142,7 @@ class ProductPhaseDataService
 
         return [
             'credential' => $credential,
-            'credential_array' => $credential->toApiArray(),
+            'credential_array' => $shared['credential_array'],
             'shopify_default_locale' => $shopifyDefaultLocale,
             'channel' => $channel,
             'currency' => $currency,

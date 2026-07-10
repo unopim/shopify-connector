@@ -32,6 +32,24 @@ class ShopifyGraphQLDataFormatter
     protected array $fileReferenceMap = [];
 
     /**
+     * Resolved attribute labels memoized per "code|locale". The label is an
+     * export-wide constant, but translate() is costly (~17ms), so resolving it
+     * once instead of per product removes it from the hot path.
+     *
+     * @var array<string, string>
+     */
+    protected array $attributeLabelCache = [];
+
+    /**
+     * Option code => translated label maps memoized per "attributeCode|locale".
+     * Option labels are export-wide constants, but resolving them queried the
+     * options + translations on every product; caching removes that N+1.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $optionLabelCache = [];
+
+    /**
      * Inject the asset-path → File GID map built by FileReferenceUploader before
      * a product batch is formatted, so file_reference metafields resolve to GIDs.
      *
@@ -497,7 +515,7 @@ class ShopifyGraphQLDataFormatter
 
         foreach ($unopimAttr as $attributeCode) {
             $attribute = $this->attributeAll[$attributeCode] ?? null;
-            $attributeLabel = empty($attribute?->translate($locale)->name) ? $attribute?->code : $attribute?->translate($locale)->name;
+            $attributeLabel = $this->resolveAttributeLabel($attribute, $locale);
             $value = strip_tags((string) ($parentData[$attributeCode] ?? ($rawData[$attributeCode] ?? '')));
             if (in_array($attribute?->type, ['multiselect', 'select'])) {
                 $value = $this->getTranslatedOptionLabels($attribute, $value, $locale);
@@ -530,21 +548,59 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
+     * Resolve an attribute's translated label, memoized per code+locale.
+     */
+    protected function resolveAttributeLabel(?object $attribute, string $locale): ?string
+    {
+        if (! $attribute) {
+            return null;
+        }
+
+        $key = $attribute->code.'|'.$locale;
+
+        if (array_key_exists($key, $this->attributeLabelCache)) {
+            return $this->attributeLabelCache[$key];
+        }
+
+        $name = $attribute->translate($locale)->name ?? null;
+
+        return $this->attributeLabelCache[$key] = (empty($name) ? $attribute->code : $name);
+    }
+
+    /**
      * Get option label from option code
      */
     protected function getTranslatedOptionLabels($attribute, $value, string $locale)
     {
-        $values = explode(',', $value);
-        $optionTrans = $attribute->options()->whereIn('code', $values)->get()->toArray();
-        $translationsArray = array_column($optionTrans, 'translations');
-        $translateLabels = array_map(function ($translations, $index) use ($locale, $values) {
-            $labelArr = array_column(array_filter($translations, fn ($t) => $t['locale'] === $locale), 'label');
-            $label = $labelArr[0] ?? null;
+        $map = $this->optionLabelMap($attribute, $locale);
 
-            return ! empty($label) ? $label : $values[$index];
-        }, $translationsArray, array_keys($translationsArray));
+        return array_map(fn ($code) => $map[$code] ?? $code, explode(',', $value));
+    }
 
-        return $translateLabels;
+    /**
+     * Build (and memoize) an option code => translated label map for an attribute.
+     */
+    protected function optionLabelMap(object $attribute, string $locale): array
+    {
+        $key = $attribute->code.'|'.$locale;
+
+        if (isset($this->optionLabelCache[$key])) {
+            return $this->optionLabelCache[$key];
+        }
+
+        $map = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $option = $option->toArray();
+            $label = array_column(
+                array_filter($option['translations'] ?? [], fn ($t) => $t['locale'] === $locale),
+                'label'
+            )[0] ?? null;
+
+            $map[$option['code']] = ! empty($label) ? $label : $option['code'];
+        }
+
+        return $this->optionLabelCache[$key] = $map;
     }
 
     /**
@@ -644,5 +700,7 @@ class ShopifyGraphQLDataFormatter
         $this->settingMapping = $settings;
         $this->attributeAll = $attributeAll;
         $this->locationAttributeMappings = $locationAttributeMappings;
+        $this->attributeLabelCache = [];
+        $this->optionLabelCache = [];
     }
 }

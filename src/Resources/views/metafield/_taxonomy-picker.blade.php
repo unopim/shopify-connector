@@ -57,12 +57,11 @@
                     ></span>
                     <span v-else class="w-5 shrink-0"></span>
 
-                    <input
-                        type="checkbox"
-                        :checked="isChecked(row.id)"
-                        :indeterminate.prop="isIndeterminate(row.id)"
-                        @change="toggleNode(row)"
-                    />
+                    <span
+                        class="cursor-pointer text-2xl shrink-0"
+                        :class="isChecked(row.id) ? 'icon-checkbox-check text-violet-700' : (isIndeterminate(row.id) ? 'icon-checkbox-partial text-violet-700' : 'icon-checkbox-normal')"
+                        @click="toggleNode(row)"
+                    ></span>
 
                     <span class="flex-1 text-sm text-gray-700 dark:text-gray-300" v-text="row.name"></span>
                 </div>
@@ -160,10 +159,32 @@
                 this.loadLevel('');
                 this.refreshChipLabels();
                 this.$refs.taxonomyModal.open();
+                this.$nextTick(() => this.raiseModal(true));
             },
 
             closeModal() {
+                this.raiseModal(false);
                 this.$refs.taxonomyModal.close();
+            },
+
+            raiseModal(on) {
+                const root = this.$refs.taxonomyModal?.$el;
+                if (! root) {
+                    return;
+                }
+
+                const overlay = root.querySelector('.bg-gray-500');
+                const content = root.querySelector('[class*="10002"]');
+
+                if (overlay) {
+                    overlay.style.zIndex = on ? '10005' : '';
+                    overlay.style.backdropFilter = on ? 'blur(4px)' : '';
+                    overlay.style.webkitBackdropFilter = on ? 'blur(4px)' : '';
+                }
+
+                if (content) {
+                    content.style.zIndex = on ? '10006' : '';
+                }
             },
 
             loadLevel(parent) {
