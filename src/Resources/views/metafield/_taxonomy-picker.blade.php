@@ -43,27 +43,29 @@
                     </template>
                 </div>
 
-                <div v-if="loading" class="py-6 text-gray-500" v-text="assignLabels.loading"></div>
+                <div style="height: 60vh; overflow-y: auto;">
+                    <div v-if="loading" class="py-6 text-gray-500" v-text="assignLabels.loading"></div>
 
-                <div
-                    v-for="row in rows"
-                    :key="row.id"
-                    class="flex items-center gap-3 border-b py-2.5 dark:border-gray-800"
-                >
-                    <span
-                        v-if="row.hasChildren && !query"
-                        class="icon-chevron-right cursor-pointer text-xl text-gray-400"
-                        @click="drill(row)"
-                    ></span>
-                    <span v-else class="w-5 shrink-0"></span>
+                    <div
+                        v-for="row in rows"
+                        :key="row.id"
+                        class="flex items-center gap-3 border-b py-2.5 dark:border-gray-800"
+                    >
+                        <span
+                            v-if="row.hasChildren && !query"
+                            class="icon-chevron-right cursor-pointer text-xl text-gray-400"
+                            @click="drill(row)"
+                        ></span>
+                        <span v-else class="w-5 shrink-0"></span>
 
-                    <span
-                        class="cursor-pointer text-2xl shrink-0"
-                        :class="isChecked(row.id) ? 'icon-checkbox-check text-violet-700' : (isIndeterminate(row.id) ? 'icon-checkbox-partial text-violet-700' : 'icon-checkbox-normal')"
-                        @click="toggleNode(row)"
-                    ></span>
+                        <span
+                            class="cursor-pointer text-2xl shrink-0"
+                            :class="isChecked(row.id) ? 'icon-checkbox-check text-violet-700' : (isIndeterminate(row.id) ? 'icon-checkbox-partial text-violet-700' : 'icon-checkbox-normal')"
+                            @click="toggleNode(row)"
+                        ></span>
 
-                    <span class="flex-1 text-sm text-gray-700 dark:text-gray-300" v-text="row.name"></span>
+                        <span class="flex-1 text-sm text-gray-700 dark:text-gray-300" v-text="row.name"></span>
+                    </div>
                 </div>
             </x-slot>
 
