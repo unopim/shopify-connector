@@ -1,28 +1,35 @@
-# 2.0.0 ( 4 June 2026 )
+# 2.1.0 ( 14 July 2026 )
 
 ## Features
-- UnoPIM–Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click **Connect**. No manual credential setup needed in UnoPIM.
-- SaaS authentication flow with auto-login and proxy-based Shopify API access (`SaasProxyClient`, `SaasAutoLoginController`, `SaasCredentialController`).
-- Automatic credential revocation when the linked API key is deleted.
-- **Bulk product export** built on a phase-based architecture (Core, Media, Translation, Publishing phases) using Shopify Bulk Operations for large catalogs.
-- **Bulk product import** using Shopify Bulk Operations with batched mapping and caching for high-volume catalogs.
-- Variant SKU filter support in product export.
-- New `ShopifyPollBulkOperations` command and polling job to track bulk operation status.
+- Compatibility with Shopify Admin API versions 2026-04 and 2026-07, with the latest version selected by default.
+- Shopify taxonomy category support — new `shopify_taxonomy` attribute type with a searchable category picker; the category is exported with the product and imported back.
+- Category-constrained metafield definitions — a metafield definition can be limited to selected taxonomy categories, and only matching products send that metafield.
+- New metafield types: file reference (image, file and video), email, link, and product, variant and collection reference.
+- Metafield translation export for all locales.
+- Collection field mapping — a dedicated screen to map UnoPim category attributes to Shopify collection fields (title, description, SEO title, SEO description, handle and collection type), used for both category export and import.
+- Multi-location inventory export and import.
+- Unit price (unit price measurement) export and import.
+- Product status export mapping, including the Unlisted status.
 
 ## Changed
-- Restructured product export into a modular, phase-based pipeline with per-phase progress tracking and deferred job-track completion.
-- Widened the Shopify credentials `access_token` column to support longer tokens.
-- Updated Vite to `^6.4.2` and laravel-vite-plugin to `^1.2.0`.
-- Enhanced credential UI tooltips and field handling for SaaS credentials.
+- Inventory is always multi-location now; the old single-location handling has been removed.
 
 ## Bug fixes
-- Skip variants missing super-attribute values to prevent import crashes on Configurable product updates.
-- Added a 3-retry guard when downloading bulk-operation results.
-- Handle product recreation when a product was deleted from Shopify.
-- Fixed collection assignment and updates during bulk export.
-- Fixed inventory quantity sync and simple product export in bulk mode.
-- Fixed incorrect product count in job status and synced the UI job tracker with running phase jobs.
-- Show a UI error when no credential is configured.
+- Fixed the image metafield not being exported for the parent of a configurable product.
+- Fixed inventory being reset to zero on product update.
+- Fixed metafield definition export failing on the newer Shopify API versions.
+
+# 2.0.0 ( 20 May 2026 )
+
+## Features
+- UnoPIM-Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click Connect.
+- No manual credential setup needed in UnoPIM.
+
+# 1.5.0 ( 30 April 2026 )
+
+## Features
+- Bulk product export.
+- Bulk product import.
 
 # 1.4.0 ( 15 April 2026 )
 

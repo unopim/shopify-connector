@@ -250,7 +250,7 @@
                             type="select"
                             name="reference_as"
                             :options="$referenceCollectionOptions"
-                            :value="json_encode(['id' => 'collection', 'name' => trans('shopify::app.shopify.metafield.index.as-collection')])"
+                            value="collection"
                             track-by="id"
                             label-by="name"
                             disabled="disabled"
