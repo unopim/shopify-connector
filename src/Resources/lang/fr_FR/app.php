@@ -331,6 +331,7 @@ return [
                 'product-reference' => 'Référence de produit',
                 'variant-reference' => 'Référence de variante de produit',
                 'collection-reference' => 'Référence de collection',
+                'file-reference' => 'Référence de fichier',
                 'pin' => 'Épingler',
             ],
             'index' => [

@@ -331,6 +331,7 @@ return [
                 'product-reference' => '产品引用',
                 'variant-reference' => '产品变体引用',
                 'collection-reference' => '系列引用',
+                'file-reference' => '文件引用',
                 'pin' => '固定',
             ],
             'index' => [

@@ -331,6 +331,7 @@ return [
                 'product-reference' => 'प्रोडक्ट रेफरेंस',
                 'variant-reference' => 'प्रोडक्ट वेरिएंट रेफरेंस',
                 'collection-reference' => 'कलेक्शन रेफरेंस',
+                'file-reference' => 'फ़ाइल रेफरेंस',
                 'pin' => 'Pin',
             ],
             'index' => [
