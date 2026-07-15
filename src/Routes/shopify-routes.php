@@ -6,6 +6,7 @@ use Webkul\Shopify\Http\Controllers\CredentialController;
 use Webkul\Shopify\Http\Controllers\ImportMappingController;
 use Webkul\Shopify\Http\Controllers\MappingController;
 use Webkul\Shopify\Http\Controllers\MetaFieldController;
+use Webkul\Shopify\Http\Controllers\MetaobjectDefinitionController;
 use Webkul\Shopify\Http\Controllers\OptionController;
 use Webkul\Shopify\Http\Controllers\SaasAutoLoginController;
 use Webkul\Shopify\Http\Controllers\SettingController;
@@ -110,9 +111,19 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
 
             Route::get('get-shopify-locale', 'listLocale')->name('shopify.locale.fetch-all');
 
+            Route::get('get-metaobject-definitions', 'listMetaobjectDefinitions')->name('shopify.metaobject.definitions.fetch-all');
+
             Route::get('get-shopify-attrGroup', 'listAttributeGroup')->name('shopify.attribute-group.fetch-all');
 
             Route::get('get-shopify-family', 'listShopifyFamily')->name('admin.shopify.get-all-family-variants');
+        });
+
+        Route::controller(MetaobjectDefinitionController::class)->group(function () {
+            Route::get('metaobject-definition/fields', 'fields')->name('shopify.metaobject.definition.fields');
+
+            Route::post('metaobject-definition', 'store')->name('shopify.metaobject.definition.store');
+
+            Route::post('metaobject-definition/map', 'map')->name('shopify.metaobject.definition.map');
         });
 
     });

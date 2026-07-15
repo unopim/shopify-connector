@@ -17,8 +17,10 @@ use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
+use Webkul\Shopify\Services\Bulk\Metaobject\MetaobjectEntryBuilder;
 use Webkul\Shopify\Services\Bulk\PayloadBuilders\MediaBulkPayloadBuilder;
 use Webkul\Shopify\Services\BulkOperationService;
+use Webkul\Shopify\Services\ShopifyClientFactory;
 
 class CoreProductBulkPayloadBuilder
 {
@@ -59,6 +61,8 @@ class CoreProductBulkPayloadBuilder
         protected FileReferenceUploader $fileReferenceUploader,
         protected AssetUrlResolver $assetUrlResolver,
         protected MediaBulkPayloadBuilder $mediaBulkPayloadBuilder,
+        protected MetaobjectEntryBuilder $metaobjectEntryBuilder,
+        protected ShopifyClientFactory $clientFactory,
     ) {}
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -521,6 +525,113 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
+     * Upsert a metaobject entry per mapped definition and point the product's
+     * metaobject_reference metafields at the resulting entry GIDs.
+     */
+    protected function buildMetaobjectMetafields(array $productRow): array
+    {
+        if (! $this->clientFactory->supportsMetaobject($this->credentialAsArray)) {
+            return [];
+        }
+
+        $defs = array_filter(
+            $this->productMetaFieldMapping,
+            fn ($d) => ($d['type'] ?? '') === 'metaobject_reference'
+        );
+
+        $sku = $productRow['sku'] ?? '';
+
+        if (empty($defs) || $sku === '') {
+            return [];
+        }
+
+        $resolveValue = $this->metaobjectValueResolver($productRow, $this->getAllAttributeValues($productRow));
+        $metafields = [];
+
+        foreach ($defs as $def) {
+            $type = json_decode($def['validations'] ?? '[]', true)['metaobject_type'] ?? null;
+
+            if (! $type) {
+                continue;
+            }
+
+            $gid = $this->metaobjectEntryBuilder->buildEntryGid($type, $sku, $this->credentialAsArray, $resolveValue);
+
+            if (! $gid) {
+                continue;
+            }
+
+            $isList = ! empty($def['listvalue']);
+            $nsKey = explode('.', $def['name_space_key']);
+
+            $metafields[] = [
+                'namespace' => $nsKey[0],
+                'key' => $nsKey[1] ?? '',
+                'type' => $isList ? 'list.metaobject_reference' : 'metaobject_reference',
+                'value' => $isList ? json_encode([$gid], JSON_UNESCAPED_SLASHES) : $gid,
+            ];
+        }
+
+        return $metafields;
+    }
+
+    /**
+     * Resolve a mapped metaobject field's value from the product row.
+     */
+    protected function metaobjectValueResolver(array $productRow, array $attrValues): callable
+    {
+        return function (array $field) use ($productRow, $attrValues) {
+            $source = $field['source'] ?? 'attribute';
+            $list = ! empty($field['list']);
+
+            if ($source === 'association') {
+                $assocType = $field['assoc_type'] ?? 'related_products';
+                $refField = ($field['as'] ?? 'product') === 'variant' ? 'externalId' : 'relatedId';
+                $gids = [];
+
+                foreach ($productRow['values']['associations'][$assocType] ?? [] as $sku) {
+                    $gids[] = (($this->findMapping($sku) ?? [])[0] ?? [])[$refField] ?? null;
+                }
+
+                return $this->formatReferenceValue($gids, $list);
+            }
+
+            if ($source === 'categories') {
+                return $this->formatReferenceValue($this->resolveCollectionIds($productRow['values']['categories'] ?? []), $list);
+            }
+
+            if (($field['shopify_type'] ?? '') === 'file_reference') {
+                return null;
+            }
+
+            $value = $attrValues[$field['attribute_code'] ?? ''] ?? null;
+
+            if ($value === null || $value === '') {
+                return null;
+            }
+
+            if ($list) {
+                $items = is_array($value) ? $value : array_filter(array_map('trim', explode(',', (string) $value)));
+
+                return json_encode(array_values($items), JSON_UNESCAPED_SLASHES);
+            }
+
+            return is_array($value) ? implode(',', $value) : (string) $value;
+        };
+    }
+
+    protected function formatReferenceValue(array $gids, bool $list): ?string
+    {
+        $gids = array_values(array_unique(array_filter($gids)));
+
+        if (empty($gids)) {
+            return null;
+        }
+
+        return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
+    }
+
+    /**
      * Build a single productSet payload and manifest line.
      */
     protected function buildPayloadForGroup(array $group, int $jobTrackId): ?array
@@ -554,6 +665,14 @@ class CoreProductBulkPayloadBuilder
             $formattedProduct['metafields'] = array_merge(
                 $formattedProduct['metafields'] ?? [],
                 $referenceMetafields
+            );
+        }
+
+        $metaobjectMetafields = $this->buildMetaobjectMetafields($parentData ?? $firstVariant);
+        if (! empty($metaobjectMetafields)) {
+            $formattedProduct['metafields'] = array_merge(
+                $formattedProduct['metafields'] ?? [],
+                $metaobjectMetafields
             );
         }
 

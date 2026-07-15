@@ -153,6 +153,22 @@ class GraphQLApiClient
             'query' => 'query getProductsMedia($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id media(first: 100) { nodes { id alt } } } } }',
             'method' => 'POST',
         ],
+        'metaobjectDefinitions' => [
+            'query' => 'query metaobjectDefinitions($first: Int!, $after: String) { metaobjectDefinitions(first: $first, after: $after) { edges { cursor node { id type name } } pageInfo { hasNextPage } } }',
+            'method' => 'POST',
+        ],
+        'metaobjectDefinitionByType' => [
+            'query' => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } } } }',
+            'method' => 'POST',
+        ],
+        'metaobjectDefinitionCreate' => [
+            'query' => 'mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) { metaobjectDefinitionCreate(definition: $definition) { metaobjectDefinition { id type name } userErrors { field message code } } }',
+            'method' => 'POST',
+        ],
+        'metaobjectUpsert' => [
+            'query' => 'mutation metaobjectUpsert($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) { metaobjectUpsert(handle: $handle, metaobject: $metaobject) { metaobject { id handle } userErrors { field message code } } }',
+            'method' => 'POST',
+        ],
         'createTranslation' => [
             'query' => 'mutation CreateTranslation($id: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $id, translations: $translations) {  userErrors { message field }  translations {  locale key value }, }}',
             'method' => 'POST',

@@ -102,8 +102,13 @@ class MetaFieldController extends Controller
             $resolvedType = $data['type'] ?? 'list.product_reference';
             $data['listvalue'] = str_starts_with($resolvedType, 'list.') ? 1 : 0;
             $data['type'] = preg_replace('/^list\./', '', $resolvedType);
-            $nsKey = explode('.', $data['name_space_key'] ?? '', 2);
-            $data['code'] = $nsKey[1] ?? ($data['name_space_key'] ?? $data['type']);
+
+            if (($data['reference_source'] ?? null) !== 'metaobject') {
+                $nsKey = explode('.', $data['name_space_key'] ?? '', 2);
+                $data['code'] = $nsKey[1] ?? ($data['name_space_key'] ?? $data['type']);
+            } else {
+                $data['code'] = explode('|', (string) ($data['metaobject_definition'] ?? ''), 2)[0];
+            }
         }
 
         $errors = [];
@@ -176,6 +181,10 @@ class MetaFieldController extends Controller
             if ($source === 'association') {
                 $validationValue['association_type'] = $data['association_type'] ?? 'related_products';
                 $validationValue['reference_as'] = $data['reference_as'] ?? 'product';
+            } elseif ($source === 'metaobject') {
+                [$metaobjectType, $definitionId] = array_pad(explode('|', (string) ($data['metaobject_definition'] ?? ''), 2), 2, null);
+                $validationValue['metaobject_type'] = $metaobjectType;
+                $validationValue['metaobject_definition_id'] = $definitionId;
             }
         } elseif (($data['type'] ?? null) === 'link' && ! empty($data['link_text_attribute'])) {
             $validationValue['link_text_attribute'] = $data['link_text_attribute'];
@@ -355,8 +364,13 @@ class MetaFieldController extends Controller
             $resolvedType = $requestData['type'] ?? 'list.product_reference';
             $requestData['listvalue'] = str_starts_with($resolvedType, 'list.') ? 1 : 0;
             $requestData['type'] = preg_replace('/^list\./', '', $resolvedType);
-            $nsKey = explode('.', $requestData['name_space_key'] ?? '', 2);
-            $requestData['code'] = $nsKey[1] ?? ($requestData['name_space_key'] ?? $requestData['type']);
+
+            if (($requestData['reference_source'] ?? null) !== 'metaobject') {
+                $nsKey = explode('.', $requestData['name_space_key'] ?? '', 2);
+                $requestData['code'] = $nsKey[1] ?? ($requestData['name_space_key'] ?? $requestData['type']);
+            } else {
+                $requestData['code'] = explode('|', (string) ($requestData['metaobject_definition'] ?? ''), 2)[0];
+            }
         }
 
         $errors = [];
@@ -401,6 +415,10 @@ class MetaFieldController extends Controller
             if ($source === 'association') {
                 $validationValue['association_type'] = $requestData['association_type'] ?? 'related_products';
                 $validationValue['reference_as'] = $requestData['reference_as'] ?? 'product';
+            } elseif ($source === 'metaobject') {
+                [$metaobjectType, $definitionId] = array_pad(explode('|', (string) ($requestData['metaobject_definition'] ?? ''), 2), 2, null);
+                $validationValue['metaobject_type'] = $metaobjectType;
+                $validationValue['metaobject_definition_id'] = $definitionId;
             }
         } elseif (($requestData['type'] ?? null) === 'link' && ! empty($requestData['link_text_attribute'])) {
             $validationValue['link_text_attribute'] = $requestData['link_text_attribute'];

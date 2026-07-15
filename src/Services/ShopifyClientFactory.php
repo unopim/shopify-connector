@@ -57,6 +57,17 @@ class ShopifyClientFactory
     }
 
     /**
+     * Whether metaobject reference metafields can be resolved for this credential.
+     *
+     * Metaobject reads/writes are not exposed by the SaaS proxy yet, so they are
+     * skipped there and only run on manual credentials.
+     */
+    public function supportsMetaobject(array $credential): bool
+    {
+        return empty($credential['extras']['saas']);
+    }
+
+    /**
      * Whether the credential is routed through the SaaS proxy.
      *
      * File uploads diverge by transport: manual credentials call `fileCreate`

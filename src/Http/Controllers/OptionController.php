@@ -14,9 +14,12 @@ use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
+use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class OptionController extends Controller
 {
+    use ShopifyGraphqlRequest;
+
     /**
      * Create a new controller instance.
      *
@@ -220,6 +223,53 @@ class OptionController extends Controller
         return new JsonResponse([
             'options' => $allLocale,
         ]);
+    }
+
+    /**
+     * List Shopify metaobject definitions for the metafield reference picker.
+     */
+    public function listMetaobjectDefinitions(): JsonResponse
+    {
+        $credential = $this->shopifyRepository->findWhere([['active', '=', 1]])
+            ->first(fn ($item) => empty($item->extras['saas']));
+
+        if (! $credential) {
+            return new JsonResponse(['options' => []]);
+        }
+
+        $query = request()->get('query');
+        $credentialArray = $credential->toApiArray();
+        $options = [];
+        $cursor = null;
+
+        do {
+            $response = $this->requestGraphQlApiAction('metaobjectDefinitions', $credentialArray, [
+                'first' => 50,
+                'after' => $cursor,
+            ]);
+
+            $edges = $response['body']['data']['metaobjectDefinitions']['edges'] ?? [];
+
+            foreach ($edges as $edge) {
+                $node = $edge['node'] ?? [];
+                $label = $node['name'] ?? $node['type'] ?? '';
+
+                if (empty($node['id']) || empty($node['type']) || ($query && stripos($label, $query) === false)) {
+                    continue;
+                }
+
+                $options[] = [
+                    'id' => $node['type'].'|'.$node['id'],
+                    'label' => $label,
+                ];
+            }
+
+            $cursor = (! empty($edges) && ($response['body']['data']['metaobjectDefinitions']['pageInfo']['hasNextPage'] ?? false))
+                ? end($edges)['cursor']
+                : null;
+        } while ($cursor);
+
+        return new JsonResponse(['options' => $options]);
     }
 
     /**

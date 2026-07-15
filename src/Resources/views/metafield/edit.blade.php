@@ -94,13 +94,17 @@
                         $metaType = json_encode($metaType, true);
                         $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
 
-                        $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference']);
+                        $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference']);
                         $refSource = $validations?->reference_source ?? 'association';
                         $refAssoc = $validations?->association_type ?? 'related_products';
                         $refAs = $validations?->reference_as ?? 'product';
+                        $refMetaobjectDefinition = ($validations?->metaobject_type ?? null) && ($validations?->metaobject_definition_id ?? null)
+                            ? $validations->metaobject_type.'|'.$validations->metaobject_definition_id
+                            : null;
                         $referenceSourceOptions = json_encode([
                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
+                            ['id' => 'metaobject', 'name' => trans('shopify::app.shopify.metafield.index.metaobject')],
                         ]);
                         $associationTypeOptions = json_encode([
                             ['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')],
@@ -258,9 +262,37 @@
                         />
                     </x-admin::form.control-group>
 
+                    <template v-if="referenceSource === 'metaobject'">
+                        <x-admin::form.control-group class="w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.metafield.index.metaobject-definition')
+                            </x-admin::form.control-group.label>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                name="metaobject_definition"
+                                ref="metaobjectDefinition"
+                                async=true
+                                track-by="id"
+                                label-by="label"
+                                :value="$refMetaobjectDefinition ? json_encode(['id' => $refMetaobjectDefinition, 'label' => $refMetaobjectDefinition]) : null"
+                                :label="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
+                                :placeholder="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
+                                :list-route="route('shopify.metaobject.definitions.fetch-all')"
+                                @input="handleMetaobjectDefinition($event)"
+                            />
+                        </x-admin::form.control-group>
+
+                        <x-admin::form.control-group class="w-[525px]">
+                            <div class="flex items-center gap-2">
+                                <v-metaobject-builder @created="onMetaobjectDefinitionCreated"></v-metaobject-builder>
+                                <v-metaobject-mapper :definition="metaobjectDefinition"></v-metaobject-mapper>
+                            </div>
+                        </x-admin::form.control-group>
+                    </template>
+
                     <input type="hidden" name="type" :value="referenceType" />
 
-                    <x-admin::form.control-group class="w-[525px]">
+                    <x-admin::form.control-group class="w-[525px]" v-if="referenceSource !== 'metaobject'">
                         <div class="flex items-center gap-4">
                             <x-admin::form.control-group>
                                 <x-admin::form.control-group.control
@@ -345,7 +377,7 @@
                     </div>
                 @endif
 
-                <x-admin::form.control-group class="w-[525px]">
+                <x-admin::form.control-group class="w-[525px]" v-if="referenceSource !== 'metaobject'">
                     <x-admin::form.control-group.label class="required">
                         @lang('shopify::app.shopify.metafield.index.attributes')
                     </x-admin::form.control-group.label>
@@ -362,12 +394,14 @@
 
                     <x-admin::form.control-group.error control-name="attribute"/>
                 </x-admin::form.control-group>
-                <x-admin::form.control-group class="w-[525px]">
+
+                <input type="hidden" name="attribute" :value="attribute" v-if="referenceSource === 'metaobject'" />
+                <input type="hidden" name="name_space_key" :value="name_space_key" />
+
+                <x-admin::form.control-group class="w-[525px]" v-if="referenceSource !== 'metaobject'">
                     <x-admin::form.control-group.label class="required">
                         @lang('shopify::app.shopify.metafield.index.name_space_key')
                     </x-admin::form.control-group.label>
-
-                    <input type="hidden" name="name_space_key" :value="name_space_key" />
 
                     <x-admin::form.control-group.control
                         type="text"
@@ -616,6 +650,7 @@
                         associationType: @json($refAssoc ?? 'related_products'),
                         referenceAs: @json($refAs ?? 'product'),
                         referenceListChoice: @json($metaField->listvalue ? 'list' : 'one'),
+                        metaobjectDefinition: @json($refMetaobjectDefinition ?? ''),
                         attribute: @json($metaField->attribute ?? ''),
                         name_space_key: @json($metaField->name_space_key ?? ''),
                         taxonomyCount: {{ count($taxonomyOptions ?? []) }},
@@ -623,6 +658,10 @@
                 },
                 computed: {
                     referenceTypeBase() {
+                        if (this.referenceSource === 'metaobject') {
+                            return 'metaobject_reference';
+                        }
+
                         return this.referenceSource === 'categories'
                             ? 'collection_reference'
                             : (this.referenceAs === 'variant' ? 'variant_reference' : 'product_reference');
@@ -656,8 +695,27 @@
                         }
                     },
 
+                    handleMetaobjectDefinition(event) {
+                        const definition = (event && (typeof event === 'string' || event instanceof String)) ? JSON.parse(event) : null;
+                        this.applyMetaobjectNaming(definition);
+                    },
+
+                    onMetaobjectDefinitionCreated(definition) {
+                        if (this.$refs.metaobjectDefinition) {
+                            this.$refs.metaobjectDefinition.selectedValue = definition;
+                        }
+                        this.applyMetaobjectNaming(definition);
+                    },
+
+                    applyMetaobjectNaming(definition) {
+                        const type = String(definition?.id ?? '').split('|')[0] || '';
+                        this.metaobjectDefinition = definition?.id ?? '';
+                        this.attribute = definition?.label ?? type;
+                        this.name_space_key = type ? 'custom.' + type : '';
+                    },
+
                     applyReferenceNaming() {
-                        if (! this.referenceSource) {
+                        if (! this.referenceSource || this.referenceSource === 'metaobject') {
                             return;
                         }
                         let key, name;
@@ -677,5 +735,9 @@
         </script>
 
         @include('shopify::metafield._taxonomy-picker')
+
+        @include('shopify::metafield._metaobject-builder')
+
+        @include('shopify::metafield._metaobject-mapper')
     @endPushOnce
 </x-admin::layouts.with-history>
