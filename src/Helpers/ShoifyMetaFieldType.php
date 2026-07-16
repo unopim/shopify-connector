@@ -457,6 +457,21 @@ class ShoifyMetaFieldType
                 ],
             ],
 
+            'color_swatch' => [
+                [
+                    'id' => 'color',
+                    'name' => trans('shopify::app.shopify.metafield.type.color'),
+                ],
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+            ],
+
             'date' => [
                 [
                     'id' => 'date',
@@ -496,6 +511,10 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                 [
+                    'id' => 'rating',
+                    'name' => trans('shopify::app.shopify.metafield.type.rating'),
                 ],
             ],
 

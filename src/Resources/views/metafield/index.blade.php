@@ -742,6 +742,9 @@
                         if (event && typeof event === 'string' || event instanceof String) {
                             var parsedEvent = JSON.parse(event);
                             var attrType = (parsedEvent?.validation && attrType !== '' ) ? parsedEvent?.validation : parsedEvent?.type;
+                            if ((parsedEvent?.type === 'select' || parsedEvent?.type === 'multiselect') && parsedEvent?.swatch_type === 'color') {
+                                attrType = 'color_swatch';
+                            }
                             this.contentTypeOptions = this.metafieldType[attrType] ?? [];
                             this.attribute = parsedEvent?.label ?? parsedEvent?.code;
                             this.name_space_key = 'custom.'+parsedEvent?.code;

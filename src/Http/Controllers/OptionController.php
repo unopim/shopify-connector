@@ -286,6 +286,7 @@ class OptionController extends Controller
                 'code' => $attribute->code,
                 'type' => $attribute?->type,
                 'validation' => $attribute->validation,
+                'swatch_type' => $attribute?->swatch_type,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
