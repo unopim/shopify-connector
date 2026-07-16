@@ -208,6 +208,10 @@ class ShopifyGraphQLDataFormatter
                         $metafieldValue = $this->encodeJsonMetafield($rawData[$unoAttribute] ?? null);
                         break;
 
+                    case 'rich_text_field':
+                        $metafieldValue = $this->htmlToShopifyRichText($rawData[$unoAttribute] ?? null);
+                        break;
+
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
@@ -256,6 +260,130 @@ class ShopifyGraphQLDataFormatter
         }
 
         return json_encode($value, JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Convert a UnoPim WYSIWYG/HTML value into Shopify's `rich_text_field` JSON schema.
+     * Returns null when there is nothing to send.
+     */
+    protected function htmlToShopifyRichText(?string $html): ?string
+    {
+        if (empty($html)) {
+            return null;
+        }
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8"><div>'.$html.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $wrapper = $dom->getElementsByTagName('div')->item(0);
+        $children = $wrapper ? $this->richTextBlocks($wrapper) : [];
+
+        if (empty($children)) {
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($html)));
+
+            if ($text === '') {
+                return null;
+            }
+
+            $children = [['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $text]]]];
+        }
+
+        return json_encode(['type' => 'root', 'children' => $children], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Build Shopify rich-text block nodes (paragraph, heading, list) from a DOM node.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextBlocks(\DOMNode $node): array
+    {
+        $blocks = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if (trim($child->textContent) !== '') {
+                    $blocks[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $child->textContent]]];
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true)) {
+                $blocks[] = ['type' => 'heading', 'level' => (int) substr($tag, 1), 'children' => $this->richTextInline($child)];
+            } elseif (in_array($tag, ['ul', 'ol'], true)) {
+                $items = [];
+                foreach ($child->childNodes as $li) {
+                    if ($li->nodeType === XML_ELEMENT_NODE && strtolower($li->nodeName) === 'li') {
+                        $items[] = ['type' => 'list-item', 'children' => $this->richTextInline($li)];
+                    }
+                }
+                if (! empty($items)) {
+                    $blocks[] = ['type' => 'list', 'listType' => $tag === 'ol' ? 'ordered' : 'unordered', 'children' => $items];
+                }
+            } else {
+                $inline = $this->richTextInline($child);
+                if (! empty($inline)) {
+                    $blocks[] = ['type' => 'paragraph', 'children' => $inline];
+                }
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * Build Shopify rich-text inline nodes (text with bold/italic marks, links) from a DOM node.
+     *
+     * @param  array<string, bool>  $marks
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextInline(\DOMNode $node, array $marks = []): array
+    {
+        $result = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if ($child->textContent !== '') {
+                    $text = ['type' => 'text', 'value' => $child->textContent];
+                    if (! empty($marks['bold'])) {
+                        $text['bold'] = true;
+                    }
+                    if (! empty($marks['italic'])) {
+                        $text['italic'] = true;
+                    }
+                    $result[] = $text;
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['strong', 'b'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['bold' => true])));
+            } elseif (in_array($tag, ['em', 'i'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['italic' => true])));
+            } elseif ($tag === 'a' && $child->getAttribute('href') !== '') {
+                $result[] = ['type' => 'link', 'url' => $child->getAttribute('href'), 'children' => $this->richTextInline($child, $marks)];
+            } else {
+                $result = array_merge($result, $this->richTextInline($child, $marks));
+            }
+        }
+
+        return $result;
     }
 
     public function formatMetafieldValue($metafieldValue, $attribute, $locale)

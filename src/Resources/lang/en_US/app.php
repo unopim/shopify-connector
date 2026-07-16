@@ -394,6 +394,8 @@ return [
             'type' => [
                 'single_line_text_field' => 'Single line text',
                 'color' => 'Color',
+                'choice_list' => 'Choice list',
+                'rich_text_field' => 'Rich text',
                 'rating' => 'Rating',
                 'url' => 'Url',
                 'multi_line_text_field' => 'Multi-line text',

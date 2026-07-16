@@ -170,6 +170,11 @@ class MetaFieldController extends Controller
             $validationValue['content_type'] = $data['content_type'];
         }
 
+        if (($data['type'] ?? null) === 'choice_list') {
+            $data['type'] = 'single_line_text_field';
+            $validationValue['content_type'] = 'choice_list';
+        }
+
         if ($referenceMode) {
             $source = $data['reference_source'] ?? 'association';
             $validationValue['reference_source'] = $source;
@@ -244,12 +249,12 @@ class MetaFieldController extends Controller
 
         if ($minvalue && $maxvalue) {
             $unitData = self::SMALLESTUNIT[$data['type']] ?? null;
-            if (! ctype_digit($minvalue) && $data['type'] != 'date') {
+            if (! is_numeric($minvalue) && $data['type'] != 'date') {
                 $errors['minvalue'] = [trans('Only Number Allowed')];
 
                 return null;
             }
-            if (! ctype_digit($maxvalue) && $data['type'] != 'date') {
+            if (! is_numeric($maxvalue) && $data['type'] != 'date') {
                 $errors['maxvalue'] = [trans('Only Number Allowed')];
 
                 return null;
@@ -259,13 +264,13 @@ class MetaFieldController extends Controller
                 $maxvalue = $maxvalue * ($unitData[$maxunit] ?? 0);
             } else {
                 $validateValue = function ($value, $type, $field) use (&$errors) {
-                    if ($type !== 'date' && ! ctype_digit($value)) {
+                    if ($type !== 'date' && ! is_numeric($value)) {
                         $errors[$field] = [trans('Only Number Allowed')];
 
                         return null;
                     }
 
-                    return $type === 'date' ? new \DateTime($value) : (int) $value;
+                    return $type === 'date' ? new \DateTime($value) : (float) $value;
                 };
 
                 $minvalue = ! empty($data['minvalue'])
@@ -393,6 +398,11 @@ class MetaFieldController extends Controller
 
         if (($requestData['type'] ?? null) === 'file_reference' && ! empty($requestData['content_type'])) {
             $validationValue['content_type'] = $requestData['content_type'];
+        }
+
+        if (($requestData['type'] ?? null) === 'choice_list') {
+            $requestData['type'] = 'single_line_text_field';
+            $validationValue['content_type'] = 'choice_list';
         }
 
         if ($referenceMode) {

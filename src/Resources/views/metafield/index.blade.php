@@ -527,7 +527,7 @@
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.adminFilterable')
                                 </x-admin::form.control-group.label>
-                                <input 
+                                <input
                                     type="hidden"
                                     name="adminFilterable"
                                     value="0"
@@ -542,7 +542,7 @@
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.smartCollectionCondition')
                                 </x-admin::form.control-group.label>
-                                <input 
+                                <input
                                     type="hidden"
                                     name="smartCollectionCondition"
                                     value="0"
@@ -560,7 +560,7 @@
                                 </x-admin::form.control-group.label>
                                 <x-admin::form.control-group.label v-text="storefronts">
                                 </x-admin::form.control-group.label>
-                                <input 
+                                <input
                                     type="hidden"
                                     name="storefronts"
                                     value="0"
@@ -661,30 +661,30 @@
                         if (this.contentTypeName) {
                             formData.set("ContentTypeName", this.contentTypeName);
                         }
-                        if (((minCharslen && minCharslen.trim().length > 0) || (maxCharslen && maxCharslen.trim().length > 0)) && 
+                        if (((minCharslen && minCharslen.trim().length > 0) || (maxCharslen && maxCharslen.trim().length > 0)) &&
                         this.typeofminmx != 'date'
                     )   {
                             var jsErrors = {};
 
-                            if (minCharslen && !/^\d+$/.test(minCharslen)) {
+                            if (minCharslen && isNaN(parseFloat(minCharslen.trim()))) {
                                 jsErrors['minvalue'] = 'Only Number Allowed';
                             } else {
                                 const minLimit = this.contentTypeName == 'Rating' ? 9999999999999 : 9007199254740991;
-                                if (BigInt(minCharslen) >= minLimit) {
+                                if (Number(minCharslen) >= minLimit) {
                                     jsErrors['minvalue'] = `Validation value for min can't exceed ${minLimit}`;
                                 }
                             }
-                            
 
-                            if (maxCharslen && !/^\d+$/.test(maxCharslen)) {
+
+                            if (maxCharslen && isNaN(parseFloat(maxCharslen.trim()))) {
                                 jsErrors['maxvalue'] = 'Only Number Allowed';
                             } else {
                                 const maxLimit = this.contentTypeName == 'Rating' ? 9999999999999 : 9007199254740991;
-                                if (BigInt(maxCharslen) >= maxLimit) {
+                                if (Number(maxCharslen) >= maxLimit) {
                                     jsErrors['maxvalue'] = `Validation value for min can't exceed ${maxLimit}`;
                                 }
                             }
-                            
+
 
                             if (jsErrors && Object.keys(jsErrors).length > 0) {
                                 setErrors(jsErrors);
@@ -801,7 +801,7 @@
                         if (this.metaFieldTypeInShopify[this.key]?.listvalue?.smartCollectionCondition != undefined) {
                             this.onevalue = event.target.value;
                             var check = (this.metaFieldTypeInShopify[this.key]?.listvalue?.smartCollectionCondition == true && event.target.value == 1) ? false : true;
-                            
+
                             this.smartCollectionCondition = check;
                         }
                     },

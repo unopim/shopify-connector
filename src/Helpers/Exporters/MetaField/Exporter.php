@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Helpers\Exporters\MetaField;
 
 use Illuminate\Support\Facades\Event;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -313,6 +314,16 @@ class Exporter extends AbstractExporter
                 ];
             }
 
+            if (($validationDatas['content_type'] ?? null) === 'choice_list') {
+                $choices = $this->resolveChoiceListValues($rowData['code'] ?? '');
+                if (! empty($choices)) {
+                    $validations[] = [
+                        'name' => 'choices',
+                        'value' => json_encode($choices, JSON_UNESCAPED_SLASHES),
+                    ];
+                }
+            }
+
             $formattedData['validations'] = $validations;
         }
 
@@ -364,6 +375,39 @@ class Exporter extends AbstractExporter
         }
 
         return $formattedData;
+    }
+
+    /**
+     * Resolve a select/multiselect attribute's option labels for the Shopify default
+     * locale, matching the exported metafield value so the `choices` validation accepts it.
+     *
+     * @return array<int, string>
+     */
+    protected function resolveChoiceListValues(string $code): array
+    {
+        if (empty($code) || empty($this->shopifyDefaultLocale)) {
+            return [];
+        }
+
+        $attribute = app(AttributeRepository::class)->findOneByField('code', $code);
+
+        if (! $attribute || ! in_array($attribute->type, ['select', 'multiselect'], true)) {
+            return [];
+        }
+
+        $choices = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $option = $option->toArray();
+            $label = array_column(
+                array_filter($option['translations'] ?? [], fn ($t) => $t['locale'] === $this->shopifyDefaultLocale),
+                'label'
+            )[0] ?? null;
+
+            $choices[] = ! empty($label) ? $label : $option['code'];
+        }
+
+        return $choices;
     }
 
     /**

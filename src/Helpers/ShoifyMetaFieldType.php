@@ -168,6 +168,14 @@ class ShoifyMetaFieldType
             'list' => true,
         ],
 
+        'choice_list' => [
+            'list' => true,
+        ],
+
+        'rich_text_field' => [
+            'list' => false,
+        ],
+
         'rating' => [
             'list' => true,
             'validation' => [
@@ -415,6 +423,10 @@ class ShoifyMetaFieldType
                     'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
                 [
+                    'id' => 'rich_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.rich_text_field'),
+                ],
+                [
                     'id' => 'json',
                     'name' => trans('shopify::app.shopify.metafield.type.json'),
                 ],
@@ -444,6 +456,10 @@ class ShoifyMetaFieldType
                     'id' => 'multi_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
+                [
+                    'id' => 'choice_list',
+                    'name' => trans('shopify::app.shopify.metafield.type.choice_list'),
+                ],
             ],
 
             'multiselect' => [
@@ -454,6 +470,10 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id' => 'choice_list',
+                    'name' => trans('shopify::app.shopify.metafield.type.choice_list'),
                 ],
             ],
 
@@ -512,7 +532,7 @@ class ShoifyMetaFieldType
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
-                 [
+                [
                     'id' => 'rating',
                     'name' => trans('shopify::app.shopify.metafield.type.rating'),
                 ],
