@@ -92,7 +92,7 @@
                             ],
                         ];
                         $metaType = json_encode($metaType, true);
-                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
+                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'gallery', 'file', 'asset'];
 
                         $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference']);
                         $refSource = $validations?->reference_source ?? 'association';

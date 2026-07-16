@@ -1284,10 +1284,11 @@ class Importer extends AbstractImporter
             }
 
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
-                $source = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
-                if ($source === null) {
+                $stored = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
+                if (empty($stored)) {
                     continue;
                 }
+                $source = $attribute->type === 'gallery' ? $stored : implode(',', $stored);
             }
 
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
@@ -1320,9 +1321,11 @@ class Importer extends AbstractImporter
      * existing image fetch/queue pipeline. Prefers the file URL fetched inline in
      * the bulk product query (`reference`) — that rides the proxy on SaaS too. Falls
      * back to a direct getFileById lookup (manual transport only) when no inline
-     * reference is present. Returns null when nothing resolves.
+     * reference is present. Returns the stored paths, or null when nothing resolves.
+     *
+     * @return array<int, string>|null
      */
-    private function resolveFileReferenceValue(array $metaNode, string $unoAttr): ?string
+    private function resolveFileReferenceValue(array $metaNode, string $unoAttr): ?array
     {
         $urls = $this->fileReferenceUrlsInline($metaNode);
 
@@ -1351,7 +1354,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        return empty($stored) ? null : implode(',', $stored);
+        return empty($stored) ? null : $stored;
     }
 
     /**

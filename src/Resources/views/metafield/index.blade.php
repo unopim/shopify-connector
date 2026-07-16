@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'gallery', 'file', 'asset'];
                                         $referenceSourceOptions = json_encode([
                                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],

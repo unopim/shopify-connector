@@ -296,7 +296,7 @@ class CoreProductBulkPayloadBuilder
 
                 $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
                 if (! $contentType) {
-                    $contentType = $attributeType === 'image' ? 'IMAGE' : 'FILE';
+                    $contentType = in_array($attributeType, ['image', 'gallery'], true) ? 'IMAGE' : 'FILE';
                 }
 
                 foreach ((array) $value as $single) {

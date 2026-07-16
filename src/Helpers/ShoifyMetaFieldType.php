@@ -556,6 +556,14 @@ class ShoifyMetaFieldType
                 ],
             ],
 
+            'gallery' => [
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.image_file'),
+                    'content_type' => 'IMAGE',
+                ],
+            ],
+
             'file' => [
                 [
                     'id' => 'file_reference',
