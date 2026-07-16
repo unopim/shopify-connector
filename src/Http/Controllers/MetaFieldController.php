@@ -10,6 +10,7 @@ use Webkul\Shopify\DataGrids\Catalog\MetaFieldDataGrid;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Http\Requests\MetaFieldForm;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectMappingRepository;
 use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
 
 class MetaFieldController extends Controller
@@ -55,6 +56,7 @@ class MetaFieldController extends Controller
     public function __construct(
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
         protected AttributeRepository $attributeRepository,
+        protected ShopifyMetaobjectMappingRepository $shopifyMetaobjectMappingRepository,
     ) {}
 
     /**
@@ -335,15 +337,19 @@ class MetaFieldController extends Controller
             }
         }
 
-        $linkTextAttribute = '';
-        if ($metaField->type === 'link') {
-            $validations = is_string($metaField->validations)
-                ? (json_decode($metaField->validations, true) ?: [])
-                : (array) $metaField->validations;
-            $linkTextAttribute = $validations['link_text_attribute'] ?? '';
+        $validations = is_string($metaField->validations)
+            ? (json_decode($metaField->validations, true) ?: [])
+            : (array) $metaField->validations;
+
+        $linkTextAttribute = $metaField->type === 'link' ? ($validations['link_text_attribute'] ?? '') : '';
+
+        $metaobjectLabel = '';
+        if ($metaField->type === 'metaobject_reference' && ! empty($validations['metaobject_type'])) {
+            $mapping = $this->shopifyMetaobjectMappingRepository->findOneWhere(['type' => $validations['metaobject_type']]);
+            $metaobjectLabel = $mapping->name ?? $validations['metaobject_type'];
         }
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute'));
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'metaobjectLabel'));
     }
 
     /**

@@ -32,6 +32,8 @@ class CoreProductBulkPayloadBuilder
 
     protected ?array $metafieldCategoryConstraintsMap = null;
 
+    protected array $fileReferenceMap = [];
+
     protected array $credentialAsArray = [];
 
     protected mixed $credential = null;
@@ -111,6 +113,8 @@ class CoreProductBulkPayloadBuilder
                 $fileReferenceMap[(string) $assetId] = $fileReferenceMap[$path];
             }
         }
+
+        $this->fileReferenceMap = $fileReferenceMap;
 
         $this->shopifyGraphQLDataFormatter->setFileReferenceMap($fileReferenceMap);
 
@@ -252,12 +256,9 @@ class CoreProductBulkPayloadBuilder
      */
     protected function collectFileReferenceValues(array $products): array
     {
-        $fileDefs = array_filter(
-            array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping),
-            fn ($def) => ($def['type'] ?? null) === 'file_reference'
-        );
+        $fileSources = $this->collectFileSources();
 
-        if (empty($fileDefs)) {
+        if (empty($fileSources)) {
             return ['values' => [], 'aliases' => []];
         }
 
@@ -280,14 +281,14 @@ class CoreProductBulkPayloadBuilder
         foreach ($rows as $product) {
             $rawData = $this->getAllAttributeValues($product);
 
-            foreach ($fileDefs as $def) {
-                $value = $rawData[$def['code']] ?? null;
+            foreach ($fileSources as $code => $configuredType) {
+                $value = $rawData[$code] ?? null;
 
                 if (empty($value)) {
                     continue;
                 }
 
-                $attributeType = $this->attributesAll[$def['code']]?->type ?? null;
+                $attributeType = $this->attributesAll[$code]?->type ?? null;
 
                 if ($attributeType === 'asset') {
                     foreach ($this->expandAssetFileReferences($value) as $assetId => $entry) {
@@ -298,10 +299,7 @@ class CoreProductBulkPayloadBuilder
                     continue;
                 }
 
-                $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
-                if (! $contentType) {
-                    $contentType = $attributeType === 'image' ? 'IMAGE' : 'FILE';
-                }
+                $contentType = $configuredType ?: ($attributeType === 'image' ? 'IMAGE' : 'FILE');
 
                 foreach ((array) $value as $single) {
                     $path = (string) $single;
@@ -315,6 +313,43 @@ class CoreProductBulkPayloadBuilder
         }
 
         return ['values' => array_values($values), 'aliases' => $aliases];
+    }
+
+    protected function collectFileSources(): array
+    {
+        $sources = [];
+
+        foreach (array_merge($this->productMetaFieldMapping, $this->variantMetaFieldMapping) as $def) {
+            if (($def['type'] ?? null) !== 'file_reference' || empty($def['code'])) {
+                continue;
+            }
+
+            $sources[$def['code']] = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
+        }
+
+        if (! $this->clientFactory->supportsMetaobject($this->credentialAsArray)) {
+            return $sources;
+        }
+
+        $shopUrl = $this->credential?->shopUrl ?? '';
+
+        foreach ($this->productMetaFieldMapping as $def) {
+            if (($def['type'] ?? null) !== 'metaobject_reference') {
+                continue;
+            }
+
+            $type = json_decode($def['validations'] ?? '[]', true)['metaobject_type'] ?? null;
+
+            if (! $type) {
+                continue;
+            }
+
+            foreach ($this->metaobjectEntryBuilder->fileAttributeCodes($type, $shopUrl) as $code) {
+                $sources[$code] = $sources[$code] ?? null;
+            }
+        }
+
+        return $sources;
     }
 
     /**
@@ -601,7 +636,19 @@ class CoreProductBulkPayloadBuilder
             }
 
             if (($field['shopify_type'] ?? '') === 'file_reference') {
-                return null;
+                $value = $attrValues[$field['attribute_code'] ?? ''] ?? null;
+
+                if (empty($value)) {
+                    return null;
+                }
+
+                $paths = is_array($value)
+                    ? $value
+                    : array_filter(array_map('trim', explode(',', (string) $value)));
+
+                $gids = array_map(fn ($path) => $this->fileReferenceMap[(string) $path] ?? null, $paths);
+
+                return $this->formatReferenceValue($gids, $list);
             }
 
             $value = $attrValues[$field['attribute_code'] ?? ''] ?? null;

@@ -267,24 +267,18 @@
                             <x-admin::form.control-group.label class="required">
                                 @lang('shopify::app.shopify.metafield.index.metaobject-definition')
                             </x-admin::form.control-group.label>
-                            <x-admin::form.control-group.control
-                                type="select"
-                                name="metaobject_definition"
-                                ref="metaobjectDefinition"
-                                async=true
-                                track-by="id"
-                                label-by="label"
-                                :value="$refMetaobjectDefinition ? json_encode(['id' => $refMetaobjectDefinition, 'label' => $refMetaobjectDefinition]) : null"
-                                :label="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
-                                :placeholder="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
-                                :list-route="route('shopify.metaobject.definitions.fetch-all')"
-                                @input="handleMetaobjectDefinition($event)"
+                            <input type="hidden" name="metaobject_definition" value="{{ $refMetaobjectDefinition }}" />
+
+                            <input
+                                type="text"
+                                readonly
+                                value="{{ $metaobjectLabel ?: ($validations->metaobject_type ?? '') }}"
+                                class="w-full cursor-not-allowed rounded-md border bg-gray-100 px-3 py-2.5 text-sm text-gray-600 dark:border-gray-600 dark:bg-cherry-800 dark:text-gray-300"
                             />
                         </x-admin::form.control-group>
 
                         <x-admin::form.control-group class="w-[525px]">
                             <div class="flex items-center gap-2">
-                                <v-metaobject-builder @created="onMetaobjectDefinitionCreated"></v-metaobject-builder>
                                 <v-metaobject-mapper :definition="metaobjectDefinition"></v-metaobject-mapper>
                             </div>
                         </x-admin::form.control-group>
@@ -695,25 +689,6 @@
                         }
                     },
 
-                    handleMetaobjectDefinition(event) {
-                        const definition = (event && (typeof event === 'string' || event instanceof String)) ? JSON.parse(event) : null;
-                        this.applyMetaobjectNaming(definition);
-                    },
-
-                    onMetaobjectDefinitionCreated(definition) {
-                        if (this.$refs.metaobjectDefinition) {
-                            this.$refs.metaobjectDefinition.selectedValue = definition;
-                        }
-                        this.applyMetaobjectNaming(definition);
-                    },
-
-                    applyMetaobjectNaming(definition) {
-                        const type = String(definition?.id ?? '').split('|')[0] || '';
-                        this.metaobjectDefinition = definition?.id ?? '';
-                        this.attribute = definition?.label ?? type;
-                        this.name_space_key = type ? 'custom.' + type : '';
-                    },
-
                     applyReferenceNaming() {
                         if (! this.referenceSource || this.referenceSource === 'metaobject') {
                             return;
@@ -735,8 +710,6 @@
         </script>
 
         @include('shopify::metafield._taxonomy-picker')
-
-        @include('shopify::metafield._metaobject-builder')
 
         @include('shopify::metafield._metaobject-mapper')
     @endPushOnce

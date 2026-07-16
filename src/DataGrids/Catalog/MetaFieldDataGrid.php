@@ -4,6 +4,7 @@ namespace Webkul\Shopify\DataGrids\Catalog;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
 use Webkul\DataGrid\DataGrid;
 
 class MetaFieldDataGrid extends DataGrid
@@ -76,9 +77,21 @@ class MetaFieldDataGrid extends DataGrid
                     'product_reference' => trans('shopify::app.shopify.metafield.datagrid.product-reference'),
                     'variant_reference' => trans('shopify::app.shopify.metafield.datagrid.variant-reference'),
                     'collection_reference' => trans('shopify::app.shopify.metafield.datagrid.collection-reference'),
+                    'file_reference' => trans('shopify::app.shopify.metafield.datagrid.file-reference'),
+                    'metaobject_reference' => trans('shopify::app.shopify.metafield.datagrid.metaobject-reference'),
                 ];
 
-                return $referenceLabels[$row->type] ?? (! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type);
+                if (isset($referenceLabels[$row->type])) {
+                    return $referenceLabels[$row->type];
+                }
+
+                $typeKey = 'shopify::app.shopify.metafield.type.'.$row->type;
+
+                if (Lang::has($typeKey)) {
+                    return trans($typeKey);
+                }
+
+                return ! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type;
             },
         ]);
 

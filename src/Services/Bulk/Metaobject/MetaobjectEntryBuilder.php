@@ -72,4 +72,39 @@ class MetaobjectEntryBuilder
     {
         return trim(strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $value)), '-');
     }
+
+    public function fileAttributeCodes(string $type, string $shopUrl, array $seen = []): array
+    {
+        if (in_array($type, $seen, true)) {
+            return [];
+        }
+
+        $seen[] = $type;
+
+        $mapping = $this->mappingRepository->findOneWhere(['api_url' => $shopUrl, 'type' => $type]);
+
+        if (! $mapping) {
+            return [];
+        }
+
+        $codes = [];
+
+        foreach ($mapping->fields ?? [] as $field) {
+            if (($field['source'] ?? '') === 'metaobject') {
+                $childType = $field['child_type'] ?? '';
+
+                if ($childType !== '') {
+                    $codes = array_merge($codes, $this->fileAttributeCodes($childType, $shopUrl, $seen));
+                }
+
+                continue;
+            }
+
+            if (($field['shopify_type'] ?? '') === 'file_reference' && ! empty($field['attribute_code'])) {
+                $codes[] = $field['attribute_code'];
+            }
+        }
+
+        return array_values(array_unique($codes));
+    }
 }

@@ -331,6 +331,8 @@ return [
                 'product-reference' => 'Ссылка на товар',
                 'variant-reference' => 'Ссылка на вариант товара',
                 'collection-reference' => 'Ссылка на коллекцию',
+                'file-reference' => 'Ссылка на файл',
+                'metaobject-reference' => 'Ссылка на метаобъект',
                 'pin' => 'Pin',
             ],
             'index' => [

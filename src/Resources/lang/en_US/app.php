@@ -341,6 +341,8 @@ return [
                 'product-reference' => 'Product Reference',
                 'variant-reference' => 'Product Variant Reference',
                 'collection-reference' => 'Collection Reference',
+                'file-reference' => 'File Reference',
+                'metaobject-reference' => 'Metaobject Reference',
                 'pin' => 'Pin',
             ],
             'index' => [

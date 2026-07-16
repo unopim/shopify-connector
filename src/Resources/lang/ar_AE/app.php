@@ -331,6 +331,8 @@ return [
                 'product-reference' => 'مرجع المنتج',
                 'variant-reference' => 'مرجع متغير المنتج',
                 'collection-reference' => 'مرجع المجموعة',
+                'file-reference' => 'مرجع الملف',
+                'metaobject-reference' => 'مرجع الكائن الوصفي',
                 'pin' => 'دبوس',
             ],
             'index' => [

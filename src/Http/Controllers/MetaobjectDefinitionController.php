@@ -194,6 +194,8 @@ class MetaobjectDefinitionController extends Controller
             $mappingFields[] = $entry;
         }
 
+        $this->syncDefinition($credential->toApiArray(), $type, $gid ?? '', $mappingFields);
+
         $this->mappingRepository->updateOrCreateByType($credential->shopUrl, $type, [
             'gid' => $gid ?? '',
             'name' => $data['name'] ?? $type,
@@ -201,6 +203,85 @@ class MetaobjectDefinitionController extends Controller
         ]);
 
         return new JsonResponse(['saved' => true]);
+    }
+
+    protected function syncDefinition(array $credential, string $type, string $gid, array $mappingFields): void
+    {
+        if ($gid === '' || empty($mappingFields)) {
+            return;
+        }
+
+        $response = $this->requestGraphQlApiAction('metaobjectDefinitionByType', $credential, ['type' => $type]);
+        $existing = [];
+
+        foreach ($response['body']['data']['metaobjectDefinitionByType']['fieldDefinitions'] ?? [] as $fieldDefinition) {
+            $existing[$fieldDefinition['key']] = $fieldDefinition;
+        }
+
+        $operations = [];
+
+        foreach ($mappingFields as $field) {
+            $key = $field['key'] ?? '';
+
+            if ($key === '') {
+                continue;
+            }
+
+            $type_ = $this->shopifyFieldType($field);
+            $name = $field['name'] ?? $key;
+
+            if (! isset($existing[$key])) {
+                $operations[] = ['create' => ['key' => $key, 'name' => $name, 'type' => $type_]];
+
+                continue;
+            }
+
+            if (($existing[$key]['type']['name'] ?? '') !== $type_) {
+                logger()->warning('Shopify metaobject field type changed, skipped', [
+                    'type' => $type,
+                    'key' => $key,
+                    'shopify' => $existing[$key]['type']['name'] ?? '',
+                    'mapped' => $type_,
+                ]);
+
+                continue;
+            }
+
+            if (($existing[$key]['name'] ?? '') !== $name) {
+                $operations[] = ['update' => ['key' => $key, 'name' => $name]];
+            }
+        }
+
+        if (empty($operations)) {
+            return;
+        }
+
+        $update = $this->requestGraphQlApiAction('metaobjectDefinitionUpdate', $credential, [
+            'id' => $gid,
+            'definition' => ['fieldDefinitions' => $operations],
+        ]);
+
+        $errors = $update['body']['data']['metaobjectDefinitionUpdate']['userErrors'] ?? [];
+
+        if (! empty($errors)) {
+            logger()->warning('Shopify metaobjectDefinitionUpdate error', ['type' => $type, 'errors' => $errors]);
+        }
+    }
+
+    protected function shopifyFieldType(array $field): string
+    {
+        $base = $field['shopify_type'] ?? '';
+
+        if ($base === '') {
+            $base = match ($field['source'] ?? 'attribute') {
+                'association' => ($field['as'] ?? 'product') === 'variant' ? 'variant_reference' : 'product_reference',
+                'categories' => 'collection_reference',
+                'metaobject' => 'metaobject_reference',
+                default => 'single_line_text_field',
+            };
+        }
+
+        return ! empty($field['list']) ? 'list.'.$base : $base;
     }
 
     protected function attributeLabels(array $mapped): array

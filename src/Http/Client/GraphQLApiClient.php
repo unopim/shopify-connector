@@ -165,6 +165,10 @@ class GraphQLApiClient
             'query' => 'mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) { metaobjectDefinitionCreate(definition: $definition) { metaobjectDefinition { id type name } userErrors { field message code } } }',
             'method' => 'POST',
         ],
+        'metaobjectDefinitionUpdate' => [
+            'query' => 'mutation metaobjectDefinitionUpdate($id: ID!, $definition: MetaobjectDefinitionUpdateInput!) { metaobjectDefinitionUpdate(id: $id, definition: $definition) { metaobjectDefinition { id type } userErrors { field message code } } }',
+            'method' => 'POST',
+        ],
         'metaobjectUpsert' => [
             'query' => 'mutation metaobjectUpsert($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) { metaobjectUpsert(handle: $handle, metaobject: $metaobject) { metaobject { id handle } userErrors { field message code } } }',
             'method' => 'POST',
