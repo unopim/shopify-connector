@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Product;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
@@ -1291,6 +1292,10 @@ class Importer extends AbstractImporter
                 $source = $attribute->type === 'gallery' ? $stored : implode(',', $stored);
             }
 
+            if ($metaData['node']['type'] === 'date_time' && ! empty($source)) {
+                $source = Carbon::parse($source)->format('Y-m-d H:i:s');
+            }
+
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
                 $common[$unoAttr] = $source;
             }
@@ -1398,7 +1403,7 @@ class Importer extends AbstractImporter
 
         $urls = [];
         foreach ($nodes as $node) {
-            $url = $node['url'] ?? ($node['image']['url'] ?? null);
+            $url = $node['url'] ?? ($node['image']['url'] ?? ($node['sources'][0]['url'] ?? null));
             if ($url) {
                 $urls[] = $url;
             }

@@ -138,6 +138,8 @@ class Exporter extends AbstractExporter
 
         $this->prepareMetafieldShopify($batch, $filePath);
 
+        $this->syncMetafieldExtras($batch->data);
+
         /**
          * Update export batch process state summary
          */
@@ -187,6 +189,41 @@ class Exporter extends AbstractExporter
                 $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl);
             }
         }
+    }
+
+    /**
+     * Register exported definition codes in the credential's metafield extras so
+     * the product importer's whitelist picks them up without a metafield re-import.
+     */
+    private function syncMetafieldExtras(array $rows): void
+    {
+        $product = [];
+        $variant = [];
+
+        foreach ($rows as $row) {
+            $code = $row['code'] ?? null;
+            if (empty($code)) {
+                continue;
+            }
+
+            $namespace = explode('.', (string) ($row['name_space_key'] ?? ''))[0] ?: 'custom';
+
+            if (($row['ownerType'] ?? '') === 'PRODUCTVARIANT') {
+                $variant[$code] = $namespace;
+            } else {
+                $product[$code] = $namespace;
+            }
+        }
+
+        if (empty($product) && empty($variant)) {
+            return;
+        }
+
+        $extras = $this->credential->extras ?? [];
+        $extras['productMetafield'] = array_merge($extras['productMetafield'] ?? [], $product);
+        $extras['productVariantMetafield'] = array_merge($extras['productVariantMetafield'] ?? [], $variant);
+
+        $this->shopifyRepository->update(['extras' => $extras], $this->credential->id);
     }
 
     private function extractId(?string $apiUrl, string $shopUrl): ?string
@@ -289,7 +326,7 @@ class Exporter extends AbstractExporter
             $minunit = $validationDatas['minunit'] ?? null;
             unset($validationDatas['maxunit'], $validationDatas['minunit']);
             foreach ($validationDatas as $key => $validationData) {
-                if (in_array($key, ['content_type', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute'], true)) {
+                if (in_array($key, ['content_type', 'file_types', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute'], true)) {
                     continue;
                 }
                 if ($validationData == null) {
@@ -322,6 +359,17 @@ class Exporter extends AbstractExporter
                         'value' => json_encode($choices, JSON_UNESCAPED_SLASHES),
                     ];
                 }
+            }
+
+            $fileTypeOptions = $this->resolveFileTypeOptions(
+                $validationDatas['content_type'] ?? null,
+                $validationDatas['file_types'] ?? []
+            );
+            if (! empty($fileTypeOptions)) {
+                $validations[] = [
+                    'name' => 'file_type_options',
+                    'value' => json_encode($fileTypeOptions),
+                ];
             }
 
             $formattedData['validations'] = $validations;
@@ -375,6 +423,24 @@ class Exporter extends AbstractExporter
         }
 
         return $formattedData;
+    }
+
+    /**
+     * Map a file_reference metafield's content type + accepted-file-types into the
+     * Shopify `file_type_options` values. Image/Video presets restrict to that kind;
+     * the generic File preset uses the stored file_types (media) or none (any).
+     *
+     * @param  array<int, string>  $fileTypes
+     * @return array<int, string>
+     */
+    protected function resolveFileTypeOptions(?string $contentType, array $fileTypes): array
+    {
+        return match ($contentType) {
+            'IMAGE' => ['Image'],
+            'VIDEO' => ['Video'],
+            'FILE' => array_values($fileTypes),
+            default => [],
+        };
     }
 
     /**

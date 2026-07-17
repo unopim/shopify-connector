@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Support\Carbon;
 use Webkul\Shopify\Helpers\ShopifyFields;
 
 class ShopifyGraphQLDataFormatter
@@ -210,6 +211,10 @@ class ShopifyGraphQLDataFormatter
 
                     case 'rich_text_field':
                         $metafieldValue = $this->htmlToShopifyRichText($rawData[$unoAttribute] ?? null);
+                        break;
+
+                    case 'date_time':
+                        $metafieldValue = Carbon::parse($rawData[$unoAttribute])->format('Y-m-d\TH:i:s');
                         break;
 
                     default:

@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'gallery', 'file', 'asset'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset'];
                                         $referenceSourceOptions = json_encode([
                                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
@@ -300,6 +300,25 @@
                                 v-if="!referenceMode && key === 'file_reference'"
                             />
 
+                            <x-admin::form.control-group v-if="!referenceMode && key === 'file_reference' && contentType === 'FILE'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.accepted-file-types')
+                                </x-admin::form.control-group.label>
+
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    id="file_types"
+                                    name="file_types"
+                                    track-by="id"
+                                    label-by="name"
+                                    v-model="fileTypeMode"
+                                    ::options="fileTypeOptions"
+                                    @input="handleFileTypeChange($event)"
+                                    :label="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                                    :placeholder="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                                />
+                            </x-admin::form.control-group>
+
                             <x-admin::form.control-group v-if="!referenceMode && key === 'link'">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.anchor-text')
@@ -509,6 +528,37 @@
                                 </x-admin::form.control-group>
                             </div>
 
+                            <div v-if="!referenceMode && typeofminmx == 'datetime'">
+                                <x-admin::form.control-group>
+                                <x-admin::form.control-group.label v-text="minvalueLabel">
+                                </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="datetime"
+                                        id="minvalue"
+                                        name="minvalue"
+                                        ::label="minvalueLabel"
+                                        ::placeholder="minvalueLabel"
+                                        value=""
+                                    />
+
+                                    <x-admin::form.control-group.error control-name="minvalue"/>
+                                </x-admin::form.control-group>
+                                <x-admin::form.control-group>
+                                <x-admin::form.control-group.label v-text="maxvalueLabel">
+                                </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="datetime"
+                                        id="maxvalue"
+                                        name="maxvalue"
+                                        ::label="maxvalueLabel"
+                                        ::placeholder="maxvalueLabel"
+                                        value=""
+                                    />
+
+                                    <x-admin::form.control-group.error control-name="maxvalue"/>
+                                </x-admin::form.control-group>
+                            </div>
+
                             <input type="hidden" name="pin" value="0" />
                             <x-admin::form.control-group v-if="taxonomyCount === 0">
                                 <x-admin::form.control-group.label>
@@ -619,6 +669,11 @@
                         key: null,
                         urlvalidation: false,
                         width: null,
+                        fileTypeMode: 'any',
+                        fileTypeOptions: [
+                            { id: 'any', name: "{{ trans('shopify::app.shopify.metafield.index.any-file-type') }}" },
+                            { id: 'media', name: "{{ trans('shopify::app.shopify.metafield.index.media-file-only') }}" },
+                        ],
                         referenceMode: false,
                         referenceSource: '',
                         associationType: 'related_products',
@@ -649,6 +704,7 @@
                         if (on) {
                             this.adminFilterable = null;
                             this.smartCollectionCondition = null;
+                            this.fileTypeMode = 'any';
                             this.applyReferenceNaming();
                         }
                     },
@@ -709,6 +765,12 @@
                         }
                     },
 
+                    handleFileTypeChange(event) {
+                        if (event && typeof event === 'string') {
+                            this.fileTypeMode = JSON.parse(event)?.id ?? 'any';
+                        }
+                    },
+
                     handleReferenceSelect(event, field) {
                         if (event && (typeof event === 'string' || event instanceof String)) {
                             this[field] = JSON.parse(event)?.id;
@@ -760,12 +822,15 @@
                             this.key = key;
                             this.contentTypeName = parsedEvent?.name;
                             this.contentType = parsedEvent?.content_type ?? '';
+                            this.fileTypeMode = 'any';
                             var contentTypeData = this.metaFieldTypeInShopify[key];
                             this.contenttypeSelect = contentTypeData?.list ? 1 : 0;
                             if (parsedEvent?.id === 'single_line_text_field' || parsedEvent?.id === 'number_integer' || parsedEvent?.id == 'number_decimal' || parsedEvent?.id === 'multi_line_text_field' || parsedEvent?.id === 'rating' || parsedEvent?.id == 'dimension' || parsedEvent?.id == 'volume' || parsedEvent?.id == 'weight') {
                                 this.typeofminmx = "text";
                             } else if (parsedEvent?.id === 'date') {
                                 this.typeofminmx = "date";
+                            } else if (parsedEvent?.id === 'date_time') {
+                                this.typeofminmx = "datetime";
                             } else {
                                 this.typeofminmx = null;
                             }

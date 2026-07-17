@@ -170,6 +170,13 @@ class MetaFieldController extends Controller
             $validationValue['content_type'] = $data['content_type'];
         }
 
+        if (($data['type'] ?? null) === 'file_reference') {
+            $fileTypes = $this->resolveFileTypes($data['file_types'] ?? null);
+            if (! empty($fileTypes)) {
+                $validationValue['file_types'] = $fileTypes;
+            }
+        }
+
         if (($data['type'] ?? null) === 'choice_list') {
             $data['type'] = 'single_line_text_field';
             $validationValue['content_type'] = 'choice_list';
@@ -400,6 +407,13 @@ class MetaFieldController extends Controller
             $validationValue['content_type'] = $requestData['content_type'];
         }
 
+        if (($requestData['type'] ?? null) === 'file_reference') {
+            $fileTypes = $this->resolveFileTypes($requestData['file_types'] ?? null);
+            if (! empty($fileTypes)) {
+                $validationValue['file_types'] = $fileTypes;
+            }
+        }
+
         if (($requestData['type'] ?? null) === 'choice_list') {
             $requestData['type'] = 'single_line_text_field';
             $validationValue['content_type'] = 'choice_list';
@@ -463,6 +477,18 @@ class MetaFieldController extends Controller
     private function decodeTaxonomyCategory(mixed $value): array
     {
         return is_string($value) ? (json_decode($value, true) ?: []) : (array) $value;
+    }
+
+    /**
+     * Resolve the accepted-file-types mode into Shopify file_type_options.
+     * Only the generic "File" content type exposes this; "media" restricts to
+     * images and videos, anything else means any file type (no restriction).
+     *
+     * @return array<int, string>
+     */
+    private function resolveFileTypes(?string $raw): array
+    {
+        return $raw === 'media' ? ['Image', 'Video'] : [];
     }
 
     /**

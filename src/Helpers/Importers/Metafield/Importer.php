@@ -53,7 +53,9 @@ class Importer extends AbstractImporter
         'weight' => 'text',
         'volume' => 'text',
         'date' => 'date',
+        'date_time' => 'datetime',
         'file_reference' => 'image',
+        'list.file_reference' => 'gallery',
         'link' => 'text',
     ];
 
@@ -313,12 +315,25 @@ class Importer extends AbstractImporter
         }
 
         if (str_contains($typeName, 'file_reference')) {
-            $fileTypes = (string) (collect($node['validations'] ?? [])
+            $data['type'] = 'file_reference';
+            $fileTypesRaw = (string) (collect($node['validations'] ?? [])
                 ->firstWhere('name', 'file_type_options')['value'] ?? '');
-            $contentType = str_contains($fileTypes, 'Image') ? 'IMAGE'
-                : (str_contains($fileTypes, 'Video') ? 'VIDEO' : 'FILE');
+            $hasImage = str_contains($fileTypesRaw, 'Image');
+            $hasVideo = str_contains($fileTypesRaw, 'Video');
 
-            $data['validations'] = json_encode(['content_type' => $contentType]);
+            // Image+video restriction is a generic File type limited to media;
+            // a single kind maps to that content type; none means any file type.
+            if ($hasImage && $hasVideo) {
+                $validations = ['content_type' => 'FILE', 'file_types' => ['Image', 'Video']];
+            } elseif ($hasImage) {
+                $validations = ['content_type' => 'IMAGE'];
+            } elseif ($hasVideo) {
+                $validations = ['content_type' => 'VIDEO'];
+            } else {
+                $validations = ['content_type' => 'FILE'];
+            }
+
+            $data['validations'] = json_encode($validations);
         }
 
         $referenceBase = preg_replace('/^list\./', '', $typeName);

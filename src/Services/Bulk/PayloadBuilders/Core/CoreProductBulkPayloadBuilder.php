@@ -303,7 +303,11 @@ class CoreProductBulkPayloadBuilder
                     $path = (string) $single;
                     $values[$path] = [
                         'path' => $path,
-                        'content_type' => $contentType,
+                        // Gallery holds mixed media, so detect each file's type from its
+                        // extension rather than the definition's single content_type.
+                        'content_type' => $attributeType === 'gallery'
+                            ? $this->pathFileContentType($path)
+                            : $contentType,
                         'url' => $this->assetUrlResolver->resolveMedia($path)['url'] ?? '',
                     ];
                 }
@@ -365,6 +369,22 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $mime === 'video/mp4' ? 'VIDEO' : 'FILE';
+    }
+
+    /**
+     * Map a gallery file path to a Shopify file content type by extension.
+     * Shopify hosts jpg/png/gif/webp/bmp as IMAGE and mp4 as VIDEO; svg, webm
+     * and mkv are not media there, so they upload as generic FILE.
+     */
+    protected function pathFileContentType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'], true)) {
+            return 'IMAGE';
+        }
+
+        return $extension === 'mp4' ? 'VIDEO' : 'FILE';
     }
 
     /**

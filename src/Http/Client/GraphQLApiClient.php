@@ -141,7 +141,7 @@ class GraphQLApiClient
         ],
 
         'getFileById' => [
-            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } } }',
+            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } ... on Video { id fileStatus sources { url } } } }',
             'method' => 'POST',
         ],
 

@@ -218,6 +218,14 @@ class ShoifyMetaFieldType
             ],
         ],
 
+        'date_time' => [
+            'list' => true,
+            'validation' => [
+                'min' => 'Minimum date',
+                'max' => 'Maximum date',
+            ],
+        ],
+
         'number_decimal' => [
             'list' => true,
             'validation' => [
@@ -507,6 +515,21 @@ class ShoifyMetaFieldType
                 ],
             ],
 
+            'datetime' => [
+                [
+                    'id' => 'date_time',
+                    'name' => trans('shopify::app.shopify.metafield.type.date_time'),
+                ],
+                [
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
             'decimal' => [
                 [
                     'id' => 'number_decimal',
@@ -600,6 +623,16 @@ class ShoifyMetaFieldType
                     'id' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.image_file'),
                     'content_type' => 'IMAGE',
+                ],
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.video'),
+                    'content_type' => 'VIDEO',
+                ],
+                [
+                    'id' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.file'),
+                    'content_type' => 'FILE',
                 ],
             ],
 
