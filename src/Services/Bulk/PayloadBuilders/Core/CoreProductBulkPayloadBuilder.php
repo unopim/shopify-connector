@@ -301,13 +301,17 @@ class CoreProductBulkPayloadBuilder
 
                 foreach ((array) $value as $single) {
                     $path = (string) $single;
+                    $resolvedType = $attributeType === 'gallery'
+                        ? $this->pathFileContentType($path)
+                        : $contentType;
                     $values[$path] = [
                         'path' => $path,
-                        // Gallery holds mixed media, so detect each file's type from its
-                        // extension rather than the definition's single content_type.
-                        'content_type' => $attributeType === 'gallery'
-                            ? $this->pathFileContentType($path)
-                            : $contentType,
+                        // The same asset shared by several definitions is uploaded once, so it
+                        // keeps the most specific type: a MediaImage satisfies both an
+                        // Image-restricted and an "any file" definition, a GenericFile does not.
+                        'content_type' => isset($values[$path])
+                            ? $this->preferContentType($values[$path]['content_type'], $resolvedType)
+                            : $resolvedType,
                         'url' => $this->assetUrlResolver->resolveMedia($path)['url'] ?? '',
                     ];
                 }
@@ -315,6 +319,13 @@ class CoreProductBulkPayloadBuilder
         }
 
         return ['values' => array_values($values), 'aliases' => $aliases];
+    }
+
+    protected function preferContentType(?string $current, ?string $incoming): ?string
+    {
+        $rank = ['IMAGE' => 3, 'VIDEO' => 2, 'FILE' => 1];
+
+        return ($rank[$incoming] ?? 0) > ($rank[$current] ?? 0) ? $incoming : $current;
     }
 
     /**
