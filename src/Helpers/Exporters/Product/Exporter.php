@@ -563,8 +563,9 @@ class Exporter extends AbstractExporter
         return DB::table('products as p')
             ->leftJoin('products as parent', 'p.parent_id', '=', 'parent.id')
             ->whereIn('p.sku', $skus)
-            ->select(DB::raw('COALESCE(parent.sku, p.sku) AS root_sku'))
-            ->pluck('root_sku')
+            ->select('p.sku as own_sku', 'parent.sku as parent_sku')
+            ->get()
+            ->map(fn ($row) => $row->parent_sku ?? $row->own_sku)
             ->unique()
             ->values()
             ->all();
