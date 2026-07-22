@@ -717,6 +717,9 @@
                         if (this.contentTypeName) {
                             formData.set("ContentTypeName", this.contentTypeName);
                         }
+                        if (!this.referenceMode && this.key) {
+                            formData.set("type", this.key);
+                        }
                         if (((minCharslen && minCharslen.trim().length > 0) || (maxCharslen && maxCharslen.trim().length > 0)) &&
                         this.typeofminmx != 'date'
                     )   {
@@ -818,7 +821,7 @@
                         if (event && typeof event === 'string' && !event.includes('[]')) {
                             var parsedEvent = JSON.parse(event);
                             this.enableTagsAttribute = 0;
-                            var key = parsedEvent?.id;
+                            var key = parsedEvent?.type ?? parsedEvent?.id;
                             this.key = key;
                             this.contentTypeName = parsedEvent?.name;
                             this.contentType = parsedEvent?.content_type ?? '';

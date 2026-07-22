@@ -620,17 +620,20 @@ class ShoifyMetaFieldType
 
             'gallery' => [
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_image',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.image_file'),
                     'content_type' => 'IMAGE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.video'),
                     'content_type' => 'VIDEO',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.file'),
                     'content_type' => 'FILE',
                 ],
@@ -638,12 +641,14 @@ class ShoifyMetaFieldType
 
             'file' => [
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.file'),
                     'content_type' => 'FILE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.video'),
                     'content_type' => 'VIDEO',
                 ],
@@ -651,17 +656,20 @@ class ShoifyMetaFieldType
 
             'asset' => [
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_image',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.image_file'),
                     'content_type' => 'IMAGE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.file'),
                     'content_type' => 'FILE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.video'),
                     'content_type' => 'VIDEO',
                 ],
