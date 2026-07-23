@@ -275,6 +275,7 @@ class BulkResultFinalizer
         // and let Shopify generate the handle.
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
         unset($variables['input']['files']);
+        $this->prepareRecreateVariants($variables['input'], $manifestLine['variant_inventory'] ?? []);
 
         $result = $this->runRecreateProductSet($credential, $variables);
 
@@ -318,6 +319,29 @@ class BulkResultFinalizer
         $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
 
         return ['success' => true];
+    }
+
+    /**
+     * A recreate is a fresh create, so drop the stale variant ids and restore the
+     * per-location inventory the core payload omitted (it was built as an update).
+     * The inventory list is ordered to match the input variants.
+     *
+     * @param  array<int, array<int, array<string, mixed>>|null>  $inventory
+     */
+    protected function prepareRecreateVariants(array &$input, array $inventory): void
+    {
+        if (empty($input['variants'])) {
+            return;
+        }
+
+        foreach ($input['variants'] as $index => &$variant) {
+            unset($variant['id']);
+
+            if (! empty($inventory[$index])) {
+                $variant['inventoryQuantities'] = $inventory[$index];
+            }
+        }
+        unset($variant);
     }
 
     /**

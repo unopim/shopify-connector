@@ -71,7 +71,6 @@ class ShopifyGraphQLDataFormatter
         array $parentData = [],
         $productMetaField = [],
         $variantMetaField = [],
-        bool $variantExists = false,
     ): array {
         $configuredStatus = $exportMapping['shopify_connector_settings']['status'] ?? null;
 
@@ -93,7 +92,7 @@ class ShopifyGraphQLDataFormatter
 
         $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
 
-        $this->applyLocationInventory($formatted, $rawData, $variantExists);
+        $this->applyLocationInventory($formatted, $rawData);
 
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
@@ -483,14 +482,14 @@ class ShopifyGraphQLDataFormatter
 
     /**
      * Build the variant inventoryQuantities list from the per-location attribute map
-     * (credential extras['locationAttributeMappings']). On create only mapped locations
-     * are sent (mapped+numeric value, otherwise 0); unmapped locations are skipped. On
-     * update no location is sent, leaving all stock untouched. No-op when no per-location
-     * mappings are configured.
+     * (credential extras['locationAttributeMappings']). Mapped locations get their
+     * numeric value (otherwise 0); unmapped locations are skipped. The create/update
+     * decision (send on create, skip on update to leave stock untouched) is applied by
+     * the caller when assembling the variant input. No-op when no mappings are configured.
      */
-    protected function applyLocationInventory(array &$formatted, array $rawData, bool $variantExists): void
+    protected function applyLocationInventory(array &$formatted, array $rawData): void
     {
-        if (empty($this->locationAttributeMappings) || $variantExists) {
+        if (empty($this->locationAttributeMappings)) {
             return;
         }
 
@@ -511,6 +510,9 @@ class ShopifyGraphQLDataFormatter
 
         if (! empty($list)) {
             $formatted['variant']['inventoryQuantities'] = $list;
+            // Per-location quantities are honoured by Shopify only when the inventory
+            // item is tracked; on create productSet then activates every listed location.
+            $formatted['variant']['inventoryItem']['tracked'] = true;
         }
     }
 

@@ -620,8 +620,7 @@ class CoreProductBulkPayloadBuilder
                 $this->shopifyDefaultLocale ?? 'en',
                 $parentMergedFields,
                 $this->productMetaFieldMapping,
-                $this->variantMetaFieldMapping,
-                $variantGid !== null
+                $this->variantMetaFieldMapping
             );
 
             $variantMetafields = ! empty($parentData) ? ($formattedVariant['metafields'] ?? []) : [];
@@ -642,6 +641,7 @@ class CoreProductBulkPayloadBuilder
             $variantManifest[] = [
                 'sku' => $variantRow['sku'],
                 'has_media' => $this->variantHasMedia($variantMergedFields),
+                'inventory' => $formattedVariant['variant']['inventoryQuantities'] ?? null,
             ];
         }
 
@@ -686,6 +686,7 @@ class CoreProductBulkPayloadBuilder
                 'product_sku' => $productSku,
                 'product_handle' => $productInput['handle'] ?? null,
                 'variant_skus' => array_column($variantManifest, 'sku'),
+                'variant_inventory' => array_column($variantManifest, 'inventory'),
                 'media_plan_items' => $mediaPlanItems,
                 'phase_context' => [
                     'publishing' => ! empty($this->credential?->extras['salesChannel']),
@@ -847,9 +848,11 @@ class CoreProductBulkPayloadBuilder
             'inventoryPolicy' => $variantPayload['inventoryPolicy'] ?? null,
             'metafields' => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
             'inventoryItem' => empty($inventoryItem) ? null : $inventoryItem,
-            // Inventory quantities are synced inline through productSet; there is
-            // no separate inventory phase, so this is the single source of truth.
-            'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            // Inventory quantities are synced inline through productSet; there is no
+            // separate inventory phase. Sent only on create (no variant id) so an
+            // update never overwrites existing Shopify stock. On a stale-mapping
+            // recreate the value is re-injected from the manifest by BulkResultFinalizer.
+            'inventoryQuantities' => $variantId ? null : ($variantPayload['inventoryQuantities'] ?? null),
             'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
             'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
