@@ -11,11 +11,14 @@ use Webkul\DataTransfer\Services\JobLogger;
 use Webkul\Shopify\Jobs\RunVariantMediaPhase;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class BulkResultFinalizer
 {
     use ShopifyGraphqlRequest;
+
+    protected ?array $metafieldCodeMap = null;
 
     public function __construct(
         protected ShopifyMappingRepository $shopifyMappingRepository,
@@ -23,6 +26,7 @@ class BulkResultFinalizer
         protected JobTrackBatchRepository $jobTrackBatchRepository,
         protected JobTrackRepository $jobTrackRepository,
         protected PhaseProgressTracker $phaseProgressTracker,
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
     ) {}
 
     /**
@@ -104,7 +108,7 @@ class BulkResultFinalizer
                 $failed[] = [
                     'line' => $index,
                     'sku' => $sku,
-                    'errors' => $userErrors,
+                    'errors' => $this->annotateMetafieldErrors($userErrors, $inputLines[$index] ?? null),
                 ];
 
                 continue;
@@ -167,6 +171,48 @@ class BulkResultFinalizer
         // Dispatch follow-up phases
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    protected function annotateMetafieldErrors(array $userErrors, ?array $inputLine): array
+    {
+        $metafields = $inputLine['input']['metafields'] ?? null;
+
+        if (empty($metafields) || ! is_array($metafields)) {
+            return $userErrors;
+        }
+
+        foreach ($userErrors as &$error) {
+            $field = (array) ($error['field'] ?? []);
+            $position = array_search('metafields', $field, true);
+
+            if ($position === false || ! isset($field[$position + 1])) {
+                continue;
+            }
+
+            $metafield = $metafields[(int) $field[$position + 1]] ?? null;
+
+            if (! isset($metafield['namespace'], $metafield['key'])) {
+                continue;
+            }
+
+            $namespaceKey = $metafield['namespace'].'.'.$metafield['key'];
+            $field[$position + 1] = $this->metafieldCodeMap()[$namespaceKey] ?? $namespaceKey;
+            $error['field'] = $field;
+        }
+        unset($error);
+
+        return $userErrors;
+    }
+
+    protected function metafieldCodeMap(): array
+    {
+        if ($this->metafieldCodeMap === null) {
+            $this->metafieldCodeMap = $this->shopifyMetaFieldRepository->all(['code', 'name_space_key'])
+                ->pluck('code', 'name_space_key')
+                ->toArray();
+        }
+
+        return $this->metafieldCodeMap;
     }
 
     /**
@@ -322,9 +368,7 @@ class BulkResultFinalizer
     }
 
     /**
-     * A recreate is a fresh create, so drop the stale variant ids and restore the
-     * per-location inventory the core payload omitted (it was built as an update).
-     * The inventory list is ordered to match the input variants.
+     * Drop stale variant ids and restore per-location inventory for a recreate (a create).
      *
      * @param  array<int, array<int, array<string, mixed>>|null>  $inventory
      */

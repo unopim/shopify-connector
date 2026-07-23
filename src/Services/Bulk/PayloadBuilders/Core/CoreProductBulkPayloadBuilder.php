@@ -848,10 +848,6 @@ class CoreProductBulkPayloadBuilder
             'inventoryPolicy' => $variantPayload['inventoryPolicy'] ?? null,
             'metafields' => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
             'inventoryItem' => empty($inventoryItem) ? null : $inventoryItem,
-            // Inventory quantities are synced inline through productSet; there is no
-            // separate inventory phase. Sent only on create (no variant id) so an
-            // update never overwrites existing Shopify stock. On a stale-mapping
-            // recreate the value is re-injected from the manifest by BulkResultFinalizer.
             'inventoryQuantities' => $variantId ? null : ($variantPayload['inventoryQuantities'] ?? null),
             'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
             'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,

@@ -481,11 +481,8 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Build the variant inventoryQuantities list from the per-location attribute map
-     * (credential extras['locationAttributeMappings']). Mapped locations get their
-     * numeric value (otherwise 0); unmapped locations are skipped. The create/update
-     * decision (send on create, skip on update to leave stock untouched) is applied by
-     * the caller when assembling the variant input. No-op when no mappings are configured.
+     * Build the variant inventoryQuantities list from the per-location attribute map,
+     * flagging the item tracked so Shopify honours the quantities.
      */
     protected function applyLocationInventory(array &$formatted, array $rawData): void
     {
@@ -510,8 +507,6 @@ class ShopifyGraphQLDataFormatter
 
         if (! empty($list)) {
             $formatted['variant']['inventoryQuantities'] = $list;
-            // Per-location quantities are honoured by Shopify only when the inventory
-            // item is tracked; on create productSet then activates every listed location.
             $formatted['variant']['inventoryItem']['tracked'] = true;
         }
     }
