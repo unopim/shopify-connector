@@ -203,6 +203,20 @@
                                 </x-admin::form.control-group>
 
                                 <template v-if="referenceSource === 'metaobject'">
+                                    <x-admin::form.control-group v-if="shopifyCredentials.length > 1">
+                                        <x-admin::form.control-group.label class="required">
+                                            @lang('shopify::app.shopify.metafield.index.metaobject-credential')
+                                        </x-admin::form.control-group.label>
+                                        <v-select-handler
+                                            track-by="id"
+                                            label-by="label"
+                                            :options="shopifyCredentials"
+                                            :value="selectedCredential"
+                                            placeholder="@lang('shopify::app.shopify.metafield.index.metaobject-credential')"
+                                            @input="handleCredentialSelect($event)"
+                                        ></v-select-handler>
+                                    </x-admin::form.control-group>
+
                                     <x-admin::form.control-group>
                                         <x-admin::form.control-group.label class="required">
                                             @lang('shopify::app.shopify.metafield.index.metaobject-definition')
@@ -214,6 +228,8 @@
                                             async=true
                                             track-by="id"
                                             label-by="label"
+                                            ::key="'mo-def-' + selectedCredential + '-' + metaobjectListKey"
+                                            ::query-params="{ credential_id: selectedCredential }"
                                             :label="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
                                             :placeholder="trans('shopify::app.shopify.metafield.index.metaobject-definition')"
                                             :list-route="route('shopify.metaobject.definitions.fetch-all')"
@@ -223,8 +239,9 @@
 
                                     <x-admin::form.control-group>
                                         <div class="flex items-center gap-2">
-                                            <v-metaobject-builder @created="onMetaobjectDefinitionCreated"></v-metaobject-builder>
-                                            <v-metaobject-mapper :definition="metaobjectDefinition"></v-metaobject-mapper>
+                                            <v-metaobject-builder :credential-id="selectedCredential" @created="onMetaobjectDefinitionCreated"></v-metaobject-builder>
+                                            <v-metaobject-mapper :definition="metaobjectDefinition" :credential-id="selectedCredential"></v-metaobject-mapper>
+                                            <v-metaobject-sync v-if="shopifyCredentials.length > 1" :definition="metaobjectDefinition" :credential-id="selectedCredential"></v-metaobject-sync>
                                         </div>
                                     </x-admin::form.control-group>
                                 </template>
@@ -748,6 +765,9 @@
                         referenceAs: 'product',
                         referenceListChoice: 'one',
                         metaobjectDefinition: '',
+                        shopifyCredentials: @json($shopifyCredentials ?? []),
+                        selectedCredential: @json($shopifyCredentials[0]['id'] ?? ''),
+                        metaobjectListKey: 0,
                     };
                 },
                 computed: {
@@ -859,6 +879,16 @@
                         }
                     },
 
+                    handleCredentialSelect(event) {
+                        if (event && (typeof event === 'string' || event instanceof String)) {
+                            this.selectedCredential = JSON.parse(event)?.id ?? this.selectedCredential;
+                            this.metaobjectDefinition = '';
+                            if (this.$refs.metaobjectDefinition) {
+                                this.$refs.metaobjectDefinition.selectedValue = [];
+                            }
+                        }
+                    },
+
                     handleReferenceSelect(event, field) {
                         if (event && (typeof event === 'string' || event instanceof String)) {
                             this[field] = JSON.parse(event)?.id;
@@ -877,10 +907,13 @@
                     },
 
                     onMetaobjectDefinitionCreated(definition) {
-                        if (this.$refs.metaobjectDefinition) {
-                            this.$refs.metaobjectDefinition.selectedValue = definition;
-                        }
-                        this.applyMetaobjectNaming(definition);
+                        this.metaobjectListKey++;
+                        this.$nextTick(() => {
+                            if (this.$refs.metaobjectDefinition) {
+                                this.$refs.metaobjectDefinition.selectedValue = definition;
+                            }
+                            this.applyMetaobjectNaming(definition);
+                        });
                     },
 
                     applyMetaobjectNaming(definition) {
@@ -993,5 +1026,7 @@
         @include('shopify::metafield._metaobject-builder')
 
         @include('shopify::metafield._metaobject-mapper')
+
+        @include('shopify::metafield._metaobject-sync')
     @endPushOnce
 </x-admin::layouts>

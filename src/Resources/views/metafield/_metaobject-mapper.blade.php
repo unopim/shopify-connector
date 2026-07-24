@@ -54,7 +54,7 @@
 
                     <div v-else-if="field.source === 'metaobject'">
                         <div v-if="field.child" class="mt-2">
-                            <v-metaobject-mapper :definition="field.child"></v-metaobject-mapper>
+                            <v-metaobject-mapper :definition="field.child" :credential-id="credentialId"></v-metaobject-mapper>
                         </div>
                         <p v-else class="text-sm text-gray-400" v-text="'@lang('shopify::app.shopify.metafield.index.metaobject-unconstrained')'"></p>
                     </div>
@@ -76,7 +76,10 @@
     app.component('v-metaobject-mapper', {
         template: '#v-metaobject-mapper-template',
 
-        props: { definition: { type: String, default: '' } },
+        props: {
+            definition: { type: String, default: '' },
+            credentialId: { type: [String, Number], default: '' },
+        },
 
         data() {
             return {
@@ -111,8 +114,8 @@
                 this.errors = [];
                 this.renderKey++;
                 Promise.all([
-                    this.$axios.get("{{ route('shopify.metaobject.definition.fields') }}", { params: { definition: this.definition } }),
-                    this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}"),
+                    this.$axios.get("{{ route('shopify.metaobject.definition.fields') }}", { params: { definition: this.definition, credential_id: this.credentialId } }),
+                    this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}", { params: { credential_id: this.credentialId } }),
                 ]).then(([fieldsRes, definitionsRes]) => {
                     this.definitions = definitionsRes.data.options || [];
                     this.name = fieldsRes.data.name || '';
@@ -163,6 +166,7 @@
                     definition: this.definition,
                     name: this.name,
                     fields: this.fields,
+                    credential_id: this.credentialId,
                 })
                     .then(() => { this.closeModal(); })
                     .catch(err => { this.errors = Object.values(err.response?.data?.errors || {}).flat(); })

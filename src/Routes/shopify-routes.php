@@ -124,6 +124,10 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::post('metaobject-definition', 'store')->name('shopify.metaobject.definition.store');
 
             Route::post('metaobject-definition/map', 'map')->name('shopify.metaobject.definition.map');
+
+            Route::get('metaobject-definition/sync-status', 'syncStatus')->name('shopify.metaobject.definition.sync-status');
+
+            Route::post('metaobject-definition/sync', 'sync')->name('shopify.metaobject.definition.sync');
         });
 
     });

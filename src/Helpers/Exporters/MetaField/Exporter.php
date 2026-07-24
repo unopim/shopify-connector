@@ -14,6 +14,7 @@ use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -64,7 +65,8 @@ class Exporter extends AbstractExporter
         protected FileExportFileBuffer $exportFileBuffer,
         protected ShopifyCredentialRepository $shopifyRepository,
         protected ShoifyMetaFieldType $shoifyMetaFieldType,
-        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ShopifyMetaobjectMappingRepository $shopifyMetaobjectMappingRepository
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
     }
@@ -326,7 +328,7 @@ class Exporter extends AbstractExporter
             $minunit = $validationDatas['minunit'] ?? null;
             unset($validationDatas['maxunit'], $validationDatas['minunit']);
             foreach ($validationDatas as $key => $validationData) {
-                if (in_array($key, ['content_type', 'file_types', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute', 'metaobject_type'], true)) {
+                if (in_array($key, ['content_type', 'file_types', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute', 'metaobject_type', 'metaobject_definition_id'], true)) {
                     continue;
                 }
                 if ($validationData == null) {
@@ -370,6 +372,26 @@ class Exporter extends AbstractExporter
                     'name' => 'file_type_options',
                     'value' => json_encode($fileTypeOptions),
                 ];
+            }
+
+            if (($rowData['type'] ?? null) === 'metaobject_reference') {
+                $metaobjectType = $validationDatas['metaobject_type'] ?? null;
+
+                $definitionGid = $metaobjectType
+                    ? $this->shopifyMetaobjectMappingRepository->findOneWhere([
+                        'api_url' => $this->credentialArray['shopUrl'],
+                        'type' => $metaobjectType,
+                    ])?->gid
+                    : null;
+
+                if ($definitionGid) {
+                    $validations[] = ['name' => 'metaobject_definition_id', 'value' => $definitionGid];
+                } else {
+                    $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-definition-missing', [
+                        'type' => $metaobjectType ?? '',
+                        'store' => $this->credentialArray['shopUrl'],
+                    ]));
+                }
             }
 
             $formattedData['validations'] = $validations;

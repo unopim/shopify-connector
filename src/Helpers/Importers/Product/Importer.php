@@ -32,7 +32,6 @@ use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
 use Webkul\Shopify\Services\Bulk\Metaobject\MetaobjectValueResolver;
-use Webkul\Shopify\Services\ShopifyClientFactory;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -1415,9 +1414,8 @@ class Importer extends AbstractImporter
     /**
      * Resolve a file_reference metafield into stored UnoPim asset path(s) via the
      * existing image fetch/queue pipeline. Prefers the file URL fetched inline in
-     * the bulk product query (`reference`) — that rides the proxy on SaaS too. Falls
-     * back to a direct getFileById lookup (manual transport only) when no inline
-     * reference is present. Returns the stored paths, or null when nothing resolves.
+     * the bulk product query (`reference`); falls back to a getFileById lookup
+     * (list references such as galleries are not inlined by the bulk query).
      *
      * @return array<int, string>|null
      */
@@ -1426,12 +1424,6 @@ class Importer extends AbstractImporter
         $urls = $this->fileReferenceUrlsInline($metaNode);
 
         if (empty($urls)) {
-            if (! app(ShopifyClientFactory::class)->supportsFileReference($this->credentialArray)) {
-                $this->jobLogger->warning('File metafield import skipped — no inline reference and SaaS proxy file endpoints unavailable.');
-
-                return null;
-            }
-
             $urls = $this->fileReferenceUrlsByIds((string) ($metaNode['value'] ?? ''));
         }
 
@@ -1475,8 +1467,8 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Fallback GID → URL resolution via getFileById (manual transport only — the
-     * SaaS proxy does not expose this endpoint).
+     * Fallback GID → URL resolution via getFileById. Manual runs the query
+     * directly; SaaS routes it through the proxy `files` endpoint.
      *
      * @return array<int, string>
      */

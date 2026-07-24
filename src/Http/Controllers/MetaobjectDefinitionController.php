@@ -67,6 +67,11 @@ class MetaobjectDefinitionController extends Controller
         ], fn ($value) => $value !== '' && $value !== []);
 
         $response = $this->requestGraphQlApiAction('metaobjectDefinitionCreate', $credential->toApiArray(), ['definition' => $definition]);
+
+        if ($apiError = $this->apiError($response)) {
+            return new JsonResponse(['errors' => ['shopify' => [$apiError]]], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $payload = $response['body']['data']['metaobjectDefinitionCreate'] ?? [];
 
         if (! empty($payload['userErrors'])) {
@@ -78,6 +83,12 @@ class MetaobjectDefinitionController extends Controller
         $created = $payload['metaobjectDefinition'] ?? [];
         $type = $created['type'] ?? '';
         $gid = $created['id'] ?? '';
+
+        if ($gid === '') {
+            return new JsonResponse([
+                'errors' => ['shopify' => [trans('shopify::app.shopify.metafield.index.metaobject-create-failed')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         $this->mappingRepository->updateOrCreateByType($credential->shopUrl, $type, [
             'gid' => $gid,
@@ -219,6 +230,193 @@ class MetaobjectDefinitionController extends Controller
         ]);
 
         return new JsonResponse(['saved' => true]);
+    }
+
+    public function syncStatus(): JsonResponse
+    {
+        $source = $this->activeCredential();
+        $type = explode('|', (string) request()->get('definition'), 2)[0];
+
+        if (! $source || $type === '') {
+            return new JsonResponse(['stores' => []]);
+        }
+
+        $stores = $this->shopifyRepository->findWhere([['active', '=', 1]])
+            ->reject(fn ($credential) => $credential->id === $source->id)
+            ->map(fn ($credential) => [
+                'id' => $credential->id,
+                'label' => $credential->shopUrl,
+                'synced' => (bool) $this->mappingRepository->findOneWhere(['api_url' => $credential->shopUrl, 'type' => $type]),
+            ])
+            ->values()
+            ->all();
+
+        return new JsonResponse(['stores' => $stores]);
+    }
+
+    public function sync(): JsonResponse
+    {
+        $source = $this->activeCredential();
+
+        if (! $source) {
+            return new JsonResponse([
+                'errors' => ['credential' => [trans('shopify::app.shopify.metafield.index.metaobject-manual-required')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $type = explode('|', (string) request()->get('definition'), 2)[0];
+
+        if ($type === '') {
+            return new JsonResponse([
+                'errors' => ['fields' => [trans('shopify::app.shopify.metafield.index.metaobject-fields-required')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $targets = $this->shopifyRepository->findWhere([['active', '=', 1]])
+            ->reject(fn ($credential) => $credential->id === $source->id);
+
+        $selected = array_filter((array) request()->get('targets'));
+
+        if (! empty($selected)) {
+            $selected = array_map('strval', $selected);
+            $targets = $targets->filter(fn ($credential) => in_array((string) $credential->id, $selected, true));
+        }
+
+        $results = [];
+
+        foreach ($targets as $target) {
+            $seen = [];
+
+            try {
+                $this->replicateDefinition($source, $target, $type, $seen);
+                $results[] = ['store' => $target->shopUrl, 'status' => 'synced'];
+            } catch (\Throwable $e) {
+                $results[] = ['store' => $target->shopUrl, 'status' => 'failed', 'message' => $e->getMessage()];
+            }
+        }
+
+        return new JsonResponse(['results' => $results]);
+    }
+
+    protected function replicateDefinition($source, $target, string $type, array &$seen): string
+    {
+        if (isset($seen[$type])) {
+            return $seen[$type];
+        }
+
+        $sourceMapping = $this->mappingRepository->findOneWhere(['api_url' => $source->shopUrl, 'type' => $type]);
+
+        if (! $sourceMapping) {
+            throw new \RuntimeException(trans('shopify::app.shopify.metafield.index.metaobject-source-missing', ['type' => $type]));
+        }
+
+        $mappingFields = $sourceMapping->fields ?? [];
+        $childGids = [];
+
+        foreach ($mappingFields as $field) {
+            if (($field['source'] ?? '') === 'metaobject' && ! empty($field['child_type'])) {
+                $childGids[$field['key']] = $this->replicateDefinition($source, $target, $field['child_type'], $seen);
+            }
+        }
+
+        $targetCredential = $target->toApiArray();
+        $existing = $this->requestGraphQlApiAction('metaobjectDefinitionByType', $targetCredential, ['type' => $type]);
+
+        if ($error = $this->apiError($existing)) {
+            throw new \RuntimeException($error);
+        }
+
+        $existingDefinition = $existing['body']['data']['metaobjectDefinitionByType'] ?? null;
+        $fieldDefinitions = $this->buildFieldDefinitionsFromMapping($mappingFields, $childGids);
+
+        if (! empty($existingDefinition['id'])) {
+            $gid = $existingDefinition['id'];
+            $this->appendMissingFields($targetCredential, $gid, $existingDefinition, $fieldDefinitions);
+        } else {
+            $response = $this->requestGraphQlApiAction('metaobjectDefinitionCreate', $targetCredential, [
+                'definition' => [
+                    'name' => $sourceMapping->name ?: $type,
+                    'type' => $type,
+                    'fieldDefinitions' => $fieldDefinitions,
+                ],
+            ]);
+
+            if ($error = $this->apiError($response)) {
+                throw new \RuntimeException($error);
+            }
+
+            $payload = $response['body']['data']['metaobjectDefinitionCreate'] ?? [];
+
+            if (! empty($payload['userErrors'])) {
+                throw new \RuntimeException(implode('; ', array_column($payload['userErrors'], 'message')));
+            }
+
+            $gid = $payload['metaobjectDefinition']['id'] ?? '';
+        }
+
+        $this->mappingRepository->updateOrCreateByType($target->shopUrl, $type, [
+            'gid' => $gid,
+            'name' => $sourceMapping->name ?: $type,
+            'fields' => $mappingFields,
+        ]);
+
+        return $seen[$type] = $gid;
+    }
+
+    protected function buildFieldDefinitionsFromMapping(array $mappingFields, array $childGids): array
+    {
+        $definitions = [];
+
+        foreach ($mappingFields as $field) {
+            $key = $field['key'] ?? '';
+
+            if ($key === '') {
+                continue;
+            }
+
+            $entry = [
+                'key' => $key,
+                'name' => $field['name'] ?? $key,
+                'type' => $this->shopifyFieldType($field),
+            ];
+
+            if (($field['source'] ?? '') === 'metaobject' && ! empty($childGids[$key])) {
+                $entry['validations'] = [['name' => 'metaobject_definition_id', 'value' => $childGids[$key]]];
+            }
+
+            $definitions[] = $entry;
+        }
+
+        return $definitions;
+    }
+
+    protected function appendMissingFields(array $credential, string $gid, array $existingDefinition, array $fieldDefinitions): void
+    {
+        $existingKeys = array_column($existingDefinition['fieldDefinitions'] ?? [], 'key');
+
+        $operations = array_values(array_filter(array_map(
+            fn ($field) => in_array($field['key'], $existingKeys, true) ? null : ['create' => $field],
+            $fieldDefinitions
+        )));
+
+        if (empty($operations)) {
+            return;
+        }
+
+        $response = $this->requestGraphQlApiAction('metaobjectDefinitionUpdate', $credential, [
+            'id' => $gid,
+            'definition' => ['fieldDefinitions' => $operations],
+        ]);
+
+        if ($error = $this->apiError($response)) {
+            throw new \RuntimeException($error);
+        }
+
+        $errors = $response['body']['data']['metaobjectDefinitionUpdate']['userErrors'] ?? [];
+
+        if (! empty($errors)) {
+            throw new \RuntimeException(implode('; ', array_column($errors, 'message')));
+        }
     }
 
     protected function syncDefinition(array $credential, string $type, string $gid, array $mappingFields): void
@@ -449,9 +647,29 @@ class MetaobjectDefinitionController extends Controller
         return trim(strtolower(preg_replace('/[^a-zA-Z0-9]+/', $separator, $name)), $separator);
     }
 
+    protected function apiError(array $response): ?string
+    {
+        $messages = array_values(array_filter(array_map(
+            fn ($error) => is_array($error) ? ($error['message'] ?? '') : (string) $error,
+            $response['body']['errors'] ?? []
+        )));
+
+        return empty($messages) ? null : implode('; ', $messages);
+    }
+
     protected function activeCredential()
     {
         $credentials = $this->shopifyRepository->findWhere([['active', '=', 1]]);
+
+        $selected = request('credential_id');
+
+        if ($selected) {
+            $match = $credentials->firstWhere('id', (int) $selected);
+
+            if ($match) {
+                return $match;
+            }
+        }
 
         return $credentials->first(fn ($item) => ! empty($item->extras['saas'])) ?? $credentials->first();
     }

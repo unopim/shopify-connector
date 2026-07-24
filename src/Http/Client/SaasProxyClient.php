@@ -420,6 +420,10 @@ class SaasProxyClient implements ShopifyClient
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
         }
 
+        if ($operation === 'getFileById') {
+            return $this->getFilesByIds((array) ($variables['ids'] ?? []));
+        }
+
         if (! isset($this->proxyEndpoints[$operation])) {
             return $this->proxyErrorResponse(null, "Shopify SaaS proxy does not support the '{$operation}' operation.");
         }
@@ -691,9 +695,28 @@ class SaasProxyClient implements ShopifyClient
         }, array_values($list));
     }
 
-    /**
-     * Run a JSON GET against the proxy with Bearer auth.
-     */
+    protected function getFilesByIds(array $ids): array
+    {
+        $ids = array_values(array_filter($ids));
+
+        if (empty($ids)) {
+            return ['code' => 200, 'body' => ['data' => ['nodes' => []]]];
+        }
+
+        $query = http_build_query([
+            'query' => implode(' OR ', array_map(fn ($gid) => 'id:'.preg_replace('#^.*/#', '', (string) $gid), $ids)),
+            'fields' => 'id fileStatus preview{image{url}} ... on MediaImage{ image{url} } ... on Video{ sources{url} } ... on GenericFile{ url }',
+            'first' => count($ids),
+        ]);
+
+        $result = $this->get('/graphql/api/files.json?'.$query);
+
+        return [
+            'code' => $result['code'] ?? null,
+            'body' => ['data' => ['nodes' => $result['body']['files']['nodes'] ?? []]],
+        ];
+    }
+
     protected function get(string $path): array
     {
         $url = rtrim($this->baseUrl, '/').$path;

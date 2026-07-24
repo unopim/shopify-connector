@@ -137,7 +137,7 @@
                                 @input="onChildSelect(field, $event)"
                             ></v-select-handler>
                         </div>
-                        <v-metaobject-builder @created="onNestedCreated(index, $event)"></v-metaobject-builder>
+                        <v-metaobject-builder :credential-id="credentialId" @created="onNestedCreated(index, $event)"></v-metaobject-builder>
                     </div>
                 </div>
 
@@ -173,6 +173,10 @@
     app.component('v-metaobject-builder', {
         template: '#v-metaobject-builder-template',
 
+        props: {
+            credentialId: { type: [String, Number], default: '' },
+        },
+
         emits: ['created'],
 
         data() {
@@ -207,7 +211,6 @@
                 ],
                 saving: false,
                 errors: [],
-                loaded: false,
             };
         },
 
@@ -278,11 +281,8 @@
                 this.reset();
                 this.renderKey++;
 
-                if (! this.loaded) {
-                    this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}")
-                        .then(res => { this.definitions = res.data.options || []; });
-                    this.loaded = true;
-                }
+                this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}", { params: { credential_id: this.credentialId } })
+                    .then(res => { this.definitions = res.data.options || []; });
                 this.$refs.metaobjectBuilderModal.open();
                 this.$nextTick(() => this.raiseModal('metaobjectBuilderModal'));
             },
@@ -355,6 +355,7 @@
                     name: this.name,
                     options: this.options,
                     fields: this.payloadFields(),
+                    credential_id: this.credentialId,
                 })
                     .then(res => {
                         this.$emit('created', res.data.definition);

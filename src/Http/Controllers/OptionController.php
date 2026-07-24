@@ -231,7 +231,10 @@ class OptionController extends Controller
     public function listMetaobjectDefinitions(): JsonResponse
     {
         $credentials = $this->shopifyRepository->findWhere([['active', '=', 1]]);
-        $credential = $credentials->first(fn ($item) => ! empty($item->extras['saas'])) ?? $credentials->first();
+        $selected = request('credential_id');
+        $credential = ($selected ? $credentials->firstWhere('id', (int) $selected) : null)
+            ?? $credentials->first(fn ($item) => ! empty($item->extras['saas']))
+            ?? $credentials->first();
 
         if (! $credential) {
             return new JsonResponse(['options' => []]);

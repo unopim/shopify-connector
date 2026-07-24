@@ -280,9 +280,24 @@
                             />
                         </x-admin::form.control-group>
 
+                        <x-admin::form.control-group v-if="shopifyCredentials.length > 1" class="w-[525px]">
+                            <x-admin::form.control-group.label class="required">
+                                @lang('shopify::app.shopify.metafield.index.metaobject-credential')
+                            </x-admin::form.control-group.label>
+                            <v-select-handler
+                                track-by="id"
+                                label-by="label"
+                                :options="shopifyCredentials"
+                                :value="selectedCredential"
+                                placeholder="@lang('shopify::app.shopify.metafield.index.metaobject-credential')"
+                                @input="handleCredentialSelect($event)"
+                            ></v-select-handler>
+                        </x-admin::form.control-group>
+
                         <x-admin::form.control-group class="w-[525px]">
                             <div class="flex items-center gap-2">
-                                <v-metaobject-mapper :definition="metaobjectDefinition"></v-metaobject-mapper>
+                                <v-metaobject-mapper :definition="metaobjectDefinition" :credential-id="selectedCredential"></v-metaobject-mapper>
+                                <v-metaobject-sync v-if="shopifyCredentials.length > 1" :definition="metaobjectDefinition" :credential-id="selectedCredential"></v-metaobject-sync>
                             </div>
                         </x-admin::form.control-group>
                     </template>
@@ -710,6 +725,8 @@
                         referenceAs: @json($refAs ?? 'product'),
                         referenceListChoice: @json($metaField->listvalue ? 'list' : 'one'),
                         metaobjectDefinition: @json($refMetaobjectDefinition ?? ''),
+                        shopifyCredentials: @json($shopifyCredentials ?? []),
+                        selectedCredential: @json($shopifyCredentials[0]['id'] ?? ''),
                         attribute: @json($metaField->attribute ?? ''),
                         name_space_key: @json($metaField->name_space_key ?? ''),
                         fileTypeMode: @json($fileTypeMode ?? 'any'),
@@ -746,6 +763,12 @@
                 methods: {
                     togglenableStorefronts() {
                         this.storefronts = this.enableStorefronts ? 'Read' : 'No access';
+                    },
+
+                    handleCredentialSelect(event) {
+                        if (event && (typeof event === 'string' || event instanceof String)) {
+                            this.selectedCredential = JSON.parse(event)?.id ?? this.selectedCredential;
+                        }
                     },
 
                     handleReferenceSelect(event, field) {
@@ -795,5 +818,7 @@
         @include('shopify::metafield._taxonomy-picker')
 
         @include('shopify::metafield._metaobject-mapper')
+
+        @include('shopify::metafield._metaobject-sync')
     @endPushOnce
 </x-admin::layouts.with-history>

@@ -9,6 +9,7 @@ use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Shopify\DataGrids\Catalog\MetaFieldDataGrid;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Http\Requests\MetaFieldForm;
+use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectMappingRepository;
 use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
@@ -57,7 +58,16 @@ class MetaFieldController extends Controller
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
         protected AttributeRepository $attributeRepository,
         protected ShopifyMetaobjectMappingRepository $shopifyMetaobjectMappingRepository,
+        protected ShopifyCredentialRepository $shopifyCredentialRepository,
     ) {}
+
+    protected function activeCredentialOptions(): array
+    {
+        return $this->shopifyCredentialRepository->findWhere([['active', '=', 1]])
+            ->map(fn ($credential) => ['id' => $credential->id, 'label' => $credential->shopUrl])
+            ->values()
+            ->all();
+    }
 
     /**
      * Display a listing of the resource.
@@ -73,8 +83,9 @@ class MetaFieldController extends Controller
         $object = (new ShoifyMetaFieldType);
         $metaFieldType = $object->getMetaFieldType();
         $metaFieldTypeInShopify = $object->getMetaFieldTypeInShopify();
+        $shopifyCredentials = $this->activeCredentialOptions();
 
-        return view('shopify::metafield.index', compact('metaFieldType', 'metaFieldTypeInShopify'));
+        return view('shopify::metafield.index', compact('metaFieldType', 'metaFieldTypeInShopify', 'shopifyCredentials'));
     }
 
     /**
@@ -364,7 +375,9 @@ class MetaFieldController extends Controller
             $metaobjectLabel = $mapping->name ?? $validations['metaobject_type'];
         }
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'metaobjectLabel'));
+        $shopifyCredentials = $this->activeCredentialOptions();
+
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'metaobjectLabel', 'shopifyCredentials'));
     }
 
     /**
