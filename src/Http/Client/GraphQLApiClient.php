@@ -141,7 +141,7 @@ class GraphQLApiClient
         ],
 
         'getFileById' => [
-            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } } }',
+            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } ... on Video { id fileStatus sources { url } } } }',
             'method' => 'POST',
         ],
 
@@ -158,7 +158,7 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
         'metaobjectDefinitionByType' => [
-            'query' => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } } } }',
+            'query' => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } validations { name value } } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitionCreate' => [
@@ -171,6 +171,10 @@ class GraphQLApiClient
         ],
         'metaobjectUpsert' => [
             'query' => 'mutation metaobjectUpsert($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) { metaobjectUpsert(handle: $handle, metaobject: $metaobject) { metaobject { id handle } userErrors { field message code } } }',
+            'method' => 'POST',
+        ],
+        'getMetaobjectsByType' => [
+            'query' => 'query getMetaobjectsByType($type: String!, $first: Int!, $after: String) { metaobjects(type: $type, first: $first, after: $after) { edges { cursor node { id type fields { key value } } } pageInfo { hasNextPage } } }',
             'method' => 'POST',
         ],
         'createTranslation' => [

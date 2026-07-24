@@ -230,8 +230,8 @@ class OptionController extends Controller
      */
     public function listMetaobjectDefinitions(): JsonResponse
     {
-        $credential = $this->shopifyRepository->findWhere([['active', '=', 1]])
-            ->first(fn ($item) => empty($item->extras['saas']));
+        $credentials = $this->shopifyRepository->findWhere([['active', '=', 1]]);
+        $credential = $credentials->first(fn ($item) => ! empty($item->extras['saas'])) ?? $credentials->first();
 
         if (! $credential) {
             return new JsonResponse(['options' => []]);
@@ -336,6 +336,7 @@ class OptionController extends Controller
                 'code' => $attribute->code,
                 'type' => $attribute?->type,
                 'validation' => $attribute->validation,
+                'swatch_type' => $attribute?->swatch_type,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }

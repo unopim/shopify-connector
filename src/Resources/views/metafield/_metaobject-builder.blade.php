@@ -76,15 +76,18 @@
                     </div>
 
                     <div class="mt-2 flex items-center gap-4">
-                        <label class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                            <input type="checkbox" v-model="field.required" /> required
-                        </label>
-                        <label class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                            <input type="checkbox" v-model="field.list" /> list of values
-                        </label>
-                        <label class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-                            <input type="checkbox" v-model="field.reference" @change="onReferenceToggle(field)" /> @lang('shopify::app.shopify.metafield.index.reference')
-                        </label>
+                        <span class="inline-flex cursor-pointer items-center gap-1 text-xs text-gray-600 dark:text-gray-300" @click="field.required = ! field.required">
+                            <span class="text-2xl" :class="field.required ? 'icon-checkbox-check text-violet-700' : 'icon-checkbox-normal'"></span>
+                            required
+                        </span>
+                        <span class="inline-flex cursor-pointer items-center gap-1 text-xs text-gray-600 dark:text-gray-300" @click="field.list = ! field.list">
+                            <span class="text-2xl" :class="field.list ? 'icon-checkbox-check text-violet-700' : 'icon-checkbox-normal'"></span>
+                            list of values
+                        </span>
+                        <span class="inline-flex cursor-pointer items-center gap-1 text-xs text-gray-600 dark:text-gray-300" @click="field.reference = ! field.reference; onReferenceToggle(field)">
+                            <span class="text-2xl" :class="field.reference ? 'icon-checkbox-check text-violet-700' : 'icon-checkbox-normal'"></span>
+                            @lang('shopify::app.shopify.metafield.index.reference')
+                        </span>
                     </div>
 
                     <div v-if="! field.reference && field.attribute_code" class="mt-2 w-1/2">
@@ -125,6 +128,7 @@
                     <div v-if="field.reference && field.source === 'metaobject'" class="mt-2 flex items-start gap-2">
                         <div class="flex-1">
                             <v-select-handler
+                                :key="'child-' + index + '-' + field.child"
                                 track-by="id"
                                 label-by="label"
                                 :options="definitions"

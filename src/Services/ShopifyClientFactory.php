@@ -58,13 +58,12 @@ class ShopifyClientFactory
 
     /**
      * Whether metaobject reference metafields can be resolved for this credential.
-     *
-     * Metaobject reads/writes are not exposed by the SaaS proxy yet, so they are
-     * skipped there and only run on manual credentials.
+     * Supported on both manual and SaaS (the proxy exposes the metaobject
+     * definition/entry operations).
      */
     public function supportsMetaobject(array $credential): bool
     {
-        return empty($credential['extras']['saas']);
+        return true;
     }
 
     /**

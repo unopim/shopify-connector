@@ -221,6 +221,35 @@ class SaasProxyClient implements ShopifyClient
             'field' => 'translatableResource',
             'respKey' => 'node',
         ],
+
+        'metaobjectDefinitions' => [
+            'path' => '/graphql/api/metaobjectDefinitions.json',
+            'method' => 'POST',
+            'connection' => 'metaobjectDefinitions',
+            'override' => ['fields' => 'id name type'],
+        ],
+        'metaobjectDefinitionByType' => [
+            'path' => '/graphql/api/metaobjectDefinitionsByType/{type}.json',
+            'method' => 'POST',
+            'field' => 'metaobjectDefinitionByType',
+            'override' => ['fields' => 'id name type fieldDefinitions{ key name required type{ name } validations{ name value } }'],
+        ],
+        'metaobjectDefinitionCreate' => [
+            'path' => '/graphql/api/metaobjectDefinitionCreate.json',
+            'method' => 'POST',
+            'field' => 'metaobjectDefinitionCreate',
+        ],
+        'metaobjectDefinitionUpdate' => [
+            'path' => '/graphql/api/metaobjectDefinitionUpdate.json',
+            'method' => 'PUT',
+            'field' => 'metaobjectDefinitionUpdate',
+        ],
+        'metaobjectUpsert' => [
+            'path' => '/graphql/api/metaobjectUpsert.json',
+            'method' => 'PUT',
+            'field' => 'metaobjectUpsert',
+            'override' => ['fields' => 'id handle'],
+        ],
     ];
 
     public function __construct(
@@ -397,7 +426,14 @@ class SaasProxyClient implements ShopifyClient
 
         $definition = $this->proxyEndpoints[$operation];
 
-        $url = rtrim($this->baseUrl, '/').$definition['path'];
+        $path = preg_replace_callback('/\{(\w+)\}/', function ($matches) use (&$variables) {
+            $value = rawurlencode((string) ($variables[$matches[1]] ?? ''));
+            unset($variables[$matches[1]]);
+
+            return $value;
+        }, $definition['path']);
+
+        $url = rtrim($this->baseUrl, '/').$path;
 
         // The data key the consumer reads the result under: a list operation
         // exposes its `connection` key, a single-result operation its `field`.
@@ -585,6 +621,16 @@ class SaasProxyClient implements ShopifyClient
                 $body[$to] = $body[$from];
                 unset($body[$from]);
             }
+        }
+
+        foreach ($definition['defaults'] ?? [] as $key => $value) {
+            if (! isset($body[$key]) || $body[$key] === '') {
+                $body[$key] = $value;
+            }
+        }
+
+        foreach ($definition['override'] ?? [] as $key => $value) {
+            $body[$key] = $value;
         }
 
         // The proxy's translationsRegister endpoint requires the resource id as

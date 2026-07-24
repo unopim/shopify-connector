@@ -106,7 +106,7 @@ it('stores a metafield definition with taxonomy categories', function () {
         'code' => 'taxonomy_code',
         'type' => 'single_line_text_field',
         'name_space_key' => 'custom.taxonomy_code',
-        'pin' => '1',
+        'pin' => '0',
         'attribute' => 'test_attribute',
         'taxonomy_category' => json_encode([TAXONOMY_ROOT, TAXONOMY_LEAF]),
     ])->assertStatus(200);

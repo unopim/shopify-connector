@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset'];
                                         $referenceSourceOptions = json_encode([
                                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
@@ -328,6 +328,25 @@
                                 v-if="!referenceMode && key === 'file_reference'"
                             />
 
+                            <x-admin::form.control-group v-if="!referenceMode && key === 'file_reference' && contentType === 'FILE'">
+                                <x-admin::form.control-group.label>
+                                    @lang('shopify::app.shopify.metafield.index.accepted-file-types')
+                                </x-admin::form.control-group.label>
+
+                                <x-admin::form.control-group.control
+                                    type="select"
+                                    id="file_types"
+                                    name="file_types"
+                                    track-by="id"
+                                    label-by="name"
+                                    v-model="fileTypeMode"
+                                    ::options="fileTypeOptions"
+                                    @input="handleFileTypeChange($event)"
+                                    :label="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                                    :placeholder="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                                />
+                            </x-admin::form.control-group>
+
                             <x-admin::form.control-group v-if="!referenceMode && key === 'link'">
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.anchor-text')
@@ -510,6 +529,40 @@
                                     </x-admin::form.control-group>
                                 </div>
                             </div>
+                            <div v-if="!referenceMode && key === 'id'">
+                                @php
+                                    $regexPresetOptions = json_encode([
+                                        ['id' => '^[a-zA-Z]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphabetical')],
+                                        ['id' => '^[a-zA-Z0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphanumeric')],
+                                        ['id' => '^[0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-numeric')],
+                                        ['id' => '^[a-zA-Z0-9_-]{3,20}$', 'name' => trans('shopify::app.shopify.metafield.index.regex-sku')],
+                                    ]);
+                                @endphp
+                                <x-admin::form.control-group>
+                                    <x-admin::form.control-group.label>
+                                        @lang('shopify::app.shopify.metafield.index.regex')
+                                    </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="select"
+                                        name="regex_preset"
+                                        :options="$regexPresetOptions"
+                                        track-by="id"
+                                        label-by="name"
+                                        :placeholder="trans('shopify::app.shopify.metafield.index.regex-preset')"
+                                        @input="handleRegexPreset($event)"
+                                    />
+                                    <x-admin::form.control-group.control
+                                        type="text"
+                                        id="regex"
+                                        name="regex"
+                                        v-model="regexValue"
+                                        class="mt-2"
+                                        :label="trans('shopify::app.shopify.metafield.index.regex')"
+                                        :placeholder="trans('shopify::app.shopify.metafield.index.regex-placeholder')"
+                                    />
+                                    <x-admin::form.control-group.error control-name="regex"/>
+                                </x-admin::form.control-group>
+                            </div>
                             <div v-if="!referenceMode && typeofminmx == 'date'">
                                 <x-admin::form.control-group>
                                 <x-admin::form.control-group.label v-text="minvalueLabel">
@@ -535,6 +588,37 @@
                                         ::label="maxvalueLabel"
                                         ::placeholder="maxvalueLabel"
                                         ref="maxvalueref"
+                                        value=""
+                                    />
+
+                                    <x-admin::form.control-group.error control-name="maxvalue"/>
+                                </x-admin::form.control-group>
+                            </div>
+
+                            <div v-if="!referenceMode && typeofminmx == 'datetime'">
+                                <x-admin::form.control-group>
+                                <x-admin::form.control-group.label v-text="minvalueLabel">
+                                </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="datetime"
+                                        id="minvalue"
+                                        name="minvalue"
+                                        ::label="minvalueLabel"
+                                        ::placeholder="minvalueLabel"
+                                        value=""
+                                    />
+
+                                    <x-admin::form.control-group.error control-name="minvalue"/>
+                                </x-admin::form.control-group>
+                                <x-admin::form.control-group>
+                                <x-admin::form.control-group.label v-text="maxvalueLabel">
+                                </x-admin::form.control-group.label>
+                                    <x-admin::form.control-group.control
+                                        type="datetime"
+                                        id="maxvalue"
+                                        name="maxvalue"
+                                        ::label="maxvalueLabel"
+                                        ::placeholder="maxvalueLabel"
                                         value=""
                                     />
 
@@ -652,6 +736,12 @@
                         key: null,
                         urlvalidation: false,
                         width: null,
+                        fileTypeMode: 'any',
+                        regexValue: '',
+                        fileTypeOptions: [
+                            { id: 'any', name: "{{ trans('shopify::app.shopify.metafield.index.any-file-type') }}" },
+                            { id: 'media', name: "{{ trans('shopify::app.shopify.metafield.index.media-file-only') }}" },
+                        ],
                         referenceMode: false,
                         referenceSource: '',
                         associationType: 'related_products',
@@ -687,6 +777,7 @@
                         if (on) {
                             this.adminFilterable = null;
                             this.smartCollectionCondition = null;
+                            this.fileTypeMode = 'any';
                             this.applyReferenceNaming();
                         }
                     },
@@ -699,30 +790,29 @@
                         if (this.contentTypeName) {
                             formData.set("ContentTypeName", this.contentTypeName);
                         }
-                        if (((minCharslen && minCharslen.trim().length > 0) || (maxCharslen && maxCharslen.trim().length > 0)) && 
-                        this.typeofminmx != 'date'
+                        if (!this.referenceMode && this.key) {
+                            formData.set("type", this.key);
+                        }
+                        if (((minCharslen && minCharslen.trim().length > 0) || (maxCharslen && maxCharslen.trim().length > 0)) &&
+                        this.typeofminmx != 'date' && this.typeofminmx != 'datetime'
                     )   {
                             var jsErrors = {};
+                            const decimalKeys = ['number_decimal', 'rating', 'dimension', 'volume', 'weight'];
+                            const isDecimal = decimalKeys.includes(this.key);
+                            const numberRe = isDecimal ? /^\d+(\.\d+)?$/ : /^\d+$/;
+                            const limit = this.contentTypeName == 'Rating' ? 9999999999999 : 9007199254740991;
 
-                            if (minCharslen && !/^\d+$/.test(minCharslen)) {
+                            if (minCharslen && !numberRe.test(minCharslen)) {
                                 jsErrors['minvalue'] = 'Only Number Allowed';
-                            } else {
-                                const minLimit = this.contentTypeName == 'Rating' ? 9999999999999 : 9007199254740991;
-                                if (BigInt(minCharslen) >= minLimit) {
-                                    jsErrors['minvalue'] = `Validation value for min can't exceed ${minLimit}`;
-                                }
+                            } else if (minCharslen && (isDecimal ? Number(minCharslen) : BigInt(minCharslen)) >= limit) {
+                                jsErrors['minvalue'] = `Validation value for min can't exceed ${limit}`;
                             }
-                            
 
-                            if (maxCharslen && !/^\d+$/.test(maxCharslen)) {
+                            if (maxCharslen && !numberRe.test(maxCharslen)) {
                                 jsErrors['maxvalue'] = 'Only Number Allowed';
-                            } else {
-                                const maxLimit = this.contentTypeName == 'Rating' ? 9999999999999 : 9007199254740991;
-                                if (BigInt(maxCharslen) >= maxLimit) {
-                                    jsErrors['maxvalue'] = `Validation value for min can't exceed ${maxLimit}`;
-                                }
+                            } else if (maxCharslen && (isDecimal ? Number(maxCharslen) : BigInt(maxCharslen)) >= limit) {
+                                jsErrors['maxvalue'] = `Validation value for max can't exceed ${limit}`;
                             }
-                            
 
                             if (jsErrors && Object.keys(jsErrors).length > 0) {
                                 setErrors(jsErrors);
@@ -754,6 +844,18 @@
                         if (event && typeof event === 'string' || event instanceof String) {
                             this.ownerType = JSON.parse(event)?.id;
                             this.adminFilterable = this.ownerType == 'PRODUCT' ? 1 : null;
+                        }
+                    },
+
+                    handleFileTypeChange(event) {
+                        if (event && typeof event === 'string') {
+                            this.fileTypeMode = JSON.parse(event)?.id ?? 'any';
+                        }
+                    },
+
+                    handleRegexPreset(event) {
+                        if (event && typeof event === 'string') {
+                            this.regexValue = JSON.parse(event)?.id ?? this.regexValue;
                         }
                     },
 
@@ -809,6 +911,9 @@
                         if (event && typeof event === 'string' || event instanceof String) {
                             var parsedEvent = JSON.parse(event);
                             var attrType = (parsedEvent?.validation && attrType !== '' ) ? parsedEvent?.validation : parsedEvent?.type;
+                            if ((parsedEvent?.type === 'select' || parsedEvent?.type === 'multiselect') && parsedEvent?.swatch_type === 'color') {
+                                attrType = 'color_swatch';
+                            }
                             this.contentTypeOptions = this.metafieldType[attrType] ?? [];
                             this.attribute = parsedEvent?.label ?? parsedEvent?.code;
                             this.name_space_key = 'custom.'+parsedEvent?.code;
@@ -820,16 +925,20 @@
                         if (event && typeof event === 'string' && !event.includes('[]')) {
                             var parsedEvent = JSON.parse(event);
                             this.enableTagsAttribute = 0;
-                            var key = parsedEvent?.id;
+                            var key = parsedEvent?.type ?? parsedEvent?.id;
                             this.key = key;
                             this.contentTypeName = parsedEvent?.name;
                             this.contentType = parsedEvent?.content_type ?? '';
+                            this.fileTypeMode = 'any';
+                            this.regexValue = '';
                             var contentTypeData = this.metaFieldTypeInShopify[key];
                             this.contenttypeSelect = contentTypeData?.list ? 1 : 0;
-                            if (parsedEvent?.id === 'single_line_text_field' || parsedEvent?.id === 'number_integer' || parsedEvent?.id == 'number_decimal' || parsedEvent?.id === 'multi_line_text_field' || parsedEvent?.id === 'rating' || parsedEvent?.id == 'dimension' || parsedEvent?.id == 'volume' || parsedEvent?.id == 'weight') {
+                            if (parsedEvent?.id === 'single_line_text_field' || parsedEvent?.id === 'id' || parsedEvent?.id === 'number_integer' || parsedEvent?.id == 'number_decimal' || parsedEvent?.id === 'multi_line_text_field' || parsedEvent?.id === 'rating' || parsedEvent?.id == 'dimension' || parsedEvent?.id == 'volume' || parsedEvent?.id == 'weight') {
                                 this.typeofminmx = "text";
                             } else if (parsedEvent?.id === 'date') {
                                 this.typeofminmx = "date";
+                            } else if (parsedEvent?.id === 'date_time') {
+                                this.typeofminmx = "datetime";
                             } else {
                                 this.typeofminmx = null;
                             }

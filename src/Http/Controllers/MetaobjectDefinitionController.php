@@ -30,7 +30,7 @@ class MetaobjectDefinitionController extends Controller
 
     public function store(): JsonResponse
     {
-        $credential = $this->manualCredential();
+        $credential = $this->activeCredential();
 
         if (! $credential) {
             return new JsonResponse([
@@ -93,7 +93,7 @@ class MetaobjectDefinitionController extends Controller
 
     public function fields(): JsonResponse
     {
-        $credential = $this->manualCredential();
+        $credential = $this->activeCredential();
 
         if (! $credential) {
             return new JsonResponse(['fields' => []]);
@@ -127,6 +127,21 @@ class MetaobjectDefinitionController extends Controller
 
             $previous = $mapped[$fieldDefinition['key']] ?? [];
 
+            $childGid = '';
+            if ($source === 'metaobject') {
+                foreach ($fieldDefinition['validations'] ?? [] as $validation) {
+                    if (($validation['name'] ?? '') === 'metaobject_definition_id') {
+                        $childGid = (string) ($validation['value'] ?? '');
+                        break;
+                    }
+                    if (($validation['name'] ?? '') === 'metaobject_definition_ids') {
+                        $ids = json_decode((string) ($validation['value'] ?? '[]'), true);
+                        $childGid = is_array($ids) ? (string) ($ids[0] ?? '') : '';
+                        break;
+                    }
+                }
+            }
+
             $fields[] = [
                 'key' => $fieldDefinition['key'],
                 'name' => $fieldDefinition['name'] ?? $fieldDefinition['key'],
@@ -138,6 +153,7 @@ class MetaobjectDefinitionController extends Controller
                 'attribute_label' => $labels[$previous['attribute_code'] ?? ''] ?? '',
                 'assoc_type' => $previous['assoc_type'] ?? 'related_products',
                 'child' => isset($previous['child_type']) ? $previous['child_type'].'|' : '',
+                'child_gid' => $childGid,
             ];
         }
 
@@ -150,7 +166,7 @@ class MetaobjectDefinitionController extends Controller
 
     public function map(): JsonResponse
     {
-        $credential = $this->manualCredential();
+        $credential = $this->activeCredential();
 
         if (! $credential) {
             return new JsonResponse([
@@ -433,9 +449,10 @@ class MetaobjectDefinitionController extends Controller
         return trim(strtolower(preg_replace('/[^a-zA-Z0-9]+/', $separator, $name)), $separator);
     }
 
-    protected function manualCredential()
+    protected function activeCredential()
     {
-        return $this->shopifyRepository->findWhere([['active', '=', 1]])
-            ->first(fn ($item) => empty($item->extras['saas']));
+        $credentials = $this->shopifyRepository->findWhere([['active', '=', 1]]);
+
+        return $credentials->first(fn ($item) => ! empty($item->extras['saas'])) ?? $credentials->first();
     }
 }

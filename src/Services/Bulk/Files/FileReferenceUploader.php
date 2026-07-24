@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Services\Bulk\Files;
 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\BulkOperationService;
@@ -58,7 +60,7 @@ class FileReferenceUploader
                 continue;
             }
 
-            $cached = $this->cachedGid($path, $shopUrl);
+            $cached = $this->cachedGid($path, $shopUrl, $value['content_type']);
             if ($cached) {
                 $map[$path] = $cached;
 
@@ -78,28 +80,30 @@ class FileReferenceUploader
 
             foreach ($created as $path => $gid) {
                 $map[$path] = $gid;
-                $this->cacheGid($path, $gid, $jobInstanceId, $shopUrl);
+                $this->cacheGid($path, $gid, $jobInstanceId, $shopUrl, $toUpload[$path]['content_type']);
             }
         }
 
         return $map;
     }
 
-    private function cachedGid(string $path, string $shopUrl): ?string
+    private function cachedGid(string $path, string $shopUrl, string $contentType): ?string
     {
         return $this->mappingRepository->findOneWhere([
             ['entityType', '=', self::ENTITY_TYPE],
             ['code', '=', $path],
             ['apiUrl', '=', $shopUrl],
+            ['relatedSource', '=', $contentType],
         ])?->externalId;
     }
 
-    private function cacheGid(string $path, string $gid, int $jobInstanceId, string $shopUrl): void
+    private function cacheGid(string $path, string $gid, int $jobInstanceId, string $shopUrl, string $contentType): void
     {
         $this->mappingRepository->create([
             'entityType' => self::ENTITY_TYPE,
             'code' => $path,
             'externalId' => $gid,
+            'relatedSource' => $contentType,
             'jobInstanceId' => $jobInstanceId,
             'apiUrl' => $shopUrl,
         ]);
@@ -119,9 +123,21 @@ class FileReferenceUploader
      */
     private function createFilesSync(array $toUpload, array $credential): array
     {
+        $map = [];
         $files = [];
 
         foreach ($toUpload as $path => $meta) {
+            // Shopify rejects video external URLs; each video must be staged
+            // uploaded on its own so one bad video never fails the image batch.
+            if (($meta['content_type'] ?? '') === 'VIDEO') {
+                $gid = $this->createVideoViaStaged($path, $credential);
+                if ($gid) {
+                    $map[$path] = $gid;
+                }
+
+                continue;
+            }
+
             $url = $meta['url'] ?? '';
             if ($url === '') {
                 continue;
@@ -133,12 +149,6 @@ class FileReferenceUploader
                 'originalSource' => $url,
             ];
         }
-
-        if (empty($files)) {
-            return [];
-        }
-
-        $map = [];
 
         foreach (array_chunk($files, 250) as $chunk) {
             $response = $this->requestGraphQlApiAction('fileCreate', $credential, ['files' => $chunk]);
@@ -161,6 +171,98 @@ class FileReferenceUploader
     }
 
     /**
+     * Create a single Shopify Video file via staged upload — the only path the
+     * Files API accepts for videos (external URLs error as "Invalid video url").
+     * Returns the File GID, or null when the upload could not complete.
+     */
+    private function createVideoViaStaged(string $path, array $credential): ?string
+    {
+        $resourceUrl = $this->stageVideoUpload($path, $credential);
+        if (! $resourceUrl) {
+            return null;
+        }
+
+        $created = $this->requestGraphQlApiAction('fileCreate', $credential, [
+            'files' => [[
+                'alt' => $path,
+                'contentType' => 'VIDEO',
+                'originalSource' => $resourceUrl,
+            ]],
+        ]);
+
+        $errors = $created['body']['data']['fileCreate']['userErrors'] ?? [];
+        if (! empty($errors)) {
+            logger()->warning('Shopify video fileCreate error', ['path' => $path, 'errors' => $errors]);
+
+            return null;
+        }
+
+        return $created['body']['data']['fileCreate']['files'][0]['id'] ?? null;
+    }
+
+    /**
+     * Stage a local video to Shopify (stagedUploadsCreate + byte upload) and
+     * return the staged resourceUrl for use as a fileCreate/bulk originalSource.
+     * Works on manual and SaaS — stagedUploadsCreate is exposed on the proxy.
+     */
+    private function stageVideoUpload(string $path, array $credential): ?string
+    {
+        $disk = Storage::disk();
+
+        if (! $disk->exists($path)) {
+            logger()->warning('Shopify video upload skipped, file missing', ['path' => $path]);
+
+            return null;
+        }
+
+        $staged = $this->requestGraphQlApiAction('stagedUploadsCreate', $credential, [
+            'input' => [[
+                'resource' => 'VIDEO',
+                'filename' => basename($path),
+                'mimeType' => $this->videoMimeType($path),
+                'fileSize' => (string) $disk->size($path),
+            ]],
+        ]);
+
+        $target = $staged['body']['data']['stagedUploadsCreate']['stagedTargets'][0] ?? null;
+        if (empty($target['url']) || empty($target['resourceUrl'])) {
+            logger()->warning('Shopify staged upload target missing', [
+                'path' => $path,
+                'errors' => $staged['body']['data']['stagedUploadsCreate']['userErrors'] ?? [],
+            ]);
+
+            return null;
+        }
+
+        $multipart = [];
+        foreach ($target['parameters'] as $param) {
+            $multipart[] = ['name' => $param['name'], 'contents' => $param['value']];
+        }
+        $multipart[] = ['name' => 'file', 'contents' => $disk->readStream($path), 'filename' => basename($path)];
+
+        $upload = Http::asMultipart()->post($target['url'], $multipart);
+        if ($upload->failed()) {
+            logger()->warning('Shopify staged video upload failed', ['path' => $path, 'status' => $upload->status()]);
+
+            return null;
+        }
+
+        return $target['resourceUrl'];
+    }
+
+    /**
+     * Best-effort video MIME type from a stored path's extension.
+     */
+    private function videoMimeType(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'mov' => 'video/quicktime',
+            'webm' => 'video/webm',
+            default => 'video/mp4',
+        };
+    }
+
+    /**
      * SaaS transport — create all files with one bulk `fileCreate` operation
      * (`alt` carries the asset path so the result maps back to it).
      *
@@ -171,13 +273,18 @@ class FileReferenceUploader
     {
         $lines = [];
         foreach ($toUpload as $path => $meta) {
-            $url = $meta['url'] ?? '';
-            if ($url === '') {
+            $contentType = $meta['content_type'] ?? '';
+            $source = $contentType === 'VIDEO'
+                ? $this->stageVideoUpload($path, $credential)
+                : ($meta['url'] ?? '');
+
+            if (empty($source)) {
                 continue;
             }
+
             $lines[] = json_encode(['files' => [[
-                'originalSource' => $url,
-                'contentType' => $meta['content_type'],
+                'originalSource' => $source,
+                'contentType' => $contentType,
                 'alt' => $path,
             ]]]);
         }

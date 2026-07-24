@@ -164,8 +164,24 @@ class ShoifyMetaFieldType
             'smartCollectionCondition' => true,
         ],
 
+        'id' => [
+            'list' => false,
+            'validation' => [
+                'min' => 'Minimum character count',
+                'max' => 'Maximum character count',
+            ],
+        ],
+
         'color' => [
             'list' => true,
+        ],
+
+        'choice_list' => [
+            'list' => true,
+        ],
+
+        'rich_text_field' => [
+            'list' => false,
         ],
 
         'rating' => [
@@ -203,6 +219,14 @@ class ShoifyMetaFieldType
         ],
 
         'date' => [
+            'list' => true,
+            'validation' => [
+                'min' => 'Minimum date',
+                'max' => 'Maximum date',
+            ],
+        ],
+
+        'date_time' => [
             'list' => true,
             'validation' => [
                 'min' => 'Minimum date',
@@ -388,6 +412,10 @@ class ShoifyMetaFieldType
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
                 [
+                    'id' => 'id',
+                    'name' => trans('shopify::app.shopify.metafield.type.id'),
+                ],
+                [
                     'id' => 'color',
                     'name' => trans('shopify::app.shopify.metafield.type.color'),
                 ],
@@ -398,10 +426,6 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'url',
                     'name' => trans('shopify::app.shopify.metafield.type.url'),
-                ],
-                [
-                    'id' => 'link',
-                    'name' => trans('shopify::app.shopify.metafield.type.link'),
                 ],
                 [
                     'id' => 'multi_line_text_field',
@@ -417,6 +441,10 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'multi_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id' => 'rich_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.rich_text_field'),
                 ],
                 [
                     'id' => 'json',
@@ -448,6 +476,10 @@ class ShoifyMetaFieldType
                     'id' => 'multi_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
                 ],
+                [
+                    'id' => 'choice_list',
+                    'name' => trans('shopify::app.shopify.metafield.type.choice_list'),
+                ],
             ],
 
             'multiselect' => [
@@ -459,12 +491,46 @@ class ShoifyMetaFieldType
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
+                [
+                    'id' => 'choice_list',
+                    'name' => trans('shopify::app.shopify.metafield.type.choice_list'),
+                ],
+            ],
+
+            'color_swatch' => [
+                [
+                    'id' => 'color',
+                    'name' => trans('shopify::app.shopify.metafield.type.color'),
+                ],
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+                [
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
             ],
 
             'date' => [
                 [
                     'id' => 'date',
                     'name' => trans('shopify::app.shopify.metafield.type.date'),
+                ],
+                [
+                    'id' => 'multi_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.multi_line_text_field'),
+                ],
+                [
+                    'id' => 'single_line_text_field',
+                    'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
+                ],
+            ],
+
+            'datetime' => [
+                [
+                    'id' => 'date_time',
+                    'name' => trans('shopify::app.shopify.metafield.type.date_time'),
                 ],
                 [
                     'id' => 'multi_line_text_field',
@@ -498,6 +564,10 @@ class ShoifyMetaFieldType
                     'name' => trans('shopify::app.shopify.metafield.type.volume'),
                 ],
                 [
+                    'id' => 'rating',
+                    'name' => trans('shopify::app.shopify.metafield.type.rating'),
+                ],
+                [
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
@@ -525,6 +595,10 @@ class ShoifyMetaFieldType
                     'name' => trans('shopify::app.shopify.metafield.type.volume'),
                 ],
                 [
+                    'id' => 'rating',
+                    'name' => trans('shopify::app.shopify.metafield.type.rating'),
+                ],
+                [
                     'id' => 'single_line_text_field',
                     'name' => trans('shopify::app.shopify.metafield.type.single_line_text_field'),
                 ],
@@ -538,6 +612,10 @@ class ShoifyMetaFieldType
                 [
                     'id' => 'url',
                     'name' => trans('shopify::app.shopify.metafield.type.url'),
+                ],
+                [
+                    'id' => 'link',
+                    'name' => trans('shopify::app.shopify.metafield.type.link'),
                 ],
             ],
 
@@ -556,14 +634,37 @@ class ShoifyMetaFieldType
                 ],
             ],
 
+            'gallery' => [
+                [
+                    'id' => 'file_reference_image',
+                    'type' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.image_file'),
+                    'content_type' => 'IMAGE',
+                ],
+                [
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.video'),
+                    'content_type' => 'VIDEO',
+                ],
+                [
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
+                    'name' => trans('shopify::app.shopify.metafield.type.file'),
+                    'content_type' => 'FILE',
+                ],
+            ],
+
             'file' => [
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.file'),
                     'content_type' => 'FILE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.video'),
                     'content_type' => 'VIDEO',
                 ],
@@ -571,17 +672,20 @@ class ShoifyMetaFieldType
 
             'asset' => [
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_image',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.image_file'),
                     'content_type' => 'IMAGE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_file',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.file'),
                     'content_type' => 'FILE',
                 ],
                 [
-                    'id' => 'file_reference',
+                    'id' => 'file_reference_video',
+                    'type' => 'file_reference',
                     'name' => trans('shopify::app.shopify.metafield.type.video'),
                     'content_type' => 'VIDEO',
                 ],

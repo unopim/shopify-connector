@@ -41,9 +41,11 @@ class Importer extends AbstractImporter
 
     protected $attributeType = [
         'single_line_text_field' => 'text',
+        'id' => 'text',
         'json' => 'textarea',
         'number_integer' => 'text',
         'multi_line_text_field' => 'textarea',
+        'rich_text_field' => 'textarea',
         'color' => 'text',
         'rating' => 'text',
         'url' => 'text',
@@ -53,7 +55,9 @@ class Importer extends AbstractImporter
         'weight' => 'text',
         'volume' => 'text',
         'date' => 'date',
+        'date_time' => 'datetime',
         'file_reference' => 'image',
+        'list.file_reference' => 'gallery',
         'link' => 'text',
     ];
 
@@ -74,6 +78,8 @@ class Importer extends AbstractImporter
      * @var mixed
      */
     protected $credentialArray;
+
+    protected ?array $metaobjectTypeByGid = null;
 
     public function __construct(
         protected JobTrackBatchRepository $importBatchRepository,
@@ -221,7 +227,7 @@ class Importer extends AbstractImporter
             $metafieldType = $attribute['node']['type']['name'];
             $baseType = preg_replace('/^list\./', '', $metafieldType);
 
-            if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
+            if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference'], true)) {
                 $this->persistDefinitionIfMissing($attribute);
 
                 continue;
@@ -312,13 +318,35 @@ class Importer extends AbstractImporter
             ]);
         }
 
-        if (str_contains($typeName, 'file_reference')) {
-            $fileTypes = (string) (collect($node['validations'] ?? [])
-                ->firstWhere('name', 'file_type_options')['value'] ?? '');
-            $contentType = str_contains($fileTypes, 'Image') ? 'IMAGE'
-                : (str_contains($fileTypes, 'Video') ? 'VIDEO' : 'FILE');
+        if ($typeName === 'id') {
+            $validations = collect($node['validations'] ?? []);
+            $data['validations'] = json_encode(array_filter([
+                'min' => $validations->firstWhere('name', 'min')['value'] ?? null,
+                'max' => $validations->firstWhere('name', 'max')['value'] ?? null,
+                'regex' => $validations->firstWhere('name', 'regex')['value'] ?? null,
+            ], fn ($value) => $value !== null && $value !== ''));
+        }
 
-            $data['validations'] = json_encode(['content_type' => $contentType]);
+        if (str_contains($typeName, 'file_reference')) {
+            $data['type'] = 'file_reference';
+            $fileTypesRaw = (string) (collect($node['validations'] ?? [])
+                ->firstWhere('name', 'file_type_options')['value'] ?? '');
+            $hasImage = str_contains($fileTypesRaw, 'Image');
+            $hasVideo = str_contains($fileTypesRaw, 'Video');
+
+            // Image+video restriction is a generic File type limited to media;
+            // a single kind maps to that content type; none means any file type.
+            if ($hasImage && $hasVideo) {
+                $validations = ['content_type' => 'FILE', 'file_types' => ['Image', 'Video']];
+            } elseif ($hasImage) {
+                $validations = ['content_type' => 'IMAGE'];
+            } elseif ($hasVideo) {
+                $validations = ['content_type' => 'VIDEO'];
+            } else {
+                $validations = ['content_type' => 'FILE'];
+            }
+
+            $data['validations'] = json_encode($validations);
         }
 
         $referenceBase = preg_replace('/^list\./', '', $typeName);
@@ -331,6 +359,16 @@ class Importer extends AbstractImporter
                     'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
         }
 
+        if ($referenceBase === 'metaobject_reference') {
+            $data['type'] = 'metaobject_reference';
+            $definitionGid = (string) (collect($node['validations'] ?? [])->firstWhere('name', 'metaobject_definition_id')['value'] ?? '');
+            $data['validations'] = json_encode(array_filter([
+                'reference_source' => 'metaobject',
+                'metaobject_definition_id' => $definitionGid,
+                'metaobject_type' => $this->metaobjectTypeByGid()[$definitionGid] ?? null,
+            ], fn ($value) => $value !== null && $value !== ''));
+        }
+
         if (array_key_exists('constraints', $node)) {
             $data['taxonomy_category'] = (($node['constraints']['key'] ?? null) === 'category')
                 ? array_map(
@@ -341,6 +379,46 @@ class Importer extends AbstractImporter
         }
 
         return $data;
+    }
+
+    /**
+     * Resolve every Shopify metaobject definition GID to its type once, so a
+     * metaobject_reference metafield's metaobject_definition_id validation can be
+     * stored with the type the export/UI expect. Works on manual and SaaS.
+     *
+     * @return array<string, string>
+     */
+    protected function metaobjectTypeByGid(): array
+    {
+        if ($this->metaobjectTypeByGid !== null) {
+            return $this->metaobjectTypeByGid;
+        }
+
+        $map = [];
+        $cursor = null;
+
+        do {
+            $response = $this->requestGraphQlApiAction('metaobjectDefinitions', $this->credentialArray, [
+                'first' => 50,
+                'after' => $cursor,
+            ]);
+
+            $connection = $response['body']['data']['metaobjectDefinitions'] ?? [];
+            $edges = $connection['edges'] ?? [];
+
+            foreach ($edges as $edge) {
+                $node = $edge['node'] ?? [];
+                if (! empty($node['id']) && ! empty($node['type'])) {
+                    $map[$node['id']] = $node['type'];
+                }
+            }
+
+            $cursor = (! empty($edges) && ($connection['pageInfo']['hasNextPage'] ?? false))
+                ? end($edges)['cursor']
+                : null;
+        } while ($cursor);
+
+        return $this->metaobjectTypeByGid = $map;
     }
 
     /**

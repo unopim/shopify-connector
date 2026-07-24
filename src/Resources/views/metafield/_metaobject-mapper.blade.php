@@ -53,14 +53,10 @@
                     </div>
 
                     <div v-else-if="field.source === 'metaobject'">
-                        <v-select-handler
-                            track-by="id"
-                            label-by="label"
-                            :options="definitions"
-                            :value="field.child"
-                            placeholder="@lang('shopify::app.shopify.metafield.index.metaobject-definition')"
-                            @input="field.child = optionId($event, '')"
-                        ></v-select-handler>
+                        <div v-if="field.child" class="mt-2">
+                            <v-metaobject-mapper :definition="field.child"></v-metaobject-mapper>
+                        </div>
+                        <p v-else class="text-sm text-gray-400" v-text="'@lang('shopify::app.shopify.metafield.index.metaobject-unconstrained')'"></p>
                     </div>
                 </div>
             </x-slot>
@@ -114,13 +110,24 @@
             openModal() {
                 this.errors = [];
                 this.renderKey++;
-                this.$axios.get("{{ route('shopify.metaobject.definition.fields') }}", { params: { definition: this.definition } })
-                    .then(res => {
-                        this.name = res.data.name || '';
-                        this.fields = (res.data.fields || []).map(field => ({ ...field }));
+                Promise.all([
+                    this.$axios.get("{{ route('shopify.metaobject.definition.fields') }}", { params: { definition: this.definition } }),
+                    this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}"),
+                ]).then(([fieldsRes, definitionsRes]) => {
+                    this.definitions = definitionsRes.data.options || [];
+                    this.name = fieldsRes.data.name || '';
+                    this.fields = (fieldsRes.data.fields || []).map(field => {
+                        const mapped = { ...field };
+                        if (mapped.source === 'metaobject') {
+                            const match = mapped.child_gid
+                                ? this.definitions.find(option => String(option.id).split('|')[1] === mapped.child_gid)
+                                : this.definitions.find(option => String(option.id).split('|')[0] === String(mapped.child).split('|')[0]);
+                            mapped.child = match ? match.id : '';
+                            mapped.child_label = match ? match.label : '';
+                        }
+                        return mapped;
                     });
-                this.$axios.get("{{ route('shopify.metaobject.definitions.fetch-all') }}")
-                    .then(res => { this.definitions = res.data.options || []; });
+                });
                 this.$refs.metaobjectMapperModal.open();
                 this.$nextTick(() => this.raiseModal('metaobjectMapperModal'));
             },

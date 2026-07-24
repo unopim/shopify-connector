@@ -11,7 +11,20 @@ class MetaobjectEntryBuilder
 
     protected array $cache = [];
 
+    protected array $mappingCache = [];
+
     public function __construct(protected ShopifyMetaobjectMappingRepository $mappingRepository) {}
+
+    protected function mappingFor(string $shopUrl, string $type)
+    {
+        $key = $shopUrl.'::'.$type;
+
+        if (! array_key_exists($key, $this->mappingCache)) {
+            $this->mappingCache[$key] = $this->mappingRepository->findOneWhere(['api_url' => $shopUrl, 'type' => $type]);
+        }
+
+        return $this->mappingCache[$key];
+    }
 
     public function buildEntryGid(string $type, string $sku, array $credential, callable $resolveValue): ?string
     {
@@ -23,10 +36,7 @@ class MetaobjectEntryBuilder
 
         $this->cache[$cacheKey] = null;
 
-        $mapping = $this->mappingRepository->findOneWhere([
-            'api_url' => $credential['shopUrl'] ?? '',
-            'type' => $type,
-        ]);
+        $mapping = $this->mappingFor($credential['shopUrl'] ?? '', $type);
 
         if (! $mapping) {
             return null;
@@ -81,7 +91,7 @@ class MetaobjectEntryBuilder
 
         $seen[] = $type;
 
-        $mapping = $this->mappingRepository->findOneWhere(['api_url' => $shopUrl, 'type' => $type]);
+        $mapping = $this->mappingFor($shopUrl, $type);
 
         if (! $mapping) {
             return [];

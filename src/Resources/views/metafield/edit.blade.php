@@ -57,7 +57,7 @@
                     </x-admin::form.control-group.label>
                         @php
                         $storefronts = $metaField?->storefronts ? 'Read' : 'No access';
-                        $typeofminmx = $metaField?->type == 'date' ? 'date' : 'text';
+                        $typeofminmx = $metaField?->type == 'date' ? 'date' : ($metaField?->type == 'date_time' ? 'datetime' : 'text');
                         $listValue = $metaFieldTypeInShopify[$metaField?->type]['list'] ?? null;
                         $width = $metaFieldTypeInShopify[$metaField?->type]['unitoptions'] ?? null;
                         $smartCollectionCondition = $metaFieldTypeInShopify[$metaField?->type]['smartCollectionCondition'] ?? null;
@@ -92,7 +92,10 @@
                             ],
                         ];
                         $metaType = json_encode($metaType, true);
-                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image'];
+                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset'];
+
+                        $fileTypes = (array) ($validations?->file_types ?? []);
+                        $fileTypeMode = ! empty($fileTypes) ? 'media' : 'any';
 
                         $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference']);
                         $refSource = $validations?->reference_source ?? 'association';
@@ -330,6 +333,31 @@
                         </x-admin::form.control-group.label>
                     </x-admin::form.control-group>
                 @endif
+
+                @if ($metaField?->type == 'file_reference')
+                    <input type="hidden" name="content_type" value="{{ $validations?->content_type ?? '' }}" />
+
+                    @if (($validations?->content_type ?? '') === 'FILE')
+                        <x-admin::form.control-group>
+                            <x-admin::form.control-group.label>
+                                @lang('shopify::app.shopify.metafield.index.accepted-file-types')
+                            </x-admin::form.control-group.label>
+
+                            <x-admin::form.control-group.control
+                                type="select"
+                                id="file_types"
+                                name="file_types"
+                                track-by="id"
+                                label-by="name"
+                                :value="$fileTypeMode"
+                                ::options="fileTypeOptions"
+                                @input="handleFileTypeChange($event)"
+                                :label="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                                :placeholder="trans('shopify::app.shopify.metafield.index.accepted-file-types')"
+                            />
+                        </x-admin::form.control-group>
+                    @endif
+                @endif
                 @if ($listValue && ! $isReference)
                     <div class="flex items-center gap-4">
                         <x-admin::form.control-group class="{{ !(bool) $one ? 'opacity-25' : '' }}">
@@ -423,7 +451,7 @@
                             :value="$linkTextAttribute ?? ''"
                             :label="trans('shopify::app.shopify.metafield.index.anchor-text')"
                             async=true
-                            :entityName="json_encode(['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'image', 'file', 'asset'])"
+                            :entityName="json_encode(['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'file', 'asset'])"
                             :placeholder="trans('shopify::app.shopify.metafield.index.anchor-text')"
                             :list-route="route('admin.shopify.get-attribute')"
                         />
@@ -527,14 +555,51 @@
                     </div>
                 </div>
                 @endif
-                @if (! $isReference && $typeofminmx == 'date' && $minvalueLabel)
+                @if (! $isReference && $metaField?->type === 'id')
+                @php
+                    $regexPresetOptions = json_encode([
+                        ['id' => '^[a-zA-Z]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphabetical')],
+                        ['id' => '^[a-zA-Z0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphanumeric')],
+                        ['id' => '^[0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-numeric')],
+                        ['id' => '^[a-zA-Z0-9_-]{3,20}$', 'name' => trans('shopify::app.shopify.metafield.index.regex-sku')],
+                    ]);
+                @endphp
+                <div class="w-[525px]">
+                    <x-admin::form.control-group>
+                        <x-admin::form.control-group.label>
+                            @lang('shopify::app.shopify.metafield.index.regex')
+                        </x-admin::form.control-group.label>
+                        <x-admin::form.control-group.control
+                            type="select"
+                            name="regex_preset"
+                            :options="$regexPresetOptions"
+                            track-by="id"
+                            label-by="name"
+                            :value="old('regex') ?? $validations?->regex ?? ''"
+                            :placeholder="trans('shopify::app.shopify.metafield.index.regex-preset')"
+                            @input="handleRegexPreset($event)"
+                        />
+                        <x-admin::form.control-group.control
+                            type="text"
+                            id="regex"
+                            name="regex"
+                            v-model="regexValue"
+                            class="mt-2"
+                            :label="trans('shopify::app.shopify.metafield.index.regex')"
+                            :placeholder="trans('shopify::app.shopify.metafield.index.regex-placeholder')"
+                        />
+                        <x-admin::form.control-group.error control-name="regex"/>
+                    </x-admin::form.control-group>
+                </div>
+                @endif
+                @if (! $isReference && in_array($typeofminmx, ['date', 'datetime']) && $minvalueLabel)
                 <div>
                     <x-admin::form.control-group class="w-[525px]">
                     <x-admin::form.control-group.label>
                         @lang($minvalueLabel)
                     </x-admin::form.control-group.label>
                         <x-admin::form.control-group.control
-                            type="date"
+                            :type="$typeofminmx == 'datetime' ? 'datetime' : 'date'"
                             id="minvalue"
                             name="minvalue"
                             :label="$minvalueLabel"
@@ -549,7 +614,7 @@
                             @lang($maxvalueLabel)
                     </x-admin::form.control-group.label>
                         <x-admin::form.control-group.control
-                            type="date"
+                            :type="$typeofminmx == 'datetime' ? 'datetime' : 'date'"
                             id="maxvalue"
                             name="maxvalue"
                             :label="$maxvalueLabel"
@@ -647,7 +712,13 @@
                         metaobjectDefinition: @json($refMetaobjectDefinition ?? ''),
                         attribute: @json($metaField->attribute ?? ''),
                         name_space_key: @json($metaField->name_space_key ?? ''),
+                        fileTypeMode: @json($fileTypeMode ?? 'any'),
+                        fileTypeOptions: [
+                            { id: 'any', name: "{{ trans('shopify::app.shopify.metafield.index.any-file-type') }}" },
+                            { id: 'media', name: "{{ trans('shopify::app.shopify.metafield.index.media-file-only') }}" },
+                        ],
                         taxonomyCount: {{ count($taxonomyOptions ?? []) }},
+                        regexValue: @json(old('regex') ?? $validations?->regex ?? ''),
                     };
                 },
                 computed: {
@@ -686,6 +757,18 @@
                             }
 
                             this.applyReferenceNaming();
+                        }
+                    },
+
+                    handleFileTypeChange(event) {
+                        if (event && typeof event === 'string') {
+                            this.fileTypeMode = JSON.parse(event)?.id ?? 'any';
+                        }
+                    },
+
+                    handleRegexPreset(event) {
+                        if (event && typeof event === 'string') {
+                            this.regexValue = JSON.parse(event)?.id ?? this.regexValue;
                         }
                     },
 

@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Product;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
@@ -30,6 +31,7 @@ use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
+use Webkul\Shopify\Services\Bulk\Metaobject\MetaobjectValueResolver;
 use Webkul\Shopify\Services\ShopifyClientFactory;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
@@ -163,6 +165,13 @@ class Importer extends AbstractImporter
     protected array $processedProducts = [];
 
     /**
+     * Memoized swatch hex => option code map, keyed by attribute code.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $swatchCodeCache = [];
+
+    /**
      * Per-batch lookup cache (categories, products, mappings, attribute options).
      */
     protected ?BatchImportCache $batchCache = null;
@@ -209,6 +218,7 @@ class Importer extends AbstractImporter
         protected ShopifyMappingRepository $shopifyMappingRepository,
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
         protected ShoifyMetaFieldType $shoifyMetaFieldType,
+        protected MetaobjectValueResolver $metaobjectValueResolver,
     ) {
         parent::__construct($importBatchRepository);
 
@@ -461,6 +471,7 @@ class Importer extends AbstractImporter
 
             [$refAssociations, $refLinkAttrs] = $this->resolveReferenceLinkMetafields($rowData['node']['metafields']['edges'] ?? []);
             $metaFieldCommon = array_merge($metaFieldCommon, $refLinkAttrs);
+            $metaFieldCommon = array_merge($metaFieldCommon, $this->resolveMetaobjectAttributes($rowData['node']['metafields']['edges'] ?? []));
 
             $common = array_merge($productCommon, $seoCommon, $metaFieldCommon);
             $common['status'] = $rowData['node']['status'] == 'ACTIVE' ? 'true' : 'false';
@@ -1193,6 +1204,37 @@ class Importer extends AbstractImporter
     }
 
     /**
+     * Reverse metaobject_reference metafields into product attribute values by
+     * resolving each referenced metaobject (and its nested references) to the
+     * attributes mapped in the metaobject mappings.
+     *
+     * @return array<string, mixed>
+     */
+    protected function resolveMetaobjectAttributes(array $metafieldEdges): array
+    {
+        $this->metaobjectValueResolver->preload($this->credential?->shopUrl ?? '', $this->credentialArray);
+
+        $attributes = [];
+
+        foreach ($metafieldEdges as $edge) {
+            $node = $edge['node'] ?? [];
+
+            if (! str_contains((string) ($node['type'] ?? ''), 'metaobject_reference') || empty($node['value'])) {
+                continue;
+            }
+
+            $decoded = json_decode($node['value'], true);
+            $gids = is_array($decoded) ? array_values(array_filter($decoded)) : [$node['value']];
+
+            foreach ($gids as $gid) {
+                $attributes += $this->metaobjectValueResolver->resolveAttributes((string) $gid);
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * @return array{0: array<string, array<int, string>>, 1: array<string, string>}
      */
     public function resolveReferenceLinkMetafields(array $metafieldEdges): array
@@ -1284,10 +1326,19 @@ class Importer extends AbstractImporter
             }
 
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
-                $source = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
-                if ($source === null) {
+                $stored = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
+                if (empty($stored)) {
                     continue;
                 }
+                $source = $attribute->type === 'gallery' ? $stored : implode(',', $stored);
+            }
+
+            if ($metaData['node']['type'] === 'date_time' && ! empty($source)) {
+                $source = Carbon::parse($source)->format('Y-m-d H:i:s');
+            }
+
+            if (str_contains((string) $metaData['node']['type'], 'color') && ! empty($source)) {
+                $source = $this->resolveSwatchColorValue($attribute, (string) $source);
             }
 
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
@@ -1316,13 +1367,61 @@ class Importer extends AbstractImporter
     }
 
     /**
+     * Reverse a Shopify color metafield (hex) back to the UnoPim swatch option
+     * code(s). Handles single (`#000000`) and list (`["#000000","#ffffff"]`) values.
+     * Non-swatch attributes or unmatched hex values pass through unchanged.
+     */
+    protected function resolveSwatchColorValue(object $attribute, string $value): string
+    {
+        if (($attribute->swatch_type ?? null) !== 'color'
+            || ! in_array($attribute->type, ['select', 'multiselect'], true)) {
+            return $value;
+        }
+
+        $decoded = json_decode($value, true);
+        $hexes = is_array($decoded) ? $decoded : [$value];
+
+        $map = $this->swatchCodeMap($attribute);
+
+        return implode(',', array_map(
+            fn ($hex) => $map[strtolower(trim((string) $hex))] ?? $hex,
+            $hexes
+        ));
+    }
+
+    /**
+     * Build (and memoize) a swatch hex => option code map for a swatch attribute.
+     *
+     * @return array<string, string>
+     */
+    protected function swatchCodeMap(object $attribute): array
+    {
+        if (isset($this->swatchCodeCache[$attribute->code])) {
+            return $this->swatchCodeCache[$attribute->code];
+        }
+
+        $map = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $hex = strtolower(trim((string) $option->swatch_value));
+            if ($hex !== '') {
+                $map[$hex] = $option->code;
+            }
+        }
+
+        return $this->swatchCodeCache[$attribute->code] = $map;
+    }
+
+    /**
      * Resolve a file_reference metafield into stored UnoPim asset path(s) via the
      * existing image fetch/queue pipeline. Prefers the file URL fetched inline in
      * the bulk product query (`reference`) — that rides the proxy on SaaS too. Falls
      * back to a direct getFileById lookup (manual transport only) when no inline
-     * reference is present. Returns null when nothing resolves.
+     * reference is present. Returns the stored paths, or null when nothing resolves.
+     *
+     * @return array<int, string>|null
      */
-    private function resolveFileReferenceValue(array $metaNode, string $unoAttr): ?string
+    private function resolveFileReferenceValue(array $metaNode, string $unoAttr): ?array
     {
         $urls = $this->fileReferenceUrlsInline($metaNode);
 
@@ -1351,7 +1450,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        return empty($stored) ? null : implode(',', $stored);
+        return empty($stored) ? null : $stored;
     }
 
     /**
@@ -1395,7 +1494,7 @@ class Importer extends AbstractImporter
 
         $urls = [];
         foreach ($nodes as $node) {
-            $url = $node['url'] ?? ($node['image']['url'] ?? null);
+            $url = $node['url'] ?? ($node['image']['url'] ?? ($node['sources'][0]['url'] ?? null));
             if ($url) {
                 $urls[] = $url;
             }

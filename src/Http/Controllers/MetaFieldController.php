@@ -177,6 +177,22 @@ class MetaFieldController extends Controller
             $validationValue['content_type'] = $data['content_type'];
         }
 
+        if (($data['type'] ?? null) === 'file_reference') {
+            $fileTypes = $this->resolveFileTypes($data['file_types'] ?? null);
+            if (! empty($fileTypes)) {
+                $validationValue['file_types'] = $fileTypes;
+            }
+        }
+
+        if (($data['type'] ?? null) === 'choice_list') {
+            $data['type'] = 'single_line_text_field';
+            $validationValue['content_type'] = 'choice_list';
+        }
+
+        if (($data['type'] ?? null) === 'id' && ! empty($data['regex'])) {
+            $validationValue['regex'] = $data['regex'];
+        }
+
         if ($referenceMode) {
             $source = $data['reference_source'] ?? 'association';
             $validationValue['reference_source'] = $source;
@@ -254,37 +270,36 @@ class MetaFieldController extends Controller
         }
 
         if ($minvalue && $maxvalue) {
-            $unitData = self::SMALLESTUNIT[$data['type']] ?? null;
-            if (! ctype_digit($minvalue) && $data['type'] != 'date') {
-                $errors['minvalue'] = [trans('Only Number Allowed')];
+            $type = $data['type'] ?? '';
+            $unitData = self::SMALLESTUNIT[$type] ?? null;
+            $dateTypes = ['date', 'date_time'];
+            $decimalTypes = ['number_decimal', 'rating', 'dimension', 'volume', 'weight'];
+            $isValidNumber = fn ($value) => in_array($type, $decimalTypes, true)
+                ? (bool) preg_match('/^\d+(\.\d+)?$/', (string) $value)
+                : ctype_digit((string) $value);
 
-                return null;
-            }
-            if (! ctype_digit($maxvalue) && $data['type'] != 'date') {
-                $errors['maxvalue'] = [trans('Only Number Allowed')];
+            if (! in_array($type, $dateTypes, true)) {
+                if (! $isValidNumber($minvalue)) {
+                    $errors['minvalue'] = [trans('Only Number Allowed')];
 
-                return null;
+                    return null;
+                }
+                if (! $isValidNumber($maxvalue)) {
+                    $errors['maxvalue'] = [trans('Only Number Allowed')];
+
+                    return null;
+                }
             }
             if ($unitData) {
                 $minvalue = $minvalue * ($unitData[$minunit] ?? 0);
                 $maxvalue = $maxvalue * ($unitData[$maxunit] ?? 0);
             } else {
-                $validateValue = function ($value, $type, $field) use (&$errors) {
-                    if ($type !== 'date' && ! ctype_digit($value)) {
-                        $errors[$field] = [trans('Only Number Allowed')];
+                $castValue = fn ($value) => in_array($type, $dateTypes, true)
+                    ? new \DateTime($value)
+                    : (in_array($type, $decimalTypes, true) ? (float) $value : (int) $value);
 
-                        return null;
-                    }
-
-                    return $type === 'date' ? new \DateTime($value) : (int) $value;
-                };
-
-                $minvalue = ! empty($data['minvalue'])
-                    ? $validateValue($data['minvalue'], $data['type'] ?? '', 'minvalue')
-                    : null;
-                $maxvalue = ! empty($data['maxvalue'])
-                    ? $validateValue($data['maxvalue'], $data['type'] ?? '', 'maxvalue')
-                    : null;
+                $minvalue = $castValue($minvalue);
+                $maxvalue = $castValue($maxvalue);
             }
 
             if ($minvalue > $maxvalue) {
@@ -415,6 +430,22 @@ class MetaFieldController extends Controller
             $validationValue['content_type'] = $requestData['content_type'];
         }
 
+        if (($requestData['type'] ?? null) === 'file_reference') {
+            $fileTypes = $this->resolveFileTypes($requestData['file_types'] ?? null);
+            if (! empty($fileTypes)) {
+                $validationValue['file_types'] = $fileTypes;
+            }
+        }
+
+        if (($requestData['type'] ?? null) === 'choice_list') {
+            $requestData['type'] = 'single_line_text_field';
+            $validationValue['content_type'] = 'choice_list';
+        }
+
+        if (($requestData['type'] ?? null) === 'id' && ! empty($requestData['regex'])) {
+            $validationValue['regex'] = $requestData['regex'];
+        }
+
         if ($referenceMode) {
             $source = $requestData['reference_source'] ?? 'association';
             $validationValue['reference_source'] = $source;
@@ -477,6 +508,18 @@ class MetaFieldController extends Controller
     private function decodeTaxonomyCategory(mixed $value): array
     {
         return is_string($value) ? (json_decode($value, true) ?: []) : (array) $value;
+    }
+
+    /**
+     * Resolve the accepted-file-types mode into Shopify file_type_options.
+     * Only the generic "File" content type exposes this; "media" restricts to
+     * images and videos, anything else means any file type (no restriction).
+     *
+     * @return array<int, string>
+     */
+    private function resolveFileTypes(?string $raw): array
+    {
+        return $raw === 'media' ? ['Image', 'Video'] : [];
     }
 
     /**

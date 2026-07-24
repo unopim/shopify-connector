@@ -299,13 +299,17 @@ class CoreProductBulkPayloadBuilder
                     continue;
                 }
 
-                $contentType = $configuredType ?: ($attributeType === 'image' ? 'IMAGE' : 'FILE');
+                $contentType = $configuredType ?: (in_array($attributeType, ['image', 'gallery'], true) ? 'IMAGE' : 'FILE');
 
                 foreach ((array) $value as $single) {
                     $path = (string) $single;
                     $values[$path] = [
                         'path' => $path,
-                        'content_type' => $contentType,
+                        // Gallery holds mixed media, so detect each file's type from its
+                        // extension rather than the definition's single content_type.
+                        'content_type' => $attributeType === 'gallery'
+                            ? $this->pathFileContentType($path)
+                            : $contentType,
                         'url' => $this->assetUrlResolver->resolveMedia($path)['url'] ?? '',
                     ];
                 }
@@ -324,7 +328,8 @@ class CoreProductBulkPayloadBuilder
                 continue;
             }
 
-            $sources[$def['code']] = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
+            $contentType = json_decode($def['validations'] ?? '[]', true)['content_type'] ?? null;
+            $sources[$def['code']] = $this->preferContentType($sources[$def['code']] ?? null, $contentType);
         }
 
         if (! $this->clientFactory->supportsMetaobject($this->credentialAsArray)) {
@@ -350,6 +355,19 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $sources;
+    }
+
+    /**
+     * When one asset is shared by several definitions (e.g. a PRODUCT Image field
+     * and a PRODUCTVARIANT File field), it is uploaded once, so it must take the
+     * most specific type: a MediaImage satisfies both an Image-restricted and an
+     * "any file" definition, while a GenericFile is rejected by the former.
+     */
+    protected function preferContentType(?string $current, ?string $incoming): ?string
+    {
+        $rank = ['IMAGE' => 3, 'VIDEO' => 2, 'FILE' => 1];
+
+        return ($rank[$incoming] ?? 0) > ($rank[$current] ?? 0) ? $incoming : $current;
     }
 
     /**
@@ -404,6 +422,22 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $mime === 'video/mp4' ? 'VIDEO' : 'FILE';
+    }
+
+    /**
+     * Map a gallery file path to a Shopify file content type by extension.
+     * Shopify hosts jpg/png/gif/webp/bmp as IMAGE and mp4 as VIDEO; svg, webm
+     * and mkv are not media there, so they upload as generic FILE.
+     */
+    protected function pathFileContentType(string $path): string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'], true)) {
+            return 'IMAGE';
+        }
+
+        return $extension === 'mp4' ? 'VIDEO' : 'FILE';
     }
 
     /**

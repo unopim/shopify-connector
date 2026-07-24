@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Support\Carbon;
 use Webkul\Shopify\Helpers\ShopifyFields;
 
 class ShopifyGraphQLDataFormatter
@@ -48,6 +49,13 @@ class ShopifyGraphQLDataFormatter
      * @var array<string, array<string, string>>
      */
     protected array $optionLabelCache = [];
+
+    /**
+     * Memoized option code => swatch hex map, keyed by attribute code.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $swatchHexCache = [];
 
     /**
      * Inject the asset-path → File GID map built by FileReferenceUploader before
@@ -137,8 +145,11 @@ class ShopifyGraphQLDataFormatter
 
                 switch ($type) {
                     case 'multi_line_text_field':
-                    case 'color':
                         $metafieldValue = $rawData[$unoAttribute] ?? '';
+                        break;
+
+                    case 'color':
+                        $metafieldValue = $this->resolveColorMetafield($attribute, $rawData[$unoAttribute] ?? '');
                         break;
 
                     case 'rating':
@@ -190,22 +201,28 @@ class ShopifyGraphQLDataFormatter
 
                     case 'link':
                         $url = $rawData[$unoAttribute] ?? null;
-                        $textAttr = json_decode($field['validations'] ?? '[]', true)['link_text_attribute'] ?? null;
-                        $text = $textAttr ? ($rawData[$textAttr] ?? null) : null;
 
                         if (empty($url)) {
                             $metafieldValue = null;
                             break;
                         }
 
-                        $metafieldValue = json_encode(
-                            array_filter(['text' => $text, 'url' => $url], fn ($v) => $v !== null && $v !== ''),
-                            JSON_UNESCAPED_SLASHES
-                        );
+                        $textAttr = json_decode($field['validations'] ?? '[]', true)['link_text_attribute'] ?? null;
+                        $text = ($textAttr ? ($rawData[$textAttr] ?? null) : null) ?: $url;
+
+                        $metafieldValue = json_encode(['text' => $text, 'url' => $url], JSON_UNESCAPED_SLASHES);
                         break;
 
                     case 'json':
                         $metafieldValue = $this->encodeJsonMetafield($rawData[$unoAttribute] ?? null);
+                        break;
+
+                    case 'rich_text_field':
+                        $metafieldValue = $this->htmlToShopifyRichText($rawData[$unoAttribute] ?? null);
+                        break;
+
+                    case 'date_time':
+                        $metafieldValue = Carbon::parse($rawData[$unoAttribute])->format('Y-m-d\TH:i:s');
                         break;
 
                     default:
@@ -256,6 +273,130 @@ class ShopifyGraphQLDataFormatter
         }
 
         return json_encode($value, JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Convert a UnoPim WYSIWYG/HTML value into Shopify's `rich_text_field` JSON schema.
+     * Returns null when there is nothing to send.
+     */
+    protected function htmlToShopifyRichText(?string $html): ?string
+    {
+        if (empty($html)) {
+            return null;
+        }
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8"><div>'.$html.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $wrapper = $dom->getElementsByTagName('div')->item(0);
+        $children = $wrapper ? $this->richTextBlocks($wrapper) : [];
+
+        if (empty($children)) {
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($html)));
+
+            if ($text === '') {
+                return null;
+            }
+
+            $children = [['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $text]]]];
+        }
+
+        return json_encode(['type' => 'root', 'children' => $children], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Build Shopify rich-text block nodes (paragraph, heading, list) from a DOM node.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextBlocks(\DOMNode $node): array
+    {
+        $blocks = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if (trim($child->textContent) !== '') {
+                    $blocks[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $child->textContent]]];
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true)) {
+                $blocks[] = ['type' => 'heading', 'level' => (int) substr($tag, 1), 'children' => $this->richTextInline($child)];
+            } elseif (in_array($tag, ['ul', 'ol'], true)) {
+                $items = [];
+                foreach ($child->childNodes as $li) {
+                    if ($li->nodeType === XML_ELEMENT_NODE && strtolower($li->nodeName) === 'li') {
+                        $items[] = ['type' => 'list-item', 'children' => $this->richTextInline($li)];
+                    }
+                }
+                if (! empty($items)) {
+                    $blocks[] = ['type' => 'list', 'listType' => $tag === 'ol' ? 'ordered' : 'unordered', 'children' => $items];
+                }
+            } else {
+                $inline = $this->richTextInline($child);
+                if (! empty($inline)) {
+                    $blocks[] = ['type' => 'paragraph', 'children' => $inline];
+                }
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * Build Shopify rich-text inline nodes (text with bold/italic marks, links) from a DOM node.
+     *
+     * @param  array<string, bool>  $marks
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextInline(\DOMNode $node, array $marks = []): array
+    {
+        $result = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if ($child->textContent !== '') {
+                    $text = ['type' => 'text', 'value' => $child->textContent];
+                    if (! empty($marks['bold'])) {
+                        $text['bold'] = true;
+                    }
+                    if (! empty($marks['italic'])) {
+                        $text['italic'] = true;
+                    }
+                    $result[] = $text;
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['strong', 'b'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['bold' => true])));
+            } elseif (in_array($tag, ['em', 'i'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['italic' => true])));
+            } elseif ($tag === 'a' && $child->getAttribute('href') !== '') {
+                $result[] = ['type' => 'link', 'url' => $child->getAttribute('href'), 'children' => $this->richTextInline($child, $marks)];
+            } else {
+                $result = array_merge($result, $this->richTextInline($child, $marks));
+            }
+        }
+
+        return $result;
     }
 
     public function formatMetafieldValue($metafieldValue, $attribute, $locale)
@@ -578,6 +719,45 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
+     * Resolve a color metafield value. A color-swatch select/multiselect stores
+     * option codes; Shopify's color type needs the hex, so map each code to its
+     * swatch hex. Any value that is not a swatch option (already a hex) passes through.
+     */
+    protected function resolveColorMetafield(?object $attribute, $value): string
+    {
+        $value = (string) $value;
+
+        if ($value === '' || ($attribute?->swatch_type ?? null) !== 'color'
+            || ! in_array($attribute?->type, ['select', 'multiselect'], true)) {
+            return $value;
+        }
+
+        $map = $this->swatchHexMap($attribute);
+
+        return implode(',', array_map(fn ($code) => $map[$code] ?? $code, explode(',', $value)));
+    }
+
+    /**
+     * Build (and memoize) an option code => swatch hex map for a swatch attribute.
+     *
+     * @return array<string, string>
+     */
+    protected function swatchHexMap(object $attribute): array
+    {
+        if (isset($this->swatchHexCache[$attribute->code])) {
+            return $this->swatchHexCache[$attribute->code];
+        }
+
+        $map = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $map[$option->code] = (string) $option->swatch_value;
+        }
+
+        return $this->swatchHexCache[$attribute->code] = $map;
+    }
+
+    /**
      * Build (and memoize) an option code => translated label map for an attribute.
      */
     protected function optionLabelMap(object $attribute, string $locale): array
@@ -702,5 +882,6 @@ class ShopifyGraphQLDataFormatter
         $this->locationAttributeMappings = $locationAttributeMappings;
         $this->attributeLabelCache = [];
         $this->optionLabelCache = [];
+        $this->swatchHexCache = [];
     }
 }
