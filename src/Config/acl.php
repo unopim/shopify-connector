@@ -62,9 +62,39 @@ return [
         'route' => 'shopify.metafield.delete',
         'sort' => 3,
     ], [
+        'key' => 'shopify.metaobjects',
+        'name' => 'shopify::app.components.layouts.sidebar.metaobjects',
+        'route' => 'shopify.metaobject.index',
+        'sort' => 5,
+    ], [
+        'key' => 'shopify.metaobjects.store',
+        'name' => 'shopify::app.shopify.acl.metaobject.save',
+        'route' => 'shopify.metaobject.store',
+        'sort' => 1,
+    ], [
+        'key' => 'shopify.metaobjects.edit',
+        'name' => 'shopify::app.shopify.acl.metaobject.edit',
+        'route' => 'shopify.metaobject.edit',
+        'sort' => 2,
+    ], [
+        'key' => 'shopify.metaobjects.delete',
+        'name' => 'shopify::app.shopify.acl.metaobject.delete',
+        'route' => 'shopify.metaobject.destroy',
+        'sort' => 3,
+    ], [
+        'key' => 'shopify.metaobjects.entry-save',
+        'name' => 'shopify::app.shopify.acl.metaobject-entry.save',
+        'route' => 'shopify.metaobject.entry.store',
+        'sort' => 4,
+    ], [
+        'key' => 'shopify.metaobjects.entry-delete',
+        'name' => 'shopify::app.shopify.acl.metaobject-entry.delete',
+        'route' => 'shopify.metaobject.entry.delete',
+        'sort' => 5,
+    ], [
         'key' => 'shopify.settings',
         'name' => 'shopify::app.components.layouts.sidebar.settings',
         'route' => 'admin.shopify.settings',
-        'sort' => 5,
+        'sort' => 6,
     ],
 ];

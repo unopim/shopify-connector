@@ -15,9 +15,10 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
 use Webkul\Shopify\Services\Bulk\Files\FileReferenceUploader;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
-use Webkul\Shopify\Services\Bulk\Metaobject\MetaobjectEntryBuilder;
 use Webkul\Shopify\Services\Bulk\PayloadBuilders\MediaBulkPayloadBuilder;
 use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Services\ShopifyClientFactory;
@@ -63,7 +64,8 @@ class CoreProductBulkPayloadBuilder
         protected FileReferenceUploader $fileReferenceUploader,
         protected AssetUrlResolver $assetUrlResolver,
         protected MediaBulkPayloadBuilder $mediaBulkPayloadBuilder,
-        protected MetaobjectEntryBuilder $metaobjectEntryBuilder,
+        protected ShopifyMetaobjectEntryRepository $metaobjectEntryRepository,
+        protected ShopifyMetaobjectEntryMappingRepository $metaobjectEntryMappingRepository,
         protected ShopifyClientFactory $clientFactory,
     ) {}
 
@@ -332,28 +334,6 @@ class CoreProductBulkPayloadBuilder
             $sources[$def['code']] = $this->preferContentType($sources[$def['code']] ?? null, $contentType);
         }
 
-        if (! $this->clientFactory->supportsMetaobject($this->credentialAsArray)) {
-            return $sources;
-        }
-
-        $shopUrl = $this->credential?->shopUrl ?? '';
-
-        foreach ($this->productMetaFieldMapping as $def) {
-            if (($def['type'] ?? null) !== 'metaobject_reference') {
-                continue;
-            }
-
-            $type = json_decode($def['validations'] ?? '[]', true)['metaobject_type'] ?? null;
-
-            if (! $type) {
-                continue;
-            }
-
-            foreach ($this->metaobjectEntryBuilder->fileAttributeCodes($type, $shopUrl) as $code) {
-                $sources[$code] = $sources[$code] ?? null;
-            }
-        }
-
         return $sources;
     }
 
@@ -608,23 +588,24 @@ class CoreProductBulkPayloadBuilder
             fn ($d) => ($d['type'] ?? '') === 'metaobject_reference'
         );
 
-        $sku = $productRow['sku'] ?? '';
-
-        if (empty($defs) || $sku === '') {
+        if (empty($defs)) {
             return [];
         }
 
-        $resolveValue = $this->metaobjectValueResolver($productRow, $this->getAllAttributeValues($productRow));
+        $values = $this->getAllAttributeValues($productRow);
+        $shopUrl = $this->credentialAsArray['shopUrl'] ?? '';
         $metafields = [];
 
         foreach ($defs as $def) {
             $type = json_decode($def['validations'] ?? '[]', true)['metaobject_type'] ?? null;
+            $entryCode = $values[$def['code']] ?? null;
 
-            if (! $type) {
+            if (! $type || ! $entryCode) {
                 continue;
             }
 
-            $gid = $this->metaobjectEntryBuilder->buildEntryGid($type, $sku, $this->credentialAsArray, $resolveValue);
+            $entry = $this->metaobjectEntryRepository->findOneWhere(['type' => $type, 'code' => $entryCode]);
+            $gid = $entry ? $this->metaobjectEntryMappingRepository->gidFor((int) $entry->id, $shopUrl) : null;
 
             if (! $gid) {
                 continue;
@@ -642,74 +623,6 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $metafields;
-    }
-
-    /**
-     * Resolve a mapped metaobject field's value from the product row.
-     */
-    protected function metaobjectValueResolver(array $productRow, array $attrValues): callable
-    {
-        return function (array $field) use ($productRow, $attrValues) {
-            $source = $field['source'] ?? 'attribute';
-            $list = ! empty($field['list']);
-
-            if ($source === 'association') {
-                $assocType = $field['assoc_type'] ?? 'related_products';
-                $refField = ($field['as'] ?? 'product') === 'variant' ? 'externalId' : 'relatedId';
-                $gids = [];
-
-                foreach ($productRow['values']['associations'][$assocType] ?? [] as $sku) {
-                    $gids[] = (($this->findMapping($sku) ?? [])[0] ?? [])[$refField] ?? null;
-                }
-
-                return $this->formatReferenceValue($gids, $list);
-            }
-
-            if ($source === 'categories') {
-                return $this->formatReferenceValue($this->resolveCollectionIds($productRow['values']['categories'] ?? []), $list);
-            }
-
-            if (($field['shopify_type'] ?? '') === 'file_reference') {
-                $value = $attrValues[$field['attribute_code'] ?? ''] ?? null;
-
-                if (empty($value)) {
-                    return null;
-                }
-
-                $paths = is_array($value)
-                    ? $value
-                    : array_filter(array_map('trim', explode(',', (string) $value)));
-
-                $gids = array_map(fn ($path) => $this->fileReferenceMap[(string) $path] ?? null, $paths);
-
-                return $this->formatReferenceValue($gids, $list);
-            }
-
-            $value = $attrValues[$field['attribute_code'] ?? ''] ?? null;
-
-            if ($value === null || $value === '') {
-                return null;
-            }
-
-            if ($list) {
-                $items = is_array($value) ? $value : array_filter(array_map('trim', explode(',', (string) $value)));
-
-                return json_encode(array_values($items), JSON_UNESCAPED_SLASHES);
-            }
-
-            return is_array($value) ? implode(',', $value) : (string) $value;
-        };
-    }
-
-    protected function formatReferenceValue(array $gids, bool $list): ?string
-    {
-        $gids = array_values(array_unique(array_filter($gids)));
-
-        if (empty($gids)) {
-            return null;
-        }
-
-        return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
     }
 
     /**

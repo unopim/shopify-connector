@@ -13,6 +13,7 @@ use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
 use Webkul\Shopify\Listeners\DeferJobTrackCompletion;
 use Webkul\Shopify\Listeners\RevokeShopifyOnApiKeyDelete;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -48,6 +49,40 @@ class ShopifyServiceProvider extends ServiceProvider
 
         Event::listen('unopim.admin.products.dynamic-attribute-fields.control.shopify_taxonomy.before', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::catalog.products.taxonomy-control');
+        });
+
+        Event::listen('unopim.admin.products.dynamic-attribute-fields.control.shopify_metaobject.before', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::catalog.products.metaobject-control');
+        });
+
+        Event::listen('unopim.admin.catalog.attributes.create.card.label.after', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::catalog.attributes.metaobject-binding');
+        });
+
+        Event::listen('unopim.admin.catalog.attributes.edit.card.label.after', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::catalog.attributes.metaobject-binding');
+        });
+
+        Event::listen('catalog.attribute.create.after', static function ($attribute) {
+            if (request()->input('type') === 'shopify_metaobject' && request()->input('metaobject_definition')) {
+                app(ShopifyMetaobjectAttributeRepository::class)->saveBinding((int) $attribute->id, (int) request()->input('metaobject_definition'));
+            }
+        });
+
+        Event::listen('catalog.attribute.update.after', static function ($attribute) {
+            $repository = app(ShopifyMetaobjectAttributeRepository::class);
+
+            if (request()->input('type') === 'shopify_metaobject' && request()->input('metaobject_definition')) {
+                $repository->saveBinding((int) $attribute->id, (int) request()->input('metaobject_definition'));
+
+                return;
+            }
+
+            $repository->deleteBinding((int) $attribute->id);
+        });
+
+        Event::listen('catalog.attribute.delete.after', static function ($id) {
+            app(ShopifyMetaobjectAttributeRepository::class)->deleteBinding((int) $id);
         });
 
         Event::listen('catalog.attribute.create.before', static function () {

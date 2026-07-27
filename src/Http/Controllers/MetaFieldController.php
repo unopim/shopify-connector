@@ -11,6 +11,8 @@ use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Http\Requests\MetaFieldForm;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectMappingRepository;
 use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
 
@@ -59,7 +61,17 @@ class MetaFieldController extends Controller
         protected AttributeRepository $attributeRepository,
         protected ShopifyMetaobjectMappingRepository $shopifyMetaobjectMappingRepository,
         protected ShopifyCredentialRepository $shopifyCredentialRepository,
+        protected ShopifyMetaobjectAttributeRepository $metaobjectAttributeRepository,
+        protected ShopifyMetaobjectDefinitionRepository $metaobjectDefinitionRepository,
     ) {}
+
+    protected function metaobjectTypeForAttribute(string $attributeCode): ?string
+    {
+        $attribute = $this->attributeRepository->findOneWhere(['code' => $attributeCode]);
+        $binding = $attribute ? $this->metaobjectAttributeRepository->bindingFor((int) $attribute->id) : null;
+
+        return $binding ? $this->metaobjectDefinitionRepository->find($binding->definition_id)?->code : null;
+    }
 
     protected function activeCredentialOptions(): array
     {
@@ -119,8 +131,6 @@ class MetaFieldController extends Controller
             if (($data['reference_source'] ?? null) !== 'metaobject') {
                 $nsKey = explode('.', $data['name_space_key'] ?? '', 2);
                 $data['code'] = $nsKey[1] ?? ($data['name_space_key'] ?? $data['type']);
-            } else {
-                $data['code'] = explode('|', (string) ($data['metaobject_definition'] ?? ''), 2)[0];
             }
         }
 
@@ -211,9 +221,7 @@ class MetaFieldController extends Controller
                 $validationValue['association_type'] = $data['association_type'] ?? 'related_products';
                 $validationValue['reference_as'] = $data['reference_as'] ?? 'product';
             } elseif ($source === 'metaobject') {
-                [$metaobjectType, $definitionId] = array_pad(explode('|', (string) ($data['metaobject_definition'] ?? ''), 2), 2, null);
-                $validationValue['metaobject_type'] = $metaobjectType;
-                $validationValue['metaobject_definition_id'] = $definitionId;
+                $validationValue['metaobject_type'] = $this->metaobjectTypeForAttribute($data['code'] ?? '');
             }
         } elseif (($data['type'] ?? null) === 'link' && ! empty($data['link_text_attribute'])) {
             $validationValue['link_text_attribute'] = $data['link_text_attribute'];
@@ -369,15 +377,9 @@ class MetaFieldController extends Controller
 
         $linkTextAttribute = $metaField->type === 'link' ? ($validations['link_text_attribute'] ?? '') : '';
 
-        $metaobjectLabel = '';
-        if ($metaField->type === 'metaobject_reference' && ! empty($validations['metaobject_type'])) {
-            $mapping = $this->shopifyMetaobjectMappingRepository->findOneWhere(['type' => $validations['metaobject_type']]);
-            $metaobjectLabel = $mapping->name ?? $validations['metaobject_type'];
-        }
-
         $shopifyCredentials = $this->activeCredentialOptions();
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'metaobjectLabel', 'shopifyCredentials'));
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'shopifyCredentials'));
     }
 
     /**
@@ -402,8 +404,6 @@ class MetaFieldController extends Controller
             if (($requestData['reference_source'] ?? null) !== 'metaobject') {
                 $nsKey = explode('.', $requestData['name_space_key'] ?? '', 2);
                 $requestData['code'] = $nsKey[1] ?? ($requestData['name_space_key'] ?? $requestData['type']);
-            } else {
-                $requestData['code'] = explode('|', (string) ($requestData['metaobject_definition'] ?? ''), 2)[0];
             }
         }
 
@@ -466,9 +466,7 @@ class MetaFieldController extends Controller
                 $validationValue['association_type'] = $requestData['association_type'] ?? 'related_products';
                 $validationValue['reference_as'] = $requestData['reference_as'] ?? 'product';
             } elseif ($source === 'metaobject') {
-                [$metaobjectType, $definitionId] = array_pad(explode('|', (string) ($requestData['metaobject_definition'] ?? ''), 2), 2, null);
-                $validationValue['metaobject_type'] = $metaobjectType;
-                $validationValue['metaobject_definition_id'] = $definitionId;
+                $validationValue['metaobject_type'] = $this->metaobjectTypeForAttribute($requestData['code'] ?? '');
             }
         } elseif (($requestData['type'] ?? null) === 'link' && ! empty($requestData['link_text_attribute'])) {
             $validationValue['link_text_attribute'] = $requestData['link_text_attribute'];

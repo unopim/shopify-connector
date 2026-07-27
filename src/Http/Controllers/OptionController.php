@@ -226,56 +226,6 @@ class OptionController extends Controller
     }
 
     /**
-     * List Shopify metaobject definitions for the metafield reference picker.
-     */
-    public function listMetaobjectDefinitions(): JsonResponse
-    {
-        $credentials = $this->shopifyRepository->findWhere([['active', '=', 1]]);
-        $selected = request('credential_id');
-        $credential = ($selected ? $credentials->firstWhere('id', (int) $selected) : null)
-            ?? $credentials->first(fn ($item) => ! empty($item->extras['saas']))
-            ?? $credentials->first();
-
-        if (! $credential) {
-            return new JsonResponse(['options' => []]);
-        }
-
-        $query = request()->get('query');
-        $credentialArray = $credential->toApiArray();
-        $options = [];
-        $cursor = null;
-
-        do {
-            $response = $this->requestGraphQlApiAction('metaobjectDefinitions', $credentialArray, [
-                'first' => 50,
-                'after' => $cursor,
-            ]);
-
-            $edges = $response['body']['data']['metaobjectDefinitions']['edges'] ?? [];
-
-            foreach ($edges as $edge) {
-                $node = $edge['node'] ?? [];
-                $label = $node['name'] ?? $node['type'] ?? '';
-
-                if (empty($node['id']) || empty($node['type']) || ($query && stripos($label, $query) === false)) {
-                    continue;
-                }
-
-                $options[] = [
-                    'id' => $node['type'].'|'.$node['id'],
-                    'label' => $label,
-                ];
-            }
-
-            $cursor = (! empty($edges) && ($response['body']['data']['metaobjectDefinitions']['pageInfo']['hasNextPage'] ?? false))
-                ? end($edges)['cursor']
-                : null;
-        } while ($cursor);
-
-        return new JsonResponse(['options' => $options]);
-    }
-
-    /**
      * List attributes based on entity and query filters.
      */
     public function listAttributes(): JsonResponse

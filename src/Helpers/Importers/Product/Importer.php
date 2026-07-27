@@ -30,8 +30,9 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
-use Webkul\Shopify\Services\Bulk\Metaobject\MetaobjectValueResolver;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -217,7 +218,8 @@ class Importer extends AbstractImporter
         protected ShopifyMappingRepository $shopifyMappingRepository,
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
         protected ShoifyMetaFieldType $shoifyMetaFieldType,
-        protected MetaobjectValueResolver $metaobjectValueResolver,
+        protected ShopifyMetaobjectEntryRepository $metaobjectEntryRepository,
+        protected ShopifyMetaobjectEntryMappingRepository $metaobjectEntryMappingRepository,
     ) {
         parent::__construct($importBatchRepository);
 
@@ -1211,8 +1213,7 @@ class Importer extends AbstractImporter
      */
     protected function resolveMetaobjectAttributes(array $metafieldEdges): array
     {
-        $this->metaobjectValueResolver->preload($this->credential?->shopUrl ?? '', $this->credentialArray);
-
+        $shopUrl = $this->credential?->shopUrl ?? '';
         $attributes = [];
 
         foreach ($metafieldEdges as $edge) {
@@ -1222,11 +1223,26 @@ class Importer extends AbstractImporter
                 continue;
             }
 
+            $nsKey = ($node['namespace'] ?? '').'.'.($node['key'] ?? '');
+            $definition = $this->shopifyMetaFieldRepository->findOneWhere(['name_space_key' => $nsKey]);
+
+            if (! $definition?->code) {
+                continue;
+            }
+
             $decoded = json_decode($node['value'], true);
             $gids = is_array($decoded) ? array_values(array_filter($decoded)) : [$node['value']];
+            $gid = $gids[0] ?? null;
 
-            foreach ($gids as $gid) {
-                $attributes += $this->metaobjectValueResolver->resolveAttributes((string) $gid);
+            if (! $gid) {
+                continue;
+            }
+
+            $entryId = $this->metaobjectEntryMappingRepository->entryIdForGid((string) $gid, $shopUrl);
+            $entry = $entryId ? $this->metaobjectEntryRepository->find($entryId) : null;
+
+            if ($entry) {
+                $attributes[$definition->code] = $entry->code;
             }
         }
 

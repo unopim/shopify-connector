@@ -39,10 +39,15 @@ return [
         'route' => 'shopify.metafield.index',
         'sort' => 5,
     ], [
+        'key' => 'shopify.metaobjects',
+        'name' => 'shopify::app.components.layouts.sidebar.metaobjects',
+        'route' => 'shopify.metaobject.index',
+        'sort' => 6,
+    ], [
         'key' => 'shopify.settings',
         'name' => 'shopify::app.components.layouts.sidebar.settings',
         'route' => 'admin.shopify.settings',
         'params' => [2],
-        'sort' => 6,
+        'sort' => 7,
     ],
 ];

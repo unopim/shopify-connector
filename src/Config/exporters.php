@@ -101,4 +101,26 @@ return [
             ],
         ],
     ],
+
+    'shopifyMetaobject' => [
+        'title' => 'shopify::app.exporters.shopify.metaobjects',
+        'exporter' => 'Webkul\Shopify\Helpers\Exporters\Metaobject\Exporter',
+        'source' => 'Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository',
+        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'filters' => [
+            'fields' => [
+                [
+                    'name' => 'credentials',
+                    'title' => 'Shopify credentials',
+                    'required' => true,
+                    'validation' => 'required',
+                    'type' => 'select',
+                    'async' => true,
+                    'track_by' => 'id',
+                    'label_by' => 'label',
+                    'list_route' => 'shopify.credential.fetch-all',
+                ],
+            ],
+        ],
+    ],
 ];
