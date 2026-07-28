@@ -17,17 +17,22 @@ class ShopifyMetaobjectAttributeRepository extends Repository
         return $this->findOneWhere(['attribute_id' => $attributeId]);
     }
 
-    public function saveBinding(int $attributeId, int $definitionId): void
+    public function saveBinding(int $attributeId, int $definitionId, bool $isList = false): void
     {
         $existing = $this->findOneWhere(['attribute_id' => $attributeId]);
 
         if ($existing) {
-            $this->update(['definition_id' => $definitionId], $existing->id);
+            $this->update(['definition_id' => $definitionId, 'is_list' => $isList], $existing->id);
 
             return;
         }
 
-        $this->create(['attribute_id' => $attributeId, 'definition_id' => $definitionId]);
+        $this->create(['attribute_id' => $attributeId, 'definition_id' => $definitionId, 'is_list' => $isList]);
+    }
+
+    public function bindingsForDefinition(int $definitionId)
+    {
+        return $this->findWhere(['definition_id' => $definitionId]);
     }
 
     public function deleteBinding(int $attributeId): void

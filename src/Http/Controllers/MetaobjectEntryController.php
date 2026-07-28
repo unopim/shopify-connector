@@ -41,7 +41,7 @@ class MetaobjectEntryController extends Controller
         $values = is_array($values) ? $values : [];
 
         foreach ((array) request()->file('files', []) as $key => $file) {
-            $values[$key] = $file->store('shopify/metaobject-entries', 'local');
+            $values[$key] = $file->store('shopify/metaobject-entries', 'public');
         }
 
         if (! empty($data['id'])) {

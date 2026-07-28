@@ -71,6 +71,9 @@ class CoreProductBulkPayloadBuilder
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
 
+    /** @var array<string, string>|null */
+    protected ?array $metaobjectEntryGidMap = null;
+
     protected ?AssetRepository $resolvedAssetRepository = null;
 
     protected bool $assetRepositoryResolved = false;
@@ -574,8 +577,32 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Upsert a metaobject entry per mapped definition and point the product's
-     * metaobject_reference metafields at the resulting entry GIDs.
+     * Preloaded "type::code" => entry GID map for the store.
+     *
+     * @return array<string, string>
+     */
+    protected function metaobjectEntryGidMap(): array
+    {
+        if ($this->metaobjectEntryGidMap !== null) {
+            return $this->metaobjectEntryGidMap;
+        }
+
+        $shopUrl = $this->credentialAsArray['shopUrl'] ?? '';
+        $gidByEntry = $this->metaobjectEntryMappingRepository->findWhere(['api_url' => $shopUrl])->pluck('gid', 'entry_id');
+
+        $map = [];
+
+        foreach ($this->metaobjectEntryRepository->all(['id', 'type', 'code']) as $entry) {
+            if (! empty($gidByEntry[$entry->id])) {
+                $map[$entry->type.'::'.$entry->code] = $gidByEntry[$entry->id];
+            }
+        }
+
+        return $this->metaobjectEntryGidMap = $map;
+    }
+
+    /**
+     * Point the product's metaobject_reference metafields at their entry GIDs.
      */
     protected function buildMetaobjectMetafields(array $productRow): array
     {
@@ -593,21 +620,26 @@ class CoreProductBulkPayloadBuilder
         }
 
         $values = $this->getAllAttributeValues($productRow);
-        $shopUrl = $this->credentialAsArray['shopUrl'] ?? '';
+        $gidMap = $this->metaobjectEntryGidMap();
         $metafields = [];
 
         foreach ($defs as $def) {
             $type = json_decode($def['validations'] ?? '[]', true)['metaobject_type'] ?? null;
-            $entryCode = $values[$def['code']] ?? null;
+            $codes = array_filter(array_map('trim', explode(',', (string) ($values[$def['code']] ?? ''))));
 
-            if (! $type || ! $entryCode) {
+            if (! $type || empty($codes)) {
                 continue;
             }
 
-            $entry = $this->metaobjectEntryRepository->findOneWhere(['type' => $type, 'code' => $entryCode]);
-            $gid = $entry ? $this->metaobjectEntryMappingRepository->gidFor((int) $entry->id, $shopUrl) : null;
+            $gids = [];
 
-            if (! $gid) {
+            foreach ($codes as $code) {
+                if (! empty($gidMap[$type.'::'.$code])) {
+                    $gids[] = $gidMap[$type.'::'.$code];
+                }
+            }
+
+            if (empty($gids)) {
                 continue;
             }
 
@@ -618,7 +650,7 @@ class CoreProductBulkPayloadBuilder
                 'namespace' => $nsKey[0],
                 'key' => $nsKey[1] ?? '',
                 'type' => $isList ? 'list.metaobject_reference' : 'metaobject_reference',
-                'value' => $isList ? json_encode([$gid], JSON_UNESCAPED_SLASHES) : $gid,
+                'value' => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
             ];
         }
 

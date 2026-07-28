@@ -157,6 +157,9 @@ class Importer extends AbstractImporter
 
     protected ?string $taxonomyAttributeCode = null;
 
+    /** @var array<string, string>|null */
+    protected ?array $metaobjectCodeByGid = null;
+
     protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
 
     /**
@@ -1213,7 +1216,7 @@ class Importer extends AbstractImporter
      */
     protected function resolveMetaobjectAttributes(array $metafieldEdges): array
     {
-        $shopUrl = $this->credential?->shopUrl ?? '';
+        $codeByGid = $this->metaobjectCodeByGid();
         $attributes = [];
 
         foreach ($metafieldEdges as $edge) {
@@ -1232,21 +1235,43 @@ class Importer extends AbstractImporter
 
             $decoded = json_decode($node['value'], true);
             $gids = is_array($decoded) ? array_values(array_filter($decoded)) : [$node['value']];
-            $gid = $gids[0] ?? null;
+            $codes = [];
 
-            if (! $gid) {
-                continue;
+            foreach ($gids as $gid) {
+                if (! empty($codeByGid[$gid])) {
+                    $codes[] = $codeByGid[$gid];
+                }
             }
 
-            $entryId = $this->metaobjectEntryMappingRepository->entryIdForGid((string) $gid, $shopUrl);
-            $entry = $entryId ? $this->metaobjectEntryRepository->find($entryId) : null;
-
-            if ($entry) {
-                $attributes[$definition->code] = $entry->code;
-            }
+            $attributes[$definition->code] = implode(',', $codes);
         }
 
         return $attributes;
+    }
+
+    /**
+     * Preloaded entry GID => local code map for the store.
+     *
+     * @return array<string, string>
+     */
+    protected function metaobjectCodeByGid(): array
+    {
+        if ($this->metaobjectCodeByGid !== null) {
+            return $this->metaobjectCodeByGid;
+        }
+
+        $shopUrl = $this->credential?->shopUrl ?? '';
+        $codeById = $this->metaobjectEntryRepository->all(['id', 'code'])->pluck('code', 'id');
+
+        $map = [];
+
+        foreach ($this->metaobjectEntryMappingRepository->findWhere(['api_url' => $shopUrl]) as $mapping) {
+            if (! empty($codeById[$mapping->entry_id])) {
+                $map[$mapping->gid] = $codeById[$mapping->entry_id];
+            }
+        }
+
+        return $this->metaobjectCodeByGid = $map;
     }
 
     /**

@@ -12,16 +12,14 @@ class ShopifyMetaobjectEntryRepository extends Repository
         return ShopifyMetaobjectEntry::class;
     }
 
-    public function updateOrCreateByCode(string $type, string $code, array $values): void
+    public function updateOrCreateByCode(string $type, string $code, array $values): object
     {
         $existing = $this->findWhere(['type' => $type, 'code' => $code])->first();
 
         if ($existing) {
-            $this->update(['values' => $values], $existing->id);
-
-            return;
+            return $this->update(['values' => $values], $existing->id);
         }
 
-        $this->create(['type' => $type, 'code' => $code, 'values' => $values]);
+        return $this->create(['type' => $type, 'code' => $code, 'values' => $values]);
     }
 }

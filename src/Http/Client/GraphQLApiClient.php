@@ -174,7 +174,7 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
         'getMetaobjectsByType' => [
-            'query' => 'query getMetaobjectsByType($type: String!, $first: Int!, $after: String) { metaobjects(type: $type, first: $first, after: $after) { edges { cursor node { id type fields { key value } } } pageInfo { hasNextPage } } }',
+            'query' => 'query getMetaobjectsByType($type: String!, $first: Int!, $after: String) { metaobjects(type: $type, first: $first, after: $after) { edges { cursor node { id type handle fields { key value } } } pageInfo { hasNextPage } } }',
             'method' => 'POST',
         ],
         'createTranslation' => [

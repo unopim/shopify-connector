@@ -71,9 +71,6 @@ class Exporter extends AbstractExporter
         $this->shopUrl = (string) $credential->shopUrl;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function getResults()
     {
         return $this->source->all()?->getIterator();
@@ -159,6 +156,8 @@ class Exporter extends AbstractExporter
             }
 
             $gid = $response['body']['data']['metaobjectDefinitionCreate']['metaobjectDefinition']['id'] ?? null;
+        } else {
+            $this->syncDefinitionFields($gid, $code, $fields, $childGids, $existing['body']['data']['metaobjectDefinitionByType']['fieldDefinitions'] ?? []);
         }
 
         if (! $gid) {
@@ -172,6 +171,40 @@ class Exporter extends AbstractExporter
         ]);
 
         return $this->definitionGidRun[$code] = $gid;
+    }
+
+    /**
+     * Add locally-added fields to an existing Shopify definition (create only).
+     *
+     * @param  array<int, array<string, mixed>>  $fields
+     * @param  array<string, ?string>  $childGids
+     * @param  array<int, array<string, mixed>>  $shopifyFields
+     */
+    protected function syncDefinitionFields(string $gid, string $code, array $fields, array $childGids, array $shopifyFields): void
+    {
+        $existingKeys = array_column($shopifyFields, 'key');
+        $operations = [];
+
+        foreach ($this->buildFieldDefinitions($fields, $childGids) as $definition) {
+            if (! in_array($definition['key'], $existingKeys, true)) {
+                $operations[] = ['create' => $definition];
+            }
+        }
+
+        if (empty($operations)) {
+            return;
+        }
+
+        $response = $this->requestGraphQlApiAction('metaobjectDefinitionUpdate', $this->credentialArray, [
+            'id' => $gid,
+            'definition' => ['fieldDefinitions' => $operations],
+        ]);
+
+        $errors = $response['body']['data']['metaobjectDefinitionUpdate']['userErrors'] ?? [];
+
+        if (! empty($errors)) {
+            $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-definition-failed', ['code' => $code]).' '.json_encode($errors));
+        }
     }
 
     /**
@@ -287,7 +320,10 @@ class Exporter extends AbstractExporter
 
         $response = $this->requestGraphQlApiAction('metaobjectUpsert', $this->credentialArray, [
             'handle' => ['type' => $entry->type, 'handle' => $this->slug($entry->code)],
-            'metaobject' => ['fields' => $fields],
+            'metaobject' => [
+                'fields' => $fields,
+                'capabilities' => ['publishable' => ['status' => 'ACTIVE']],
+            ],
         ]);
 
         $errors = $response['body']['data']['metaobjectUpsert']['userErrors'] ?? [];
@@ -362,6 +398,10 @@ class Exporter extends AbstractExporter
             return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
         }
 
+        if ($type === 'rich_text_field') {
+            return $this->richText((string) $raw);
+        }
+
         if ($type === 'metaobject_reference') {
             $codes = $list ? (array) (is_string($raw) ? json_decode($raw, true) : $raw) : [$raw];
             $gids = [];
@@ -383,6 +423,26 @@ class Exporter extends AbstractExporter
         }
 
         return is_array($raw) ? json_encode($raw, JSON_UNESCAPED_SLASHES) : (string) $raw;
+    }
+
+    protected function richText(string $text): string
+    {
+        $blocks = preg_split('/\n{2,}/', trim($text)) ?: [];
+        $children = [];
+
+        foreach ($blocks as $block) {
+            if (trim($block) === '') {
+                continue;
+            }
+
+            $children[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $block]]];
+        }
+
+        if (empty($children)) {
+            $children[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $text]]];
+        }
+
+        return json_encode(['type' => 'root', 'children' => $children], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     protected function slug(string $value): string

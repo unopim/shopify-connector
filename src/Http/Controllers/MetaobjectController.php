@@ -4,13 +4,17 @@ namespace Webkul\Shopify\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Shopify\DataGrids\Metaobject\MetaobjectDataGrid;
 use Webkul\Shopify\Helpers\MetaobjectFieldType;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
 
 class MetaobjectController extends Controller
@@ -19,6 +23,9 @@ class MetaobjectController extends Controller
         protected ShopifyMetaobjectDefinitionRepository $definitionRepository,
         protected ShopifyMetaobjectEntryRepository $entryRepository,
         protected ShopifyMetaobjectAttributeRepository $attributeBindingRepository,
+        protected AttributeRepository $attributeRepository,
+        protected ShopifyMetaFieldRepository $metaFieldRepository,
+        protected ShopifyMetaobjectEntryMappingRepository $entryMappingRepository,
     ) {}
 
     public function forAttribute(): JsonResponse
@@ -128,13 +135,7 @@ class MetaobjectController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
-        $definition = $this->definitionRepository->find($id);
-
-        if ($definition) {
-            $this->entryRepository->deleteWhere(['type' => $definition->code]);
-            $this->attributeBindingRepository->deleteForDefinition($id);
-            $this->definitionRepository->delete($id);
-        }
+        $this->deleteDefinition($id);
 
         return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.deleted')]);
     }
@@ -142,16 +143,47 @@ class MetaobjectController extends Controller
     public function massDestroy(): JsonResponse
     {
         foreach ((array) request()->input('indices', []) as $id) {
-            $definition = $this->definitionRepository->find((int) $id);
-
-            if ($definition) {
-                $this->entryRepository->deleteWhere(['type' => $definition->code]);
-                $this->attributeBindingRepository->deleteForDefinition((int) $id);
-                $this->definitionRepository->delete((int) $id);
-            }
+            $this->deleteDefinition((int) $id);
         }
 
         return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.deleted')]);
+    }
+
+    /**
+     * Remove a definition together with its entries, the bound attribute and any
+     * metaobject_reference metafield pointing at that attribute.
+     */
+    protected function deleteDefinition(int $id): void
+    {
+        $definition = $this->definitionRepository->find($id);
+
+        if (! $definition) {
+            return;
+        }
+
+        $entryIds = $this->entryRepository->findWhere(['type' => $definition->code])->pluck('id')->all();
+        $this->entryMappingRepository->deleteForEntries($entryIds);
+        $this->entryRepository->deleteWhere(['type' => $definition->code]);
+
+        foreach ($this->attributeBindingRepository->bindingsForDefinition($id) as $binding) {
+            $attribute = $this->attributeRepository->find($binding->attribute_id);
+
+            if (! $attribute) {
+                continue;
+            }
+
+            $this->metaFieldRepository->deleteWhere([
+                ['code', '=', $attribute->code],
+                ['type', '=', 'metaobject_reference'],
+            ]);
+
+            Event::dispatch('catalog.attribute.delete.before', $attribute->id);
+            $this->attributeRepository->delete($attribute->id);
+            Event::dispatch('catalog.attribute.delete.after', $attribute->id);
+        }
+
+        $this->attributeBindingRepository->deleteForDefinition($id);
+        $this->definitionRepository->delete($id);
     }
 
     public function definitions(): JsonResponse

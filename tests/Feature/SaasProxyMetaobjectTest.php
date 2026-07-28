@@ -39,6 +39,29 @@ it('forwards the metaobject definition create body verbatim', function () {
     });
 });
 
+it('folds the type into a query filter and normalizes the metaobjects list', function () {
+    Http::fake(['*' => Http::response([
+        'metaobjects' => [
+            'nodes' => [
+                ['id' => 'gid://shopify/Metaobject/1', 'type' => 'brand', 'handle' => 'dell', 'fields' => []],
+            ],
+            'pageInfo' => ['hasNextPage' => false],
+        ],
+    ], 200)]);
+
+    $result = (new SaasProxyClient('https://proxy.test', 'jwt-token'))
+        ->request('getMetaobjectsByType', ['type' => 'brand', 'first' => 50]);
+
+    Http::assertSent(function ($request) {
+        return $request->method() === 'GET'
+            && str_contains($request->url(), '/graphql/api/metaobjects.json')
+            && ($request->data()['query'] ?? null) === 'type:brand'
+            && ! array_key_exists('type', $request->data());
+    });
+
+    expect($result['body']['data']['metaobjects']['edges'][0]['node']['handle'])->toBe('dell');
+});
+
 it('throws when the proxy jwt is missing', function () {
     (new SaasProxyClient('https://proxy.test', ''))->request('metaobjectDefinitions');
 })->throws(InvalidArgumentException::class);

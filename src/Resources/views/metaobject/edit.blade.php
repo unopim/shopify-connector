@@ -2,9 +2,13 @@
     <x-slot:title>@lang('shopify::app.shopify.metaobject.title')</x-slot>
 
     <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('shopify.metaobject.index') }}" class="icon-arrow-left cursor-pointer text-2xl"></a>
-            <p class="text-xl font-bold text-gray-800 dark:text-white">{{ $definition->name }}</p>
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <a href="{{ route('shopify.metaobject.index') }}" class="icon-arrow-left cursor-pointer text-2xl"></a>
+                <p class="text-xl font-bold text-gray-800 dark:text-white">{{ $definition->name }}</p>
+            </div>
+
+            <a href="{{ route('shopify.metaobject.index') }}" class="secondary-button">@lang('shopify::app.shopify.metaobject.back')</a>
         </div>
 
         <v-metaobject-builder
@@ -63,10 +67,15 @@
 
                                 <input v-else-if="field.shopify_type === 'color'" type="color" v-model="form.values[field.key]" class="h-9 w-16 rounded-md border border-gray-300 dark:border-gray-600" />
 
-                                <template v-else-if="field.shopify_type === 'file_reference'">
-                                    <input type="file" :accept="acceptFor(field)" @change="onFile($event, field.key)" class="text-sm text-gray-600 dark:text-gray-300" />
-                                    <span v-if="form.values[field.key]" class="text-xs text-gray-500 dark:text-gray-400" v-text="form.values[field.key]"></span>
-                                </template>
+                                <v-metaobject-file
+                                    v-else-if="field.shopify_type === 'file_reference'"
+                                    :key="field.key + '-' + openToken"
+                                    :accept="acceptFor(field)"
+                                    :content-type="field.content_type"
+                                    :value="form.values[field.key] || ''"
+                                    @picked="onFilePicked(field.key, $event)"
+                                    @cleared="onFileCleared(field.key)"
+                                ></v-metaobject-file>
 
                                 <div v-else-if="field.source === 'metaobject'">
                                     <v-multiselect
@@ -135,6 +144,7 @@
                         childEntries: {},
                         pickedFiles: {},
                         saving: false,
+                        openToken: 0,
                         form: { id: null, code: '', values: {} },
                         labels: {
                             select: "@lang('shopify::app.shopify.metaobject.field-child')",
@@ -287,12 +297,14 @@
                     openCreate() {
                         this.form = { id: null, code: '', values: {} };
                         this.pickedFiles = {};
+                        this.openToken++;
                         this.$refs.entryModal.open();
                     },
 
                     openEdit(entry) {
                         this.form = { id: entry.id, code: entry.code, values: { ...entry.values } };
                         this.pickedFiles = {};
+                        this.openToken++;
                         this.$refs.entryModal.open();
                     },
 
@@ -300,8 +312,13 @@
                         this.$refs.entryModal.close();
                     },
 
-                    onFile(event, key) {
-                        this.pickedFiles[key] = event.target.files[0];
+                    onFilePicked(key, file) {
+                        this.pickedFiles[key] = file;
+                    },
+
+                    onFileCleared(key) {
+                        delete this.pickedFiles[key];
+                        this.form.values[key] = '';
                     },
 
                     save() {
@@ -342,6 +359,118 @@
                                 this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.entry-deleted')" });
                                 this.refresh();
                             });
+                    },
+                },
+            });
+        </script>
+
+        <script type="text/x-template" id="v-metaobject-file-template">
+            <div>
+                <div v-if="hasSelection" class="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-cherry-800 dark:bg-cherry-900" style="width:120px">
+                    <div class="relative w-full" style="height:120px">
+                        <img v-if="isImage && previewUrl" :src="previewUrl" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" />
+                        <div v-else class="flex h-full w-full items-center justify-center bg-gray-50 dark:bg-cherry-800">
+                            <span class="text-4xl text-gray-400" :class="isImage ? 'icon-image' : 'icon-file'"></span>
+                        </div>
+
+                        <div class="absolute inset-0 flex items-end justify-center gap-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <label class="icon-edit cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-white/30" :for="inputId"></label>
+                            <span class="icon-delete cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-red-500/80" @click="clear"></span>
+                        </div>
+                    </div>
+
+                    <p class="truncate px-2 py-1.5 text-center text-xs text-gray-700 dark:text-gray-300" :title="displayName" v-text="displayName"></p>
+                </div>
+
+                <label v-else class="group flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-violet-500 dark:border-cherry-500" style="width:120px;height:120px" :for="inputId">
+                    <span class="text-3xl text-gray-400 transition-colors group-hover:text-violet-600" :class="isImage ? 'icon-image' : 'icon-file'"></span>
+                    <p class="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        <template v-if="isImage">@lang('shopify::app.shopify.metaobject.add-image')</template>
+                        <template v-else>@lang('shopify::app.shopify.metaobject.add-file')</template>
+                    </p>
+                </label>
+
+                <input type="file" class="hidden" :id="inputId" :accept="accept" ref="input" @change="onChange" />
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-metaobject-file', {
+                template: '#v-metaobject-file-template',
+
+                props: {
+                    accept: { type: String, default: null },
+                    contentType: { type: String, default: '' },
+                    value: { type: String, default: '' },
+                },
+
+                emits: ['picked', 'cleared'],
+
+                data() {
+                    return { file: null, previewUrl: '', existing: this.value };
+                },
+
+                computed: {
+                    inputId() {
+                        return 'mo_file_' + this.$.uid;
+                    },
+
+                    hasSelection() {
+                        return !! this.file || !! this.existing;
+                    },
+
+                    isImage() {
+                        if (this.file) {
+                            return (this.file.type || '').startsWith('image/');
+                        }
+
+                        if (this.contentType) {
+                            return this.contentType === 'IMAGE';
+                        }
+
+                        return /\.(jpe?g|png|gif|webp|svg)$/i.test(this.existing);
+                    },
+
+                    displayName() {
+                        if (this.file) {
+                            return this.file.name;
+                        }
+
+                        return this.existing ? this.existing.split('/').pop() : '';
+                    },
+                },
+
+                methods: {
+                    onChange(event) {
+                        const file = event.target.files[0];
+
+                        if (! file) {
+                            return;
+                        }
+
+                        this.file = file;
+                        this.existing = '';
+                        this.previewUrl = '';
+
+                        if ((file.type || '').startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = e => { this.previewUrl = e.target.result; };
+                            reader.readAsDataURL(file);
+                        }
+
+                        this.$emit('picked', file);
+                    },
+
+                    clear() {
+                        this.file = null;
+                        this.previewUrl = '';
+                        this.existing = '';
+
+                        if (this.$refs.input) {
+                            this.$refs.input.value = '';
+                        }
+
+                        this.$emit('cleared');
                     },
                 },
             });

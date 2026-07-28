@@ -25,6 +25,7 @@ return [
             'attribute' => 'Attribut Shopify',
             'family' => 'Famille Shopify',
             'metafield' => 'Définitions des métachamps Shopify',
+            'metaobject' => 'Métaobjet Shopify',
         ],
     ],
     'components' => [

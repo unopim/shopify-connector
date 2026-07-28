@@ -25,6 +25,7 @@ return [
             'attribute' => 'Shopify 属性',
             'family' => 'Shopify 家族',
             'metafield' => 'Shopify 元字段定义',
+            'metaobject' => 'Shopify 元对象',
         ],
     ],
     'components' => [

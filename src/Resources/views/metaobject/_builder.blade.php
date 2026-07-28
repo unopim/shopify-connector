@@ -14,13 +14,12 @@
 
                     <div class="flex-1">
                         <v-multiselect
-                            :options="typeOptions"
+                            :options="compatibleTypeOptions(field)"
                             label="label"
                             track-by="id"
                             :model-value="typeOption(field)"
                             :allow-empty="false"
                             :show-labels="false"
-                            :searchable="false"
                             :placeholder="labels.fieldType"
                             @select="option => onTypeSelect(field, option)"
                         ></v-multiselect>
@@ -38,12 +37,13 @@
                             :model-value="childOption(field)"
                             :allow-empty="false"
                             :show-labels="false"
+                            :disabled="typeLocked(field)"
                             :placeholder="labels.fieldChild"
                             @select="option => onChildSelect(field, option)"
                         ></v-multiselect>
                     </div>
 
-                    <button type="button" class="secondary-button !py-1 !text-xs" @click="openNested(index)">@lang('shopify::app.shopify.metaobject.create-new')</button>
+                    <button v-if="! typeLocked(field)" type="button" class="secondary-button !py-1 !text-xs" @click="openNested(index)">@lang('shopify::app.shopify.metaobject.create-new')</button>
                 </div>
 
                 <div class="mt-2 flex flex-wrap items-center gap-3">
@@ -74,20 +74,32 @@
 
                     <input v-if="hasRegex(field)" type="text" v-model="field.validations.regex" :placeholder="labels.regex" class="min-w-40 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900" />
 
-                    <select v-if="hasUnit(field)" v-model="field.validations.unit" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900">
-                        <option value="">--</option>
-                        <option v-for="u in unitsFor(field)" :key="u" :value="u" v-text="u"></option>
-                    </select>
+                    <div v-if="hasUnit(field)" class="w-40">
+                        <v-multiselect
+                            :options="unitsFor(field)"
+                            :model-value="field.validations.unit || null"
+                            :show-labels="false"
+                            :placeholder="labels.unit"
+                            @select="value => field.validations.unit = value"
+                            @remove="() => field.validations.unit = ''"
+                        ></v-multiselect>
+                    </div>
 
-                    <select v-if="field.type === 'file_reference'" v-model="field.content_type" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900">
-                        <option value="">@lang('shopify::app.shopify.metaobject.field-any-file')</option>
-                        <option value="IMAGE">Image</option>
-                        <option value="VIDEO">Video</option>
-                        <option value="FILE">File</option>
-                    </select>
+                    <div v-if="field.type === 'file_reference'" class="w-40">
+                        <v-multiselect
+                            :options="contentTypeOptions"
+                            label="label"
+                            track-by="id"
+                            :model-value="contentTypeOption(field)"
+                            :show-labels="false"
+                            :placeholder="labels.contentType"
+                            @select="option => field.content_type = option.id"
+                            @remove="() => field.content_type = ''"
+                        ></v-multiselect>
+                    </div>
                 </div>
 
-                <div class="mt-3 flex items-center gap-6">
+                <div class="mt-3 flex items-center gap-6" :class="typeLocked(field) ? 'pointer-events-none opacity-60' : ''">
                     <span class="inline-flex cursor-pointer items-center gap-1 text-sm text-gray-600 dark:text-gray-300" @click="field.list = false">
                         <span class="text-2xl" :class="! field.list ? 'icon-radio-selected text-violet-700' : 'icon-radio-normal'"></span>
                         @lang('shopify::app.shopify.metaobject.field-single')
@@ -148,6 +160,7 @@
                 ...this.blankField(),
                 ...field,
                 type: field.preset ?? field.type,
+                existing: true,
                 validations: { ...this.blankValidations(), ...(field.validations ?? {}) },
             }));
 
@@ -156,6 +169,11 @@
                 fields: initialFields.length ? initialFields : [this.blankField()],
                 definitionOptions: [],
                 typeOptions: Object.entries(this.fieldTypes).map(([id, label]) => ({ id, label })),
+                contentTypeOptions: [
+                    { id: 'IMAGE', label: 'Image' },
+                    { id: 'VIDEO', label: 'Video' },
+                    { id: 'FILE', label: 'File' },
+                ],
                 saving: false,
                 nestedOpen: false,
                 nestedIndex: null,
@@ -167,6 +185,8 @@
                     max: "@lang('shopify::app.shopify.metaobject.field-max')",
                     precision: "@lang('shopify::app.shopify.metaobject.field-precision')",
                     regex: "@lang('shopify::app.shopify.metaobject.field-regex')",
+                    unit: "@lang('shopify::app.shopify.metaobject.field-unit')",
+                    contentType: "@lang('shopify::app.shopify.metaobject.field-content-type')",
                 },
             };
         },
@@ -178,11 +198,31 @@
 
         methods: {
             blankField() {
-                return { name: '', type: 'single_line_text_field', child: '', list: false, content_type: '', validations: this.blankValidations() };
+                return { name: '', type: 'single_line_text_field', child: '', list: false, content_type: '', existing: false, validations: this.blankValidations() };
             },
 
             blankValidations() {
                 return { min: '', max: '', unit: '', max_precision: '', regex: '' };
+            },
+
+            typeLocked(field) {
+                return this.mode === 'edit' && !! field.existing;
+            },
+
+            compatibleTypeOptions(field) {
+                if (! this.typeLocked(field)) {
+                    return this.typeOptions;
+                }
+
+                const groups = {
+                    single_line_text_field: ['single_line_text_field', 'email'],
+                    email: ['single_line_text_field', 'email'],
+                    image: ['image', 'file_reference'],
+                    file_reference: ['image', 'file_reference'],
+                };
+                const allowed = groups[field.type] || [field.type];
+
+                return this.typeOptions.filter(option => allowed.includes(option.id));
             },
 
             hasMinMax(field) {
@@ -213,6 +253,10 @@
 
             childOption(field) {
                 return this.definitionOptions.find(option => option.id === field.child) || null;
+            },
+
+            contentTypeOption(field) {
+                return this.contentTypeOptions.find(option => option.id === field.content_type) || null;
             },
 
             onTypeSelect(field, option) {

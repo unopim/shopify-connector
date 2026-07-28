@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Metafield;
 
+use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
@@ -12,6 +13,8 @@ use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class Importer extends AbstractImporter
@@ -87,6 +90,8 @@ class Importer extends AbstractImporter
         protected LocaleRepository $localeRepository,
         protected ShopifyCredentialRepository $shopifyRepository,
         protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ShopifyMetaobjectDefinitionRepository $metaobjectDefinitionRepository,
+        protected ShopifyMetaobjectAttributeRepository $metaobjectAttributeRepository,
     ) {
         parent::__construct($importBatchRepository);
 
@@ -227,7 +232,13 @@ class Importer extends AbstractImporter
             $metafieldType = $attribute['node']['type']['name'];
             $baseType = preg_replace('/^list\./', '', $metafieldType);
 
-            if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference'], true)) {
+            if ($baseType === 'metaobject_reference') {
+                $attributesArray[] = $this->metaobjectAttributeRow($attribute);
+
+                continue;
+            }
+
+            if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
                 $this->persistDefinitionIfMissing($attribute);
 
                 continue;
@@ -266,6 +277,116 @@ class Importer extends AbstractImporter
         }
 
         return $attributesArray;
+    }
+
+    /**
+     * Build a batch row for a metaobject_reference metafield so the attribute,
+     * binding and metafield are created (and counted) during batch processing.
+     *
+     * @return array<string, mixed>
+     */
+    protected function metaobjectAttributeRow(array $attribute): array
+    {
+        $node = $attribute['node'];
+        $typeName = $node['type']['name'];
+        $name = $node['name'] ?? $node['key'];
+        $definitionGid = (string) (collect($node['validations'] ?? [])->firstWhere('name', 'metaobject_definition_id')['value'] ?? '');
+        $metaobjectType = $this->metaobjectTypeByGid()[$definitionGid] ?? null;
+
+        return [
+            'code' => $this->metaobjectAttributeCode($name),
+            'type' => 'shopify_metaobject',
+            'namespace' => $node['namespace'],
+            $this->locale => ['name' => $name],
+            'metaobject' => [
+                'name' => $name,
+                'is_list' => str_contains($typeName, 'list'),
+                'type_name' => $typeName,
+                'metaobject_type' => $metaobjectType,
+                'name_space_key' => "{$node['namespace']}.{$node['key']}",
+                'owner_type' => $node['ownerType'],
+                'pin' => ! empty($node['pinnedPosition']),
+                'api_url' => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+                'validations' => json_encode(array_filter([
+                    'reference_source' => 'metaobject',
+                    'metaobject_definition_id' => $definitionGid,
+                    'metaobject_type' => $metaobjectType,
+                ], fn ($value) => $value !== null && $value !== '')),
+            ],
+        ];
+    }
+
+    /**
+     * Create the shopify_metaobject attribute, its definition binding and the
+     * mapped metafield for a metaobject batch row, counting the attribute.
+     *
+     * @param  array<string, mixed>  $rowData
+     */
+    protected function saveMetaobjectAttribute(array $rowData): void
+    {
+        $meta = $rowData['metaobject'];
+        $code = $rowData['code'];
+        $existing = $this->attributeRepository->findOneByField('code', strtolower($code));
+
+        if ($existing) {
+            $attributeId = $existing->id;
+            $this->updatedItemsCount++;
+        } else {
+            $attributeId = $this->attributeRepository->create([
+                'code' => $code,
+                'type' => 'shopify_metaobject',
+                $this->locale => $rowData[$this->locale] ?? ['name' => $meta['name']],
+            ])->id;
+            $this->createdItemsCount++;
+        }
+
+        if (! empty($meta['metaobject_type'])) {
+            $definition = $this->metaobjectDefinitionRepository->findOneWhere(['code' => $meta['metaobject_type']]);
+
+            if ($definition) {
+                $this->metaobjectAttributeRepository->saveBinding((int) $attributeId, (int) $definition->id, (bool) $meta['is_list']);
+            }
+        }
+
+        $existingMeta = $this->shopifyMetaFieldRepository->findOneWhere([
+            ['name_space_key', '=', $meta['name_space_key']],
+            ['ownerType', '=', $meta['owner_type']],
+        ]);
+
+        if ($existingMeta) {
+            return;
+        }
+
+        $this->shopifyMetaFieldRepository->create([
+            'ownerType' => $meta['owner_type'],
+            'type' => 'metaobject_reference',
+            'name_space_key' => $meta['name_space_key'],
+            'code' => $code,
+            'attribute' => $meta['name'],
+            'attributeLabel' => $meta['name'],
+            'pin' => $meta['pin'],
+            'listvalue' => $meta['is_list'],
+            'ContentTypeName' => $meta['type_name'],
+            'apiUrl' => $meta['api_url'],
+            'validations' => $meta['validations'],
+        ]);
+    }
+
+    /**
+     * Build a unique attribute code from a metafield name, reusing an existing
+     * code only when it already belongs to a shopify_metaobject attribute.
+     */
+    protected function metaobjectAttributeCode(string $name): string
+    {
+        $base = Str::slug($name, '_') ?: 'metaobject';
+        $code = $base;
+        $suffix = 1;
+
+        while (($attribute = $this->attributeRepository->findOneWhere(['code' => $code])) && $attribute->type !== 'shopify_metaobject') {
+            $code = $base.'_'.(++$suffix);
+        }
+
+        return $code;
     }
 
     private function persistDefinitionIfMissing(array $attribute): void
@@ -497,6 +618,12 @@ class Importer extends AbstractImporter
         $attributes = [];
 
         foreach ($batch->data as $rowData) {
+            if (isset($rowData['metaobject'])) {
+                $this->saveMetaobjectAttribute($rowData);
+
+                continue;
+            }
+
             $attributeModel = $this->attributeRepository->findOneByField('code', strtolower($rowData['code']));
             if ($attributeModel) {
                 $this->updatedItemsCount++;

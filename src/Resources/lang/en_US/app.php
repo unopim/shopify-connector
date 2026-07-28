@@ -26,6 +26,7 @@ return [
             'attribute' => 'Shopify Attribute',
             'family' => 'Shopify Family Variant Attribute Assignment',
             'metafield' => 'Shopify Metafield Definitions',
+            'metaobject' => 'Shopify Metaobject',
         ],
     ],
     'components' => [
@@ -38,7 +39,7 @@ return [
                 'collection-mappings' => 'Collection Mappings',
                 'import-mappings' => 'Import Mappings',
                 'meta-fields' => 'Metafield Definitions',
-                'metaobjects' => 'Metaobjects',
+                'metaobjects' => 'Metaobject Definitions',
                 'settings' => 'Settings',
                 'metafield-definitions' => 'Metafield Definitions',
             ],
@@ -77,6 +78,7 @@ return [
             'only-one' => 'Only one Shopify Taxonomy attribute is allowed.',
             'metaobject-type' => 'Shopify Metaobject',
             'metaobject-binding' => 'Metaobject',
+            'metaobject-required' => 'Please select a metaobject for this attribute.',
         ],
 
         'credential' => [
@@ -350,12 +352,13 @@ return [
             'attribute-groups' => 'Attribute Groups',
         ],
         'metaobject' => [
-            'title' => 'Metaobjects',
+            'title' => 'Metaobject Definitions',
             'create' => 'Create Metaobject',
             'create-new' => 'Create new metaobject',
             'deleted' => 'Metaobject deleted.',
             'save' => 'Save',
             'cancel' => 'Cancel',
+            'back' => 'Back',
             'delete' => 'Delete',
             'datagrid' => [
                 'name' => 'Name',
@@ -374,6 +377,10 @@ return [
             'field-precision' => 'Max decimals',
             'field-regex' => 'Regex',
             'field-any-file' => 'Any file',
+            'field-unit' => 'Unit',
+            'field-content-type' => 'Content type',
+            'add-image' => 'Add image',
+            'add-file' => 'Add file',
             'add-field' => 'Add Field',
             'name-required' => 'Name is required.',
             'fields-required' => 'Add at least one field.',

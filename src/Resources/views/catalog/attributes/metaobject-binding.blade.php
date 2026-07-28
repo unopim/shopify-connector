@@ -5,6 +5,7 @@
 <div v-if="selectedAttributeType == 'shopify_metaobject'" class="mb-4">
     <v-metaobject-binding
         initial-definition="{{ $binding->definition_id ?? '' }}"
+        initial-multiple="{{ ($binding->is_list ?? false) ? '1' : '' }}"
     ></v-metaobject-binding>
 </div>
 
@@ -25,6 +26,19 @@
             ></v-multiselect>
             <input type="hidden" name="metaobject_definition" :value="definitionId" />
         </div>
+
+        <div class="flex items-center gap-6">
+            <span class="inline-flex cursor-pointer items-center gap-1 text-sm text-gray-600 dark:text-gray-300" @click="multiple = false">
+                <span class="text-2xl" :class="! multiple ? 'icon-radio-selected text-violet-700' : 'icon-radio-normal'"></span>
+                @lang('shopify::app.shopify.metaobject.field-single')
+            </span>
+            <span class="inline-flex cursor-pointer items-center gap-1 text-sm text-gray-600 dark:text-gray-300" @click="multiple = true">
+                <span class="text-2xl" :class="multiple ? 'icon-radio-selected text-violet-700' : 'icon-radio-normal'"></span>
+                @lang('shopify::app.shopify.metaobject.field-list')
+            </span>
+        </div>
+
+        <input type="hidden" name="metaobject_multiple" :value="multiple ? 1 : ''" />
     </div>
 </script>
 
@@ -34,11 +48,13 @@
 
         props: {
             initialDefinition: { type: [String, Number], default: '' },
+            initialMultiple: { type: [String, Number], default: '' },
         },
 
         data() {
             return {
                 definitionId: this.initialDefinition ? Number(this.initialDefinition) : '',
+                multiple: !! this.initialMultiple,
                 definitions: [],
                 labels: { select: "@lang('shopify::app.shopify.attribute.metaobject-binding')" },
             };

@@ -204,4 +204,25 @@ return [
             ],
         ],
     ],
+
+    'shopifyMetaobject' => [
+        'title' => 'shopify::app.importers.shopify.metaobject',
+        'importer' => 'Webkul\Shopify\Helpers\Importers\Metaobject\Importer',
+        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyMetaobjectValidator',
+        'filters' => [
+            'fields' => [
+                [
+                    'name' => 'credentials',
+                    'title' => 'shopify::app.shopify.job.credentials',
+                    'required' => true,
+                    'validation' => 'required',
+                    'type' => 'select',
+                    'async' => true,
+                    'track_by' => 'id',
+                    'label_by' => 'label',
+                    'list_route' => 'shopify.credential.fetch-all',
+                ],
+            ],
+        ],
+    ],
 ];

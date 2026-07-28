@@ -137,8 +137,8 @@ class MetaFieldController extends Controller
         $errors = [];
         if ((bool) $data['pin']) {
             $allPined = $this->shopifyMetaFieldRepository->where('pin', 1)->where('ownerType', $data['ownerType'])->get()->toArray();
-            if (count($allPined) > 19) {
-                $errors['pin'] = [trans('Pin limit reached, You can only have 20 pined fields')];
+            if (count($allPined) > 49) {
+                $errors['pin'] = [trans('Pin limit reached, You can only have 50 pined fields')];
             }
         }
 
@@ -147,6 +147,17 @@ class MetaFieldController extends Controller
             if ($attributeCode) {
                 $defintionType = ($attributeCode?->ownerType == 'PRODUCT') ? 'Product Definition' : 'Product variant Definition';
                 $errors['code'] = [trans('Definition already created in '.$defintionType)];
+            }
+        }
+
+        if ($referenceMode && ($data['reference_source'] ?? null) === 'metaobject') {
+            $existingMetaobject = $this->shopifyMetaFieldRepository
+                ->where('code', $data['code'] ?? '')
+                ->where('type', 'metaobject_reference')
+                ->where('ownerType', $data['ownerType'])
+                ->first();
+            if ($existingMetaobject) {
+                $errors['code'] = [trans('This attribute already has a metaobject reference metafield')];
             }
         }
         if (isset($data['name_space_key'])) {
@@ -420,8 +431,8 @@ class MetaFieldController extends Controller
                 }
             }
 
-            if ($countPin > 19) {
-                $errors['pin'] = [trans('Pin limit reached, You can only have 20 pined fields')];
+            if ($countPin > 49) {
+                $errors['pin'] = [trans('Pin limit reached, You can only have 50 pined fields')];
             }
         }
 

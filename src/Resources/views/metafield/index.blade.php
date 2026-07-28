@@ -219,6 +219,7 @@
                                             :placeholder="trans('shopify::app.shopify.metafield.index.metaobject-attribute')"
                                             @input="handleMetaobjectAttribute($event)"
                                         />
+                                        <x-admin::form.control-group.error control-name="code" />
                                     </x-admin::form.control-group>
                                 </template>
 
