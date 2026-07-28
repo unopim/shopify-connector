@@ -12,8 +12,8 @@ class MetaobjectFieldType
         $keys = [
             'single_line_text_field', 'multi_line_text_field', 'rich_text_field', 'boolean', 'color',
             'number_integer', 'number_decimal', 'date', 'date_time', 'url', 'money', 'json', 'id',
-            'rating', 'dimension', 'volume', 'weight', 'link', 'email', 'image', 'file_reference',
-            'metaobject_reference',
+            'rating', 'dimension', 'volume', 'weight', 'link', 'email', 'choice_list', 'image',
+            'file_reference', 'metaobject_reference',
         ];
 
         $types = [];

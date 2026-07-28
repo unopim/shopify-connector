@@ -238,6 +238,9 @@ class MetaobjectController extends Controller
             if ($type === 'email') {
                 $preset = 'email';
                 $type = 'single_line_text_field';
+            } elseif ($type === 'choice_list') {
+                $preset = 'choice_list';
+                $type = 'single_line_text_field';
             } elseif ($type === 'image') {
                 $preset = 'image';
                 $type = 'file_reference';
@@ -268,7 +271,7 @@ class MetaobjectController extends Controller
     {
         $clean = [];
 
-        foreach (['min', 'max', 'unit', 'max_precision', 'regex'] as $key) {
+        foreach (['min', 'max', 'unit', 'max_precision', 'regex', 'choices'] as $key) {
             if (($validations[$key] ?? '') !== '' && ($validations[$key] ?? null) !== null) {
                 $clean[$key] = $validations[$key];
             }

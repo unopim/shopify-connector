@@ -138,6 +138,7 @@ class MetaobjectIterator implements \Iterator
                 'required' => ! empty($definition['required']),
                 'child' => $type === 'metaobject_reference' ? ($typeByGid[$validations['metaobject_definition_id'] ?? ''] ?? '') : '',
                 'content_type' => $type === 'file_reference' ? ($validations['content_type'] ?? '') : '',
+                'preset' => ! empty($validations['rules']['choices']) ? 'choice_list' : '',
                 'validations' => $validations['rules'],
             ], fn ($value) => $value !== '' && $value !== null && $value !== []);
         }
@@ -170,6 +171,9 @@ class MetaobjectIterator implements \Iterator
                 }
             } elseif ($name === 'max_precision' || $name === 'regex') {
                 $rules[$name] = $value;
+            } elseif ($name === 'choices') {
+                $decoded = json_decode((string) $value, true);
+                $rules['choices'] = is_array($decoded) ? implode(',', $decoded) : (string) $value;
             } elseif ($name === 'metaobject_definition_id') {
                 $extra['metaobject_definition_id'] = $value;
             } elseif ($name === 'file_type_options') {

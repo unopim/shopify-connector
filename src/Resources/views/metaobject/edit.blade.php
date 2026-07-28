@@ -67,6 +67,19 @@
 
                                 <input v-else-if="field.shopify_type === 'color'" type="color" v-model="form.values[field.key]" class="h-9 w-16 rounded-md border border-gray-300 dark:border-gray-600" />
 
+                                <div v-else-if="field.preset === 'choice_list' && choiceOptions(field).length">
+                                    <v-multiselect
+                                        :options="choiceOptions(field)"
+                                        :model-value="form.values[field.key] || null"
+                                        :allow-empty="true"
+                                        :show-labels="false"
+                                        :searchable="false"
+                                        :placeholder="labels.select"
+                                        @select="value => form.values[field.key] = value"
+                                        @remove="() => form.values[field.key] = ''"
+                                    ></v-multiselect>
+                                </div>
+
                                 <v-metaobject-file
                                     v-else-if="field.shopify_type === 'file_reference'"
                                     :key="field.key + '-' + openToken"
@@ -280,6 +293,10 @@
                         }
 
                         return null;
+                    },
+
+                    choiceOptions(field) {
+                        return (field.validations?.choices || '').split(',').map(choice => choice.trim()).filter(Boolean);
                     },
 
                     acceptFor(field) {

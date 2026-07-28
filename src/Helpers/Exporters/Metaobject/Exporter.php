@@ -278,6 +278,14 @@ class Exporter extends AbstractExporter
             $out[] = ['name' => 'regex', 'value' => (string) $rules['regex']];
         }
 
+        if (($rules['choices'] ?? '') !== '') {
+            $choices = array_values(array_filter(array_map('trim', explode(',', (string) $rules['choices']))));
+
+            if (! empty($choices)) {
+                $out[] = ['name' => 'choices', 'value' => json_encode($choices, JSON_UNESCAPED_SLASHES)];
+            }
+        }
+
         if ($type === 'file_reference' && ! empty($field['content_type'])) {
             $out[] = ['name' => 'file_type_options', 'value' => json_encode([ucfirst(strtolower((string) $field['content_type']))], JSON_UNESCAPED_SLASHES)];
         }

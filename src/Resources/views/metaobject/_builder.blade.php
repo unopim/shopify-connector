@@ -72,7 +72,23 @@
 
                     <input v-if="field.type === 'number_decimal'" type="number" min="0" max="9" v-model="field.validations.max_precision" :placeholder="labels.precision" class="w-32 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900" />
 
+                    <div v-if="field.type === 'id'" class="w-52">
+                        <v-multiselect
+                            :options="regexPresetOptions"
+                            label="label"
+                            track-by="id"
+                            :model-value="regexPresetOption(field)"
+                            :show-labels="false"
+                            :searchable="false"
+                            :placeholder="labels.regexPreset"
+                            @select="option => field.validations.regex = option.id"
+                            @remove="() => field.validations.regex = ''"
+                        ></v-multiselect>
+                    </div>
+
                     <input v-if="hasRegex(field)" type="text" v-model="field.validations.regex" :placeholder="labels.regex" class="min-w-40 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+
+                    <input v-if="field.type === 'choice_list'" type="text" v-model="field.validations.choices" :placeholder="labels.choices" class="min-w-40 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-cherry-900" />
 
                     <div v-if="hasUnit(field)" class="w-40">
                         <v-multiselect
@@ -174,6 +190,12 @@
                     { id: 'VIDEO', label: 'Video' },
                     { id: 'FILE', label: 'File' },
                 ],
+                regexPresetOptions: [
+                    { id: '^[a-zA-Z]+$', label: "@lang('shopify::app.shopify.metafield.index.regex-alphabetical')" },
+                    { id: '^[a-zA-Z0-9]+$', label: "@lang('shopify::app.shopify.metafield.index.regex-alphanumeric')" },
+                    { id: '^[0-9]+$', label: "@lang('shopify::app.shopify.metafield.index.regex-numeric')" },
+                    { id: '^[a-zA-Z0-9_-]{3,20}$', label: "@lang('shopify::app.shopify.metafield.index.regex-sku')" },
+                ],
                 saving: false,
                 nestedOpen: false,
                 nestedIndex: null,
@@ -185,6 +207,8 @@
                     max: "@lang('shopify::app.shopify.metaobject.field-max')",
                     precision: "@lang('shopify::app.shopify.metaobject.field-precision')",
                     regex: "@lang('shopify::app.shopify.metaobject.field-regex')",
+                    choices: "@lang('shopify::app.shopify.metaobject.field-choices')",
+                    regexPreset: "@lang('shopify::app.shopify.metaobject.field-regex-preset')",
                     unit: "@lang('shopify::app.shopify.metaobject.field-unit')",
                     contentType: "@lang('shopify::app.shopify.metaobject.field-content-type')",
                 },
@@ -202,7 +226,7 @@
             },
 
             blankValidations() {
-                return { min: '', max: '', unit: '', max_precision: '', regex: '' };
+                return { min: '', max: '', unit: '', max_precision: '', regex: '', choices: '' };
             },
 
             typeLocked(field) {
@@ -215,8 +239,9 @@
                 }
 
                 const groups = {
-                    single_line_text_field: ['single_line_text_field', 'email'],
-                    email: ['single_line_text_field', 'email'],
+                    single_line_text_field: ['single_line_text_field', 'email', 'choice_list'],
+                    email: ['single_line_text_field', 'email', 'choice_list'],
+                    choice_list: ['single_line_text_field', 'email', 'choice_list'],
                     image: ['image', 'file_reference'],
                     file_reference: ['image', 'file_reference'],
                 };
@@ -230,7 +255,11 @@
             },
 
             hasRegex(field) {
-                return ['single_line_text_field', 'email', 'id'].includes(field.type);
+                return ['id'].includes(field.type);
+            },
+
+            regexPresetOption(field) {
+                return this.regexPresetOptions.find(option => option.id === field.validations.regex) || null;
             },
 
             hasUnit(field) {
