@@ -115,6 +115,8 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::get('get-shopify-attrGroup', 'listAttributeGroup')->name('shopify.attribute-group.fetch-all');
 
             Route::get('get-shopify-family', 'listShopifyFamily')->name('admin.shopify.get-all-family-variants');
+
+            Route::get('metaobject/reference-options', 'referenceOptions')->name('shopify.metaobject.reference-options');
         });
 
         Route::controller(MetaobjectController::class)->group(function () {

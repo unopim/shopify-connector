@@ -8,9 +8,11 @@ use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Repositories\CategoryFieldRepository;
+use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\Core\Repositories\CurrencyRepository;
 use Webkul\Core\Repositories\LocaleRepository;
+use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
@@ -35,6 +37,8 @@ class OptionController extends Controller
         protected AttributeFamilyRepository $attributeFamilyRepository,
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
         protected CategoryFieldRepository $categoryFieldRepository,
+        protected ProductRepository $productRepository,
+        protected CategoryRepository $categoryRepository,
     ) {}
 
     /**
@@ -632,5 +636,57 @@ class OptionController extends Controller
         $ids = (array) request()->get('ids', []);
 
         return new JsonResponse(['names' => $loader->namesFor($ids)]);
+    }
+
+    /**
+     * List UnoPim products, variants or categories for metaobject reference fields.
+     */
+    public function referenceOptions(): JsonResponse
+    {
+        $refType = request()->get('refType');
+        $query = request()->get('query') ?? '';
+        $page = request()->get('page');
+
+        if ($refType === 'collection_reference') {
+            $repository = $this->categoryRepository;
+
+            if (! empty($query)) {
+                $repository = $repository->where('code', 'LIKE', '%'.$query.'%');
+            }
+
+            $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+            $options = array_map(fn ($category) => [
+                'id' => $category->code,
+                'label' => $category->code,
+            ], $records->items());
+
+            return new JsonResponse([
+                'options' => $options,
+                'page' => $records->currentPage(),
+                'lastPage' => $records->lastPage(),
+            ]);
+        }
+
+        $repository = $refType === 'variant_reference'
+            ? $this->productRepository->where(fn ($builder) => $builder->whereNotNull('parent_id')->orWhere('type', 'simple'))
+            : $this->productRepository->whereNull('parent_id');
+
+        if (! empty($query)) {
+            $repository = $repository->where('sku', 'LIKE', '%'.$query.'%');
+        }
+
+        $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+        $options = array_map(fn ($product) => [
+            'id' => $product->sku,
+            'label' => $product->sku,
+        ], $records->items());
+
+        return new JsonResponse([
+            'options' => $options,
+            'page' => $records->currentPage(),
+            'lastPage' => $records->lastPage(),
+        ]);
     }
 }

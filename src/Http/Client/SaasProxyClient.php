@@ -37,8 +37,6 @@ class SaasProxyClient implements ShopifyClient
      *               proxy response is normalised into a {edges,pageInfo} envelope
      * - altKeys:    extra top-level keys the proxy may nest the list under
      * - rename:     [graphqlVariableKey => proxyKey] adjustments (body or query)
-     * - search:     [variable => shopifyField] folded into a `query` search filter
-     *               (e.g. type => "type:<value>") and dropped from the params
      * - defaults:   query/body values applied when the caller did not supply them
      * - respKey:    read the result from a different proxy key than `field`
      * - wrap:       nest all variables under one key (e.g. {input:{...}})
@@ -256,7 +254,6 @@ class SaasProxyClient implements ShopifyClient
             'path' => '/graphql/api/metaobjects.json',
             'method' => 'GET',
             'connection' => 'metaobjects',
-            'search' => ['type' => 'type'],
             'override' => ['fields' => 'id type handle fields{ key value }'],
         ],
     ];
@@ -530,20 +527,6 @@ class SaasProxyClient implements ShopifyClient
                 $query[$to] = $query[$from];
                 unset($query[$from]);
             }
-        }
-
-        $filters = [];
-
-        foreach ($definition['search'] ?? [] as $variable => $field) {
-            if (($query[$variable] ?? '') !== '') {
-                $filters[] = $field.':'.$query[$variable];
-            }
-
-            unset($query[$variable]);
-        }
-
-        if (! empty($filters)) {
-            $query['query'] = implode(' ', $filters);
         }
 
         $query = array_filter($query, fn ($value) => $value !== null && $value !== '');

@@ -13,7 +13,8 @@ class MetaobjectFieldType
             'single_line_text_field', 'multi_line_text_field', 'rich_text_field', 'boolean', 'color',
             'number_integer', 'number_decimal', 'date', 'date_time', 'url', 'money', 'json', 'id',
             'rating', 'dimension', 'volume', 'weight', 'link', 'email', 'choice_list', 'image',
-            'file_reference', 'metaobject_reference',
+            'file_reference', 'metaobject_reference', 'product_reference', 'variant_reference',
+            'collection_reference',
         ];
 
         $types = [];

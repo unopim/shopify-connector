@@ -9,6 +9,7 @@ use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
@@ -41,6 +42,17 @@ class Exporter extends AbstractExporter
 
     protected bool $filesLoaded = false;
 
+    /** @var array<string, string> */
+    protected array $productGidMap = [];
+
+    /** @var array<string, string> */
+    protected array $variantGidMap = [];
+
+    /** @var array<string, string> */
+    protected array $collectionGidMap = [];
+
+    protected bool $referenceMapsLoaded = false;
+
     public function __construct(
         protected JobTrackBatchRepository $exportBatchRepository,
         protected FileExportFileBuffer $exportFileBuffer,
@@ -49,6 +61,7 @@ class Exporter extends AbstractExporter
         protected ShopifyMetaobjectEntryRepository $entryRepository,
         protected ShopifyMetaobjectMappingRepository $definitionMappingRepository,
         protected ShopifyMetaobjectEntryMappingRepository $entryMappingRepository,
+        protected ShopifyMappingRepository $shopifyMappingRepository,
         protected FileReferenceUploader $fileReferenceUploader,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
@@ -81,6 +94,7 @@ class Exporter extends AbstractExporter
         $this->initialize();
 
         $this->loadFileGidMap();
+        $this->loadReferenceMaps();
 
         foreach ($batch->data as $row) {
             $code = $row['code'] ?? '';
@@ -430,6 +444,31 @@ class Exporter extends AbstractExporter
             return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
         }
 
+        if (in_array($type, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
+            $map = match ($type) {
+                'product_reference' => $this->productGidMap,
+                'variant_reference' => $this->variantGidMap,
+                'collection_reference' => $this->collectionGidMap,
+            };
+
+            $identifiers = $list ? (array) (is_string($raw) ? json_decode($raw, true) : $raw) : [$raw];
+            $gids = [];
+
+            foreach (array_filter($identifiers) as $identifier) {
+                if (! empty($map[$identifier])) {
+                    $gids[] = $map[$identifier];
+                } else {
+                    $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-reference-unmapped', ['identifier' => $identifier]));
+                }
+            }
+
+            if (empty($gids)) {
+                return null;
+            }
+
+            return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
+        }
+
         return is_array($raw) ? json_encode($raw, JSON_UNESCAPED_SLASHES) : (string) $raw;
     }
 
@@ -500,6 +539,43 @@ class Exporter extends AbstractExporter
 
         if (! empty($fileValues)) {
             $this->fileGidMap = $this->fileReferenceUploader->buildGidMap($fileValues, $this->credentialArray, $this->export->id);
+        }
+    }
+
+    protected function loadReferenceMaps(): void
+    {
+        if ($this->referenceMapsLoaded) {
+            return;
+        }
+
+        $this->referenceMapsLoaded = true;
+
+        $products = $this->shopifyMappingRepository
+            ->where('entityType', 'product')
+            ->where('apiUrl', $this->shopUrl)
+            ->get(['code', 'externalId', 'relatedId']);
+
+        foreach ($products as $row) {
+            if (empty($row->code)) {
+                continue;
+            }
+
+            $this->productGidMap[$row->code] = $row->relatedId ?: $row->externalId;
+
+            if (! empty($row->relatedId) && ! empty($row->externalId)) {
+                $this->variantGidMap[$row->code] = $row->externalId;
+            }
+        }
+
+        $categories = $this->shopifyMappingRepository
+            ->where('entityType', 'category')
+            ->where('apiUrl', $this->shopUrl)
+            ->get(['code', 'externalId']);
+
+        foreach ($categories as $row) {
+            if (! empty($row->code) && ! empty($row->externalId)) {
+                $this->collectionGidMap[$row->code] = $row->externalId;
+            }
         }
     }
 

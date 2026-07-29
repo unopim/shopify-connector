@@ -39,7 +39,7 @@ it('forwards the metaobject definition create body verbatim', function () {
     });
 });
 
-it('folds the type into a query filter and normalizes the metaobjects list', function () {
+it('passes the type as a query param and normalizes the metaobjects list', function () {
     Http::fake(['*' => Http::response([
         'metaobjects' => [
             'nodes' => [
@@ -55,8 +55,7 @@ it('folds the type into a query filter and normalizes the metaobjects list', fun
     Http::assertSent(function ($request) {
         return $request->method() === 'GET'
             && str_contains($request->url(), '/graphql/api/metaobjects.json')
-            && ($request->data()['query'] ?? null) === 'type:brand'
-            && ! array_key_exists('type', $request->data());
+            && ($request->data()['type'] ?? null) === 'brand';
     });
 
     expect($result['body']['data']['metaobjects']['edges'][0]['node']['handle'])->toBe('dell');

@@ -271,6 +271,7 @@ return [
                 'metaobject-definition-missing' => 'Metaobject definition ":type" does not exist on store :store. Sync the definition to this store before exporting.',
                 'metaobject-definition-failed' => 'Failed to export metaobject definition ":code".',
                 'metaobject-entry-failed' => 'Failed to export metaobject entry ":code".',
+                'metaobject-reference-unmapped' => 'Metaobject reference skipped, no Shopify mapping found for identifier: :identifier',
             ],
         ],
 
@@ -423,6 +424,9 @@ return [
                 'image' => 'Image',
                 'file_reference' => 'File',
                 'metaobject_reference' => 'Metaobject reference',
+                'product_reference' => 'Product reference',
+                'variant_reference' => 'Variant reference',
+                'collection_reference' => 'Collection reference',
             ],
         ],
         'metafield' => [

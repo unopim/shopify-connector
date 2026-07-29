@@ -90,6 +90,25 @@
                                     @cleared="onFileCleared(field.key)"
                                 ></v-metaobject-file>
 
+                                <div v-else-if="isCatalogReference(field)">
+                                    <v-multiselect
+                                        :options="referenceOptions(field)"
+                                        label="label"
+                                        track-by="id"
+                                        :multiple="field.list"
+                                        :model-value="referenceSelection(field)"
+                                        :loading="referenceLoading[field.key]"
+                                        :internal-search="false"
+                                        :allow-empty="true"
+                                        :show-labels="false"
+                                        :placeholder="labels.select"
+                                        @open="loadReferences(field)"
+                                        @search-change="query => loadReferences(field, query)"
+                                        @select="option => onReferencePick(field, option)"
+                                        @remove="option => onReferenceUnpick(field, option)"
+                                    ></v-multiselect>
+                                </div>
+
                                 <div v-else-if="field.source === 'metaobject'">
                                     <v-multiselect
                                         :options="childOptions(field)"
@@ -155,6 +174,8 @@
                     return {
                         entries: [],
                         childEntries: {},
+                        referenceCache: {},
+                        referenceLoading: {},
                         pickedFiles: {},
                         saving: false,
                         openToken: 0,
@@ -233,6 +254,60 @@
                             const current = Array.isArray(this.form.values[field.key]) ? this.form.values[field.key] : [];
                             this.form.values[field.key] = current.filter(code => code !== option.code);
                         }
+                    },
+
+                    isCatalogReference(field) {
+                        return ['product_reference', 'variant_reference', 'collection_reference'].includes(field.shopify_type);
+                    },
+
+                    referenceOptions(field) {
+                        return this.referenceCache[field.key] || [];
+                    },
+
+                    loadReferences(field, query = '') {
+                        this.referenceLoading[field.key] = true;
+
+                        this.$axios.get("{{ route('shopify.metaobject.reference-options') }}", {
+                            params: { refType: field.shopify_type, query, page: 1 },
+                        }).then(res => {
+                            this.referenceCache[field.key] = res.data.options ?? [];
+                        }).finally(() => {
+                            this.referenceLoading[field.key] = false;
+                        });
+                    },
+
+                    referenceSelection(field) {
+                        const value = this.form.values[field.key];
+
+                        if (field.list) {
+                            const ids = Array.isArray(value) ? value : (value ? [value] : []);
+
+                            return ids.map(id => ({ id, label: id }));
+                        }
+
+                        return value ? { id: value, label: value } : null;
+                    },
+
+                    onReferencePick(field, option) {
+                        if (field.list) {
+                            const current = Array.isArray(this.form.values[field.key]) ? this.form.values[field.key] : [];
+                            this.form.values[field.key] = [...current, option.id];
+
+                            return;
+                        }
+
+                        this.form.values[field.key] = option.id;
+                    },
+
+                    onReferenceUnpick(field, option) {
+                        if (field.list) {
+                            const current = Array.isArray(this.form.values[field.key]) ? this.form.values[field.key] : [];
+                            this.form.values[field.key] = current.filter(id => id !== option.id);
+
+                            return;
+                        }
+
+                        this.form.values[field.key] = '';
                     },
 
                     supported(field) {

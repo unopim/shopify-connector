@@ -8,6 +8,7 @@ use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Helpers\Iterator\MetaobjectIterator;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
@@ -37,9 +38,13 @@ class Importer extends AbstractImporter
         protected ShopifyMetaobjectEntryRepository $entryRepository,
         protected ShopifyMetaobjectMappingRepository $definitionMappingRepository,
         protected ShopifyMetaobjectEntryMappingRepository $entryMappingRepository,
+        protected ShopifyMappingRepository $shopifyMappingRepository,
     ) {
         parent::__construct($importBatchRepository);
     }
+
+    /** @var array<string, string>|null */
+    protected ?array $referenceCodeByGid = null;
 
     protected function initFilters(): void
     {
@@ -208,6 +213,16 @@ class Importer extends AbstractImporter
                 continue;
             }
 
+            if (in_array($type, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
+                $identifiers = $this->resolveReferenceIdentifiers($raw, $list);
+
+                if (! empty($identifiers)) {
+                    $values[$key] = $list ? $identifiers : $identifiers[0];
+                }
+
+                continue;
+            }
+
             if ($type === 'boolean') {
                 $values[$key] = $raw === 'true' || $raw === '1' || $raw === true;
 
@@ -323,5 +338,50 @@ class Importer extends AbstractImporter
         }
 
         return $codes;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function resolveReferenceIdentifiers(mixed $raw, bool $list): array
+    {
+        $gids = $list ? (json_decode((string) $raw, true) ?: []) : [$raw];
+        $map = $this->referenceCodeByGid();
+        $codes = [];
+
+        foreach (array_filter((array) $gids) as $gid) {
+            if (! empty($map[$gid])) {
+                $codes[] = $map[$gid];
+            } else {
+                $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-reference-unmapped', ['identifier' => $gid]));
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function referenceCodeByGid(): array
+    {
+        if ($this->referenceCodeByGid !== null) {
+            return $this->referenceCodeByGid;
+        }
+
+        $map = [];
+
+        $rows = $this->shopifyMappingRepository
+            ->whereIn('entityType', ['product', 'category'])
+            ->where('apiUrl', $this->shopUrl)
+            ->get(['code', 'externalId']);
+
+        foreach ($rows as $row) {
+            if (! empty($row->externalId) && ! empty($row->code)) {
+                $map[$row->externalId] = $row->code;
+            }
+        }
+
+        return $this->referenceCodeByGid = $map;
     }
 }
