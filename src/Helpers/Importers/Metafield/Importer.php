@@ -44,24 +44,24 @@ class Importer extends AbstractImporter
 
     protected $attributeType = [
         'single_line_text_field' => 'text',
-        'id' => 'text',
-        'json' => 'textarea',
-        'number_integer' => 'text',
-        'multi_line_text_field' => 'textarea',
-        'rich_text_field' => 'textarea',
-        'color' => 'text',
-        'rating' => 'text',
-        'url' => 'text',
-        'boolean' => 'boolean',
-        'number_decimal' => 'text',
-        'dimension' => 'text',
-        'weight' => 'text',
-        'volume' => 'text',
-        'date' => 'date',
-        'date_time' => 'datetime',
-        'file_reference' => 'image',
-        'list.file_reference' => 'gallery',
-        'link' => 'text',
+        'id'                     => 'text',
+        'json'                   => 'textarea',
+        'number_integer'         => 'text',
+        'multi_line_text_field'  => 'textarea',
+        'rich_text_field'        => 'textarea',
+        'color'                  => 'text',
+        'rating'                 => 'text',
+        'url'                    => 'text',
+        'boolean'                => 'boolean',
+        'number_decimal'         => 'text',
+        'dimension'              => 'text',
+        'weight'                 => 'text',
+        'volume'                 => 'text',
+        'date'                   => 'date',
+        'date_time'              => 'datetime',
+        'file_reference'         => 'image',
+        'list.file_reference'    => 'gallery',
+        'link'                   => 'text',
     ];
 
     protected $numberType = ['number_integer', 'dimension', 'weight', 'volume'];
@@ -249,9 +249,9 @@ class Importer extends AbstractImporter
             }
 
             $attributeFormate = [
-                'code' => $attribute['node']['key'],
-                'type' => $this->attributeType[$metafieldType],
-                'namespace' => $attribute['node']['namespace'],
+                'code'        => $attribute['node']['key'],
+                'type'        => $this->attributeType[$metafieldType],
+                'namespace'   => $attribute['node']['namespace'],
                 $this->locale => [
                     'name' => $attribute['node']['name'],
                 ],
@@ -261,14 +261,16 @@ class Importer extends AbstractImporter
                 $attributeFormate['validation'] = 'number';
             } elseif (in_array($metafieldType, $this->decimalType)) {
                 $attributeFormate['validation'] = 'decimal';
+            } elseif ($metafieldType === 'link') {
+                $attributeFormate['validation'] = 'url';
             }
 
             if ($metafieldType === 'file_reference') {
                 $fileTypes = (string) (collect($attribute['node']['validations'] ?? [])
                     ->firstWhere('name', 'file_type_options')['value'] ?? '');
-                $attributeFormate['type'] = (str_contains($fileTypes, 'Image') && ! str_contains($fileTypes, 'Video'))
-                    ? 'image'
-                    : 'file';
+                $attributeFormate['type'] = str_contains($fileTypes, 'Video')
+                    ? 'gallery'
+                    : (str_contains($fileTypes, 'Image') ? 'image' : 'file');
             }
 
             $this->persistDefinitionIfMissing($attribute);
@@ -294,23 +296,23 @@ class Importer extends AbstractImporter
         $metaobjectType = $this->metaobjectTypeByGid()[$definitionGid] ?? null;
 
         return [
-            'code' => $this->metaobjectAttributeCode($name),
-            'type' => 'shopify_metaobject',
-            'namespace' => $node['namespace'],
+            'code'        => $this->metaobjectAttributeCode($name),
+            'type'        => 'shopify_metaobject',
+            'namespace'   => $node['namespace'],
             $this->locale => ['name' => $name],
-            'metaobject' => [
-                'name' => $name,
-                'is_list' => str_contains($typeName, 'list'),
-                'type_name' => $typeName,
+            'metaobject'  => [
+                'name'            => $name,
+                'is_list'         => str_contains($typeName, 'list'),
+                'type_name'       => $typeName,
                 'metaobject_type' => $metaobjectType,
-                'name_space_key' => "{$node['namespace']}.{$node['key']}",
-                'owner_type' => $node['ownerType'],
-                'pin' => ! empty($node['pinnedPosition']),
-                'api_url' => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
-                'validations' => json_encode(array_filter([
-                    'reference_source' => 'metaobject',
+                'name_space_key'  => "{$node['namespace']}.{$node['key']}",
+                'owner_type'      => $node['ownerType'],
+                'pin'             => ! empty($node['pinnedPosition']),
+                'api_url'         => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+                'validations'     => json_encode(array_filter([
+                    'reference_source'         => 'metaobject',
                     'metaobject_definition_id' => $definitionGid,
-                    'metaobject_type' => $metaobjectType,
+                    'metaobject_type'          => $metaobjectType,
                 ], fn ($value) => $value !== null && $value !== '')),
             ],
         ];
@@ -333,8 +335,8 @@ class Importer extends AbstractImporter
             $this->updatedItemsCount++;
         } else {
             $attributeId = $this->attributeRepository->create([
-                'code' => $code,
-                'type' => 'shopify_metaobject',
+                'code'        => $code,
+                'type'        => 'shopify_metaobject',
                 $this->locale => $rowData[$this->locale] ?? ['name' => $meta['name']],
             ])->id;
             $this->createdItemsCount++;
@@ -358,17 +360,17 @@ class Importer extends AbstractImporter
         }
 
         $this->shopifyMetaFieldRepository->create([
-            'ownerType' => $meta['owner_type'],
-            'type' => 'metaobject_reference',
-            'name_space_key' => $meta['name_space_key'],
-            'code' => $code,
-            'attribute' => $meta['name'],
-            'attributeLabel' => $meta['name'],
-            'pin' => $meta['pin'],
-            'listvalue' => $meta['is_list'],
+            'ownerType'       => $meta['owner_type'],
+            'type'            => 'metaobject_reference',
+            'name_space_key'  => $meta['name_space_key'],
+            'code'            => $code,
+            'attribute'       => $meta['name'],
+            'attributeLabel'  => $meta['name'],
+            'pin'             => $meta['pin'],
+            'listvalue'       => $meta['is_list'],
             'ContentTypeName' => $meta['type_name'],
-            'apiUrl' => $meta['api_url'],
-            'validations' => $meta['validations'],
+            'apiUrl'          => $meta['api_url'],
+            'validations'     => $meta['validations'],
         ]);
     }
 
@@ -416,15 +418,15 @@ class Importer extends AbstractImporter
         $nameSpaceKey = "{$node['namespace']}.{$node['key']}";
 
         $data = [
-            'ownerType' => $node['ownerType'],
-            'type' => $typeName,
-            'name_space_key' => $nameSpaceKey,
-            'code' => $node['key'],
-            'attribute' => $node['name'],
-            'pin' => ! empty($node['pinnedPosition']),
-            'listvalue' => str_contains($typeName, 'list'),
+            'ownerType'       => $node['ownerType'],
+            'type'            => $typeName,
+            'name_space_key'  => $nameSpaceKey,
+            'code'            => $node['key'],
+            'attribute'       => $node['name'],
+            'pin'             => ! empty($node['pinnedPosition']),
+            'listvalue'       => str_contains($typeName, 'list'),
             'ContentTypeName' => $typeName,
-            'apiUrl' => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
+            'apiUrl'          => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
         ];
 
         // Handle rating validations efficiently
@@ -442,8 +444,8 @@ class Importer extends AbstractImporter
         if ($typeName === 'id') {
             $validations = collect($node['validations'] ?? []);
             $data['validations'] = json_encode(array_filter([
-                'min' => $validations->firstWhere('name', 'min')['value'] ?? null,
-                'max' => $validations->firstWhere('name', 'max')['value'] ?? null,
+                'min'   => $validations->firstWhere('name', 'min')['value'] ?? null,
+                'max'   => $validations->firstWhere('name', 'max')['value'] ?? null,
                 'regex' => $validations->firstWhere('name', 'regex')['value'] ?? null,
             ], fn ($value) => $value !== null && $value !== ''));
         }
@@ -477,16 +479,16 @@ class Importer extends AbstractImporter
             $data['validations'] = json_encode($referenceBase === 'collection_reference'
                 ? ['reference_source' => 'categories']
                 : ['reference_source' => 'association', 'association_type' => $associationType,
-                    'reference_as' => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
+                    'reference_as'    => $referenceBase === 'variant_reference' ? 'variant' : 'product']);
         }
 
         if ($referenceBase === 'metaobject_reference') {
             $data['type'] = 'metaobject_reference';
             $definitionGid = (string) (collect($node['validations'] ?? [])->firstWhere('name', 'metaobject_definition_id')['value'] ?? '');
             $data['validations'] = json_encode(array_filter([
-                'reference_source' => 'metaobject',
+                'reference_source'         => 'metaobject',
                 'metaobject_definition_id' => $definitionGid,
-                'metaobject_type' => $this->metaobjectTypeByGid()[$definitionGid] ?? null,
+                'metaobject_type'          => $this->metaobjectTypeByGid()[$definitionGid] ?? null,
             ], fn ($value) => $value !== null && $value !== ''));
         }
 
@@ -577,7 +579,7 @@ class Importer extends AbstractImporter
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data' => $batchRows,
+                    'data'         => $batchRows,
                 ]);
 
                 $batchRows = [];
@@ -635,7 +637,7 @@ class Importer extends AbstractImporter
         }
 
         $batch = $this->importBatchRepository->update([
-            'state' => Import::STATE_PROCESSED,
+            'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),

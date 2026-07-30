@@ -52,13 +52,13 @@ class PollBulkShopifyOperation implements ShouldQueue
         $operationState = $bulkOperationService->getOperation($credentialArray, $bulkOperation->shopify_bulk_operation_id);
 
         $bulkOperationRepository->update([
-            'shopify_status' => strtolower($operationState['status'] ?? 'unknown'),
-            'error_code' => $operationState['errorCode'] ?? null,
-            'result_url' => $operationState['url'] ?? null,
+            'shopify_status'   => strtolower($operationState['status'] ?? 'unknown'),
+            'error_code'       => $operationState['errorCode'] ?? null,
+            'result_url'       => $operationState['url'] ?? null,
             'partial_data_url' => $operationState['partialDataUrl'] ?? null,
-            'object_count' => isset($operationState['objectCount']) ? (int) $operationState['objectCount'] : null,
-            'file_size' => isset($operationState['fileSize']) ? (int) $operationState['fileSize'] : null,
-            'status' => $this->mapStatus($operationState['status'] ?? null),
+            'object_count'     => isset($operationState['objectCount']) ? (int) $operationState['objectCount'] : null,
+            'file_size'        => isset($operationState['fileSize']) ? (int) $operationState['fileSize'] : null,
+            'status'           => $this->mapStatus($operationState['status'] ?? null),
         ], $bulkOperation->id);
 
         $bulkOperation = $bulkOperationRepository->find($bulkOperation->id);
@@ -198,9 +198,9 @@ class PollBulkShopifyOperation implements ShouldQueue
     {
         return match (strtoupper((string) $status)) {
             'COMPLETED' => 'completed',
-            'FAILED' => 'failed',
-            'CANCELED' => 'cancelled',
-            default => 'running',
+            'FAILED'    => 'failed',
+            'CANCELED'  => 'cancelled',
+            default     => 'running',
         };
     }
 }

@@ -49,8 +49,8 @@ class SaasCredentialController extends Controller
         $apiVersion = $this->resolveLatestApiVersion();
 
         Log::info('Shopify SaaS credential payload received', [
-            'shopUrl' => $shopUrl,
-            'apiVersion' => $apiVersion,
+            'shopUrl'           => $shopUrl,
+            'apiVersion'        => $apiVersion,
             'accessTokenPrefix' => $this->describeToken($accessToken),
         ]);
 
@@ -64,14 +64,14 @@ class SaasCredentialController extends Controller
         }
 
         $payload = [
-            'shopUrl' => $shopUrl,
-            'accessToken' => $accessToken,
-            'clientId' => null,
-            'clientSecret' => null,
+            'shopUrl'              => $shopUrl,
+            'accessToken'          => $accessToken,
+            'clientId'             => null,
+            'clientSecret'         => null,
             'accessTokenExpiresAt' => null,
-            'apiVersion' => $apiVersion,
-            'active' => true,
-            'extras' => $extras,
+            'apiVersion'           => $apiVersion,
+            'active'               => true,
+            'extras'               => $extras,
         ];
 
         if (! $existing) {
@@ -84,7 +84,7 @@ class SaasCredentialController extends Controller
 
         return new JsonResponse([
             'success' => true,
-            'id' => $credential->id,
+            'id'      => $credential->id,
             'message' => $existing ? 'Credential updated successfully.' : 'Credential saved successfully.',
         ], $existing ? 200 : 201);
     }
@@ -111,8 +111,8 @@ class SaasCredentialController extends Controller
 
         return [
             'present' => true,
-            'length' => strlen($token),
-            'shape' => $shape,
+            'length'  => strlen($token),
+            'shape'   => $shape,
         ];
     }
 

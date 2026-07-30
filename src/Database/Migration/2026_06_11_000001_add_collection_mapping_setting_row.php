@@ -14,9 +14,9 @@ return new class extends Migration
 
         if (! $exists) {
             DB::table('shopify_setting_configuration_values')->insert([
-                'id' => 4,
-                'mapping' => null,
-                'extras' => null,
+                'id'         => 4,
+                'mapping'    => null,
+                'extras'     => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

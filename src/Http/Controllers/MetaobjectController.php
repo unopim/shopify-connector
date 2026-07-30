@@ -67,7 +67,7 @@ class MetaobjectController extends Controller
     public function store(): JsonResponse
     {
         $data = request()->validate([
-            'name' => 'required|string',
+            'name'   => 'required|string',
             'fields' => 'nullable|array',
         ]);
 
@@ -80,13 +80,13 @@ class MetaobjectController extends Controller
         }
 
         $definition = $this->definitionRepository->create([
-            'name' => $data['name'],
-            'code' => $this->uniqueCode($data['name']),
+            'name'   => $data['name'],
+            'code'   => $this->uniqueCode($data['name']),
             'fields' => $fields,
         ]);
 
         return new JsonResponse([
-            'id' => $definition->id,
+            'id'   => $definition->id,
             'code' => $definition->code,
             'name' => $definition->name,
         ]);
@@ -97,17 +97,17 @@ class MetaobjectController extends Controller
         $definition = $this->definitionRepository->findOrFail($id);
 
         return view('shopify::metaobject.edit', [
-            'definition' => $definition,
+            'definition'     => $definition,
             'definitionData' => $definition->only(['id', 'name', 'code', 'fields']),
-            'formFields' => $this->normalizeFields($definition->fields ?? []),
-            'fieldTypes' => MetaobjectFieldType::supportedTypes(),
+            'formFields'     => $this->normalizeFields($definition->fields ?? []),
+            'fieldTypes'     => MetaobjectFieldType::supportedTypes(),
         ]);
     }
 
     public function update(int $id): JsonResponse|RedirectResponse
     {
         $data = request()->validate([
-            'name' => 'required|string',
+            'name'   => 'required|string',
             'fields' => 'nullable|array',
         ]);
 
@@ -120,7 +120,7 @@ class MetaobjectController extends Controller
         }
 
         $this->definitionRepository->update([
-            'name' => $data['name'],
+            'name'   => $data['name'],
             'fields' => $fields,
         ], $id);
 
@@ -248,15 +248,15 @@ class MetaobjectController extends Controller
             }
 
             $built[] = array_filter([
-                'key' => $key,
-                'name' => $name,
-                'type' => $type,
-                'list' => ! empty($field['list']),
-                'required' => ! empty($field['required']),
-                'child' => $type === 'metaobject_reference' ? ($field['child'] ?? '') : '',
-                'preset' => $preset,
+                'key'          => $key,
+                'name'         => $name,
+                'type'         => $type,
+                'list'         => ! empty($field['list']),
+                'required'     => ! empty($field['required']),
+                'child'        => $type === 'metaobject_reference' ? ($field['child'] ?? '') : '',
+                'preset'       => $preset,
                 'content_type' => $type === 'file_reference' ? $contentType : '',
-                'validations' => $this->cleanValidations($field['validations'] ?? []),
+                'validations'  => $this->cleanValidations($field['validations'] ?? []),
             ], fn ($value) => $value !== '' && $value !== null && $value !== []);
         }
 
@@ -300,16 +300,16 @@ class MetaobjectController extends Controller
     protected function normalizeFields(array $fields): array
     {
         return array_map(fn ($field) => [
-            'key' => $field['key'] ?? '',
-            'name' => $field['name'] ?? '',
+            'key'          => $field['key'] ?? '',
+            'name'         => $field['name'] ?? '',
             'shopify_type' => $field['type'] ?? '',
-            'source' => ($field['type'] ?? '') === 'metaobject_reference' ? 'metaobject' : 'attribute',
-            'list' => ! empty($field['list']),
-            'required' => ! empty($field['required']),
-            'child_type' => $field['child'] ?? '',
+            'source'       => ($field['type'] ?? '') === 'metaobject_reference' ? 'metaobject' : 'attribute',
+            'list'         => ! empty($field['list']),
+            'required'     => ! empty($field['required']),
+            'child_type'   => $field['child'] ?? '',
             'content_type' => $field['content_type'] ?? '',
-            'preset' => $field['preset'] ?? '',
-            'validations' => $field['validations'] ?? [],
+            'preset'       => $field['preset'] ?? '',
+            'validations'  => $field['validations'] ?? [],
         ], $fields);
     }
 }

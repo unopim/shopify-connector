@@ -32,15 +32,15 @@ class MappingBatchWriter
         $now = now();
 
         $this->buffer[] = [
-            'entityType' => $row['entityType'] ?? null,
-            'code' => $row['code'] ?? null,
-            'externalId' => $row['externalId'] ?? null,
-            'relatedId' => $row['relatedId'] ?? null,
+            'entityType'    => $row['entityType'] ?? null,
+            'code'          => $row['code'] ?? null,
+            'externalId'    => $row['externalId'] ?? null,
+            'relatedId'     => $row['relatedId'] ?? null,
             'relatedSource' => $row['relatedSource'] ?? null,
             'jobInstanceId' => $row['jobInstanceId'] ?? 0,
-            'apiUrl' => $row['apiUrl'] ?? null,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'apiUrl'        => $row['apiUrl'] ?? null,
+            'created_at'    => $now,
+            'updated_at'    => $now,
         ];
 
         if (count($this->buffer) >= $this->chunkSize) {
@@ -65,13 +65,13 @@ class MappingBatchWriter
             foreach ($rows as $row) {
                 try {
                     $this->shopifyMappingRepository->create([
-                        'entityType' => $row['entityType'],
-                        'code' => $row['code'],
-                        'externalId' => $row['externalId'],
-                        'relatedId' => $row['relatedId'],
+                        'entityType'    => $row['entityType'],
+                        'code'          => $row['code'],
+                        'externalId'    => $row['externalId'],
+                        'relatedId'     => $row['relatedId'],
                         'relatedSource' => $row['relatedSource'],
                         'jobInstanceId' => $row['jobInstanceId'],
-                        'apiUrl' => $row['apiUrl'],
+                        'apiUrl'        => $row['apiUrl'],
                     ]);
                 } catch (\Throwable) {
                     // skip duplicates / constraint failures so the batch can finish

@@ -31,9 +31,9 @@ class MetaobjectEntryController extends Controller
     public function store(): JsonResponse
     {
         $data = request()->validate([
-            'id' => 'nullable|integer',
-            'type' => 'required|string',
-            'code' => 'required|string',
+            'id'     => 'nullable|integer',
+            'type'   => 'required|string',
+            'code'   => 'required|string',
             'values' => 'nullable|string',
         ]);
 

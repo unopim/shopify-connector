@@ -9,11 +9,11 @@ use Webkul\Shopify\Services\ProductPhaseDataService;
 class TranslationsBulkPayloadBuilder
 {
     protected array $translationFieldMap = [
-        'title' => 'title',
-        'descriptionHtml' => 'body_html',
-        'handle' => 'handle',
-        'productType' => 'product_type',
-        'metafields_global_title_tag' => 'meta_title',
+        'title'                             => 'title',
+        'descriptionHtml'                   => 'body_html',
+        'handle'                            => 'handle',
+        'productType'                       => 'product_type',
+        'metafields_global_title_tag'       => 'meta_title',
         'metafields_global_description_tag' => 'meta_description',
     ];
 
@@ -134,14 +134,14 @@ class TranslationsBulkPayloadBuilder
 
             if (! empty($built['product'])) {
                 $lines[] = json_encode([
-                    'resourceId' => $this->ensureGid($productId, 'Product'),
+                    'resourceId'   => $this->ensureGid($productId, 'Product'),
                     'translations' => $built['product'],
                 ], JSON_UNESCAPED_SLASHES);
             }
 
             foreach ($built['metafields'] as $gid => $translations) {
                 $lines[] = json_encode([
-                    'resourceId' => $gid,
+                    'resourceId'   => $gid,
                     'translations' => $translations,
                 ], JSON_UNESCAPED_SLASHES);
             }
@@ -235,9 +235,9 @@ class TranslationsBulkPayloadBuilder
                 }
 
                 $productTranslations[] = [
-                    'key' => $this->translationFieldMap[$shopifyField],
-                    'value' => $value,
-                    'locale' => $shopifyLocaleCode,
+                    'key'                       => $this->translationFieldMap[$shopifyField],
+                    'value'                     => $value,
+                    'locale'                    => $shopifyLocaleCode,
                     'translatableContentDigest' => hash('sha256', (string) ($defaultFields[$unopimField] ?? '')),
                 ];
             }
@@ -250,9 +250,9 @@ class TranslationsBulkPayloadBuilder
                 }
 
                 $metafieldTranslations[$def['gid']][] = [
-                    'key' => 'value',
-                    'value' => $value,
-                    'locale' => $shopifyLocaleCode,
+                    'key'                       => 'value',
+                    'value'                     => $value,
+                    'locale'                    => $shopifyLocaleCode,
                     'translatableContentDigest' => $def['digest'],
                 ];
             }
@@ -293,8 +293,8 @@ class TranslationsBulkPayloadBuilder
             }
 
             $resolved[] = [
-                'code' => $code,
-                'gid' => $gid,
+                'code'   => $code,
+                'gid'    => $gid,
                 'digest' => hash('sha256', (string) ($defaultFields[$code] ?? '')),
             ];
         }

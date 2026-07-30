@@ -75,7 +75,7 @@ class MediaPhaseService extends BasePhaseService
 
         $this->bulkOperationService->writeManifest($this->pendingUpdatePath(), [
             'lines' => $this->payloadBuilder->getUpdateLines(),
-            'plan' => $this->payloadBuilder->getUpdatePlan(),
+            'plan'  => $this->payloadBuilder->getUpdatePlan(),
         ]);
     }
 

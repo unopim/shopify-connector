@@ -69,7 +69,7 @@ class FileReferenceUploader
 
             $toUpload[$path] = [
                 'content_type' => $value['content_type'],
-                'url' => $value['url'] ?? $this->resolveUrl($path),
+                'url'          => $value['url'] ?? $this->resolveUrl($path),
             ];
         }
 
@@ -100,12 +100,12 @@ class FileReferenceUploader
     private function cacheGid(string $path, string $gid, int $jobInstanceId, string $shopUrl, string $contentType): void
     {
         $this->mappingRepository->create([
-            'entityType' => self::ENTITY_TYPE,
-            'code' => $path,
-            'externalId' => $gid,
+            'entityType'    => self::ENTITY_TYPE,
+            'code'          => $path,
+            'externalId'    => $gid,
             'relatedSource' => $contentType,
             'jobInstanceId' => $jobInstanceId,
-            'apiUrl' => $shopUrl,
+            'apiUrl'        => $shopUrl,
         ]);
     }
 
@@ -144,8 +144,8 @@ class FileReferenceUploader
             }
 
             $files[] = [
-                'alt' => $path,
-                'contentType' => $meta['content_type'],
+                'alt'            => $path,
+                'contentType'    => $meta['content_type'],
                 'originalSource' => $url,
             ];
         }
@@ -184,8 +184,8 @@ class FileReferenceUploader
 
         $created = $this->requestGraphQlApiAction('fileCreate', $credential, [
             'files' => [[
-                'alt' => $path,
-                'contentType' => 'VIDEO',
+                'alt'            => $path,
+                'contentType'    => 'VIDEO',
                 'originalSource' => $resourceUrl,
             ]],
         ]);
@@ -227,7 +227,7 @@ class FileReferenceUploader
         $target = $staged['body']['data']['stagedUploadsCreate']['stagedTargets'][0] ?? null;
         if (empty($target['url']) || empty($target['resourceUrl'])) {
             logger()->warning('Shopify staged upload target missing', [
-                'path' => $path,
+                'path'   => $path,
                 'errors' => $staged['body']['data']['stagedUploadsCreate']['userErrors'] ?? [],
             ]);
 
@@ -256,8 +256,8 @@ class FileReferenceUploader
     private function videoMimeType(string $path): string
     {
         return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
-            'mov' => 'video/quicktime',
-            'webm' => 'video/webm',
+            'mov'   => 'video/quicktime',
+            'webm'  => 'video/webm',
             default => 'video/mp4',
         };
     }
@@ -284,8 +284,8 @@ class FileReferenceUploader
 
             $lines[] = json_encode(['files' => [[
                 'originalSource' => $source,
-                'contentType' => $contentType,
-                'alt' => $path,
+                'contentType'    => $contentType,
+                'alt'            => $path,
             ]]]);
         }
 

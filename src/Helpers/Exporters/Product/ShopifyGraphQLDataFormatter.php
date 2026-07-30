@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
 use Illuminate\Support\Carbon;
+use Webkul\Shopify\Helpers\MeasurementUnitMapper;
 use Webkul\Shopify\Helpers\ShopifyFields;
 
 class ShopifyGraphQLDataFormatter
@@ -21,7 +22,7 @@ class ShopifyGraphQLDataFormatter
 
     protected $separators = [
         'colon' => ': ',
-        'dash' => '- ',
+        'dash'  => '- ',
         'space' => ' ',
     ];
 
@@ -85,7 +86,7 @@ class ShopifyGraphQLDataFormatter
         $status = $this->getStatus($rawData, $parentData, $configuredStatus);
 
         $formatted = [
-            'title' => $parentData['sku'] ?? $rawData['sku'],
+            'title'  => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
         ];
 
@@ -165,24 +166,27 @@ class ShopifyGraphQLDataFormatter
                         break;
 
                     case 'weight':
-                        $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['weight'] ?? 'GRAMS',
-                        ]);
-                        break;
-
                     case 'volume':
-                        $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['volume'] ?? 'MILLILITERS',
-                        ]);
-                        break;
-
                     case 'dimension':
+                        $rawMeasure = $rawData[$unoAttribute] ?? null;
+
+                        if (($attribute?->type ?? null) === 'measurement') {
+                            $resolved = is_array($rawMeasure)
+                                ? (new MeasurementUnitMapper)->resolve($type, $rawMeasure)
+                                : null;
+                            $metafieldValue = $resolved === null
+                                ? null
+                                : json_encode(['value' => $resolved[0], 'unit' => $resolved[1]]);
+
+                            break;
+                        }
+
+                        $fallbackUnit = ['weight' => 'GRAMS', 'volume' => 'MILLILITERS', 'dimension' => 'MILLIMETERS'][$type];
                         $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['dimension'] ?? 'MILLIMETERS',
+                            'value' => $rawMeasure ?? 0,
+                            'unit'  => $units[$type] ?? $fallbackUnit,
                         ]);
+
                         break;
 
                     case 'file_reference':
@@ -244,9 +248,9 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 $formatted[] = [
-                    'key' => $nameSpaceAndKey[1],
-                    'value' => $metafieldValue,
-                    'type' => $type,
+                    'key'       => $nameSpaceAndKey[1],
+                    'value'     => $metafieldValue,
+                    'type'      => $type,
                     'namespace' => $nameSpaceAndKey[0],
                 ];
             }
@@ -456,22 +460,44 @@ class ShopifyGraphQLDataFormatter
     {
         $cfg = $exportMapping['unit_price'] ?? null;
 
-        if (empty($cfg) || empty($cfg['quantityValueAttr']) || empty($cfg['quantityUnitAttr'])) {
+        if (empty($cfg) || empty($cfg['quantityValueAttr'])) {
             return;
         }
-
-        $rawQuantityValue = $rawData[$cfg['quantityValueAttr']] ?? null;
-        $quantityUnit = strtoupper(trim((string) ($rawData[$cfg['quantityUnitAttr']] ?? '')));
 
         $fields = new ShopifyFields;
+        $valueAttr = $cfg['quantityValueAttr'];
 
-        if (! is_numeric($rawQuantityValue) || (float) $rawQuantityValue <= 0
-            || ! in_array($quantityUnit, $fields->getUnitPriceUnitValues(), true)
-        ) {
-            return;
+        if (($this->attributeAll[$valueAttr]?->type ?? null) === 'measurement') {
+            $measure = $rawData[$valueAttr] ?? null;
+
+            if (! is_array($measure)) {
+                return;
+            }
+
+            $resolved = (new MeasurementUnitMapper)->resolve(MeasurementUnitMapper::UNIT_PRICE, $measure);
+
+            if ($resolved === null || $resolved[0] <= 0) {
+                return;
+            }
+
+            $quantityValue = (float) $resolved[0];
+            $quantityUnit = $resolved[1];
+        } else {
+            if (empty($cfg['quantityUnitAttr'])) {
+                return;
+            }
+
+            $rawQuantityValue = $rawData[$valueAttr] ?? null;
+            $quantityUnit = strtoupper(trim((string) ($rawData[$cfg['quantityUnitAttr']] ?? '')));
+
+            if (! is_numeric($rawQuantityValue) || (float) $rawQuantityValue <= 0
+                || ! in_array($quantityUnit, $fields->getUnitPriceUnitValues(), true)
+            ) {
+                return;
+            }
+
+            $quantityValue = (float) $rawQuantityValue;
         }
-
-        $quantityValue = (float) $rawQuantityValue;
 
         $referenceUnit = ($cfg['referenceUnit'] ?? 'AUTO') === 'AUTO' ? $quantityUnit : $cfg['referenceUnit'];
 
@@ -480,10 +506,10 @@ class ShopifyGraphQLDataFormatter
         }
 
         $formatted['variant']['unitPriceMeasurement'] = [
-            'quantityValue' => $quantityValue,
-            'quantityUnit' => $quantityUnit,
+            'quantityValue'  => $quantityValue,
+            'quantityUnit'   => $quantityUnit,
             'referenceValue' => (int) ($cfg['referenceValue'] ?? 100),
-            'referenceUnit' => $referenceUnit,
+            'referenceUnit'  => $referenceUnit,
         ];
 
         $formatted['variant']['showUnitPrice'] = true;
@@ -512,8 +538,8 @@ class ShopifyGraphQLDataFormatter
 
             $list[] = [
                 'locationId' => $locationId,
-                'name' => 'available',
-                'quantity' => $hasValue ? (int) $rawData[$attributeCode] : 0,
+                'name'       => 'available',
+                'quantity'   => $hasValue ? (int) $rawData[$attributeCode] : 0,
             ];
         }
 
@@ -624,9 +650,28 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'weight':
+                $weightValue = $rawData[$unopimField] ?? null;
+
+                if (($this->attributeAll[$unopimField]?->type ?? null) === 'measurement') {
+                    if (! is_array($weightValue)) {
+                        break;
+                    }
+
+                    $resolved = (new MeasurementUnitMapper)->resolve(MeasurementUnitMapper::WEIGHT, $weightValue);
+
+                    if ($resolved !== null) {
+                        $formatted['variant']['inventoryItem']['measurement']['weight'] = [
+                            'value' => $resolved[0],
+                            'unit'  => $resolved[1],
+                        ];
+                    }
+
+                    break;
+                }
+
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
-                    'value' => (float) ($rawData[$unopimField] ?? 0),
-                    'unit' => $units['weight'] ?? 'GRAMS',
+                    'value' => (float) ($weightValue ?? 0),
+                    'unit'  => $units['weight'] ?? 'GRAMS',
                 ];
 
                 break;
@@ -842,7 +887,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) $defaultValue,
-                    'unit' => 'GRAMS',
+                    'unit'  => 'GRAMS',
                 ];
                 break;
         }

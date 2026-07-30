@@ -16,7 +16,7 @@ class CollectionMappingForm extends FormRequest
     public function rules()
     {
         return [
-            'title' => ['required'],
+            'title'      => ['required'],
             'sort_order' => ['sometimes', 'nullable', Rule::in((new ShopifyFields)->getCollectionSortOrderValues())],
         ];
     }

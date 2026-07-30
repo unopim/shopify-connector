@@ -39,9 +39,9 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     ];
 
     protected $casts = [
-        'storelocaleMapping' => 'array',
-        'storeLocales' => 'array',
-        'extras' => 'array',
+        'storelocaleMapping'   => 'array',
+        'storeLocales'         => 'array',
+        'extras'               => 'array',
         'accessTokenExpiresAt' => 'datetime',
     ];
 
@@ -52,7 +52,7 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     {
         return [
             'storelocaleMapping' => JsonDataPresenter::class,
-            'extras' => JsonDataPresenter::class,
+            'extras'             => JsonDataPresenter::class,
         ];
     }
 
@@ -68,14 +68,14 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     public function toApiArray(): array
     {
         return [
-            'credentialId' => $this->id,
-            'shopUrl' => $this->shopUrl,
-            'accessToken' => $this->accessToken,
-            'apiVersion' => $this->apiVersion,
-            'clientId' => $this->clientId,
-            'clientSecret' => $this->clientSecret,
+            'credentialId'         => $this->id,
+            'shopUrl'              => $this->shopUrl,
+            'accessToken'          => $this->accessToken,
+            'apiVersion'           => $this->apiVersion,
+            'clientId'             => $this->clientId,
+            'clientSecret'         => $this->clientSecret,
             'accessTokenExpiresAt' => optional($this->accessTokenExpiresAt)?->toDateTimeString(),
-            'extras' => $this->extras,
+            'extras'               => $this->extras,
         ];
     }
 

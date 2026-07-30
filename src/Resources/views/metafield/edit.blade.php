@@ -92,7 +92,7 @@
                             ],
                         ];
                         $metaType = json_encode($metaType, true);
-                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset'];
+                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset', 'measurement'];
 
                         $fileTypes = (array) ($validations?->file_types ?? []);
                         $fileTypeMode = ! empty($fileTypes) ? 'media' : 'any';
@@ -677,8 +677,7 @@
                     <x-admin::form.control-group.label>
                         @lang('shopify::app.shopify.metafield.index.storefronts')
                     </x-admin::form.control-group.label>
-                    <x-admin::form.control-group.label v-text="storefronts">
-                    </x-admin::form.control-group.label>
+                    <x-admin::form.control-group.label>@{{ storefronts }}</x-admin::form.control-group.label>
                     <input 
                         type="hidden"
                         name="storefronts"

@@ -153,10 +153,10 @@ class Exporter extends AbstractExporter
         if (! $gid) {
             $response = $this->requestGraphQlApiAction('metaobjectDefinitionCreate', $this->credentialArray, [
                 'definition' => [
-                    'name' => $definition->name,
-                    'type' => $code,
-                    'access' => ['storefront' => 'PUBLIC_READ'],
-                    'capabilities' => ['publishable' => ['enabled' => true]],
+                    'name'             => $definition->name,
+                    'type'             => $code,
+                    'access'           => ['storefront' => 'PUBLIC_READ'],
+                    'capabilities'     => ['publishable' => ['enabled' => true]],
                     'fieldDefinitions' => $this->buildFieldDefinitions($fields, $childGids),
                 ],
             ]);
@@ -179,8 +179,8 @@ class Exporter extends AbstractExporter
         }
 
         $this->definitionMappingRepository->updateOrCreateByType($this->shopUrl, $code, [
-            'gid' => $gid,
-            'name' => $definition->name,
+            'gid'    => $gid,
+            'name'   => $definition->name,
             'fields' => $fields,
         ]);
 
@@ -210,7 +210,7 @@ class Exporter extends AbstractExporter
         }
 
         $response = $this->requestGraphQlApiAction('metaobjectDefinitionUpdate', $this->credentialArray, [
-            'id' => $gid,
+            'id'         => $gid,
             'definition' => ['fieldDefinitions' => $operations],
         ]);
 
@@ -238,9 +238,9 @@ class Exporter extends AbstractExporter
             }
 
             $entry = [
-                'key' => $field['key'],
-                'name' => $field['name'] ?? $field['key'],
-                'type' => ! empty($field['list']) ? 'list.'.$type : $type,
+                'key'      => $field['key'],
+                'name'     => $field['name'] ?? $field['key'],
+                'type'     => ! empty($field['list']) ? 'list.'.$type : $type,
                 'required' => ! empty($field['required']),
             ];
 
@@ -341,9 +341,9 @@ class Exporter extends AbstractExporter
         }
 
         $response = $this->requestGraphQlApiAction('metaobjectUpsert', $this->credentialArray, [
-            'handle' => ['type' => $entry->type, 'handle' => $this->slug($entry->code)],
+            'handle'     => ['type' => $entry->type, 'handle' => $this->slug($entry->code)],
             'metaobject' => [
-                'fields' => $fields,
+                'fields'       => $fields,
                 'capabilities' => ['publishable' => ['status' => 'ACTIVE']],
             ],
         ]);
@@ -446,8 +446,8 @@ class Exporter extends AbstractExporter
 
         if (in_array($type, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
             $map = match ($type) {
-                'product_reference' => $this->productGidMap,
-                'variant_reference' => $this->variantGidMap,
+                'product_reference'    => $this->productGidMap,
+                'variant_reference'    => $this->variantGidMap,
                 'collection_reference' => $this->collectionGidMap,
             };
 

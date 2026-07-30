@@ -167,14 +167,15 @@
                                     track-by="code"
                                     label-by="label"
                                     :value="$unitPrice['quantityValueAttr'] ?? ''"
-                                    :entityName="json_encode(['number','decimal'])"
+                                    :entityName="json_encode(['number','decimal','measurement'])"
                                     async=true
                                     :list-route="route('admin.shopify.get-attribute')"
+                                    @input="onUnitPriceValueChange($event)"
                                 />
                             </x-admin::form.control-group>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div v-show="!unitPriceValueIsMeasurement" class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <div>
                                 <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit')</p>
                                 <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit_info', ['units' => $unitExamples])</p> </div>
@@ -390,6 +391,7 @@
                     disabledFields: {},
                     onchange: {},
                     selectedAttributeType: @json($mediaType ?? null),
+                    unitPriceValueIsMeasurement: @json($unitPriceValueIsMeasurement ?? false),
                 };
             },
             watch: {
@@ -427,6 +429,12 @@
                     } else {
                         this.onchange[defaultFieldName] = true;
                     }
+                },
+
+                onUnitPriceValueChange(event) {
+                    let parsed = event ? (typeof event === 'string' ? JSON.parse(event) : event) : null;
+
+                    this.unitPriceValueIsMeasurement = parsed?.type === 'measurement';
                 },
 
                 isFieldDisabled(value, defaultFieldName) {

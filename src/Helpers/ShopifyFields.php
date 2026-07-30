@@ -11,14 +11,14 @@ class ShopifyFields
      */
     public $mappingFields = [
         [
-            'name' => 'title',
+            'name'  => 'title',
             'label' => 'shopify::app.shopify.fields.name',
             'types' => [
                 'text',
             ],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name' => 'descriptionHtml',
+            'name'  => 'descriptionHtml',
             'label' => 'shopify::app.shopify.fields.description',
             'types' => [
                 'textarea',
@@ -26,36 +26,37 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name' => 'price',
+            'name'  => 'price',
             'label' => 'shopify::app.shopify.fields.price',
             'types' => [
                 'price',
             ],
             'tooltip' => 'supported attributes types: price',
         ], [
-            'name' => 'weight',
+            'name'  => 'weight',
             'label' => 'shopify::app.shopify.fields.weight',
             'types' => [
                 'number',
                 'decimal',
+                'measurement',
             ],
-            'tooltip' => 'supported attributes types: number, metric',
+            'tooltip' => 'supported attributes types: number, metric, measurement',
         ], [
-            'name' => 'inventoryTracked',
+            'name'  => 'inventoryTracked',
             'label' => 'shopify::app.shopify.fields.inventory_tracked',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: boolean',
         ], [
-            'name' => 'inventoryPolicy',
+            'name'  => 'inventoryPolicy',
             'label' => 'shopify::app.shopify.fields.allow_purchase_out_of_stock',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: yes/no',
         ], [
-            'name' => 'vendor',
+            'name'  => 'vendor',
             'label' => 'shopify::app.shopify.fields.vendor',
             'types' => [
                 'text',
@@ -63,7 +64,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, simple select',
         ], [
-            'name' => 'productType',
+            'name'  => 'productType',
             'label' => 'shopify::app.shopify.fields.product_type',
             'types' => [
                 'text',
@@ -71,7 +72,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: text, simple select',
         ], [
-            'name' => 'tags',
+            'name'  => 'tags',
             'label' => 'shopify::app.shopify.fields.tags',
             'types' => [
                 'text',
@@ -81,7 +82,7 @@ class ShopifyFields
             ],
             'tooltip' => 'supported attributes types: textarea, text, select, multiselect',
         ], [
-            'name' => 'barcode',
+            'name'  => 'barcode',
             'label' => 'shopify::app.shopify.fields.barcode',
             'types' => [
                 'text',
@@ -89,42 +90,42 @@ class ShopifyFields
             'tooltip' => 'supported attributes types: text',
 
         ], [
-            'name' => 'compareAtPrice',
+            'name'  => 'compareAtPrice',
             'label' => 'shopify::app.shopify.fields.compare_at_price',
             'types' => [
                 'price',
             ],
             'tooltip' => 'supported attributes types: price',
         ], [
-            'name' => 'metafields_global_title_tag',
+            'name'  => 'metafields_global_title_tag',
             'label' => 'shopify::app.shopify.fields.seo_title',
             'types' => [
                 'textarea',
             ],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name' => 'metafields_global_description_tag',
+            'name'  => 'metafields_global_description_tag',
             'label' => 'shopify::app.shopify.fields.seo_description',
             'types' => [
                 'textarea',
             ],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name' => 'handle',
+            'name'  => 'handle',
             'label' => 'shopify::app.shopify.fields.handle',
             'types' => [
                 'text',
             ],
             'tooltip' => 'supported attributes types: text (If multiple products have the same handle, only the last product will be exported.)',
         ], [
-            'name' => 'taxable',
+            'name'  => 'taxable',
             'label' => 'shopify::app.shopify.fields.taxable',
             'types' => [
                 'boolean',
             ],
             'tooltip' => 'supported attributes types: yes/no',
         ], [
-            'name' => 'cost',
+            'name'  => 'cost',
             'label' => 'shopify::app.shopify.fields.inventory_cost',
             'types' => [
                 'price',
@@ -150,34 +151,34 @@ class ShopifyFields
      */
     public $collectionMappingFields = [
         [
-            'name' => 'title',
-            'label' => 'shopify::app.shopify.fields.name',
-            'types' => ['text'],
+            'name'    => 'title',
+            'label'   => 'shopify::app.shopify.fields.name',
+            'types'   => ['text'],
             'tooltip' => 'supported attributes types: text',
         ], [
-            'name' => 'descriptionHtml',
-            'label' => 'shopify::app.shopify.fields.description',
-            'types' => ['textarea', 'text'],
+            'name'    => 'descriptionHtml',
+            'label'   => 'shopify::app.shopify.fields.description',
+            'types'   => ['textarea', 'text'],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name' => 'seoTitle',
-            'label' => 'shopify::app.shopify.fields.seo_title',
-            'types' => ['text', 'textarea'],
+            'name'    => 'seoTitle',
+            'label'   => 'shopify::app.shopify.fields.seo_title',
+            'types'   => ['text', 'textarea'],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name' => 'seoDescription',
-            'label' => 'shopify::app.shopify.fields.seo_description',
-            'types' => ['text', 'textarea'],
+            'name'    => 'seoDescription',
+            'label'   => 'shopify::app.shopify.fields.seo_description',
+            'types'   => ['text', 'textarea'],
             'tooltip' => 'supported attributes types: text, textarea',
         ], [
-            'name' => 'handle',
-            'label' => 'shopify::app.shopify.fields.handle',
-            'types' => ['text'],
+            'name'    => 'handle',
+            'label'   => 'shopify::app.shopify.fields.handle',
+            'types'   => ['text'],
             'tooltip' => 'supported attributes types: text (falls back to category code if empty)',
         ], [
-            'name' => 'collectionType',
-            'label' => 'shopify::app.shopify.fields.collection_type',
-            'types' => ['boolean'],
+            'name'    => 'collectionType',
+            'label'   => 'shopify::app.shopify.fields.collection_type',
+            'types'   => ['boolean'],
             'tooltip' => 'supported attributes types: yes/no. Yes => Smart collection (default rule auto-added); No or unmapped => Manual.',
         ],
     ];
@@ -197,13 +198,13 @@ class ShopifyFields
      * @var array<string, string>
      */
     public const COLLECTION_SORT_ORDER_OPTIONS = [
-        'MANUAL' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.manual',
+        'MANUAL'       => 'shopify::app.shopify.export.mapping.collection.sort_order.options.manual',
         'BEST_SELLING' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.best_selling',
-        'ALPHA_ASC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_asc',
-        'ALPHA_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_desc',
-        'PRICE_ASC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_asc',
-        'PRICE_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_desc',
-        'CREATED' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.created',
+        'ALPHA_ASC'    => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_asc',
+        'ALPHA_DESC'   => 'shopify::app.shopify.export.mapping.collection.sort_order.options.alpha_desc',
+        'PRICE_ASC'    => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_asc',
+        'PRICE_DESC'   => 'shopify::app.shopify.export.mapping.collection.sort_order.options.price_desc',
+        'CREATED'      => 'shopify::app.shopify.export.mapping.collection.sort_order.options.created',
         'CREATED_DESC' => 'shopify::app.shopify.export.mapping.collection.sort_order.options.created_desc',
     ];
 
@@ -216,7 +217,7 @@ class ShopifyFields
     {
         return array_map(
             fn (string $enum, string $labelKey): array => [
-                'id' => $enum,
+                'id'   => $enum,
                 'name' => trans($labelKey),
             ],
             array_keys(self::COLLECTION_SORT_ORDER_OPTIONS),
@@ -242,8 +243,8 @@ class ShopifyFields
      * @var array<string, string>
      */
     public const STATUS_OPTIONS = [
-        'ACTIVE' => 'shopify::app.shopify.export.mapping.status.options.active',
-        'DRAFT' => 'shopify::app.shopify.export.mapping.status.options.draft',
+        'ACTIVE'   => 'shopify::app.shopify.export.mapping.status.options.active',
+        'DRAFT'    => 'shopify::app.shopify.export.mapping.status.options.draft',
         'ARCHIVED' => 'shopify::app.shopify.export.mapping.status.options.archived',
         'UNLISTED' => 'shopify::app.shopify.export.mapping.status.options.unlisted',
     ];
@@ -257,7 +258,7 @@ class ShopifyFields
     {
         return array_map(
             fn (string $enum, string $labelKey): array => [
-                'id' => $enum,
+                'id'   => $enum,
                 'name' => trans($labelKey),
             ],
             array_keys(self::STATUS_OPTIONS),
@@ -283,11 +284,11 @@ class ShopifyFields
      * @var array<string, string>
      */
     public const UNIT_PRICE_UNITS = [
-        'ML' => 'VOLUME', 'CL' => 'VOLUME', 'L' => 'VOLUME', 'M3' => 'VOLUME',
+        'ML'   => 'VOLUME', 'CL' => 'VOLUME', 'L' => 'VOLUME', 'M3' => 'VOLUME',
         'FLOZ' => 'VOLUME', 'PT' => 'VOLUME', 'QT' => 'VOLUME', 'GAL' => 'VOLUME',
-        'MG' => 'WEIGHT', 'G' => 'WEIGHT', 'KG' => 'WEIGHT', 'OZ' => 'WEIGHT', 'LB' => 'WEIGHT',
-        'MM' => 'LENGTH', 'CM' => 'LENGTH', 'M' => 'LENGTH', 'IN' => 'LENGTH', 'FT' => 'LENGTH', 'YD' => 'LENGTH',
-        'FT2' => 'AREA', 'M2' => 'AREA',
+        'MG'   => 'WEIGHT', 'G' => 'WEIGHT', 'KG' => 'WEIGHT', 'OZ' => 'WEIGHT', 'LB' => 'WEIGHT',
+        'MM'   => 'LENGTH', 'CM' => 'LENGTH', 'M' => 'LENGTH', 'IN' => 'LENGTH', 'FT' => 'LENGTH', 'YD' => 'LENGTH',
+        'FT2'  => 'AREA', 'M2' => 'AREA',
         'ITEM' => 'COUNT',
     ];
 
@@ -346,13 +347,13 @@ class ShopifyFields
         $quantityValueAttr = $input['unit_price_quantity_value'] ?? null;
         $quantityUnitAttr = $input['unit_price_quantity_unit'] ?? null;
 
-        if (empty($quantityValueAttr) || empty($quantityUnitAttr)) {
+        if (empty($quantityValueAttr)) {
             return null;
         }
 
         $mapping = [
             'quantityValueAttr' => $quantityValueAttr,
-            'quantityUnitAttr' => $quantityUnitAttr,
+            'quantityUnitAttr'  => $quantityUnitAttr ?: null,
         ];
 
         if ($withReference) {
@@ -395,7 +396,7 @@ class ShopifyFields
 
         return [
             $valueAttr => (string) $quantityValue,
-            $unitAttr => $quantityUnit,
+            $unitAttr  => $quantityUnit,
         ];
     }
 }

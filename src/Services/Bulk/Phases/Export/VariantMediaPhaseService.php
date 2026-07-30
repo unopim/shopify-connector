@@ -71,7 +71,7 @@ class VariantMediaPhaseService extends BasePhaseService
                 }
 
                 $lines[] = json_encode([
-                    'productId' => $productId,
+                    'productId'    => $productId,
                     'variantMedia' => [
                         ['variantId' => $variantGid, 'mediaIds' => [$mediaId]],
                     ],

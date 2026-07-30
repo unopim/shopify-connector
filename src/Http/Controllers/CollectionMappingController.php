@@ -27,11 +27,11 @@ class CollectionMappingController extends Controller
         $shopifyMapping = $this->shopifyExportMappingRepository->find(self::CONFIG_ID);
 
         return view('shopify::export.mapping.collection', [
-            'collectionFields' => (new ShopifyFields)->getCollectionMappingField(),
-            'sortOrderOptions' => (new ShopifyFields)->getCollectionSortOrderOptions(),
+            'collectionFields'  => (new ShopifyFields)->getCollectionMappingField(),
+            'sortOrderOptions'  => (new ShopifyFields)->getCollectionSortOrderOptions(),
             'collectionMapping' => $shopifyMapping->mapping['collection_mapping'] ?? [],
-            'mediaMapping' => $shopifyMapping->mapping['mediaMapping'] ?? [],
-            'sortOrder' => $shopifyMapping->mapping['sort_order'] ?? '',
+            'mediaMapping'      => $shopifyMapping->mapping['mediaMapping'] ?? [],
+            'sortOrder'         => $shopifyMapping->mapping['sort_order'] ?? '',
         ]);
     }
 
@@ -46,7 +46,7 @@ class CollectionMappingController extends Controller
 
         if (! empty($data['mediaAttributes'])) {
             $mapping['mediaMapping'] = [
-                'mediaType' => 'image',
+                'mediaType'       => 'image',
                 'mediaAttributes' => $data['mediaAttributes'],
             ];
         }

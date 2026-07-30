@@ -106,11 +106,11 @@ class BulkProductFetcher
     protected function buildProductFilterClause(?string $statusFilter): string
     {
         $query = match ($statusFilter) {
-            'active' => 'status:active',
-            'draft' => 'status:draft',
+            'active'   => 'status:active',
+            'draft'    => 'status:draft',
             'archived' => 'status:archived',
             'unlisted' => 'status:unlisted',
-            default => null,
+            default    => null,
         };
 
         return $query === null ? '' : '(query: "'.$query.'")';
@@ -143,7 +143,7 @@ class BulkProductFetcher
         }
 
         return [
-            'id' => $bulkOperation['id'],
+            'id'     => $bulkOperation['id'],
             'status' => $bulkOperation['status'] ?? 'CREATED',
         ];
     }
@@ -203,7 +203,7 @@ class BulkProductFetcher
         } catch (\Throwable $e) {
             Log::warning('Shopify bulk import cancel failed', [
                 'operationId' => $operationId,
-                'message' => $e->getMessage(),
+                'message'     => $e->getMessage(),
             ]);
         }
     }

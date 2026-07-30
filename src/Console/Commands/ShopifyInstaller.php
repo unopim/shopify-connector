@@ -46,14 +46,14 @@ class ShopifyInstaller extends Command
         }
 
         $attribute = $this->attributeRepository->create([
-            'code' => 'shopify_taxonomy',
-            'type' => 'shopify_taxonomy',
-            'is_required' => 0,
-            'is_unique' => 0,
-            'value_per_locale' => 0,
+            'code'              => 'shopify_taxonomy',
+            'type'              => 'shopify_taxonomy',
+            'is_required'       => 0,
+            'is_unique'         => 0,
+            'value_per_locale'  => 0,
             'value_per_channel' => 0,
-            'is_filterable' => 0,
-            'enable_wysiwyg' => 0,
+            'is_filterable'     => 0,
+            'enable_wysiwyg'    => 0,
         ]);
 
         foreach (core()->getAllLocales() as $locale) {

@@ -186,16 +186,16 @@ class MediaBulkPayloadBuilder
                     $mediaId = $match['byAttribute']['row']->externalId;
 
                     $updateMedia[] = [
-                        'id' => $mediaId,
+                        'id'                 => $mediaId,
                         'previewImageSource' => $item['url'],
-                        'alt' => $item['sku'].' - '.$item['code'],
+                        'alt'                => $item['sku'].' - '.$item['code'],
                     ];
 
                     // Refresh the mapping `code` with the new path once the update
                     // completes (BulkResultFinalizer reads this from the manifest).
                     $this->updatePlan[$mediaId] = [
                         'rowId' => $match['byAttribute']['row']->id,
-                        'code' => $this->buildCode($item['code'], $item['path']),
+                        'code'  => $this->buildCode($item['code'], $item['path']),
                     ];
 
                     continue;
@@ -217,22 +217,22 @@ class MediaBulkPayloadBuilder
                 // No mapping for this attribute — create the media. The finalizer
                 // stores the mapping (composite code) once Shopify returns the id.
                 $createMedia[] = [
-                    'originalSource' => $originalSource,
+                    'originalSource'   => $originalSource,
                     'mediaContentType' => $mediaContentType,
-                    'alt' => $item['sku'].' - '.$item['code'],
+                    'alt'              => $item['sku'].' - '.$item['code'],
                 ];
 
                 $planItems[] = [
-                    'sku' => $item['sku'],
+                    'sku'  => $item['sku'],
                     'code' => $this->buildCode($item['code'], $item['path']),
-                    'alt' => $item['sku'].' - '.$item['code'],
+                    'alt'  => $item['sku'].' - '.$item['code'],
                 ];
             }
 
             if (! empty($updateMedia)) {
                 $this->updateLines[] = json_encode([
                     'productId' => $productId,
-                    'media' => $updateMedia,
+                    'media'     => $updateMedia,
                 ], JSON_UNESCAPED_SLASHES);
             }
 
@@ -244,12 +244,12 @@ class MediaBulkPayloadBuilder
 
             $lines[] = json_encode([
                 'productId' => $productId,
-                'media' => $createMedia,
+                'media'     => $createMedia,
             ], JSON_UNESCAPED_SLASHES);
 
             $this->mediaPlan[$lineIndex] = [
                 'productId' => $productId,
-                'items' => $planItems,
+                'items'     => $planItems,
             ];
         }
 
@@ -318,14 +318,14 @@ class MediaBulkPayloadBuilder
 
             $files[] = [
                 'originalSource' => $originalSource,
-                'contentType' => $mediaContentType,
-                'alt' => $item['sku'].' - '.$item['code'],
+                'contentType'    => $mediaContentType,
+                'alt'            => $item['sku'].' - '.$item['code'],
             ];
 
             $planItems[] = [
-                'sku' => $item['sku'],
+                'sku'  => $item['sku'],
                 'code' => $this->buildCode($item['code'], $item['path']),
-                'alt' => $item['sku'].' - '.$item['code'],
+                'alt'  => $item['sku'].' - '.$item['code'],
             ];
         }
 
@@ -377,15 +377,15 @@ class MediaBulkPayloadBuilder
             [$exact, $byAttribute] = $this->matchMapping($mappings, $item['code'], $item['path']);
 
             $matches[] = [
-                'item' => $item,
-                'exact' => $exact,
+                'item'        => $item,
+                'exact'       => $exact,
                 'byAttribute' => $byAttribute,
             ];
         }
 
         return [
             'productId' => $this->ensureGid($productId, 'Product'),
-            'matches' => $matches,
+            'matches'   => $matches,
         ];
     }
 
@@ -443,9 +443,9 @@ class MediaBulkPayloadBuilder
             [$attribute, $path] = $this->parseCode($row->code);
 
             $mappings[] = [
-                'row' => $row,
+                'row'       => $row,
                 'attribute' => $attribute,
-                'path' => $path,
+                'path'      => $path,
             ];
         }
 
@@ -576,10 +576,10 @@ class MediaBulkPayloadBuilder
 
                         if ($resolved !== null) {
                             $items[] = [
-                                'sku' => $sku,
-                                'code' => $code.'_'.$index,
-                                'path' => $resolved['path'],
-                                'url' => $resolved['url'],
+                                'sku'              => $sku,
+                                'code'             => $code.'_'.$index,
+                                'path'             => $resolved['path'],
+                                'url'              => $resolved['url'],
                                 'mediaContentType' => 'IMAGE',
                             ];
                         }
@@ -593,10 +593,10 @@ class MediaBulkPayloadBuilder
 
                 if ($resolved !== null) {
                     $items[] = [
-                        'sku' => $sku,
-                        'code' => $code,
-                        'path' => $resolved['path'],
-                        'url' => $resolved['url'],
+                        'sku'              => $sku,
+                        'code'             => $code,
+                        'path'             => $resolved['path'],
+                        'url'              => $resolved['url'],
                         'mediaContentType' => 'IMAGE',
                     ];
                 }
@@ -668,12 +668,12 @@ class MediaBulkPayloadBuilder
 
             if ($mimeType === 'video/mp4') {
                 $items[] = [
-                    'sku' => $sku,
-                    'code' => $assetCode,
-                    'path' => $path,
-                    'url' => '',
+                    'sku'              => $sku,
+                    'code'             => $assetCode,
+                    'path'             => $path,
+                    'url'              => '',
                     'mediaContentType' => 'VIDEO',
-                    'asset' => $asset,
+                    'asset'            => $asset,
                 ];
 
                 continue;
@@ -690,10 +690,10 @@ class MediaBulkPayloadBuilder
             }
 
             $items[] = [
-                'sku' => $sku,
-                'code' => $assetCode,
-                'path' => $path,
-                'url' => $url,
+                'sku'              => $sku,
+                'code'             => $assetCode,
+                'path'             => $path,
+                'url'              => $url,
                 'mediaContentType' => 'IMAGE',
             ];
         }
@@ -768,10 +768,10 @@ class MediaBulkPayloadBuilder
 
             try {
                 $multipart[] = [
-                    'name' => 'file',
+                    'name'     => 'file',
                     'contents' => $stream,
                     'filename' => $asset['file_name'] ?? 'video.mp4',
-                    'headers' => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
+                    'headers'  => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
                 ];
 
                 $upload = Http::asMultipart()->timeout(300)->post($target['url'], $multipart);

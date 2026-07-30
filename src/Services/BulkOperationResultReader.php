@@ -24,16 +24,16 @@ class BulkOperationResultReader
             $product = $payload['product'] ?? [];
 
             $entries[] = [
-                'line' => $index,
-                'manifest' => $manifestLine,
-                'product' => $product,
+                'line'        => $index,
+                'manifest'    => $manifestLine,
+                'product'     => $product,
                 'user_errors' => $payload['userErrors'] ?? [],
             ];
         }
 
         return [
             'manifest' => $manifest,
-            'entries' => $entries,
+            'entries'  => $entries,
         ];
     }
 }

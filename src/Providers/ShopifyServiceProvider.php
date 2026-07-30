@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Providers;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
 use Webkul\Attribute\Repositories\AttributeRepository;
@@ -54,6 +55,10 @@ class ShopifyServiceProvider extends ServiceProvider
 
         Event::listen('unopim.admin.products.dynamic-attribute-fields.control.shopify_metaobject.before', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::catalog.products.metaobject-control');
+        });
+
+        Event::listen('unopim.admin.settings.data_transfer.exports.create.card.scope.before', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::data-transfer.export-filters');
         });
 
         Event::listen('unopim.admin.catalog.attributes.create.card.label.after', static function (ViewRenderEventManager $viewRenderEventManager) {
@@ -122,6 +127,36 @@ class ShopifyServiceProvider extends ServiceProvider
 
         Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
 
+        $shopifyImportPlaceholder = static function (): string {
+            $path = 'shopify/import-placeholder.csv';
+
+            if (! Storage::disk('private')->exists($path)) {
+                Storage::disk('private')->put($path, "handle,type\nplaceholder,placeholder\n");
+            }
+
+            return $path;
+        };
+
+        $ensureShopifyImportFilePath = static function ($import) use ($shopifyImportPlaceholder) {
+            if (! str_starts_with($import->entity_type ?? '', 'shopify') || ! empty($import->file_path)) {
+                return;
+            }
+
+            $import->file_path = $shopifyImportPlaceholder();
+            $import->field_separator = ',';
+            $import->save();
+        };
+
+        Event::listen('data_transfer.imports.create.after', $ensureShopifyImportFilePath);
+
+        Event::listen('data_transfer.imports.update.after', $ensureShopifyImportFilePath);
+
+        Event::listen('data_transfer.imports.import.now.before', static function ($import) use ($shopifyImportPlaceholder) {
+            if (str_starts_with($import->entity_type ?? '', 'shopify')) {
+                $shopifyImportPlaceholder();
+            }
+        });
+
         Event::listen('user.api_key.delete.before', [RevokeShopifyOnApiKeyDelete::class, 'handle']);
 
         $this->publishes([
@@ -152,6 +187,9 @@ class ShopifyServiceProvider extends ServiceProvider
         );
         $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/acl.php', 'acl'
+        );
+        $this->mergeConfigFrom(
+            dirname(__DIR__).'/Config/api-acl.php', 'api-acl'
         );
         $this->mergeConfigFrom(
             dirname(__DIR__).'/Config/exporters.php', 'exporters'

@@ -106,8 +106,8 @@ class BulkResultFinalizer
                 }
 
                 $failed[] = [
-                    'line' => $index,
-                    'sku' => $sku,
+                    'line'   => $index,
+                    'sku'    => $sku,
                     'errors' => $this->annotateMetafieldErrors($userErrors, $inputLines[$index] ?? null),
                 ];
 
@@ -151,10 +151,10 @@ class BulkResultFinalizer
 
         $meta = $bulkOperation->meta ?? [];
         $meta['result_summary'] = [
-            'success' => $success,
-            'failed' => count($failed),
-            'errors' => $failed,
-            'cleared_stale_mappings' => $clearedStaleSkus,
+            'success'                       => $success,
+            'failed'                        => count($failed),
+            'errors'                        => $failed,
+            'cleared_stale_mappings'        => $clearedStaleSkus,
             'recreated_after_stale_mapping' => $recreatedSkus,
         ];
 
@@ -513,8 +513,8 @@ class BulkResultFinalizer
 
             $summary = array_merge((array) ($jobTrack->summary ?? []), [
                 'processed' => $success,
-                'created' => $success,
-                'skipped' => $failed,
+                'created'   => $success,
+                'skipped'   => $failed,
             ]);
 
             $this->jobTrackRepository->update(['summary' => $summary], $jobTrackId);
@@ -548,8 +548,8 @@ class BulkResultFinalizer
 
         $summary = array_merge((array) ($jobTrack->summary ?? []), [
             'processed' => (int) $row->processed,
-            'created' => (int) $row->created,
-            'skipped' => (int) $row->skipped,
+            'created'   => (int) $row->created,
+            'skipped'   => (int) $row->skipped,
         ]);
 
         $this->jobTrackRepository->update(['summary' => $summary], $jobTrackId);
@@ -573,7 +573,7 @@ class BulkResultFinalizer
                 $successful++;
             } else {
                 $errors[] = [
-                    'line' => $index,
+                    'line'   => $index,
                     'errors' => $userErrors,
                 ];
             }
@@ -581,9 +581,9 @@ class BulkResultFinalizer
 
         $meta = $bulkOperation->meta ?? [];
         $meta['result_summary'] = [
-            'success' => $successful,
-            'failed' => count($errors),
-            'errors' => $errors,
+            'success'           => $successful,
+            'failed'            => count($errors),
+            'errors'            => $errors,
             'total_input_lines' => $total,
         ];
 
@@ -772,12 +772,12 @@ class BulkResultFinalizer
                 }
 
                 $this->shopifyMappingRepository->create([
-                    'entityType' => 'product_media',
-                    'code' => $alt,
-                    'externalId' => $media['id'] ?? null,
-                    'relatedId' => $productId,
+                    'entityType'    => 'product_media',
+                    'code'          => $alt,
+                    'externalId'    => $media['id'] ?? null,
+                    'relatedId'     => $productId,
                     'jobInstanceId' => $jobTrackId,
-                    'apiUrl' => $shopUrl,
+                    'apiUrl'        => $shopUrl,
                 ]);
             }
         }
@@ -789,12 +789,12 @@ class BulkResultFinalizer
     protected function extractUserErrors(array $decoded, string $mutation): array
     {
         return match ($mutation) {
-            'publishablePublish' => $decoded['data']['publishablePublish']['userErrors'] ?? [],
-            'translationsRegister' => $decoded['data']['translationsRegister']['userErrors'] ?? [],
-            'productCreateMedia' => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
-            'productUpdateMedia' => $decoded['data']['productUpdateMedia']['mediaUserErrors'] ?? [],
+            'publishablePublish'        => $decoded['data']['publishablePublish']['userErrors'] ?? [],
+            'translationsRegister'      => $decoded['data']['translationsRegister']['userErrors'] ?? [],
+            'productCreateMedia'        => $decoded['data']['productCreateMedia']['mediaUserErrors'] ?? [],
+            'productUpdateMedia'        => $decoded['data']['productUpdateMedia']['mediaUserErrors'] ?? [],
             'productVariantAppendMedia' => $decoded['data']['productVariantAppendMedia']['userErrors'] ?? [],
-            default => [],
+            default                     => [],
         };
     }
 
@@ -813,12 +813,12 @@ class BulkResultFinalizer
             ->first();
 
         $data = [
-            'entityType' => 'product',
-            'code' => $sku,
-            'externalId' => $productId,
+            'entityType'    => 'product',
+            'code'          => $sku,
+            'externalId'    => $productId,
             'jobInstanceId' => $jobTrackId,
-            'apiUrl' => $shopUrl,
-            'relatedId' => null,
+            'apiUrl'        => $shopUrl,
+            'relatedId'     => null,
         ];
 
         if ($existing) {
@@ -845,12 +845,12 @@ class BulkResultFinalizer
             ->first();
 
         $data = [
-            'entityType' => 'product',
-            'code' => $sku,
-            'externalId' => $variantId,
-            'relatedId' => $productId,
+            'entityType'    => 'product',
+            'code'          => $sku,
+            'externalId'    => $variantId,
+            'relatedId'     => $productId,
             'jobInstanceId' => $jobTrackId,
-            'apiUrl' => $shopUrl,
+            'apiUrl'        => $shopUrl,
         ];
 
         if ($existing) {
@@ -988,13 +988,13 @@ class BulkResultFinalizer
             ->first();
 
         $data = [
-            'entityType' => 'productImage',
-            'code' => $code,
-            'externalId' => $mediaId,
-            'relatedId' => $productId,
+            'entityType'    => 'productImage',
+            'code'          => $code,
+            'externalId'    => $mediaId,
+            'relatedId'     => $productId,
             'relatedSource' => $sku,
             'jobInstanceId' => $jobTrackId,
-            'apiUrl' => $shopUrl,
+            'apiUrl'        => $shopUrl,
         ];
 
         if ($existing) {

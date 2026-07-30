@@ -87,7 +87,7 @@
                                             ],
                                         ];
                                         $metaType = json_encode($metaType, true);
-                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset'];
+                                        $attributeType = ['text', 'textarea', 'boolean', 'select', 'multiselect', 'date', 'datetime', 'image', 'gallery', 'file', 'asset', 'measurement'];
                                         $referenceSourceOptions = json_encode([
                                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
@@ -461,8 +461,7 @@
                             <div v-if="!referenceMode && typeofminmx == 'text'">
                                 <div :class="{ 'flex items-center gap-2':  width != null }">
                                     <x-admin::form.control-group ::class="width">
-                                        <x-admin::form.control-group.label v-text="minvalueLabel">
-                                        </x-admin::form.control-group.label>
+                                        <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
                                         <x-admin::form.control-group.control
                                             type="text"
                                             id="minvalue"
@@ -492,8 +491,7 @@
                                 </div>
                                 <div :class="{ 'flex items-center gap-2':  width != null }">
                                     <x-admin::form.control-group ::class="width">
-                                        <x-admin::form.control-group.label v-text="maxvalueLabel">
-                                        </x-admin::form.control-group.label>
+                                        <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
                                         <x-admin::form.control-group.control
                                             type="text"
                                             id="maxvalue"
@@ -559,8 +557,7 @@
                             </div>
                             <div v-if="!referenceMode && typeofminmx == 'date'">
                                 <x-admin::form.control-group>
-                                <x-admin::form.control-group.label v-text="minvalueLabel">
-                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
                                     <x-admin::form.control-group.control
                                         type="date"
                                         id="minvalue"
@@ -573,8 +570,7 @@
                                     <x-admin::form.control-group.error control-name="minvalue"/>
                                 </x-admin::form.control-group>
                                 <x-admin::form.control-group>
-                                <x-admin::form.control-group.label v-text="maxvalueLabel">
-                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
                                     <x-admin::form.control-group.control
                                         type="date"
                                         id="maxvalue"
@@ -591,8 +587,7 @@
 
                             <div v-if="!referenceMode && typeofminmx == 'datetime'">
                                 <x-admin::form.control-group>
-                                <x-admin::form.control-group.label v-text="minvalueLabel">
-                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
                                     <x-admin::form.control-group.control
                                         type="datetime"
                                         id="minvalue"
@@ -605,8 +600,7 @@
                                     <x-admin::form.control-group.error control-name="minvalue"/>
                                 </x-admin::form.control-group>
                                 <x-admin::form.control-group>
-                                <x-admin::form.control-group.label v-text="maxvalueLabel">
-                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
                                     <x-admin::form.control-group.control
                                         type="datetime"
                                         id="maxvalue"
@@ -669,8 +663,7 @@
                                 <x-admin::form.control-group.label>
                                     @lang('shopify::app.shopify.metafield.index.storefronts')
                                 </x-admin::form.control-group.label>
-                                <x-admin::form.control-group.label v-text="storefronts">
-                                </x-admin::form.control-group.label>
+                                <x-admin::form.control-group.label>@{{ storefronts }}</x-admin::form.control-group.label>
                                 <input 
                                     type="hidden"
                                     name="storefronts"

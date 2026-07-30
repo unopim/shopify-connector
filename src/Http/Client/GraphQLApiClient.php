@@ -42,8 +42,8 @@ class GraphQLApiClient
     protected function getRequestHeaders(): array
     {
         return [
-            'Accept' => 'application/json',
-            'Content-type' => 'application/json',
+            'Accept'                 => 'application/json',
+            'Content-type'           => 'application/json',
             'X-Shopify-Access-Token' => $this->accessToken,
         ];
     }
@@ -68,9 +68,9 @@ class GraphQLApiClient
         }
 
         return [
-            'url' => $this->url,
+            'url'    => $this->url,
             'method' => $method,
-            'body' => json_encode($body, true),
+            'body'   => json_encode($body, true),
         ];
 
     }
@@ -95,7 +95,7 @@ class GraphQLApiClient
         } catch (\Exception $e) {
             return [
                 'message' => $e->getMessage(),
-                'code' => $e->getCode(),
+                'code'    => $e->getCode(),
             ];
         }
     }
@@ -131,310 +131,310 @@ class GraphQLApiClient
      */
     protected $endpoints = [
         'getShopPublishedLocales' => [
-            'query' => '{shopLocales (published: true) {locale name primary published } }',
+            'query'  => '{shopLocales (published: true) {locale name primary published } }',
             'method' => 'POST',
         ],
 
         'fileCreate' => [
-            'query' => 'mutation fileCreate($files: [FileCreateInput!]!) { fileCreate(files: $files) { files { id fileStatus alt createdAt ... on MediaImage { image { width height } } } userErrors { field message } } }',
+            'query'  => 'mutation fileCreate($files: [FileCreateInput!]!) { fileCreate(files: $files) { files { id fileStatus alt createdAt ... on MediaImage { image { width height } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'getFileById' => [
-            'query' => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } ... on Video { id fileStatus sources { url } } } }',
+            'query'  => 'query getFileById($ids: [ID!]!) { nodes(ids: $ids) { ... on GenericFile { id url fileStatus } ... on MediaImage { id fileStatus image { url altText } } ... on Video { id fileStatus sources { url } } } }',
             'method' => 'POST',
         ],
 
         'productSet' => [
-            'query' => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle media(first: 250) { nodes { id alt } } variants(first: 250) { nodes { id sku inventoryItem { id sku } } } } userErrors { code field message } } }',
+            'query'  => 'mutation productSet($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { product { id handle media(first: 250) { nodes { id alt } } variants(first: 250) { nodes { id sku inventoryItem { id sku } } } } userErrors { code field message } } }',
             'method' => 'POST',
         ],
         'getProductsMedia' => [
-            'query' => 'query getProductsMedia($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id media(first: 100) { nodes { id alt } } } } }',
+            'query'  => 'query getProductsMedia($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id media(first: 100) { nodes { id alt } } } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitions' => [
-            'query' => 'query metaobjectDefinitions($first: Int!, $after: String) { metaobjectDefinitions(first: $first, after: $after) { edges { cursor node { id type name } } pageInfo { hasNextPage } } }',
+            'query'  => 'query metaobjectDefinitions($first: Int!, $after: String) { metaobjectDefinitions(first: $first, after: $after) { edges { cursor node { id type name } } pageInfo { hasNextPage } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitionByType' => [
-            'query' => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } validations { name value } } } }',
+            'query'  => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } validations { name value } } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitionCreate' => [
-            'query' => 'mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) { metaobjectDefinitionCreate(definition: $definition) { metaobjectDefinition { id type name } userErrors { field message code } } }',
+            'query'  => 'mutation metaobjectDefinitionCreate($definition: MetaobjectDefinitionCreateInput!) { metaobjectDefinitionCreate(definition: $definition) { metaobjectDefinition { id type name } userErrors { field message code } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitionUpdate' => [
-            'query' => 'mutation metaobjectDefinitionUpdate($id: ID!, $definition: MetaobjectDefinitionUpdateInput!) { metaobjectDefinitionUpdate(id: $id, definition: $definition) { metaobjectDefinition { id type } userErrors { field message code } } }',
+            'query'  => 'mutation metaobjectDefinitionUpdate($id: ID!, $definition: MetaobjectDefinitionUpdateInput!) { metaobjectDefinitionUpdate(id: $id, definition: $definition) { metaobjectDefinition { id type } userErrors { field message code } } }',
             'method' => 'POST',
         ],
         'metaobjectUpsert' => [
-            'query' => 'mutation metaobjectUpsert($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) { metaobjectUpsert(handle: $handle, metaobject: $metaobject) { metaobject { id handle } userErrors { field message code } } }',
+            'query'  => 'mutation metaobjectUpsert($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) { metaobjectUpsert(handle: $handle, metaobject: $metaobject) { metaobject { id handle } userErrors { field message code } } }',
             'method' => 'POST',
         ],
         'getMetaobjectsByType' => [
-            'query' => 'query getMetaobjectsByType($type: String!, $first: Int!, $after: String) { metaobjects(type: $type, first: $first, after: $after) { edges { cursor node { id type handle fields { key value } } } pageInfo { hasNextPage } } }',
+            'query'  => 'query getMetaobjectsByType($type: String!, $first: Int!, $after: String) { metaobjects(type: $type, first: $first, after: $after) { edges { cursor node { id type handle fields { key value } } } pageInfo { hasNextPage } } }',
             'method' => 'POST',
         ],
         'createTranslation' => [
-            'query' => 'mutation CreateTranslation($id: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $id, translations: $translations) {  userErrors { message field }  translations {  locale key value }, }}',
+            'query'  => 'mutation CreateTranslation($id: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $id, translations: $translations) {  userErrors { message field }  translations {  locale key value }, }}',
             'method' => 'POST',
         ],
         'createCollection' => [
-            'query' => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'query'  => 'mutation CollectionCreate($input: CollectionInput!) { collectionCreate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
         'manualCollectionGetting' => [
-            'query' => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
+            'query'  => 'query MyCollections($first: Int!) { collections(first: $first) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
             'method' => 'POST',
         ],
 
         'GetCollectionsByCursor' => [
-            'query' => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
+            'query'  => 'query GetCollections($first: Int!, $afterCursor: String!) { collections(first: $first, after: $afterCursor) { pageInfo { hasNextPage hasPreviousPage } edges { cursor node { id title descriptionHtml handle image { url } seo { title description } ruleSet { appliedDisjunctively } } } } }',
             'method' => 'POST',
         ],
 
         'getCollectionTranslations' => [
-            'query' => 'query GetCollectionTranslations($resourceId: ID!, $locale: String!) { translatableResource(resourceId: $resourceId) { translations(locale: $locale) { key value locale } } }',
+            'query'  => 'query GetCollectionTranslations($resourceId: ID!, $locale: String!) { translatableResource(resourceId: $resourceId) { translations(locale: $locale) { key value locale } } }',
             'method' => 'POST',
         ],
 
         'getBulkTranslations' => [
-            'query' => 'query GetBulkTranslations($resourceIds: [ID!]!, $locale: String!) { translatableResourcesByIds(resourceIds: $resourceIds, first: 250) { nodes { resourceId translations(locale: $locale) { key value locale } } } }',
+            'query'  => 'query GetBulkTranslations($resourceIds: [ID!]!, $locale: String!) { translatableResourcesByIds(resourceIds: $resourceIds, first: 250) { nodes { resourceId translations(locale: $locale) { key value locale } } } }',
             'method' => 'POST',
         ],
 
         'updateCollection' => [
-            'query' => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'query'  => 'mutation updateCollectionTitle($input: CollectionInput!) { collectionUpdate(input: $input) { userErrors { field message } collection { id title descriptionHtml handle sortOrder seo { title description } image { url } resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionCreate' => [
-            'query' => 'mutation MetafieldDefinitionCreateMutation($input: MetafieldDefinitionInput!) {  metafieldDefinitionCreate(definition: $input) { createdDefinition { id key namespace name ownerType validations { name value } } userErrors { code message field } } }',
+            'query'  => 'mutation MetafieldDefinitionCreateMutation($input: MetafieldDefinitionInput!) {  metafieldDefinitionCreate(definition: $input) { createdDefinition { id key namespace name ownerType validations { name value } } userErrors { code message field } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionUpdate' => [
-            'query' => 'mutation UpdateMetafieldDefinition($input: MetafieldDefinitionUpdateInput!) { metafieldDefinitionUpdate(definition: $input) { updatedDefinition { id name } userErrors { field message code } } }',
+            'query'  => 'mutation UpdateMetafieldDefinition($input: MetafieldDefinitionUpdateInput!) { metafieldDefinitionUpdate(definition: $input) { updatedDefinition { id name } userErrors { field message code } } }',
             'method' => 'POST',
         ],
 
         'getOneProduct' => [
-            'query' => '{ products(first: 1) { edges { node { id title descriptionHtml createdAt updatedAt } } } }',
+            'query'  => '{ products(first: 1) { edges { node { id title descriptionHtml createdAt updatedAt } } } }',
             'method' => 'POST',
         ],
 
         'createProduct' => [
-            'query' => 'mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!] ) { productCreate(product: $product, media: $media) { product { id title handle resourcePublications(first: 30) { edges { node { publication { id } } } } media(first: 60) { nodes { id } } options { id name values optionValues { id name } } variants(first: 30) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
+            'query'  => 'mutation ProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!] ) { productCreate(product: $product, media: $media) { product { id title handle resourcePublications(first: 30) { edges { node { publication { id } } } } media(first: 60) { nodes { id } } options { id name values optionValues { id name } } variants(first: 30) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'productPublish' => [
-            'query' => 'mutation productPublish($input: ProductPublishInput!) { productPublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
+            'query'  => 'mutation productPublish($input: ProductPublishInput!) { productPublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'productUnpublish' => [
-            'query' => 'mutation productUnPublish($input: ProductUnpublishInput!) { productUnpublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
+            'query'  => 'mutation productUnPublish($input: ProductUnpublishInput!) { productUnpublish(input: $input) { product { id title } shop { name } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'CreateProductVariantsDefault' => [
-            'query' => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id options { id name values optionValues { id name hasVariants } } } } }',
+            'query'  => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id options { id name values optionValues { id name hasVariants } } } } }',
             'method' => 'POST',
         ],
 
         'productVariantsBulkUpdate' => [
-            'query' => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } }',
+            'query'  => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productVariantsBulkUpdatewithproduct' => [
-            'query' => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $product: ProductUpdateInput) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } productUpdate(product: $product) { product { id } } }',
+            'query'  => 'mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $product: ProductUpdateInput) { productVariantsBulkUpdate(productId: $productId, variants: $variants) { product { id } productVariants { id inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name } } } } } metafields(first: 2) { edges { node { namespace key value } } } } userErrors { field message } } productUpdate(product: $product) { product { id } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productVariantCreate' => [
-            'query' => 'mutation ProductVariantCreate($input: ProductVariantInput!) { productVariantCreate(input: $input) { productVariant { id price } userErrors { field message } }  }',
+            'query'  => 'mutation ProductVariantCreate($input: ProductVariantInput!) { productVariantCreate(input: $input) { productVariant { id price } userErrors { field message } }  }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productVariantDelete' => [
-            'query' => 'mutation ProductVariantDelete($id: ID!) { productVariantDelete(id: $id) { product { id } } }',
+            'query'  => 'mutation ProductVariantDelete($id: ID!) { productVariantDelete(id: $id) { product { id } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'UpdateCostPerItem' => [
-            'query' => 'mutation inventoryItemUpdate($id: ID!, $input: InventoryItemUpdateInput!) { inventoryItemUpdate(id: $id, input: $input) { inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } unitCost { amount } tracked countryCodeOfOrigin provinceCodeOfOrigin harmonizedSystemCode countryHarmonizedSystemCodes(first: 1) { edges { node { harmonizedSystemCode countryCode } } } } userErrors { message } } }',
+            'query'  => 'mutation inventoryItemUpdate($id: ID!, $input: InventoryItemUpdateInput!) { inventoryItemUpdate(id: $id, input: $input) { inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } unitCost { amount } tracked countryCodeOfOrigin provinceCodeOfOrigin harmonizedSystemCode countryHarmonizedSystemCodes(first: 1) { edges { node { harmonizedSystemCode countryCode } } } } userErrors { message } } }',
             'method' => 'POST',
         ],
 
         'inventoryAdjustQuantities' => [
-            'query' => 'mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) { inventoryAdjustQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
+            'query'  => 'mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) { inventoryAdjustQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'updateImageToProduct' => [
-            'query' => 'mutation productAppendImages($inputImg: ProductAppendImagesInput! ) { productAppendImages(input: $inputImg) { newImages { id altText } userErrors { field message } }  }',
+            'query'  => 'mutation productAppendImages($inputImg: ProductAppendImagesInput! ) { productAppendImages(input: $inputImg) { newImages { id altText } userErrors { field message } }  }',
             'method' => 'POST',
         ],
 
         'productUpdate' => [
-            'query' => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
+            'query'  => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id } } } sellingPlanGroups(first: 10) { edges { node { id name } } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productUpdateWithVariantGetting' => [
-            'query' => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
+            'query'  => 'mutation ProductUpdate($product: ProductUpdateInput!, $media: [CreateMediaInput!]) { productUpdate(product: $product, media: $media) { product { id title handle productType vendor tags descriptionHtml resourcePublications(first: 30) { edges { node { publication { id } } } } options { id name values optionValues { id name hasVariants } } media(first: 30) { nodes { id } } collections(first: 10) { edges { node { id handle title } } } variants(first: 10) { edges { node { id }  } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productImageUpdate' => [
-            'query' => 'mutation productImageUpdate($productId: ID!, $image: ImageInput!) { productImageUpdate(productId: $productId, image: $image) { image { id altText src } userErrors { field message } } }',
+            'query'  => 'mutation productImageUpdate($productId: ID!, $image: ImageInput!) { productImageUpdate(productId: $productId, image: $image) { image { id altText src } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'getPublications' => [
-            'query' => 'query publications { publications(first: 250) { pageInfo { hasNextPage hasPreviousPage } edges  { cursor node { id name supportsFuturePublishing app { id title description developerName } } } } }',
+            'query'  => 'query publications { publications(first: 250) { pageInfo { hasNextPage hasPreviousPage } edges  { cursor node { id name supportsFuturePublishing app { id title description developerName } } } } }',
             'method' => 'POST',
         ],
 
         'createOptions' => [
-            'query' => 'mutation createOptions($productId: ID!, $options: [OptionCreateInput!]!) { productOptionsCreate(productId: $productId, options: $options) { userErrors { field message code } product { id variants(first: 5) { nodes { id title selectedOptions { name value } } } options { id name values position optionValues { id name hasVariants } } } } }',
+            'query'  => 'mutation createOptions($productId: ID!, $options: [OptionCreateInput!]!) { productOptionsCreate(productId: $productId, options: $options) { userErrors { field message code } product { id variants(first: 5) { nodes { id title selectedOptions { name value } } } options { id name values position optionValues { id name hasVariants } } } } }',
             'method' => 'POST',
         ],
 
         'CreateProductVariants' => [
-            'query' => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!, $media: [CreateMediaInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput, media: $media) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id media(first: 30) { nodes { id } }  options { id name values optionValues { id name hasVariants } } } } }',
+            'query'  => 'mutation CreateProductVariants($productId: ID!, $strategy: ProductVariantsBulkCreateStrategy, $variantsInput: [ProductVariantsBulkInput!]!, $media: [CreateMediaInput!]!) { productVariantsBulkCreate(productId: $productId, strategy: $strategy, variants: $variantsInput, media: $media) { productVariants { id title inventoryItem { id inventoryLevels(first: 10) { edges { node { id location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } } userErrors { field message } product { id media(first: 30) { nodes { id } }  options { id name values optionValues { id name hasVariants } } } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'getFullfillmentAndLocation' => [
-            'query' => '{ locations(first: 10) { edges { node { id name } } } shop { fulfillmentServices { id serviceName handle inventoryManagement } } }',
+            'query'  => '{ locations(first: 10) { edges { node { id name } } } shop { fulfillmentServices { id serviceName handle inventoryManagement } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'inventoryBulkToggleActivation' => [
-            'query' => 'mutation InventoryBulkToggleActivation($inventoryItemId: ID!, $inventoryItemUpdates: [InventoryBulkToggleActivationInput!]!) { inventoryBulkToggleActivation(inventoryItemId: $inventoryItemId   inventoryItemUpdates: $inventoryItemUpdates ) {   userErrors {  message     __typename    }   __typename }}',
+            'query'  => 'mutation InventoryBulkToggleActivation($inventoryItemId: ID!, $inventoryItemUpdates: [InventoryBulkToggleActivationInput!]!) { inventoryBulkToggleActivation(inventoryItemId: $inventoryItemId   inventoryItemUpdates: $inventoryItemUpdates ) {   userErrors {  message     __typename    }   __typename }}',
             'method' => 'POST',
         ],
 
         'productGettingOptions' => [
-            'query' => 'query { products(first: 50, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query { products(first: 50, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
         'productOptionByCursor' => [
-            'query' => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node { id productType vendor options { id name position values optionValues { id name } } variants(first: 30) { edges { node { id title price sku compareAtPrice selectedOptions { name value } } } } } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGetting' => [
-            'query' => 'query { products(first: 20, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } } seo { title description } metafields(first: 100) { edges { node { id namespace type key value } } } } } } }',
+            'query'  => 'query { products(first: 20, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } } seo { title description } metafields(first: 100) { edges { node { id namespace type key value } } } } } } }',
             'method' => 'POST',
         ],
 
         'gettingRemaingVariant' => [
-            'query' => 'query GetProductVariants($productId: ID!, $after: String) { product(id: $productId) { title variants(first: 30, after: $after) { edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } pageInfo { hasNextPage } } } }',
+            'query'  => 'query GetProductVariants($productId: ID!, $after: String) { product(id: $productId) { title variants(first: 30, after: $after) { edges { cursor node { id title price sku compareAtPrice barcode taxable  inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } } selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } } } pageInfo { hasNextPage } } } }',
             'method' => 'POST',
         ],
 
         'productAllvalueGettingByCursor' => [
-            'query' => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key type value } } } } } } }',
+            'query'  => 'query GetProducts($first: Int!, $afterCursor: String!) { products(first: $first, after: $afterCursor, reverse: true) { edges { cursor node {  id title description resourcePublications(first: 10) { nodes { isPublished publication { name id } } } descriptionHtml productType vendor tags status handle publishedAt createdAt updatedAt  collections(first: 10) { edges { node { handle id title } } } media(first: 30) { nodes { id __typename ... on MediaImage { image { altText url } } } } options { id name values } variants(first: 10) { pageInfo { hasNextPage } edges { cursor node { id title price sku compareAtPrice barcode taxable inventoryQuantity inventoryPolicy metafields(first: 100) { edges { cursor node  {  id namespace key value type } } } inventoryItem { unitCost { amount } id tracked requiresShipping measurement { weight { value unit } } inventoryLevels(first: 10) { edges { node { id quantities(names: ["available"]) { name quantity } location { id name address { address1 city province country zip } } } } } }  selectedOptions { name value } media(first: 10) { nodes { id __typename ... on MediaImage { image { altText url } } } } image { id originalSrc altText } } } } seo { title description } metafields(first: 100) { edges { node { id namespace key type value } } } } } } }',
             'method' => 'POST',
         ],
 
         'productMetafields' => [
-            'query' => 'query GetProduct($id: ID!, $first: Int!) { product(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query GetProduct($id: ID!, $first: Int!) { product(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
         'productMetafieldsByCursor' => [
-            'query' => 'query GetProduct($id: ID!, $first: Int!, $afterCursor: String!) { product(id: $id) { metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query GetProduct($id: ID!, $first: Int!, $afterCursor: String!) { product(id: $id) { metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
         'productCollections' => [
-            'query' => 'query GetProductCollections($id: ID!) { product(id: $id) { collections(first: 250) { edges { node { id } } } } }',
+            'query'  => 'query GetProductCollections($id: ID!) { product(id: $id) { collections(first: 250) { edges { node { id } } } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'deleteMetafield' => [
-            'query' => 'mutation metafieldDelete($input: MetafieldDeleteInput!) { metafieldDelete(input: $input) { deletedId userErrors { field message } } }',
+            'query'  => 'mutation metafieldDelete($input: MetafieldDeleteInput!) { metafieldDelete(input: $input) { deletedId userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'productVariantMetafield' => [
-            'query' => 'query productVariant($id: ID!, $first: Int!) { productVariant(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query productVariant($id: ID!, $first: Int!) { productVariant(id: $id) { metafields(first: $first) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
         'productVariantMetafieldByCursor' => [
-            'query' => 'query productVariant($id: ID!, $first: Int!, $afterCursor: String!) { productVariant(id: $id) {   metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
+            'query'  => 'query productVariant($id: ID!, $first: Int!, $afterCursor: String!) { productVariant(id: $id) {   metafields(first: $first, after: $afterCursor) { edges { cursor node  {  id namespace key value type } } } } }',
             'method' => 'POST',
         ],
 
         'productOptionUpdated' => [
-            'query' => 'mutation UpdateOptionNameAndPosition($productId: ID!, $optionInput: OptionUpdateInput!, $optionValuesToUpdate: [OptionValueUpdateInput!], $optionValuesToDelete: [ID!], $optionValuesToAdd: [OptionValueCreateInput!]) { productOptionUpdate(productId: $productId, option: $optionInput, optionValuesToUpdate: $optionValuesToUpdate, optionValuesToDelete: $optionValuesToDelete, optionValuesToAdd: $optionValuesToAdd) { product { options { id name position optionValues { id name hasVariants } } } userErrors { field message } } }',
+            'query'  => 'mutation UpdateOptionNameAndPosition($productId: ID!, $optionInput: OptionUpdateInput!, $optionValuesToUpdate: [OptionValueUpdateInput!], $optionValuesToDelete: [ID!], $optionValuesToAdd: [OptionValueCreateInput!]) { productOptionUpdate(productId: $productId, option: $optionInput, optionValuesToUpdate: $optionValuesToUpdate, optionValuesToDelete: $optionValuesToDelete, optionValuesToAdd: $optionValuesToAdd) { product { options { id name position optionValues { id name hasVariants } } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productUpdateMedia' => [
-            'query' => 'mutation productUpdateMedia($media: [UpdateMediaInput!]!, $productId: ID!) { productUpdateMedia(media: $media, productId: $productId) { media { alt id } mediaUserErrors { field message } } }',
+            'query'  => 'mutation productUpdateMedia($media: [UpdateMediaInput!]!, $productId: ID!) { productUpdateMedia(media: $media, productId: $productId) { media { alt id } mediaUserErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'productFileUpdate' => [
-            'query' => 'mutation FileUpdate($input: [FileUpdateInput!]!) { fileUpdate(files: $input) { userErrors { code field message } files { alt } } }',
+            'query'  => 'mutation FileUpdate($input: [FileUpdateInput!]!) { fileUpdate(files: $input) { userErrors { code field message } files { alt } } }',
             'method' => 'POST',
         ],
 
         'productDeleteMedia' => [
-            'query' => 'mutation productDeleteMedia($mediaIds: [ID!]!, $productId: ID!) { productDeleteMedia(mediaIds: $mediaIds, productId: $productId) { deletedMediaIds deletedProductImageIds mediaUserErrors { field message } product { id title media(first: 25) { nodes { alt mediaContentType status } } } } }',
+            'query'  => 'mutation productDeleteMedia($mediaIds: [ID!]!, $productId: ID!) { productDeleteMedia(mediaIds: $mediaIds, productId: $productId) { deletedMediaIds deletedProductImageIds mediaUserErrors { field message } product { id title media(first: 25) { nodes { alt mediaContentType status } } } } }',
             'method' => 'POST',
         ],
 
         'productCreateMedia' => [
-            'query' => 'mutation productCreateMedia($media: [CreateMediaInput!]!, $productId: ID!) { productCreateMedia(media: $media, productId: $productId) { media { alt id mediaContentType status } mediaUserErrors { field message } product { id title } } }',
+            'query'  => 'mutation productCreateMedia($media: [CreateMediaInput!]!, $productId: ID!) { productCreateMedia(media: $media, productId: $productId) { media { alt id mediaContentType status } mediaUserErrors { field message } product { id title } } }',
             'method' => 'POST',
         ],
 
         'getignLocations' => [
-            'query' => '{ locations(first: 80, includeLegacy: true) { edges { node { id name  fulfillmentService { id } } } } }',
+            'query'  => '{ locations(first: 80, includeLegacy: true) { edges { node { id name  fulfillmentService { id } } } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'productDelete' => [
-            'query' => 'mutation productDelete($input: ProductDeleteInput!) { productDelete(input: $input) { deletedProductId userErrors { field message } } }',
+            'query'  => 'mutation productDelete($input: ProductDeleteInput!) { productDelete(input: $input) { deletedProductId userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionsProductVariantType' => [
-            'query' => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCTVARIANT, constraintStatus: UNCONSTRAINED_ONLY) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 
         'metafieldDefinitionsProductType' => [
-            'query' => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } constraints { key values(first: 250) { nodes { value } } } validations { name type value} type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } constraints { key values(first: 250) { nodes { value } } } validations { name type value} type { name category }} } } }',
             'method' => 'POST',
         ],
 
         'publishablePublish' => [
-            'query' => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
+            'query'  => 'mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
@@ -445,91 +445,91 @@ class GraphQLApiClient
         ],
 
         'getTotalProductCount' => [
-            'query' => 'query { productsCount(query: "id:>=1") { count } }',
+            'query'  => 'query { productsCount(query: "id:>=1") { count } }',
             'method' => 'POST',
         ],
 
         'stagedUploadsCreate' => [
-            'query' => 'mutation stagedUploadsCreate($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }',
+            'query'  => 'mutation stagedUploadsCreate($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'bulkOperationRunMutation' => [
-            'query' => 'mutation bulkOperationRunMutation($mutation: String!, $stagedUploadPath: String!) { bulkOperationRunMutation(mutation: $mutation, stagedUploadPath: $stagedUploadPath) { bulkOperation { id status url } userErrors { field message } } }',
+            'query'  => 'mutation bulkOperationRunMutation($mutation: String!, $stagedUploadPath: String!) { bulkOperationRunMutation(mutation: $mutation, stagedUploadPath: $stagedUploadPath) { bulkOperation { id status url } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'bulkOperationRunQuery' => [
-            'query' => 'mutation bulkOperationRunQuery($query: String!) { bulkOperationRunQuery(query: $query) { bulkOperation { id status url } userErrors { field message } } }',
+            'query'  => 'mutation bulkOperationRunQuery($query: String!) { bulkOperationRunQuery(query: $query) { bulkOperation { id status url } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'bulkOperationCancel' => [
-            'query' => 'mutation bulkOperationCancel($id: ID!) { bulkOperationCancel(id: $id) { bulkOperation { id status } userErrors { field message } } }',
+            'query'  => 'mutation bulkOperationCancel($id: ID!) { bulkOperationCancel(id: $id) { bulkOperation { id status } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'bulkOperationStatus' => [
-            'query' => 'query bulkOperationStatus($id: ID!) { bulkOperation(id: $id) { id status errorCode createdAt completedAt objectCount fileSize url partialDataUrl } }',
+            'query'  => 'query bulkOperationStatus($id: ID!) { bulkOperation(id: $id) { id status errorCode createdAt completedAt objectCount fileSize url partialDataUrl } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'publishableUnpublish' => [
-            'query' => 'mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) { publishableUnpublish(id: $id, input: $input) { userErrors { field message } } }',
+            'query'  => 'mutation PublishableUnpublish($id: ID!, $input: [PublicationInput!]!) { publishableUnpublish(id: $id, input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'collectionAddProducts' => [
-            'query' => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
+            'query'  => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'collectionRemoveProducts' => [
-            'query' => 'mutation collectionRemoveProducts($id: ID!, $productIds: [ID!]!) { collectionRemoveProducts(id: $id, productIds: $productIds) { job { id done } userErrors { field message } } }',
+            'query'  => 'mutation collectionRemoveProducts($id: ID!, $productIds: [ID!]!) { collectionRemoveProducts(id: $id, productIds: $productIds) { job { id done } userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         'translatableResource' => [
-            'query' => 'query translatableResource($resourceId: ID!) { translatableResource(resourceId: $resourceId) { resourceId translatableContent { key value digest locale } } }',
+            'query'  => 'query translatableResource($resourceId: ID!) { translatableResource(resourceId: $resourceId) { resourceId translatableContent { key value digest locale } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: defined here but never called by any exporter/importer/service (cross-check 2026-05-15).
         'inventorySetQuantities' => [
-            'query' => 'mutation InventorySet($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
+            'query'  => 'mutation InventorySet($input: InventorySetQuantitiesInput!) { inventorySetQuantities(input: $input) { userErrors { field message } inventoryAdjustmentGroup { createdAt reason referenceDocumentUri changes { name delta } } } }',
             'method' => 'POST',
         ],
 
         // Bulk operation mutations
         // UNUSED: superseded by Config/bulk_mutations.php — the bulk flow reads the config copy, not this endpoint (cross-check 2026-05-15).
         'productSetBulk' => [
-            'query' => 'mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { userErrors { field message } products { id handle title status resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
+            'query'  => 'mutation productSetBulk($identifier: ProductSetIdentifiers, $input: ProductSetInput!) { productSet(identifier: $identifier, input: $input) { userErrors { field message } products { id handle title status resourcePublications(first: 30) { edges { node { publication { id } } } } } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: superseded by Config/bulk_mutations.php — the bulk flow reads the config copy, not this endpoint (cross-check 2026-05-15).
         'publishablePublishBulk' => [
-            'query' => 'mutation publishablePublishBulk($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
+            'query'  => 'mutation publishablePublishBulk($id: ID!, $input: [PublicationInput!]!) { publishablePublish(id: $id, input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: superseded by Config/bulk_mutations.php — the bulk flow reads the config copy, not this endpoint (cross-check 2026-05-15).
         'collectionAddProductsBulk' => [
-            'query' => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
+            'query'  => 'mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) { collectionAddProducts(id: $id, productIds: $productIds) { userErrors { field message } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: superseded by Config/bulk_mutations.php — the bulk flow reads the config copy, not this endpoint (cross-check 2026-05-15).
         'translationsRegisterBulk' => [
-            'query' => 'mutation translationsRegisterBulk($resourceId: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $resourceId, translations: $translations) { userErrors { field message } translations { locale key value } } }',
+            'query'  => 'mutation translationsRegisterBulk($resourceId: ID!, $translations: [TranslationInput!]!) { translationsRegister(resourceId: $resourceId, translations: $translations) { userErrors { field message } translations { locale key value } } }',
             'method' => 'POST',
         ],
 
         // UNUSED: superseded by Config/bulk_mutations.php — the bulk flow reads the config copy, not this endpoint (cross-check 2026-05-15).
         'inventorySetOnHandQuantitiesBulk' => [
-            'query' => 'mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesInput!) { inventorySetOnHandQuantities(input: $input) { userErrors { field message } } }',
+            'query'  => 'mutation inventorySetOnHandQuantitiesBulk($input: InventorySetOnHandQuantitiesInput!) { inventorySetOnHandQuantities(input: $input) { userErrors { field message } } }',
             'method' => 'POST',
         ],
     ];

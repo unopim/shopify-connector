@@ -5,6 +5,7 @@ namespace Webkul\Shopify\Http\Controllers;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Helpers\ShopifyFields;
 use Webkul\Shopify\Http\Requests\ExportMappingForm;
@@ -61,7 +62,10 @@ class MappingController extends Controller
         $unitPriceUnitOptions = (new ShopifyFields)->getUnitPriceUnitOptions();
         $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
 
-        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
+        $unitPriceValueIsMeasurement = ! empty($unitPriceMapping['quantityValueAttr'])
+            && app(AttributeRepository::class)->findOneByField('code', $unitPriceMapping['quantityValueAttr'])?->type === 'measurement';
+
+        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'unitPriceValueIsMeasurement', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
     }
 
     /**

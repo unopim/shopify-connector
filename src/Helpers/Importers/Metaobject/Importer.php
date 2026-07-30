@@ -92,7 +92,7 @@ class Importer extends AbstractImporter
         }
 
         $this->importBatchRepository->update([
-            'state' => Import::STATE_PROCESSED,
+            'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),
@@ -122,8 +122,8 @@ class Importer extends AbstractImporter
 
         if (! empty($row['id'])) {
             $this->definitionMappingRepository->updateOrCreateByType($this->shopUrl, $type, [
-                'gid' => $row['id'],
-                'name' => $name,
+                'gid'    => $row['id'],
+                'name'   => $name,
                 'fields' => $fields,
             ]);
         }

@@ -128,8 +128,8 @@ class CoreProductBulkPayloadBuilder
         $mediaCreated = false;
         $summary = [
             'processed' => count($groupedProducts),
-            'created' => 0,
-            'skipped' => 0,
+            'created'   => 0,
+            'skipped'   => 0,
         ];
 
         foreach ($groupedProducts as $group) {
@@ -153,27 +153,27 @@ class CoreProductBulkPayloadBuilder
         $metafieldSelection = $this->buildTranslatableMetafieldSelection();
 
         return [
-            'lines' => $lines,
+            'lines'               => $lines,
             'metafield_selection' => $metafieldSelection['selection'],
-            'manifest' => [
-                'job_track_id' => $jobTrackId,
-                'shop_url' => $this->credential?->shopUrl,
-                'credential_id' => $this->credential?->id,
-                'credential' => $this->credentialAsArray,
-                'channel' => $this->jobChannel,
-                'currency' => $this->currency,
-                'phase' => BulkOperationService::CORE_PRODUCT_PHASE,
-                'media_created' => $mediaCreated,
+            'manifest'            => [
+                'job_track_id'      => $jobTrackId,
+                'shop_url'          => $this->credential?->shopUrl,
+                'credential_id'     => $this->credential?->id,
+                'credential'        => $this->credentialAsArray,
+                'channel'           => $this->jobChannel,
+                'currency'          => $this->currency,
+                'phase'             => BulkOperationService::CORE_PRODUCT_PHASE,
+                'media_created'     => $mediaCreated,
                 'metafield_aliases' => $metafieldSelection['aliases'],
                 'follow_up_context' => [
-                    'publishing' => true,
-                    'media' => true,
-                    'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
+                    'publishing'      => true,
+                    'media'           => true,
+                    'translations'    => count($this->credential?->storelocaleMapping ?? []) > 1,
                     'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
                 ],
                 'lines' => $manifestLines,
             ],
-            'summary' => $summary,
+            'summary'    => $summary,
             'credential' => $this->credentialAsArray,
         ];
     }
@@ -389,9 +389,9 @@ class CoreProductBulkPayloadBuilder
             }
 
             $entries[$asset['id']] = [
-                'path' => $path,
+                'path'         => $path,
                 'content_type' => $this->assetFileContentType($mime),
-                'url' => $url,
+                'url'          => $url,
             ];
         }
 
@@ -465,26 +465,26 @@ class CoreProductBulkPayloadBuilder
             ->get()
             ->map(function ($product) {
                 $parent = $product?->parent_values ? [
-                    'id' => $product->parent_id,
-                    'sku' => $product->parent_sku,
-                    'type' => $product->parent_type,
-                    'status' => $product->parent_status,
-                    'values' => json_decode($product->parent_values, true),
+                    'id'                  => $product->parent_id,
+                    'sku'                 => $product->parent_sku,
+                    'type'                => $product->parent_type,
+                    'status'              => $product->parent_status,
+                    'values'              => json_decode($product->parent_values, true),
                     'attribute_family_id' => $product->parent_attribute_family_id,
-                    'super_attributes' => $this->hydrateSuperAttributes(explode(',', $product->super_attributes)),
+                    'super_attributes'    => $this->hydrateSuperAttributes(explode(',', $product->super_attributes)),
                 ] : null;
 
                 return [
-                    'id' => $product->id,
-                    'sku' => $product->sku,
-                    'type' => $product->type,
-                    'parent' => $parent,
-                    'status' => $product->status,
-                    'values' => json_decode($product->values, true),
-                    'parent_id' => $product->parent_id,
+                    'id'                  => $product->id,
+                    'sku'                 => $product->sku,
+                    'type'                => $product->type,
+                    'parent'              => $parent,
+                    'status'              => $product->status,
+                    'values'              => json_decode($product->values, true),
+                    'parent_id'           => $product->parent_id,
                     'attribute_family_id' => $product->attribute_family_id,
-                    'additional' => $product->additional ? json_decode($product->additional, true) : [],
-                    'super_attributes' => [],
+                    'additional'          => $product->additional ? json_decode($product->additional, true) : [],
+                    'super_attributes'    => [],
                 ];
             })
             ->all();
@@ -503,8 +503,8 @@ class CoreProductBulkPayloadBuilder
             if (! isset($grouped[$groupSku])) {
                 $grouped[$groupSku] = [
                     'product_sku' => $groupSku,
-                    'parent' => $product['parent'],
-                    'variants' => [],
+                    'parent'      => $product['parent'],
+                    'variants'    => [],
                 ];
             }
 
@@ -567,9 +567,9 @@ class CoreProductBulkPayloadBuilder
             $nsKey = explode('.', $def['name_space_key']);
             $metafields[] = [
                 'namespace' => $nsKey[0],
-                'key' => $nsKey[1],
-                'type' => $isList ? 'list.'.$def['type'] : $def['type'],
-                'value' => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
+                'key'       => $nsKey[1],
+                'type'      => $isList ? 'list.'.$def['type'] : $def['type'],
+                'value'     => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
             ];
         }
 
@@ -648,9 +648,9 @@ class CoreProductBulkPayloadBuilder
 
             $metafields[] = [
                 'namespace' => $nsKey[0],
-                'key' => $nsKey[1] ?? '',
-                'type' => $isList ? 'list.metaobject_reference' : 'metaobject_reference',
-                'value' => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
+                'key'       => $nsKey[1] ?? '',
+                'type'      => $isList ? 'list.metaobject_reference' : 'metaobject_reference',
+                'value'     => $isList ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0],
             ];
         }
 
@@ -754,7 +754,7 @@ class CoreProductBulkPayloadBuilder
                 ! empty($parentData)
             );
             $variantManifest[] = [
-                'sku' => $variantRow['sku'],
+                'sku'       => $variantRow['sku'],
                 'has_media' => $this->variantHasMedia($variantMergedFields),
             ];
         }
@@ -790,21 +790,21 @@ class CoreProductBulkPayloadBuilder
         return [
             'variables' => [
                 'identifier' => match (true) {
-                    (bool) $productIdentifierId => ['id' => $productIdentifierId],
+                    (bool) $productIdentifierId      => ['id' => $productIdentifierId],
                     ! empty($productInput['handle']) => ['handle' => $productInput['handle']],
-                    default => null,
+                    default                          => null,
                 },
                 'input' => $productInput,
             ],
             'manifest' => [
-                'product_sku' => $productSku,
-                'product_handle' => $productInput['handle'] ?? null,
-                'variant_skus' => array_column($variantManifest, 'sku'),
+                'product_sku'      => $productSku,
+                'product_handle'   => $productInput['handle'] ?? null,
+                'variant_skus'     => array_column($variantManifest, 'sku'),
                 'media_plan_items' => $mediaPlanItems,
-                'phase_context' => [
-                    'publishing' => ! empty($this->credential?->extras['salesChannel']),
+                'phase_context'    => [
+                    'publishing'   => ! empty($this->credential?->extras['salesChannel']),
                     'translations' => count($this->credential?->storelocaleMapping ?? []) > 1,
-                    'media' => collect($variantManifest)->contains('has_media', true),
+                    'media'        => collect($variantManifest)->contains('has_media', true),
                 ],
             ],
         ];
@@ -825,10 +825,10 @@ class CoreProductBulkPayloadBuilder
             }
 
             $superAttributes[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
-                'name' => $attribute->name,
-                'type' => $attribute->type,
+                'id'           => $attribute->id,
+                'code'         => $attribute->code,
+                'name'         => $attribute->name,
+                'type'         => $attribute->type,
                 'translations' => $attribute->translations->toArray(),
             ];
         }
@@ -843,9 +843,9 @@ class CoreProductBulkPayloadBuilder
     {
         if (empty($parentData['super_attributes'])) {
             return [[
-                'name' => 'Title',
+                'name'     => 'Title',
                 'position' => 1,
-                'values' => [[
+                'values'   => [[
                     'name' => 'Default Title',
                 ]],
             ]];
@@ -877,9 +877,9 @@ class CoreProductBulkPayloadBuilder
             }
 
             $options[] = [
-                'name' => $optionName,
+                'name'     => $optionName,
                 'position' => $index + 1,
-                'values' => array_values($values),
+                'values'   => array_values($values),
             ];
         }
 
@@ -894,7 +894,7 @@ class CoreProductBulkPayloadBuilder
         if (empty($parentData['super_attributes'])) {
             return [[
                 'optionName' => 'Title',
-                'name' => 'Default Title',
+                'name'       => 'Default Title',
             ]];
         }
 
@@ -909,7 +909,7 @@ class CoreProductBulkPayloadBuilder
 
             $optionValues[] = [
                 'optionName' => $this->resolveOptionName($attributeMeta),
-                'name' => $value,
+                'name'       => $value,
             ];
         }
 
@@ -922,15 +922,15 @@ class CoreProductBulkPayloadBuilder
     protected function normalizeProductInput(array $formattedProduct, array $productOptions): array
     {
         $productInput = array_filter([
-            'title' => $formattedProduct['title'] ?? null,
-            'status' => $formattedProduct['status'] ?? null,
-            'handle' => $formattedProduct['handle'] ?? null,
-            'vendor' => $formattedProduct['vendor'] ?? null,
+            'title'           => $formattedProduct['title'] ?? null,
+            'status'          => $formattedProduct['status'] ?? null,
+            'handle'          => $formattedProduct['handle'] ?? null,
+            'vendor'          => $formattedProduct['vendor'] ?? null,
             'descriptionHtml' => $formattedProduct['descriptionHtml'] ?? null,
-            'productType' => $formattedProduct['productType'] ?? null,
-            'tags' => $formattedProduct['tags'] ?? null,
-            'seo' => $formattedProduct['seo'] ?? null,
-            'metafields' => $formattedProduct['parentMetaFields'] ?? $formattedProduct['metafields'] ?? null,
+            'productType'     => $formattedProduct['productType'] ?? null,
+            'tags'            => $formattedProduct['tags'] ?? null,
+            'seo'             => $formattedProduct['seo'] ?? null,
+            'metafields'      => $formattedProduct['parentMetaFields'] ?? $formattedProduct['metafields'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         if (! empty($productOptions)) {
@@ -953,19 +953,19 @@ class CoreProductBulkPayloadBuilder
         $inventoryItem = $variantPayload['inventoryItem'] ?? [];
 
         $variantInput = array_filter([
-            'id' => $variantId,
-            'price' => $variantPayload['price'] ?? null,
-            'compareAtPrice' => $variantPayload['compareAtPrice'] ?? null,
-            'barcode' => $variantPayload['barcode'] ?? null,
-            'taxable' => $variantPayload['taxable'] ?? null,
+            'id'              => $variantId,
+            'price'           => $variantPayload['price'] ?? null,
+            'compareAtPrice'  => $variantPayload['compareAtPrice'] ?? null,
+            'barcode'         => $variantPayload['barcode'] ?? null,
+            'taxable'         => $variantPayload['taxable'] ?? null,
             'inventoryPolicy' => $variantPayload['inventoryPolicy'] ?? null,
-            'metafields' => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
-            'inventoryItem' => empty($inventoryItem) ? null : $inventoryItem,
+            'metafields'      => $includeVariantMetafields ? ($variantMetafields ?: null) : null,
+            'inventoryItem'   => empty($inventoryItem) ? null : $inventoryItem,
             // Inventory quantities are synced inline through productSet; there is
             // no separate inventory phase, so this is the single source of truth.
-            'inventoryQuantities' => $variantPayload['inventoryQuantities'] ?? null,
+            'inventoryQuantities'  => $variantPayload['inventoryQuantities'] ?? null,
             'unitPriceMeasurement' => $variantPayload['unitPriceMeasurement'] ?? null,
-            'showUnitPrice' => $variantPayload['showUnitPrice'] ?? null,
+            'showUnitPrice'        => $variantPayload['showUnitPrice'] ?? null,
         ], fn ($value) => ! is_null($value) && $value !== []);
 
         // Shopify's productSet bulk input expects optionValues to be present

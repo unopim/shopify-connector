@@ -56,8 +56,8 @@ class ShopifyTaxonomyLoader
                 }
 
                 $entries[] = [
-                    'id' => $id,
-                    'path' => $taxPath,
+                    'id'    => $id,
+                    'path'  => $taxPath,
                     'depth' => substr_count($taxPath, ' > ') + 1,
                 ];
             }
@@ -168,8 +168,8 @@ class ShopifyTaxonomyLoader
 
         foreach ($this->childrenByParent[$parentShort] ?? [] as $short) {
             $rows[] = [
-                'id' => $this->index[$short]['id'],
-                'name' => $this->index[$short]['name'],
+                'id'          => $this->index[$short]['id'],
+                'name'        => $this->index[$short]['name'],
                 'hasChildren' => ! empty($this->childrenByParent[$short]),
             ];
         }

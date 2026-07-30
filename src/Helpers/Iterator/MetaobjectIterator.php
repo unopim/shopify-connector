@@ -70,9 +70,9 @@ class MetaobjectIterator implements \Iterator
             }
 
             $rows[$definition['type']] = [
-                'id' => $node['id'],
-                'type' => $node['type'],
-                'name' => $node['name'] ?? $node['type'],
+                'id'     => $node['id'],
+                'type'   => $node['type'],
+                'name'   => $node['name'] ?? $node['type'],
                 'fields' => $this->reverseFields($node['fieldDefinitions'] ?? [], $typeByGid),
             ];
         }
@@ -131,15 +131,15 @@ class MetaobjectIterator implements \Iterator
             $validations = $this->reverseValidations($definition['validations'] ?? []);
 
             $fields[] = array_filter([
-                'key' => $definition['key'],
-                'name' => $definition['name'] ?? $definition['key'],
-                'type' => $type,
-                'list' => $list,
-                'required' => ! empty($definition['required']),
-                'child' => $type === 'metaobject_reference' ? ($typeByGid[$validations['metaobject_definition_id'] ?? ''] ?? '') : '',
+                'key'          => $definition['key'],
+                'name'         => $definition['name'] ?? $definition['key'],
+                'type'         => $type,
+                'list'         => $list,
+                'required'     => ! empty($definition['required']),
+                'child'        => $type === 'metaobject_reference' ? ($typeByGid[$validations['metaobject_definition_id'] ?? ''] ?? '') : '',
                 'content_type' => $type === 'file_reference' ? ($validations['content_type'] ?? '') : '',
-                'preset' => ! empty($validations['rules']['choices']) ? 'choice_list' : '',
-                'validations' => $validations['rules'],
+                'preset'       => ! empty($validations['rules']['choices']) ? 'choice_list' : '',
+                'validations'  => $validations['rules'],
             ], fn ($value) => $value !== '' && $value !== null && $value !== []);
         }
 

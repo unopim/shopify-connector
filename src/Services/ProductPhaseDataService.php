@@ -50,13 +50,13 @@ class ProductPhaseDataService
         $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
 
         return $this->sharedContextCache[$credentialId] = [
-            'credential' => $credential,
-            'credential_array' => $credential->toApiArray(),
+            'credential'             => $credential,
+            'credential_array'       => $credential->toApiArray(),
             'shopify_default_locale' => $credential->storelocaleMapping[$defaultLanguage['locale'] ?? ''] ?? null,
-            'export_mapping' => $mappings->first(),
-            'setting_mapping' => $mappings->last(),
-            'attributes' => $this->attributeRepository->all()->keyBy('code'),
-            'product_metafields' => $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray(),
+            'export_mapping'         => $mappings->first(),
+            'setting_mapping'        => $mappings->last(),
+            'attributes'             => $this->attributeRepository->all()->keyBy('code'),
+            'product_metafields'     => $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray(),
         ];
     }
 
@@ -106,11 +106,11 @@ class ProductPhaseDataService
         }
 
         $rowData = [
-            'id' => $product->id,
-            'sku' => $product->sku,
-            'type' => $product->type,
-            'status' => $product->status,
-            'values' => json_decode($product->values, true),
+            'id'        => $product->id,
+            'sku'       => $product->sku,
+            'type'      => $product->type,
+            'status'    => $product->status,
+            'values'    => json_decode($product->values, true),
             'parent_id' => $product->parent_id,
         ];
 
@@ -121,39 +121,39 @@ class ProductPhaseDataService
 
             if ($parentProduct) {
                 $parentData = [
-                    'id' => $parentProduct->id,
-                    'sku' => $parentProduct->sku,
-                    'type' => $parentProduct->type,
-                    'status' => $parentProduct->status,
-                    'values' => json_decode($parentProduct->values, true),
+                    'id'               => $parentProduct->id,
+                    'sku'              => $parentProduct->sku,
+                    'type'             => $parentProduct->type,
+                    'status'           => $parentProduct->status,
+                    'values'           => json_decode($parentProduct->values, true),
                     'super_attributes' => $this->getSuperAttributes($parentProduct->id, $attributesAll->all()),
                 ];
             }
         } elseif ($product->type === 'configurable') {
             $parentData = [
-                'id' => $product->id,
-                'sku' => $product->sku,
-                'type' => $product->type,
-                'status' => $product->status,
-                'values' => json_decode($product->values, true),
+                'id'               => $product->id,
+                'sku'              => $product->sku,
+                'type'             => $product->type,
+                'status'           => $product->status,
+                'values'           => json_decode($product->values, true),
                 'super_attributes' => $this->getSuperAttributes($product->id, $attributesAll->all()),
             ];
         }
 
         return [
-            'credential' => $credential,
-            'credential_array' => $shared['credential_array'],
+            'credential'             => $credential,
+            'credential_array'       => $shared['credential_array'],
             'shopify_default_locale' => $shopifyDefaultLocale,
-            'channel' => $channel,
-            'currency' => $currency,
-            'row_data' => $rowData,
-            'parent_data' => $parentData,
-            'attributes' => $attributesAll->all(),
-            'export_mapping' => $exportMapping,
-            'setting_mapping' => $settingMapping,
-            'product_metafields' => $productMetaFieldMapping,
-            'merged_fields' => $this->getAllAttributeValues($rowData, $channel, $shopifyDefaultLocale),
-            'parent_merged_fields' => $parentData ? $this->getAllAttributeValues($parentData, $channel, $shopifyDefaultLocale) : [],
+            'channel'                => $channel,
+            'currency'               => $currency,
+            'row_data'               => $rowData,
+            'parent_data'            => $parentData,
+            'attributes'             => $attributesAll->all(),
+            'export_mapping'         => $exportMapping,
+            'setting_mapping'        => $settingMapping,
+            'product_metafields'     => $productMetaFieldMapping,
+            'merged_fields'          => $this->getAllAttributeValues($rowData, $channel, $shopifyDefaultLocale),
+            'parent_merged_fields'   => $parentData ? $this->getAllAttributeValues($parentData, $channel, $shopifyDefaultLocale) : [],
         ];
     }
 
@@ -191,10 +191,10 @@ class ProductPhaseDataService
             }
 
             $superAttributes[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
-                'name' => $attribute->name,
-                'type' => $attribute->type,
+                'id'           => $attribute->id,
+                'code'         => $attribute->code,
+                'name'         => $attribute->name,
+                'type'         => $attribute->type,
                 'translations' => $attribute->translations->toArray(),
             ];
         }

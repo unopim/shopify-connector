@@ -41,9 +41,9 @@ class RevokeShopifyOnApiKeyDelete
             ->get();
 
         Log::info('Shopify integration-delete cleanup', [
-            'api_key_id' => $apiKeyId,
+            'api_key_id'      => $apiKeyId,
             'oauth_client_id' => $oauthClientId,
-            'matched' => $credentials->pluck('id')->all(),
+            'matched'         => $credentials->pluck('id')->all(),
         ]);
 
         foreach ($credentials as $credential) {
@@ -67,7 +67,7 @@ class RevokeShopifyOnApiKeyDelete
         if (! $revoked) {
             Log::warning('Shopify SaaS revoke failed during integration delete; removing local row anyway', [
                 'credential_id' => $credential->id,
-                'shopUrl' => $credential->shopUrl,
+                'shopUrl'       => $credential->shopUrl,
             ]);
         }
 

@@ -215,7 +215,7 @@ class Importer extends AbstractImporter
          * Update import batch summary
          */
         $batch = $this->importBatchRepository->update([
-            'state' => Import::STATE_PROCESSED,
+            'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),
@@ -237,8 +237,8 @@ class Importer extends AbstractImporter
         $categ = $this->categoryRepository->findOneByField('code', $node['handle']);
 
         $data = [
-            'code' => $node['handle'],
-            'parent_id' => $categ?->parent_id ?? $this->rootCategoryId,
+            'code'            => $node['handle'],
+            'parent_id'       => $categ?->parent_id ?? $this->rootCategoryId,
             'additional_data' => $categ ? $categ->toArray()['additional_data'] : [],
         ];
 
@@ -252,9 +252,9 @@ class Importer extends AbstractImporter
          */
         $directFields = [
             'descriptionHtml' => $node['descriptionHtml'] ?? '',
-            'seoTitle' => $node['seo']['title'] ?? '',
-            'seoDescription' => $node['seo']['description'] ?? '',
-            'handle' => $node['handle'] ?? '',
+            'seoTitle'        => $node['seo']['title'] ?? '',
+            'seoDescription'  => $node['seo']['description'] ?? '',
+            'handle'          => $node['handle'] ?? '',
         ];
 
         foreach ($directFields as $mapKey => $value) {
@@ -321,9 +321,9 @@ class Importer extends AbstractImporter
         }
 
         $keyToCode = array_filter([
-            'title' => $fieldMap['title'] ?? null,
-            'body_html' => $fieldMap['descriptionHtml'] ?? null,
-            'meta_title' => $fieldMap['seoTitle'] ?? null,
+            'title'            => $fieldMap['title'] ?? null,
+            'body_html'        => $fieldMap['descriptionHtml'] ?? null,
+            'meta_title'       => $fieldMap['seoTitle'] ?? null,
             'meta_description' => $fieldMap['seoDescription'] ?? null,
         ]);
 
@@ -334,7 +334,7 @@ class Importer extends AbstractImporter
         try {
             $response = $this->requestGraphQlApiAction('getCollectionTranslations', $this->credentialArray, [
                 'resourceId' => $node['id'],
-                'locale' => $shopifyLocale,
+                'locale'     => $shopifyLocale,
             ]);
 
             $translations = collect($response['body']['data']['translatableResource']['translations'] ?? []);

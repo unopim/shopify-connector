@@ -28,30 +28,30 @@ class MetaobjectDataGrid extends DataGrid
     public function prepareColumns()
     {
         $this->addColumn([
-            'index' => 'name',
-            'label' => trans('shopify::app.shopify.metaobject.datagrid.name'),
-            'type' => 'string',
+            'index'      => 'name',
+            'label'      => trans('shopify::app.shopify.metaobject.datagrid.name'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
+            'sortable'   => true,
         ]);
 
         $this->addColumn([
-            'index' => 'code',
-            'label' => trans('shopify::app.shopify.metaobject.datagrid.code'),
-            'type' => 'string',
+            'index'      => 'code',
+            'label'      => trans('shopify::app.shopify.metaobject.datagrid.code'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
+            'sortable'   => true,
         ]);
 
         $this->addColumn([
-            'index' => 'entries_count',
-            'label' => trans('shopify::app.shopify.metaobject.datagrid.entries'),
-            'type' => 'string',
+            'index'      => 'entries_count',
+            'label'      => trans('shopify::app.shopify.metaobject.datagrid.entries'),
+            'type'       => 'string',
             'searchable' => false,
             'filterable' => false,
-            'sortable' => false,
+            'sortable'   => false,
         ]);
     }
 
@@ -62,10 +62,10 @@ class MetaobjectDataGrid extends DataGrid
     {
         if (bouncer()->hasPermission('shopify.metaobjects.edit')) {
             $this->addAction([
-                'icon' => 'icon-edit',
-                'title' => trans('admin::app.catalog.attributes.index.datagrid.edit'),
+                'icon'   => 'icon-edit',
+                'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url' => function ($row) {
+                'url'    => function ($row) {
                     return route('shopify.metaobject.edit', $row->id);
                 },
             ]);
@@ -73,10 +73,10 @@ class MetaobjectDataGrid extends DataGrid
 
         if (bouncer()->hasPermission('shopify.metaobjects.delete')) {
             $this->addAction([
-                'icon' => 'icon-delete',
-                'title' => trans('admin::app.catalog.attributes.index.datagrid.delete'),
+                'icon'   => 'icon-delete',
+                'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url' => function ($row) {
+                'url'    => function ($row) {
                     return route('shopify.metaobject.destroy', $row->id);
                 },
             ]);
@@ -90,9 +90,9 @@ class MetaobjectDataGrid extends DataGrid
     {
         if (bouncer()->hasPermission('shopify.metaobjects.delete')) {
             $this->addMassAction([
-                'title' => trans('admin::app.catalog.attributes.index.datagrid.delete'),
-                'url' => route('shopify.metaobject.mass_delete'),
-                'method' => 'POST',
+                'title'   => trans('admin::app.catalog.attributes.index.datagrid.delete'),
+                'url'     => route('shopify.metaobject.mass_delete'),
+                'method'  => 'POST',
                 'options' => ['actionType' => 'delete'],
             ]);
         }

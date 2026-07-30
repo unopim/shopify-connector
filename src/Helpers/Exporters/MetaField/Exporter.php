@@ -337,18 +337,18 @@ class Exporter extends AbstractExporter
                 if ($maxunit && $key == 'max') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit' => $maxunit,
+                        'unit'  => $maxunit,
                     ], true);
                 } elseif ($minunit && $key == 'min') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit' => $minunit,
+                        'unit'  => $minunit,
                     ], true);
                 }
                 $key = in_array($type, ['list.rating', 'rating']) ? 'scale_'.$key : $key;
 
                 $validations[] = [
-                    'name' => $key,
+                    'name'  => $key,
                     'value' => $validationData ?? 0,
                 ];
             }
@@ -357,7 +357,7 @@ class Exporter extends AbstractExporter
                 $choices = $this->resolveChoiceListValues($rowData['code'] ?? '');
                 if (! empty($choices)) {
                     $validations[] = [
-                        'name' => 'choices',
+                        'name'  => 'choices',
                         'value' => json_encode($choices, JSON_UNESCAPED_SLASHES),
                     ];
                 }
@@ -369,7 +369,7 @@ class Exporter extends AbstractExporter
             );
             if (! empty($fileTypeOptions)) {
                 $validations[] = [
-                    'name' => 'file_type_options',
+                    'name'  => 'file_type_options',
                     'value' => json_encode($fileTypeOptions),
                 ];
             }
@@ -380,7 +380,7 @@ class Exporter extends AbstractExporter
                 $definitionGid = $metaobjectType
                     ? $this->shopifyMetaobjectMappingRepository->findOneWhere([
                         'api_url' => $this->credentialArray['shopUrl'],
-                        'type' => $metaobjectType,
+                        'type'    => $metaobjectType,
                     ])?->gid
                     : null;
 
@@ -388,7 +388,7 @@ class Exporter extends AbstractExporter
                     $validations[] = ['name' => 'metaobject_definition_id', 'value' => $definitionGid];
                 } else {
                     $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-definition-missing', [
-                        'type' => $metaobjectType ?? '',
+                        'type'  => $metaobjectType ?? '',
                         'store' => $this->credentialArray['shopUrl'],
                     ]));
                 }
@@ -460,7 +460,7 @@ class Exporter extends AbstractExporter
         return match ($contentType) {
             'IMAGE' => ['Image'],
             'VIDEO' => ['Video'],
-            'FILE' => array_values($fileTypes),
+            'FILE'  => array_values($fileTypes),
             default => [],
         };
     }
