@@ -1,12 +1,17 @@
 <script type="text/x-template" id="v-metaobject-builder-template">
-    <div>
-        <div class="rounded-md border border-gray-200 p-4 dark:border-gray-700">
-            <div class="mb-4 flex flex-col gap-1">
-                <label class="required text-xs font-medium text-gray-600 dark:text-gray-300">@lang('shopify::app.shopify.metaobject.name')</label>
-                <input v-model="name" type="text" class="max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
-            </div>
+    <div class="flex flex-col gap-2">
+        <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+            <p class="mb-4 text-base font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.general')</p>
 
-            <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.fields')</p>
+            <x-admin::form.control-group class="!mb-0 max-w-md">
+                <x-admin::form.control-group.label class="required">@lang('shopify::app.shopify.metaobject.name')</x-admin::form.control-group.label>
+
+                <input v-model="name" type="text" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+            </x-admin::form.control-group>
+        </div>
+
+        <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+            <p class="mb-4 text-base font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.fields')</p>
 
             <div v-for="(field, index) in fields" :key="index" class="mb-2 rounded-md border border-gray-200 p-3 dark:border-gray-700">
                 <div class="flex items-start gap-2">
@@ -128,11 +133,11 @@
             </div>
 
             <div class="mt-3">
-                <button type="button" class="secondary-button !py-1 !text-xs" @click="addField">@lang('shopify::app.shopify.metaobject.add-field')</button>
+                <button type="button" class="secondary-button" @click="addField">@lang('shopify::app.shopify.metaobject.add-field')</button>
             </div>
         </div>
 
-        <div class="mt-3 flex items-center justify-end gap-2.5">
+        <div class="flex items-center justify-end gap-2.5">
             <button type="button" class="secondary-button" @click="cancel">@lang('shopify::app.shopify.metaobject.cancel')</button>
             <button type="button" class="primary-button" :disabled="saving" @click="save">@lang('shopify::app.shopify.metaobject.save')</button>
         </div>
@@ -222,7 +227,7 @@
 
         methods: {
             blankField() {
-                return { name: '', type: 'single_line_text_field', child: '', list: false, content_type: '', existing: false, validations: this.blankValidations() };
+                return { name: '', type: '', child: '', list: false, content_type: '', existing: false, validations: this.blankValidations() };
             },
 
             blankValidations() {

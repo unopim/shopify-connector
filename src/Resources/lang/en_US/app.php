@@ -221,7 +221,8 @@ return [
                         'title_required' => 'Please map a category attribute for Title.',
                     ],
                     'errors' => [
-                        'empty_title' => 'Skipping collection for category :code: the mapped Title attribute is empty.',
+                        'empty_title'   => 'Skipping collection for category :code: the mapped Title attribute is empty.',
+                        'image_skipped' => 'Collection image skipped for category :code: the store URL is not publicly reachable, so Shopify cannot fetch it.',
                     ],
                     'images' => [
                         'title' => 'Collection Image Mapping',
@@ -355,6 +356,8 @@ return [
         ],
         'metaobject' => [
             'title'      => 'Metaobject Definitions',
+            'edit-title' => 'Edit Metaobject',
+            'general'    => 'General',
             'create'     => 'Create Metaobject',
             'create-new' => 'Create new metaobject',
             'deleted'    => 'Metaobject deleted.',
@@ -366,6 +369,8 @@ return [
                 'name'    => 'Name',
                 'code'    => 'Code',
                 'entries' => 'Entries',
+                'values'  => 'Values',
+                'complex' => '(complex)',
             ],
             'name'                 => 'Name',
             'fields'               => 'Fields',
@@ -374,6 +379,7 @@ return [
             'field-single'         => 'Single value',
             'field-list'           => 'List value',
             'field-child'          => 'Referenced metaobject',
+            'select'               => 'Select',
             'field-min'            => 'Min',
             'field-max'            => 'Max',
             'field-precision'      => 'Max decimals',

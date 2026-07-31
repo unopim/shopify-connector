@@ -45,7 +45,7 @@ return [
                     'required' => false,
                     'type'     => 'textarea',
                 ], [
-                    'name'     => 'status',
+                    'name'     => 'productstatus',
                     'title'    => 'shopify::app.shopify.job.status',
                     'required' => false,
                     'type'     => 'select',

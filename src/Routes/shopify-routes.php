@@ -142,7 +142,13 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
         Route::controller(MetaobjectEntryController::class)->group(function () {
             Route::get('metaobject-entry/list', 'list')->name('shopify.metaobject.entry.list');
 
+            Route::get('metaobject-entry/datagrid/{type}', 'datagrid')->name('shopify.metaobject.entry.datagrid');
+
+            Route::get('metaobject-entry/columns/{type}', 'columns')->name('shopify.metaobject.entry.columns');
+
             Route::post('metaobject-entry', 'store')->name('shopify.metaobject.entry.store');
+
+            Route::get('metaobject-entry/{id}', 'get')->name('shopify.metaobject.entry.get');
 
             Route::delete('metaobject-entry/{id}', 'delete')->name('shopify.metaobject.entry.delete');
         });

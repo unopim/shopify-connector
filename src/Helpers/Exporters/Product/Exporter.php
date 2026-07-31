@@ -305,7 +305,7 @@ class Exporter extends AbstractExporter
 
         $filters = $this->getFilters();
         $hasProductFilter = ! empty($filters['productfilter']);
-        $hasStatusFilter = in_array($filters['status'] ?? null, ['enable', 'disable'], true);
+        $hasStatusFilter = in_array($filters['productstatus'] ?? null, ['enable', 'disable'], true);
 
         // No filter: the whole catalog — every simple, configurable, and variant.
         if (! $hasProductFilter && ! $hasStatusFilter) {
@@ -577,7 +577,7 @@ class Exporter extends AbstractExporter
      */
     protected function applyStatusFilter($query, array $filters): void
     {
-        $status = $filters['status'] ?? null;
+        $status = $filters['productstatus'] ?? null;
 
         if ($status === 'enable') {
             $query->where('status', 1);

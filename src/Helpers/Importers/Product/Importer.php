@@ -1364,7 +1364,11 @@ class Importer extends AbstractImporter
             $unitOption = $this->shoifyMetaFieldTypeData[$metaData['node']['type']]['unitoptions'] ?? null;
             if ($unitOption || $metaData['node']['type'] === 'rating') {
                 $unitValue = json_decode($source, true);
-                $source = $unitValue['value'] ?? 0;
+
+                $source = $attribute->type === 'measurement'
+                    && in_array($metaData['node']['type'], ['weight', 'volume', 'dimension'], true)
+                    ? $this->resolveMeasurementMetafield($attribute, $metaData['node']['type'], is_array($unitValue) ? $unitValue : [])
+                    : ($unitValue['value'] ?? 0);
             }
 
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
@@ -1381,6 +1385,10 @@ class Importer extends AbstractImporter
 
             if (str_contains((string) $metaData['node']['type'], 'color') && ! empty($source)) {
                 $source = $this->resolveSwatchColorValue($attribute, (string) $source);
+            }
+
+            if ($metaData['node']['type'] === 'rich_text_field' && ! empty($source)) {
+                $source = $this->richTextToHtml($source);
             }
 
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
@@ -1406,6 +1414,71 @@ class Importer extends AbstractImporter
             $channelSpecific,
             $channelAndLocaleSpecific,
         ];
+    }
+
+    /**
+     * Convert a Shopify rich_text_field JSON AST into HTML for the UnoPim editor.
+     */
+    protected function richTextToHtml($value): string
+    {
+        $decoded = is_array($value) ? $value : json_decode((string) $value, true);
+
+        return is_array($decoded) ? $this->renderRichTextNode($decoded) : (string) $value;
+    }
+
+    /**
+     * Recursively render a Shopify rich-text node to its HTML equivalent.
+     */
+    protected function renderRichTextNode(array $node): string
+    {
+        if (($node['type'] ?? '') === 'text') {
+            $text = e($node['value'] ?? '');
+
+            if (! empty($node['bold'])) {
+                $text = '<strong>'.$text.'</strong>';
+            }
+
+            if (! empty($node['italic'])) {
+                $text = '<em>'.$text.'</em>';
+            }
+
+            return $text;
+        }
+
+        $children = '';
+        foreach ($node['children'] ?? [] as $child) {
+            $children .= $this->renderRichTextNode($child);
+        }
+
+        $level = min(max((int) ($node['level'] ?? 1), 1), 6);
+        $listTag = ($node['listType'] ?? '') === 'ordered' ? 'ol' : 'ul';
+
+        return match ($node['type'] ?? '') {
+            'root'      => $children,
+            'paragraph' => '<p>'.$children.'</p>',
+            'heading'   => '<h'.$level.'>'.$children.'</h'.$level.'>',
+            'list'      => '<'.$listTag.'>'.$children.'</'.$listTag.'>',
+            'list-item' => '<li>'.$children.'</li>',
+            'link'      => '<a href="'.e($node['url'] ?? '').'"'.(! empty($node['title']) ? ' title="'.e($node['title']).'"' : '').(! empty($node['target']) ? ' target="'.e($node['target']).'"' : '').'>'.$children.'</a>',
+            default     => $children,
+        };
+    }
+
+    /**
+     * Map a Shopify measurement metafield ({value, unit}) to the UnoPim
+     * measurement attribute shape, resolving the unit to the family's code.
+     */
+    protected function resolveMeasurementMetafield(object $attribute, string $type, array $unitValue): array|string
+    {
+        $family = app(AttributeMeasurementRepository::class)->getByAttributeId($attribute->id)?->family_code;
+
+        $code = $family
+            ? (new MeasurementUnitMapper)->toUnopim($type, $family, strtoupper((string) ($unitValue['unit'] ?? '')))
+            : null;
+
+        return $code === null
+            ? (string) ($unitValue['value'] ?? '')
+            : ['value' => (string) ($unitValue['value'] ?? '0'), 'unit' => $code];
     }
 
     /**

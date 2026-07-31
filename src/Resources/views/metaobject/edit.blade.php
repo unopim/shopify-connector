@@ -1,46 +1,97 @@
-<x-admin::layouts>
-    <x-slot:title>@lang('shopify::app.shopify.metaobject.title')</x-slot>
+<x-admin::layouts.with-history>
+    <x-slot:entityName>
+        shopify_metaobject
+    </x-slot>
+
+    <x-slot:title>
+        @lang('shopify::app.shopify.metaobject.edit-title')
+    </x-slot>
+
+    <x-slot:pageHeader>
+        <x-admin::layouts.edit-page-header
+            :title="trans('shopify::app.shopify.metaobject.edit-title').' | '.$definition->name"
+            :back-url="route('shopify.metaobject.index')"
+            :back-label="trans('shopify::app.shopify.metaobject.back')"
+        />
+    </x-slot>
 
     <div class="flex flex-col gap-4">
-        <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <a href="{{ route('shopify.metaobject.index') }}" class="icon-arrow-left cursor-pointer text-2xl"></a>
-                <p class="text-xl font-bold text-gray-800 dark:text-white">{{ $definition->name }}</p>
-            </div>
-
-            <a href="{{ route('shopify.metaobject.index') }}" class="secondary-button">@lang('shopify::app.shopify.metaobject.back')</a>
-        </div>
-
         <v-metaobject-builder
             mode="edit"
             :initial='@json($definitionData)'
             :field-types='@json($fieldTypes)'
         ></v-metaobject-builder>
 
-        <v-metaobject-entries
-            type="{{ $definition->code }}"
-            :fields='@json($formFields)'
-        ></v-metaobject-entries>
+        <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+            <v-metaobject-entries
+                type="{{ $definition->code }}"
+                :fields='@json($formFields)'
+            >
+                <div class="mb-4 flex items-center justify-between gap-4 max-sm:flex-wrap">
+                    <p class="text-xl font-bold text-gray-800 dark:text-slate-50">@lang('shopify::app.shopify.metaobject.entries')</p>
+                </div>
+
+                <x-admin::shimmer.datagrid />
+            </v-metaobject-entries>
+        </div>
     </div>
 
     @pushOnce('scripts')
         @include('shopify::metaobject._builder')
 
         <script type="text/x-template" id="v-metaobject-entries-template">
-            <div class="rounded-md border border-gray-200 p-4 dark:border-gray-700">
-                <div class="mb-3 flex items-center justify-between">
-                    <p class="text-sm font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.entries')</p>
-                    <button type="button" class="primary-button !py-1 !text-xs" @click="openCreate">@lang('shopify::app.shopify.metaobject.add-entry')</button>
+            <div>
+                <div class="mb-4 flex items-center justify-between gap-4 max-sm:flex-wrap">
+                    <p class="text-xl font-bold text-gray-800 dark:text-slate-50">@lang('shopify::app.shopify.metaobject.entries')</p>
+
+                    @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                        <button type="button" class="primary-button" @click="openCreate">@lang('shopify::app.shopify.metaobject.add-entry')</button>
+                    @endif
                 </div>
 
-                <p v-if="! entries.length" class="text-sm text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.metaobject.entry-empty')</p>
-                <div v-for="entry in entries" :key="entry.id" class="flex items-center justify-between border-b border-gray-100 py-2 text-sm last:border-0 dark:border-gray-700">
-                    <span class="font-medium text-gray-700 dark:text-gray-300" v-text="entry.code"></span>
-                    <span class="flex items-center gap-4">
-                        <span class="icon-edit cursor-pointer text-2xl text-gray-600 transition-all hover:text-gray-900 dark:text-gray-300" :title="'@lang('shopify::app.shopify.metaobject.edit-entry')'" @click="openEdit(entry)"></span>
-                        <span class="icon-delete cursor-pointer text-2xl text-gray-600 transition-all hover:text-red-600 dark:text-gray-300" :title="'@lang('shopify::app.shopify.metaobject.delete')'" @click="remove(entry)"></span>
-                    </span>
-                </div>
+                <x-admin::datagrid
+                    :src="route('shopify.metaobject.entry.datagrid', $definition->code)"
+                    ref="datagrid"
+                >
+                    <template #body="{ records, performAction }">
+                        <div
+                            v-for="record in records"
+                            :key="record.id"
+                            class="row grid items-center gap-2.5 border-b px-4 py-4 text-gray-600 transition-all hover:bg-violet-50 dark:border-cherry-800 dark:text-gray-300 dark:hover:bg-cherry-800"
+                            :style="`grid-template-columns: repeat(${gridsCount}, minmax(0, 1fr))`"
+                        >
+                            <template v-for="column in visibleColumns" :key="column.index">
+                                <img
+                                    v-if="column.type === 'image'"
+                                    :src="record[column.index] ? record[column.index] : '{{ unopim_asset('images/placeholder.svg') }}'"
+                                    class="h-14 max-h-14 min-h-14 w-14 min-w-14 max-w-14 rounded-lg border border-gray-200 object-cover dark:border-cherry-800"
+                                />
+
+                                <p v-else class="truncate" :title="record[column.index]" v-html="record[column.index]"></p>
+                            </template>
+
+                            <div class="flex justify-end gap-1">
+                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                                    <a
+                                        v-if="record.actions.find(a => a.index === 'edit' && a.url)"
+                                        @click="editModal(record.actions.find(a => a.index === 'edit').url)"
+                                    >
+                                        <span class="icon-edit cursor-pointer rounded-md p-1.5 text-2xl transition-all hover:bg-violet-100 dark:hover:bg-gray-800" title="@lang('shopify::app.shopify.metaobject.edit-entry')"></span>
+                                    </a>
+                                @endif
+
+                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-delete'))
+                                    <a
+                                        v-if="record.actions.find(a => a.index === 'delete' && a.url)"
+                                        @click="performAction(record.actions.find(a => a.index === 'delete'))"
+                                    >
+                                        <span class="icon-delete cursor-pointer rounded-md p-1.5 text-2xl transition-all hover:bg-violet-100 dark:hover:bg-gray-800" title="@lang('shopify::app.shopify.metaobject.delete')"></span>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </template>
+                </x-admin::datagrid>
 
                 <teleport to="body">
                 <x-admin::modal ref="entryModal" type="medium">
@@ -50,15 +101,16 @@
 
                     <x-slot:content>
                         <div class="flex flex-col gap-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-medium text-gray-600 dark:text-gray-300">@lang('shopify::app.shopify.metaobject.entry-code') <span class="required"></span></label>
-                                <input type="text" v-model="form.code" class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
-                            </div>
+                            <x-admin::form.control-group class="!mb-0">
+                                <x-admin::form.control-group.label class="required">@lang('shopify::app.shopify.metaobject.entry-code')</x-admin::form.control-group.label>
 
-                            <div v-for="field in formFields" :key="field.key" class="flex flex-col gap-1">
-                                <label class="text-xs font-medium text-gray-600 dark:text-gray-300" v-text="field.name"></label>
+                                <input type="text" v-model="form.code" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                            </x-admin::form.control-group>
 
-                                <textarea v-if="isTextarea(field)" v-model="form.values[field.key]" rows="3" class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900"></textarea>
+                            <div v-for="field in formFields" :key="field.key" class="!mb-0">
+                                <x-admin::form.control-group.label><span v-text="field.name"></span></x-admin::form.control-group.label>
+
+                                <textarea v-if="isTextarea(field)" v-model="form.values[field.key]" rows="3" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900"></textarea>
 
                                 <label v-else-if="field.shopify_type === 'boolean'" class="relative inline-flex cursor-pointer items-center">
                                     <input type="checkbox" v-model="form.values[field.key]" class="peer sr-only" />
@@ -125,8 +177,8 @@
                                 </div>
 
                                 <template v-else-if="field.shopify_type === 'link'">
-                                    <input type="text" :value="linkValue(field, 'text')" @input="setLink(field, 'text', $event.target.value)" :placeholder="labels.linkText" class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
-                                    <input type="url" :value="linkValue(field, 'url')" @input="setLink(field, 'url', $event.target.value)" :placeholder="labels.linkUrl" class="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                                    <input type="text" :value="linkValue(field, 'text')" @input="setLink(field, 'text', $event.target.value)" :placeholder="labels.linkText" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                                    <input type="url" :value="linkValue(field, 'url')" @input="setLink(field, 'url', $event.target.value)" :placeholder="labels.linkUrl" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
                                 </template>
 
                                 <x-admin::flat-picker.date v-else-if="field.shopify_type === 'date'">
@@ -145,7 +197,7 @@
                                     :maxlength="textMax(field)"
                                     :step="stepFor(field)"
                                     :pattern="field.validations?.regex || null"
-                                    class="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
                             </div>
                         </div>
                     </x-slot>
@@ -172,7 +224,7 @@
 
                 data() {
                     return {
-                        entries: [],
+                        gridColumns: [],
                         childEntries: {},
                         referenceCache: {},
                         referenceLoading: {},
@@ -181,7 +233,7 @@
                         openToken: 0,
                         form: { id: null, code: '', values: {} },
                         labels: {
-                            select: "@lang('shopify::app.shopify.metaobject.field-child')",
+                            select: "@lang('shopify::app.shopify.metaobject.select')",
                             linkText: "@lang('shopify::app.shopify.metaobject.link-text')",
                             linkUrl: "@lang('shopify::app.shopify.metaobject.link-url')",
                         },
@@ -192,24 +244,31 @@
                     formFields() {
                         return this.fields.filter(field => this.supported(field));
                     },
+
+                    visibleColumns() {
+                        return this.gridColumns.filter(column => column.visible !== false);
+                    },
+
+                    gridsCount() {
+                        let count = this.visibleColumns.length;
+
+                        if (this.$refs.datagrid?.available?.actions?.length) {
+                            ++count;
+                        }
+
+                        return count;
+                    },
                 },
 
                 mounted() {
-                    this.refresh();
+                    this.loadChildren();
+
+                    this.$emitter.on('change-datagrid', payload => {
+                        this.gridColumns = payload.available.columns;
+                    });
                 },
 
                 methods: {
-                    refresh() {
-                        if (! this.type) {
-                            return;
-                        }
-
-                        this.loadChildren();
-
-                        this.$axios.get("{{ route('shopify.metaobject.entry.list') }}", { params: { type: this.type } })
-                            .then(res => { this.entries = res.data.entries ?? []; });
-                    },
-
                     loadChildren() {
                         this.fields.filter(field => field.source === 'metaobject' && field.child_type).forEach(field => {
                             if (this.childEntries[field.child_type]) {
@@ -393,11 +452,13 @@
                         this.$refs.entryModal.open();
                     },
 
-                    openEdit(entry) {
-                        this.form = { id: entry.id, code: entry.code, values: { ...entry.values } };
-                        this.pickedFiles = {};
-                        this.openToken++;
-                        this.$refs.entryModal.open();
+                    editModal(url) {
+                        this.$axios.get(url).then(res => {
+                            this.form = { id: res.data.id, code: res.data.code, values: { ...(res.data.values ?? {}) } };
+                            this.pickedFiles = {};
+                            this.openToken++;
+                            this.$refs.entryModal.open();
+                        });
                     },
 
                     closeModal() {
@@ -437,20 +498,8 @@
                             .then(() => {
                                 this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.entry-saved')" });
                                 this.closeModal();
-                                this.refresh();
+                                this.$refs.datagrid.get();
                             }).finally(() => { this.saving = false; });
-                    },
-
-                    remove(entry) {
-                        if (! window.confirm("@lang('shopify::app.shopify.metaobject.entry-delete-confirm')")) {
-                            return;
-                        }
-
-                        this.$axios.delete("{{ route('shopify.metaobject.entry.delete', ':id') }}".replace(':id', entry.id))
-                            .then(() => {
-                                this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.entry-deleted')" });
-                                this.refresh();
-                            });
                     },
                 },
             });
@@ -568,4 +617,4 @@
             });
         </script>
     @endPushOnce
-</x-admin::layouts>
+</x-admin::layouts.with-history>

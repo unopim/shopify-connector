@@ -54,7 +54,9 @@ class MetaobjectController extends Controller
             return app(MetaobjectDataGrid::class)->toJson();
         }
 
-        return view('shopify::metaobject.index');
+        return view('shopify::metaobject.index', [
+            'fieldTypes' => MetaobjectFieldType::supportedTypes(),
+        ]);
     }
 
     public function create(): View

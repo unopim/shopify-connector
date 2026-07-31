@@ -367,7 +367,7 @@ class Exporter extends AbstractExporter
             $category['ruleSet'] = $this->defaultSmartRuleSet($category['title']);
         }
 
-        $imageUrl = $this->resolveCollectionImageUrl($config, $merged);
+        $imageUrl = $this->resolveCollectionImageUrl($config, $merged, $rawData['code'] ?? '');
         if (! empty($imageUrl)) {
             $category['image'] = ['src' => $imageUrl];
         }
@@ -416,7 +416,7 @@ class Exporter extends AbstractExporter
     /**
      * Resolve the mapped collection image attribute to a public URL.
      */
-    private function resolveCollectionImageUrl(array $config, array $merged): ?string
+    private function resolveCollectionImageUrl(array $config, array $merged, string $categoryCode = ''): ?string
     {
         $mediaAttr = $config['mediaMapping']['mediaAttributes'] ?? '';
 
@@ -440,7 +440,48 @@ class Exporter extends AbstractExporter
         // Encode each path segment (spaces, brackets, etc.) so Shopify can fetch the image.
         $encodedPath = implode('/', array_map('rawurlencode', explode('/', $path)));
 
-        return Storage::url($encodedPath);
+        $url = Storage::url($encodedPath);
+
+        // Shopify fetches the image by URL; a private/LAN store URL is unreachable,
+        // so skip the image and let the collection export without it.
+        if (! $this->isPubliclyReachableUrl($url)) {
+            $this->jobLogger->warning(
+                trans('shopify::app.shopify.export.mapping.collection.errors.image_skipped', ['code' => $categoryCode])
+            );
+
+            return null;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Whether Shopify can fetch a URL from the public internet. Loopback,
+     * private/reserved IPs and local-only hostnames are not reachable.
+     */
+    private function isPubliclyReachableUrl(?string $url): bool
+    {
+        $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+
+        if ($host === '') {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return (bool) filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+        }
+
+        if ($host === 'localhost' || ! str_contains($host, '.')) {
+            return false;
+        }
+
+        foreach (['.local', '.localhost', '.test', '.invalid', '.example', '.internal'] as $suffix) {
+            if (str_ends_with($host, $suffix)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

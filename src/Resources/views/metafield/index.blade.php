@@ -3,6 +3,10 @@
         @lang('shopify::app.shopify.metafield.index.title')
     </x-slot>
 
+    <div class="mb-2.5">
+        <x-admin::breadcrumbs />
+    </div>
+
     <v-metafield>
         <div class="flex justify-between items-center">
             <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
