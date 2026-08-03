@@ -155,8 +155,7 @@ class Exporter extends AbstractExporter
                 'definition' => [
                     'name'             => $definition->name,
                     'type'             => $code,
-                    'access'           => ['storefront' => 'PUBLIC_READ'],
-                    'capabilities'     => ['publishable' => ['enabled' => true]],
+                    ...$this->definitionAccessCapabilities($definition),
                     'fieldDefinitions' => $this->buildFieldDefinitions($fields, $childGids),
                 ],
             ]);
@@ -171,7 +170,7 @@ class Exporter extends AbstractExporter
 
             $gid = $response['body']['data']['metaobjectDefinitionCreate']['metaobjectDefinition']['id'] ?? null;
         } else {
-            $this->syncDefinitionFields($gid, $code, $fields, $childGids, $existing['body']['data']['metaobjectDefinitionByType']['fieldDefinitions'] ?? []);
+            $this->syncDefinitionFields($gid, $definition, $code, $fields, $childGids, $existing['body']['data']['metaobjectDefinitionByType']['fieldDefinitions'] ?? []);
         }
 
         if (! $gid) {
@@ -194,7 +193,7 @@ class Exporter extends AbstractExporter
      * @param  array<string, ?string>  $childGids
      * @param  array<int, array<string, mixed>>  $shopifyFields
      */
-    protected function syncDefinitionFields(string $gid, string $code, array $fields, array $childGids, array $shopifyFields): void
+    protected function syncDefinitionFields(string $gid, $localDefinition, string $code, array $fields, array $childGids, array $shopifyFields): void
     {
         $existingKeys = array_column($shopifyFields, 'key');
         $operations = [];
@@ -205,13 +204,15 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if (empty($operations)) {
-            return;
+        $definitionInput = $this->definitionAccessCapabilities($localDefinition);
+
+        if (! empty($operations)) {
+            $definitionInput['fieldDefinitions'] = $operations;
         }
 
         $response = $this->requestGraphQlApiAction('metaobjectDefinitionUpdate', $this->credentialArray, [
             'id'         => $gid,
-            'definition' => ['fieldDefinitions' => $operations],
+            'definition' => $definitionInput,
         ]);
 
         $errors = $response['body']['data']['metaobjectDefinitionUpdate']['userErrors'] ?? [];
@@ -219,6 +220,30 @@ class Exporter extends AbstractExporter
         if (! empty($errors)) {
             $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-definition-failed', ['code' => $code]).' '.json_encode($errors));
         }
+    }
+
+    /**
+     * Map a definition's stored options to Shopify access + capabilities input,
+     * falling back to storefront-read + active-draft (the original hardcoded export).
+     *
+     * @return array{access: array<string, string>, capabilities: array<string, array<string, bool>>}
+     */
+    protected function definitionAccessCapabilities($definition): array
+    {
+        $options = $definition->options ?? [];
+        $enabled = fn (string $key, bool $default = false): bool => (bool) ($options[$key] ?? $default);
+
+        return [
+            'access' => [
+                'storefront'      => $enabled('storefront_access', true) ? 'PUBLIC_READ' : 'NONE',
+                'customerAccount' => $enabled('customer_account_access') ? 'READ' : 'NONE',
+            ],
+            'capabilities' => [
+                'publishable'  => ['enabled' => $enabled('active_draft', true)],
+                'translatable' => ['enabled' => $enabled('translations')],
+                'onlineStore'  => ['enabled' => $enabled('web_pages')],
+            ],
+        ];
     }
 
     /**

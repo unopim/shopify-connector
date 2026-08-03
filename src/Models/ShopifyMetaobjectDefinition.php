@@ -9,7 +9,7 @@ class ShopifyMetaobjectDefinition extends Model implements ShopifyMetaobjectDefi
 {
     protected $table = 'wk_shopify_metaobject_definitions';
 
-    protected $fillable = ['name', 'code', 'fields'];
+    protected $fillable = ['name', 'code', 'fields', 'options'];
 
-    protected $casts = ['fields' => 'array'];
+    protected $casts = ['fields' => 'array', 'options' => 'array'];
 }

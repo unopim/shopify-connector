@@ -11,8 +11,8 @@ beforeEach(function () {
 
 it('should persist unopim_client_id into extras when provided', function () {
     $payload = [
-        'shopUrl' => 'https://myshop.myshopify.com',
-        'accessToken' => 'shpat_test_token',
+        'shopUrl'          => 'https://myshop.myshopify.com',
+        'accessToken'      => 'shpat_test_token',
         'unopim_client_id' => 'client_abc_123',
     ];
 
@@ -33,7 +33,7 @@ it('should persist unopim_client_id into extras when provided', function () {
 
 it('should not set unopim_client_id in extras when omitted', function () {
     $payload = [
-        'shopUrl' => 'https://noclient.myshopify.com',
+        'shopUrl'     => 'https://noclient.myshopify.com',
         'accessToken' => 'shpat_test_token',
     ];
 
@@ -52,11 +52,11 @@ it('should not set unopim_client_id in extras when omitted', function () {
 it('should preserve existing unopim_client_id when update payload omits it', function () {
     $existing = ShopifyCredentialsConfig::factory()->create([
         'shopUrl' => 'https://preserve.myshopify.com',
-        'extras' => ['saas' => true, 'unopim_client_id' => 'previous_client'],
+        'extras'  => ['saas' => true, 'unopim_client_id' => 'previous_client'],
     ]);
 
     $payload = [
-        'shopUrl' => 'https://preserve.myshopify.com',
+        'shopUrl'     => 'https://preserve.myshopify.com',
         'accessToken' => 'shpat_rotated_token',
     ];
 
@@ -72,12 +72,12 @@ it('should preserve existing unopim_client_id when update payload omits it', fun
 it('should overwrite unopim_client_id when a new value is provided', function () {
     $existing = ShopifyCredentialsConfig::factory()->create([
         'shopUrl' => 'https://overwrite.myshopify.com',
-        'extras' => ['saas' => true, 'unopim_client_id' => 'old_client'],
+        'extras'  => ['saas' => true, 'unopim_client_id' => 'old_client'],
     ]);
 
     $payload = [
-        'shopUrl' => 'https://overwrite.myshopify.com',
-        'accessToken' => 'shpat_test_token',
+        'shopUrl'          => 'https://overwrite.myshopify.com',
+        'accessToken'      => 'shpat_test_token',
         'unopim_client_id' => 'new_client',
     ];
 
@@ -92,8 +92,8 @@ it('should overwrite unopim_client_id when a new value is provided', function ()
 
 it('should reject a unopim_client_id that is not a string', function () {
     $payload = [
-        'shopUrl' => 'https://invalid.myshopify.com',
-        'accessToken' => 'shpat_test_token',
+        'shopUrl'          => 'https://invalid.myshopify.com',
+        'accessToken'      => 'shpat_test_token',
         'unopim_client_id' => ['array', 'value'],
     ];
 

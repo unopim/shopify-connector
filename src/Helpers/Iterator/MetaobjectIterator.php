@@ -70,10 +70,11 @@ class MetaobjectIterator implements \Iterator
             }
 
             $rows[$definition['type']] = [
-                'id'     => $node['id'],
-                'type'   => $node['type'],
-                'name'   => $node['name'] ?? $node['type'],
-                'fields' => $this->reverseFields($node['fieldDefinitions'] ?? [], $typeByGid),
+                'id'      => $node['id'],
+                'type'    => $node['type'],
+                'name'    => $node['name'] ?? $node['type'],
+                'fields'  => $this->reverseFields($node['fieldDefinitions'] ?? [], $typeByGid),
+                'options' => $this->reverseOptions($node),
             ];
         }
 
@@ -108,6 +109,25 @@ class MetaobjectIterator implements \Iterator
         } while (($response['body']['data']['metaobjectDefinitions']['pageInfo']['hasNextPage'] ?? false) && $cursor);
 
         return $definitions;
+    }
+
+    /**
+     * Map a Shopify definition's access + capabilities back to local option toggles.
+     *
+     * @param  array<string, mixed>  $node
+     * @return array<string, bool>
+     */
+    private function reverseOptions(array $node): array
+    {
+        $capability = fn (string $key): bool => (bool) ($node['capabilities'][$key]['enabled'] ?? false);
+
+        return [
+            'active_draft'            => $capability('publishable'),
+            'translations'            => $capability('translatable'),
+            'web_pages'               => $capability('onlineStore'),
+            'storefront_access'       => ($node['access']['storefront'] ?? 'NONE') === 'PUBLIC_READ',
+            'customer_account_access' => ($node['access']['customerAccount'] ?? 'NONE') === 'READ',
+        ];
     }
 
     /**

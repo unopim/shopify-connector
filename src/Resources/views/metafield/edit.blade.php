@@ -99,18 +99,15 @@
 
                         $isReference = in_array($metaField?->type, ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference']);
                         $refSource = $validations?->reference_source ?? 'association';
-                        $refAssoc = $validations?->association_type ?? 'related_products';
+                        $refAssoc = $validations?->association_type ?? ($associationTypeOptions[0]['id'] ?? '');
                         $refAs = $validations?->reference_as ?? 'product';
+                        $associationTypeLabels = collect($associationTypeOptions)->pluck('name', 'id');
                         $referenceSourceOptions = json_encode([
                             ['id' => 'association', 'name' => trans('shopify::app.shopify.metafield.index.association')],
                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
                             ['id' => 'metaobject', 'name' => trans('shopify::app.shopify.metafield.index.metaobject')],
                         ]);
-                        $associationTypeOptions = json_encode([
-                            ['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')],
-                            ['id' => 'up_sells', 'name' => trans('shopify::app.shopify.metafield.index.up-sells')],
-                            ['id' => 'cross_sells', 'name' => trans('shopify::app.shopify.metafield.index.cross-sells')],
-                        ]);
+                        $associationTypeOptions = json_encode($associationTypeOptions);
                         $referenceAsOptions = json_encode([
                             ['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')],
                             ['id' => 'variant', 'name' => trans('shopify::app.shopify.metafield.index.as-variant')],
@@ -783,7 +780,7 @@
                             key = 'collections';
                             name = 'Collections';
                         } else {
-                            const labels = { related_products: 'Related products', up_sells: 'Up-sells', cross_sells: 'Cross-sells' };
+                            const labels = @json($associationTypeLabels);
                             key = this.associationType + (this.referenceAs === 'variant' ? '_variant' : '');
                             name = (labels[this.associationType] ?? this.associationType) + (this.referenceAs === 'variant' ? ' (Variant)' : '');
                         }

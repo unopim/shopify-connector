@@ -97,11 +97,8 @@
                                             ['id' => 'categories', 'name' => trans('shopify::app.shopify.metafield.index.categories')],
                                             ['id' => 'metaobject', 'name' => trans('shopify::app.shopify.metafield.index.metaobject')],
                                         ]);
-                                        $associationTypeOptions = json_encode([
-                                            ['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')],
-                                            ['id' => 'up_sells', 'name' => trans('shopify::app.shopify.metafield.index.up-sells')],
-                                            ['id' => 'cross_sells', 'name' => trans('shopify::app.shopify.metafield.index.cross-sells')],
-                                        ]);
+                                        $defaultAssociationType = $associationTypeOptions[0] ?? ['id' => '', 'name' => ''];
+                                        $associationTypeOptions = json_encode($associationTypeOptions);
                                         $referenceAsOptions = json_encode([
                                             ['id' => 'product', 'name' => trans('shopify::app.shopify.metafield.index.as-product')],
                                             ['id' => 'variant', 'name' => trans('shopify::app.shopify.metafield.index.as-variant')],
@@ -164,7 +161,7 @@
                                             type="select"
                                             name="association_type"
                                             :options="$associationTypeOptions"
-                                            :value="json_encode(['id' => 'related_products', 'name' => trans('shopify::app.shopify.metafield.index.related')])"
+                                            :value="json_encode($defaultAssociationType)"
                                             :placeholder="trans('shopify::app.shopify.metafield.index.association-type')"
                                             track-by="id"
                                             label-by="name"

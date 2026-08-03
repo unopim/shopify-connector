@@ -158,7 +158,7 @@ class GraphQLApiClient
             'method' => 'POST',
         ],
         'metaobjectDefinitionByType' => [
-            'query'  => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront } fieldDefinitions { key name required type { name } validations { name value } } } }',
+            'query'  => 'query metaobjectDefinitionByType($type: String!) { metaobjectDefinitionByType(type: $type) { id type name displayNameKey access { storefront customerAccount } capabilities { publishable { enabled } translatable { enabled } onlineStore { enabled } } fieldDefinitions { key name required type { name } validations { name value } } } }',
             'method' => 'POST',
         ],
         'metaobjectDefinitionCreate' => [

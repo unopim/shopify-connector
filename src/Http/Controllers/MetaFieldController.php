@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Admin\Http\Requests\MassDestroyRequest;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Shopify\DataGrids\Catalog\MetaFieldDataGrid;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Http\Requests\MetaFieldForm;
@@ -96,8 +97,23 @@ class MetaFieldController extends Controller
         $metaFieldType = $object->getMetaFieldType();
         $metaFieldTypeInShopify = $object->getMetaFieldTypeInShopify();
         $shopifyCredentials = $this->activeCredentialOptions();
+        $associationTypeOptions = $this->associationTypeOptions();
 
-        return view('shopify::metafield.index', compact('metaFieldType', 'metaFieldTypeInShopify', 'shopifyCredentials'));
+        return view('shopify::metafield.index', compact('metaFieldType', 'metaFieldTypeInShopify', 'shopifyCredentials', 'associationTypeOptions'));
+    }
+
+    /**
+     * Active product association types as id/name options, so newly added
+     * association types appear in the metafield reference mapping automatically.
+     *
+     * @return array<int, array{id: string, name: string}>
+     */
+    protected function associationTypeOptions(): array
+    {
+        return app(AssociationTypeRepository::class)->getActiveTypes()
+            ->map(fn ($type) => ['id' => $type->code, 'name' => $type->name])
+            ->values()
+            ->all();
     }
 
     /**
@@ -389,8 +405,9 @@ class MetaFieldController extends Controller
         $linkTextAttribute = $metaField->type === 'link' ? ($validations['link_text_attribute'] ?? '') : '';
 
         $shopifyCredentials = $this->activeCredentialOptions();
+        $associationTypeOptions = $this->associationTypeOptions();
 
-        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'shopifyCredentials'));
+        return view('shopify::metafield.edit', compact('metaField', 'metaFieldType', 'metaFieldTypeInShopify', 'taxonomyOptions', 'linkTextAttribute', 'shopifyCredentials', 'associationTypeOptions'));
     }
 
     /**

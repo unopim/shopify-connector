@@ -110,13 +110,14 @@ class Importer extends AbstractImporter
     {
         $name = $row['name'] ?? $type;
         $fields = $row['fields'] ?? [];
+        $options = $row['options'] ?? [];
         $definition = $this->definitionRepository->findOneWhere(['code' => $type]);
 
         if ($definition) {
-            $this->definitionRepository->update(['name' => $name, 'fields' => $fields], $definition->id);
+            $this->definitionRepository->update(['name' => $name, 'fields' => $fields, 'options' => $options], $definition->id);
             $this->updatedItemsCount++;
         } else {
-            $this->definitionRepository->create(['name' => $name, 'code' => $type, 'fields' => $fields]);
+            $this->definitionRepository->create(['name' => $name, 'code' => $type, 'fields' => $fields, 'options' => $options]);
             $this->createdItemsCount++;
         }
 

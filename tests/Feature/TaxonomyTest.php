@@ -76,8 +76,8 @@ it('returns flat search results for the taxonomy picker', function () {
     get(route('admin.shopify.get-taxonomy-tree', ['query' => 'Live Animals']))
         ->assertStatus(200)
         ->assertJsonFragment([
-            'id' => TAXONOMY_LEAF,
-            'name' => 'Animals & Pet Supplies > Live Animals',
+            'id'          => TAXONOMY_LEAF,
+            'name'        => 'Animals & Pet Supplies > Live Animals',
             'hasChildren' => false,
         ]);
 });
@@ -102,12 +102,12 @@ it('stores a metafield definition with taxonomy categories', function () {
     $this->loginAsAdmin();
 
     post(route('shopify.metafield.store'), [
-        'ownerType' => 'PRODUCT',
-        'code' => 'taxonomy_code',
-        'type' => 'single_line_text_field',
-        'name_space_key' => 'custom.taxonomy_code',
-        'pin' => '0',
-        'attribute' => 'test_attribute',
+        'ownerType'         => 'PRODUCT',
+        'code'              => 'taxonomy_code',
+        'type'              => 'single_line_text_field',
+        'name_space_key'    => 'custom.taxonomy_code',
+        'pin'               => '0',
+        'attribute'         => 'test_attribute',
         'taxonomy_category' => json_encode([TAXONOMY_ROOT, TAXONOMY_LEAF]),
     ])->assertStatus(200);
 
@@ -119,14 +119,14 @@ it('updates the taxonomy categories of a metafield definition', function () {
     $this->loginAsAdmin();
 
     $metaField = ShopifyMetaFieldsConfig::factory()->create([
-        'ownerType' => 'PRODUCT',
-        'type' => 'single_line_text_field',
+        'ownerType'         => 'PRODUCT',
+        'type'              => 'single_line_text_field',
         'taxonomy_category' => [TAXONOMY_ROOT],
     ]);
 
     put(route('shopify.metafield.update', ['id' => $metaField->id]), [
-        'type' => 'single_line_text_field',
-        'pin' => '0',
+        'type'              => 'single_line_text_field',
+        'pin'               => '0',
         'taxonomy_category' => json_encode([TAXONOMY_LEAF]),
     ])->assertRedirect(route('shopify.metafield.edit', ['id' => $metaField->id]));
 
@@ -137,14 +137,14 @@ it('clears the taxonomy categories when none are selected', function () {
     $this->loginAsAdmin();
 
     $metaField = ShopifyMetaFieldsConfig::factory()->create([
-        'ownerType' => 'PRODUCT',
-        'type' => 'single_line_text_field',
+        'ownerType'         => 'PRODUCT',
+        'type'              => 'single_line_text_field',
         'taxonomy_category' => [TAXONOMY_ROOT, TAXONOMY_LEAF],
     ]);
 
     put(route('shopify.metafield.update', ['id' => $metaField->id]), [
-        'type' => 'single_line_text_field',
-        'pin' => '0',
+        'type'              => 'single_line_text_field',
+        'pin'               => '0',
         'taxonomy_category' => json_encode([]),
     ]);
 

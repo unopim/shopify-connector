@@ -20,6 +20,7 @@ use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
 use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
+use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shopify\Helpers\Iterator\BulkOperationProductIterator;
 use Webkul\Shopify\Helpers\Iterator\ProductIterator;
@@ -146,9 +147,6 @@ class Importer extends AbstractImporter
         'attribute_family',
         'parent',
         'categories',
-        'related_products',
-        'cross_sells',
-        'up_sells',
         'configurable_attributes',
         'associated_skus',
     ];
@@ -245,6 +243,11 @@ class Importer extends AbstractImporter
         $this->importMapping = $this->shopifyExportmapping->find(3);
 
         $this->initializeChannels();
+
+        $this->validColumnNames = array_merge(
+            $this->validColumnNames,
+            app(AssociationTypeRepository::class)->getActiveTypes()->pluck('code')->all()
+        );
 
         foreach ($this->attributes as $key => $attribute) {
             if ($attribute->type === 'price') {

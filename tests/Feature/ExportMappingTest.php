@@ -18,8 +18,8 @@ it('should update the export setting mapping', function () {
 
     $exportSetting = [
         'enable_tags_attribute' => 1,
-        'tagSeprator' => ':',
-        'option_name_label' => 1,
+        'tagSeprator'           => ':',
+        'option_name_label'     => 1,
     ];
 
     post(route('shopify.export-settings.create'), $exportSetting)
@@ -44,11 +44,11 @@ it('should update the export mapping', function () {
     $weight = Attribute::factory()->create(['type' => 'text']);
 
     $exportMapping = [
-        'title' => $name->code,
+        'title'           => $name->code,
         'descriptionHtml' => $description->code,
-        'price' => $price->code,
-        'weight' => $weight->code,
-        'status' => 'ACTIVE',
+        'price'           => $price->code,
+        'weight'          => $weight->code,
+        'status'          => 'ACTIVE',
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)
@@ -65,11 +65,11 @@ it('should update the export mapping with metafield mapping', function () {
     $weight = Attribute::factory()->create(['type' => 'text']);
 
     $exportMapping = [
-        'title' => $name->code,
+        'title'           => $name->code,
         'descriptionHtml' => $description->code,
-        'price' => $price->code,
-        'weight' => $weight->code,
-        'status' => 'ACTIVE',
+        'price'           => $price->code,
+        'weight'          => $weight->code,
+        'status'          => 'ACTIVE',
     ];
 
     post(route('shopify.export-mappings.create'), $exportMapping)

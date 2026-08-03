@@ -16,11 +16,59 @@
     </x-slot>
 
     <div class="flex flex-col gap-4">
-        <v-metaobject-builder
-            mode="edit"
-            :initial='@json($definitionData)'
-            :field-types='@json($fieldTypes)'
-        ></v-metaobject-builder>
+        <x-admin::form method="PATCH" :action="route('shopify.metaobject.general', $definition->id)" ajax>
+            <div class="flex flex-col gap-4">
+                <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+                    <p class="mb-4 text-base font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.general')</p>
+
+                    <x-admin::form.control-group class="!mb-0 max-w-md">
+                        <x-admin::form.control-group.label class="required">@lang('shopify::app.shopify.metaobject.name')</x-admin::form.control-group.label>
+
+                        <x-admin::form.control-group.control
+                            type="text"
+                            name="name"
+                            rules="required"
+                            :value="$definition->name"
+                            :label="trans('shopify::app.shopify.metaobject.name')"
+                        />
+
+                        <x-admin::form.control-group.error control-name="name" />
+                    </x-admin::form.control-group>
+                </div>
+
+                <v-metaobject-fields
+                    :definition-id="{{ $definition->id }}"
+                    :field-types='@json($fieldTypes)'
+                >
+                    <x-admin::shimmer.datagrid />
+                </v-metaobject-fields>
+
+                <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+                    <p class="mb-2 text-base font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.options')</p>
+
+                    @foreach ([
+                        'active_draft'            => 'opt-active-draft',
+                        'translations'            => 'opt-translations',
+                        'web_pages'               => 'opt-web-pages',
+                        'storefront_access'       => 'opt-storefront',
+                        'customer_account_access' => 'opt-customer-account',
+                    ] as $optionKey => $optionLabel)
+                        <div class="flex items-center justify-between border-b py-3 last:border-b-0 dark:border-cherry-800">
+                            <label for="{{ $optionKey }}" class="cursor-pointer text-sm text-gray-700 dark:text-gray-300">@lang('shopify::app.shopify.metaobject.'.$optionLabel)</label>
+
+                            <x-admin::form.control-group.control
+                                type="switch"
+                                :id="$optionKey"
+                                :name="$optionKey"
+                                value="1"
+                                :checked="(bool) $options[$optionKey]"
+                                :for="$optionKey"
+                            />
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </x-admin::form>
 
         <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
             <v-metaobject-entries
@@ -38,6 +86,262 @@
 
     @pushOnce('scripts')
         @include('shopify::metaobject._builder')
+
+        <script type="text/x-template" id="v-metaobject-fields-template">
+            <div class="flex flex-col gap-4">
+
+                <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
+                    <div class="mb-4 flex items-center justify-between gap-4 max-sm:flex-wrap">
+                        <p class="text-xl font-bold text-gray-800 dark:text-slate-50">@lang('shopify::app.shopify.metaobject.fields')</p>
+
+                        @if (bouncer()->hasPermission('shopify.metaobjects.edit'))
+                            <button type="button" class="primary-button" @click="openCreate">@lang('shopify::app.shopify.metaobject.add-field')</button>
+                        @endif
+                    </div>
+
+                    <x-admin::datagrid
+                        :src="route('shopify.metaobject.field.datagrid', $definition->id)"
+                        ref="datagrid"
+                    >
+                        <template #body="{ records, performAction }">
+                            <div
+                                v-for="record in records"
+                                :key="record.key"
+                                class="row grid items-center gap-2.5 border-b px-4 py-4 text-gray-600 transition-all hover:bg-violet-50 dark:border-cherry-800 dark:text-gray-300 dark:hover:bg-cherry-800"
+                                :style="`grid-template-columns: repeat(${gridsCount}, minmax(0, 1fr))`"
+                            >
+                                <template v-for="column in visibleColumns" :key="column.index">
+                                    <p class="truncate" :title="record[column.index]" v-text="record[column.index]"></p>
+                                </template>
+
+                                <div class="flex justify-end gap-1">
+                                    @if (bouncer()->hasPermission('shopify.metaobjects.edit'))
+                                        <a
+                                            v-if="record.actions.find(a => a.index === 'edit' && a.url)"
+                                            @click="editModal(record.actions.find(a => a.index === 'edit').url)"
+                                        >
+                                            <span class="icon-edit cursor-pointer rounded-md p-1.5 text-2xl transition-all hover:bg-violet-100 dark:hover:bg-gray-800" title="@lang('shopify::app.shopify.metaobject.edit-field')"></span>
+                                        </a>
+
+                                        <a
+                                            v-if="record.actions.find(a => a.index === 'delete' && a.url)"
+                                            @click="deleteField(record.actions.find(a => a.index === 'delete').url)"
+                                        >
+                                            <span class="icon-delete cursor-pointer rounded-md p-1.5 text-2xl transition-all hover:bg-violet-100 dark:hover:bg-gray-800" title="@lang('shopify::app.shopify.metaobject.delete-field')"></span>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                        </template>
+                    </x-admin::datagrid>
+                </div>
+
+                <teleport to="body">
+                <x-admin::modal ref="fieldModal" type="medium">
+                    <x-slot:header>
+                        <p class="text-lg font-bold text-gray-800 dark:text-white" v-text="form.existing ? '@lang('shopify::app.shopify.metaobject.edit-field')' : '@lang('shopify::app.shopify.metaobject.add-field')'"></p>
+                    </x-slot>
+
+                    <x-slot:content>
+                        <v-metaobject-field-form
+                            :key="openToken"
+                            :field="form"
+                            :field-types="fieldTypes"
+                            :definition-options="definitionOptions"
+                            :locked="true"
+                            @open-nested="openNested"
+                        ></v-metaobject-field-form>
+                    </x-slot>
+
+                    <x-slot:footer>
+                        <div class="flex w-full justify-end gap-2.5">
+                            <button type="button" class="secondary-button" @click="closeModal">@lang('shopify::app.shopify.metaobject.cancel')</button>
+                            <button type="button" class="primary-button" :disabled="savingField" @click="saveField">@lang('shopify::app.shopify.metaobject.save')</button>
+                        </div>
+                    </x-slot>
+                </x-admin::modal>
+                </teleport>
+
+                <teleport to="body">
+                <x-admin::modal ref="nestedModal" type="medium">
+                    <x-slot:header>
+                        <p class="text-lg font-bold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.create')</p>
+                    </x-slot>
+
+                    <x-slot:content>
+                        <v-metaobject-builder
+                            v-if="nestedOpen"
+                            :is-nested="true"
+                            :field-types="fieldTypes"
+                            @saved="onNestedSaved"
+                            @cancel="closeNested"
+                        ></v-metaobject-builder>
+                    </x-slot>
+                </x-admin::modal>
+                </teleport>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-metaobject-fields', {
+                template: '#v-metaobject-fields-template',
+
+                props: {
+                    definitionId: { type: Number, required: true },
+                    fieldTypes: { type: Object, default: () => ({}) },
+                },
+
+                data() {
+                    return {
+                        savingField: false,
+                        gridColumns: [],
+                        definitionOptions: [],
+                        form: this.blankField(),
+                        openToken: 0,
+                        nestedOpen: false,
+                    };
+                },
+
+                computed: {
+                    visibleColumns() {
+                        return this.gridColumns.filter(column => column.visible !== false);
+                    },
+
+                    gridsCount() {
+                        let count = this.visibleColumns.length;
+
+                        if (this.$refs.datagrid?.available?.actions?.length) {
+                            ++count;
+                        }
+
+                        return count;
+                    },
+                },
+
+                mounted() {
+                    this.$axios.get("{{ route('shopify.metaobject.local-definitions') }}", { params: { exclude: this.definitionId } })
+                        .then(res => { this.definitionOptions = (res.data.options ?? []).map(definition => ({ id: definition.code, label: definition.name })); });
+
+                    this.$emitter.on('change-datagrid', payload => {
+                        if (payload.available !== this.$refs.datagrid?.available) {
+                            return;
+                        }
+
+                        this.gridColumns = payload.available.columns;
+                    });
+                },
+
+                methods: {
+                    blankField() {
+                        return { name: '', type: '', child: '', list: false, content_type: '', existing: false, validations: { min: '', max: '', unit: '', max_precision: '', regex: '', choices: '' } };
+                    },
+
+                    openCreate() {
+                        this.form = this.blankField();
+                        this.openToken++;
+                        this.$refs.fieldModal.open();
+                    },
+
+                    editModal(url) {
+                        this.$axios.get(url).then(res => {
+                            const field = res.data.field;
+
+                            this.form = {
+                                key: field.key,
+                                name: field.name,
+                                type: field.preset || field.shopify_type,
+                                child: field.child_type || '',
+                                list: !! field.list,
+                                content_type: field.content_type || '',
+                                existing: true,
+                                validations: { min: '', max: '', unit: '', max_precision: '', regex: '', choices: '', ...(field.validations || {}) },
+                            };
+
+                            this.openToken++;
+                            this.$refs.fieldModal.open();
+                        });
+                    },
+
+                    closeModal() {
+                        this.$refs.fieldModal.close();
+                    },
+
+                    saveField() {
+                        if (! (this.form.name || '').trim() || ! this.form.type) {
+                            this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.fields-required')" });
+
+                            return;
+                        }
+
+                        this.savingField = true;
+
+                        const request = this.form.existing
+                            ? this.$axios.put("{{ route('shopify.metaobject.field.update', [':id', ':key']) }}".replace(':id', this.definitionId).replace(':key', this.form.key), this.form)
+                            : this.$axios.post("{{ route('shopify.metaobject.field.store', ':id') }}".replace(':id', this.definitionId), this.form);
+
+                        request.then(() => {
+                            window.location.reload();
+                        }).catch(error => {
+                            this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.errors?.name?.[0] ?? '' });
+                            this.savingField = false;
+                        });
+                    },
+
+                    deleteField(url) {
+                        if ((this.$refs.datagrid?.available?.meta?.total ?? 0) <= 1) {
+                            this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.last-field')" });
+
+                            return;
+                        }
+
+                        this.$emitter.emit('open-delete-modal', {
+                            agree: () => {
+                                this.$axios.delete(url)
+                                    .then(() => {
+                                        window.location.reload();
+                                    })
+                                    .catch(error => {
+                                        this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? '' });
+                                    });
+                            },
+                        });
+                    },
+
+                    openNested() {
+                        this.nestedOpen = true;
+                        this.$refs.nestedModal.open();
+                        this.$nextTick(() => this.raiseModal());
+                    },
+
+                    onNestedSaved(data) {
+                        this.definitionOptions.push({ id: data.code, label: data.name });
+                        this.form.child = data.code;
+                        this.closeNested();
+                    },
+
+                    closeNested() {
+                        this.nestedOpen = false;
+                        this.$refs.nestedModal.close();
+                    },
+
+                    raiseModal() {
+                        const root = this.$refs.nestedModal && this.$refs.nestedModal.$el;
+
+                        if (! root) {
+                            return;
+                        }
+
+                        window.moModalZIndex = (window.moModalZIndex || 10050) + 10;
+                        const base = window.moModalZIndex;
+
+                        root.querySelectorAll('.fixed.inset-0').forEach(el => {
+                            const isOverlay = el.classList.contains('bg-gray-500');
+                            el.style.zIndex = isOverlay ? String(base) : String(base + 1);
+                        });
+                    },
+                },
+            });
+        </script>
 
         <script type="text/x-template" id="v-metaobject-entries-template">
             <div>
@@ -264,6 +568,10 @@
                     this.loadChildren();
 
                     this.$emitter.on('change-datagrid', payload => {
+                        if (payload.available !== this.$refs.datagrid?.available) {
+                            return;
+                        }
+
                         this.gridColumns = payload.available.columns;
                     });
                 },

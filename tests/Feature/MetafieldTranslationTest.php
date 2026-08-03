@@ -50,10 +50,10 @@ it('registers a metafield instance translation for a non-default locale', functi
     $phaseData->shouldReceive('getProductContext')
         ->once()
         ->andReturn([
-            'parent_data' => ['sku' => 'SKU1'],
-            'row_data' => ['sku' => 'SKU1'],
-            'merged_fields' => ['subtitle' => 'Subtitle', 'name' => 'Title'],
-            'export_mapping' => makeExportMapping(['title' => 'name']),
+            'parent_data'        => ['sku' => 'SKU1'],
+            'row_data'           => ['sku' => 'SKU1'],
+            'merged_fields'      => ['subtitle' => 'Subtitle', 'name' => 'Title'],
+            'export_mapping'     => makeExportMapping(['title' => 'name']),
             'product_metafields' => [
                 ['type' => 'single_line_text_field', 'listvalue' => false, 'code' => 'subtitle', 'name_space_key' => 'custom.subtitle'],
             ],
@@ -66,8 +66,8 @@ it('registers a metafield instance translation for a non-default locale', functi
 
     $entries = [[
         'manifest' => ['product_sku' => 'SKU1'],
-        'product' => [
-            'id' => 'gid://shopify/Product/111',
+        'product'  => [
+            'id'                 => 'gid://shopify/Product/111',
             'mf_custom_subtitle' => ['id' => 'gid://shopify/Metafield/999'],
         ],
     ]];
@@ -89,8 +89,8 @@ it('registers a metafield instance translation for a non-default locale', functi
     expect($metafieldLine)->not->toBeNull();
     expect($metafieldLine['translations'])->toHaveCount(1);
     expect($metafieldLine['translations'][0])->toMatchArray([
-        'key' => 'value',
-        'value' => 'Le sous-titre',
+        'key'    => 'value',
+        'value'  => 'Le sous-titre',
         'locale' => 'fr',
     ]);
     expect($metafieldLine['translations'][0]['translatableContentDigest'])
@@ -101,19 +101,19 @@ it('also registers product-level translations alongside metafields', function ()
     $phaseData = Mockery::mock(ProductPhaseDataService::class);
 
     $phaseData->shouldReceive('getProductContext')->once()->andReturn([
-        'parent_data' => ['sku' => 'SKU1'],
-        'row_data' => ['sku' => 'SKU1'],
-        'merged_fields' => ['name' => 'Title'],
-        'export_mapping' => makeExportMapping(['title' => 'name']),
+        'parent_data'        => ['sku' => 'SKU1'],
+        'row_data'           => ['sku' => 'SKU1'],
+        'merged_fields'      => ['name' => 'Title'],
+        'export_mapping'     => makeExportMapping(['title' => 'name']),
         'product_metafields' => [],
-        'attributes' => ['name' => makeAttribute(true)],
+        'attributes'         => ['name' => makeAttribute(true)],
     ]);
 
     $phaseData->shouldReceive('getAllAttributeValues')->once()->andReturn(['name' => 'Le titre']);
 
     $entries = [[
         'manifest' => ['product_sku' => 'SKU1'],
-        'product' => ['id' => 'gid://shopify/Product/111'],
+        'product'  => ['id' => 'gid://shopify/Product/111'],
     ]];
 
     $lines = makeTranslationBuilder($phaseData)->build(
@@ -124,8 +124,8 @@ it('also registers product-level translations alongside metafields', function ()
 
     expect($productLine['resourceId'])->toBe('gid://shopify/Product/111');
     expect($productLine['translations'][0])->toMatchArray([
-        'key' => 'title',
-        'value' => 'Le titre',
+        'key'    => 'title',
+        'value'  => 'Le titre',
         'locale' => 'fr',
     ]);
 });
@@ -150,10 +150,10 @@ it('skips non-translatable and list metafields', function () use ($storeLocaleMa
     $phaseData = Mockery::mock(ProductPhaseDataService::class);
 
     $phaseData->shouldReceive('getProductContext')->once()->andReturn([
-        'parent_data' => ['sku' => 'SKU1'],
-        'row_data' => ['sku' => 'SKU1'],
-        'merged_fields' => ['color' => 'Red', 'tags' => 'a,b'],
-        'export_mapping' => makeExportMapping([]),
+        'parent_data'        => ['sku' => 'SKU1'],
+        'row_data'           => ['sku' => 'SKU1'],
+        'merged_fields'      => ['color' => 'Red', 'tags' => 'a,b'],
+        'export_mapping'     => makeExportMapping([]),
         'product_metafields' => [
             ['type' => 'number_integer', 'listvalue' => false, 'code' => 'color', 'name_space_key' => 'custom.color'],
             ['type' => 'single_line_text_field', 'listvalue' => true, 'code' => 'tags', 'name_space_key' => 'custom.tags'],
@@ -165,10 +165,10 @@ it('skips non-translatable and list metafields', function () use ($storeLocaleMa
 
     $entries = [[
         'manifest' => ['product_sku' => 'SKU1'],
-        'product' => [
-            'id' => 'gid://shopify/Product/111',
+        'product'  => [
+            'id'              => 'gid://shopify/Product/111',
             'mf_custom_color' => ['id' => 'gid://shopify/Metafield/1'],
-            'mf_custom_tags' => ['id' => 'gid://shopify/Metafield/2'],
+            'mf_custom_tags'  => ['id' => 'gid://shopify/Metafield/2'],
         ],
     ]];
 
@@ -189,12 +189,12 @@ it('resolves a recreated product GID from the mapping when absent from the resul
     $phaseData = Mockery::mock(ProductPhaseDataService::class);
 
     $phaseData->shouldReceive('getProductContext')->once()->andReturn([
-        'parent_data' => ['sku' => 'SKU1'],
-        'row_data' => ['sku' => 'SKU1'],
-        'merged_fields' => ['name' => 'Title'],
-        'export_mapping' => makeExportMapping(['title' => 'name']),
+        'parent_data'        => ['sku' => 'SKU1'],
+        'row_data'           => ['sku' => 'SKU1'],
+        'merged_fields'      => ['name' => 'Title'],
+        'export_mapping'     => makeExportMapping(['title' => 'name']),
         'product_metafields' => [],
-        'attributes' => ['name' => makeAttribute(true)],
+        'attributes'         => ['name' => makeAttribute(true)],
     ]);
 
     $phaseData->shouldReceive('getAllAttributeValues')->once()->andReturn(['name' => 'Le titre']);
@@ -225,7 +225,7 @@ it('resolves a recreated product GID from the mapping when absent from the resul
 
     $entries = [[
         'manifest' => ['product_sku' => 'SKU1'],
-        'product' => [],
+        'product'  => [],
     ]];
 
     $lines = makeTranslationBuilder($phaseData, $credentials, $mappings)->build(

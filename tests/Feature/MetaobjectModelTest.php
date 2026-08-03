@@ -54,9 +54,9 @@ it('resolves a gid to the live entry and skips an orphan mapping', function () {
     $gid = 'gid://shopify/Metaobject/555';
 
     DB::table('wk_shopify_metaobject_entry_mappings')->insert([
-        'entry_id' => 999999,
-        'api_url' => $shopUrl,
-        'gid' => $gid,
+        'entry_id'   => 999999,
+        'api_url'    => $shopUrl,
+        'gid'        => $gid,
         'created_at' => now(),
         'updated_at' => now(),
     ]);

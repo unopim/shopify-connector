@@ -10,6 +10,7 @@ use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Shopify\DataGrids\Metaobject\MetaobjectDataGrid;
+use Webkul\Shopify\DataGrids\Metaobject\MetaobjectFieldDataGrid;
 use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
@@ -103,6 +104,7 @@ class MetaobjectController extends Controller
             'definitionData' => $definition->only(['id', 'name', 'code', 'fields']),
             'formFields'     => $this->normalizeFields($definition->fields ?? []),
             'fieldTypes'     => MetaobjectFieldType::supportedTypes(),
+            'options'        => $this->resolveOptions($definition),
         ]);
     }
 
@@ -133,6 +135,135 @@ class MetaobjectController extends Controller
         session()->flash('success', trans('shopify::app.shopify.metaobject.saved'));
 
         return redirect()->route('shopify.metaobject.edit', $id);
+    }
+
+    public function updateGeneral(int $id): JsonResponse
+    {
+        $name = trim((string) request()->input('name'));
+
+        if ($name === '') {
+            return new JsonResponse([
+                'errors' => ['name' => [trans('shopify::app.shopify.metaobject.name-required')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->definitionRepository->update([
+            'name'    => $name,
+            'options' => [
+                'active_draft'            => request()->boolean('active_draft'),
+                'translations'            => request()->boolean('translations'),
+                'web_pages'               => request()->boolean('web_pages'),
+                'storefront_access'       => request()->boolean('storefront_access'),
+                'customer_account_access' => request()->boolean('customer_account_access'),
+            ],
+        ], $id);
+
+        return new JsonResponse([
+            'message'      => trans('shopify::app.shopify.metaobject.saved'),
+            'redirect_url' => route('shopify.metaobject.edit', $id),
+        ]);
+    }
+
+    /**
+     * Merge a definition's stored options with the backward-compatible defaults
+     * (storefront read + active-draft on, matching the original hardcoded export).
+     *
+     * @return array<string, bool>
+     */
+    public function resolveOptions($definition): array
+    {
+        return array_merge([
+            'active_draft'            => true,
+            'translations'            => false,
+            'web_pages'               => false,
+            'storefront_access'       => true,
+            'customer_account_access' => false,
+        ], $definition->options ?? []);
+    }
+
+    public function fieldDatagrid(int $id): JsonResponse
+    {
+        $datagrid = app(MetaobjectFieldDataGrid::class);
+        $datagrid->setDefinition($id);
+
+        return $datagrid->toJson();
+    }
+
+    public function fieldGet(int $id, string $key): JsonResponse
+    {
+        $definition = $this->definitionRepository->findOrFail($id);
+
+        $field = collect($this->normalizeFields($definition->fields ?? []))->firstWhere('key', $key);
+
+        abort_if(! $field, JsonResponse::HTTP_NOT_FOUND);
+
+        return new JsonResponse(['field' => $field]);
+    }
+
+    public function fieldStore(int $id): JsonResponse
+    {
+        $definition = $this->definitionRepository->findOrFail($id);
+        $fields = $definition->fields ?? [];
+
+        $built = $this->buildFields([request()->all()]);
+
+        if (empty($built)) {
+            return new JsonResponse([
+                'errors' => ['name' => [trans('shopify::app.shopify.metaobject.fields-required')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $field = $built[0];
+        $field['key'] = $this->uniqueKey($field['name'], array_column($fields, 'key'));
+        $fields[] = $field;
+
+        $this->definitionRepository->update(['fields' => $fields], $id);
+
+        return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.field-saved')]);
+    }
+
+    public function fieldUpdate(int $id, string $key): JsonResponse
+    {
+        $definition = $this->definitionRepository->findOrFail($id);
+        $fields = $definition->fields ?? [];
+
+        $index = collect($fields)->search(fn ($field): bool => ($field['key'] ?? '') === $key);
+
+        abort_if($index === false, JsonResponse::HTTP_NOT_FOUND);
+
+        $built = $this->buildFields([request()->all()]);
+
+        if (empty($built)) {
+            return new JsonResponse([
+                'errors' => ['name' => [trans('shopify::app.shopify.metaobject.fields-required')]],
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $field = $built[0];
+        $field['key'] = $key;
+        $fields[$index] = $field;
+
+        $this->definitionRepository->update(['fields' => array_values($fields)], $id);
+
+        return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.field-saved')]);
+    }
+
+    public function fieldDestroy(int $id, string $key): JsonResponse
+    {
+        $definition = $this->definitionRepository->findOrFail($id);
+        $fields = $definition->fields ?? [];
+
+        if (count($fields) <= 1) {
+            return new JsonResponse([
+                'message' => trans('shopify::app.shopify.metaobject.last-field'),
+            ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $fields = array_values(array_filter($fields, fn ($field): bool => ($field['key'] ?? '') !== $key));
+
+        $this->definitionRepository->update(['fields' => $fields], $id);
+
+        return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.field-deleted')]);
     }
 
     public function destroy(int $id): JsonResponse

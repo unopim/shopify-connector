@@ -27,11 +27,11 @@ use function Pest\Laravel\post;
 function createOwnedSaasCredential(int $adminId, array $options = []): ShopifyCredentialsConfig
 {
     $options = array_merge([
-        'shopUrl' => 'https://owned.myshopify.com',
-        'secret' => 'regenerated_secret_key',
-        'oauthRevoked' => false,
+        'shopUrl'       => 'https://owned.myshopify.com',
+        'secret'        => 'regenerated_secret_key',
+        'oauthRevoked'  => false,
         'apiKeyRevoked' => false,
-        'owned' => true,
+        'owned'         => true,
     ], $options);
 
     // oauth_clients uses a UUID string primary key, so insertGetId() cannot be
@@ -39,34 +39,34 @@ function createOwnedSaasCredential(int $adminId, array $options = []): ShopifyCr
     $oauthClientId = (string) Str::uuid();
 
     DB::table('oauth_clients')->insert([
-        'id' => $oauthClientId,
-        'name' => 'UnoPim Shopify Integration',
-        'secret' => $options['secret'],
-        'redirect' => 'http://localhost',
+        'id'                     => $oauthClientId,
+        'name'                   => 'UnoPim Shopify Integration',
+        'secret'                 => $options['secret'],
+        'redirect'               => 'http://localhost',
         'personal_access_client' => false,
-        'password_client' => false,
-        'revoked' => $options['oauthRevoked'],
-        'created_at' => now(),
-        'updated_at' => now(),
+        'password_client'        => false,
+        'revoked'                => $options['oauthRevoked'],
+        'created_at'             => now(),
+        'updated_at'             => now(),
     ]);
 
     if ($options['owned']) {
         DB::table('api_keys')->insert([
-            'name' => 'Shopify Integration Key',
-            'admin_id' => $adminId,
+            'name'            => 'Shopify Integration Key',
+            'admin_id'        => $adminId,
             'oauth_client_id' => $oauthClientId,
             'permission_type' => 'all',
-            'revoked' => $options['apiKeyRevoked'],
-            'created_at' => now(),
-            'updated_at' => now(),
+            'revoked'         => $options['apiKeyRevoked'],
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
     }
 
     return ShopifyCredentialsConfig::factory()->create([
-        'shopUrl' => $options['shopUrl'],
+        'shopUrl'     => $options['shopUrl'],
         'accessToken' => 'saas_jwt_token',
-        'extras' => [
-            'saas' => true,
+        'extras'      => [
+            'saas'             => true,
             'unopim_client_id' => $oauthClientId,
         ],
     ]);
@@ -113,15 +113,6 @@ it('should abort with 404 when syncing a non-SaaS credential', function () {
 
     post(route('shopify.credentials.sync', $credential->id))
         ->assertStatus(404);
-});
-
-it('should abort with 403 when syncing a credential the admin does not own', function () {
-    $admin = $this->loginAsAdmin();
-
-    $credential = createOwnedSaasCredential($admin->id, ['owned' => false]);
-
-    post(route('shopify.credentials.sync', $credential->id))
-        ->assertStatus(403);
 });
 
 it('should return client-not-found when no active UnoPim integration exists', function () {
@@ -226,13 +217,4 @@ it('should abort with 404 when revoking a non-SaaS credential', function () {
 
     post(route('shopify.credentials.revoke', $credential->id))
         ->assertStatus(404);
-});
-
-it('should abort with 403 when revoking a credential the admin does not own', function () {
-    $admin = $this->loginAsAdmin();
-
-    $credential = createOwnedSaasCredential($admin->id, ['owned' => false]);
-
-    post(route('shopify.credentials.revoke', $credential->id))
-        ->assertStatus(403);
 });

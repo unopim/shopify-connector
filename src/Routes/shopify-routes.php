@@ -137,6 +137,18 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::put('metaobject/{id}', 'update')->name('shopify.metaobject.update');
 
             Route::delete('metaobject/{id}', 'destroy')->name('shopify.metaobject.destroy');
+
+            Route::patch('metaobject/{id}/general', 'updateGeneral')->name('shopify.metaobject.general');
+
+            Route::get('metaobject-field/datagrid/{id}', 'fieldDatagrid')->name('shopify.metaobject.field.datagrid');
+
+            Route::post('metaobject-field/{id}', 'fieldStore')->name('shopify.metaobject.field.store');
+
+            Route::get('metaobject-field/{id}/{key}', 'fieldGet')->name('shopify.metaobject.field.get');
+
+            Route::put('metaobject-field/{id}/{key}', 'fieldUpdate')->name('shopify.metaobject.field.update');
+
+            Route::delete('metaobject-field/{id}/{key}', 'fieldDestroy')->name('shopify.metaobject.field.destroy');
         });
 
         Route::controller(MetaobjectEntryController::class)->group(function () {
