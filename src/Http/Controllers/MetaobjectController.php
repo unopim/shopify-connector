@@ -378,6 +378,12 @@ class MetaobjectController extends Controller
                 $preset = 'image';
                 $type = 'file_reference';
                 $contentType = 'IMAGE';
+            } elseif ($type === 'video') {
+                $preset = 'video';
+                $type = 'file_reference';
+                $contentType = 'VIDEO';
+            } elseif ($type === 'file_reference') {
+                $contentType = 'FILE';
             }
 
             $built[] = array_filter([
@@ -404,7 +410,7 @@ class MetaobjectController extends Controller
     {
         $clean = [];
 
-        foreach (['min', 'max', 'unit', 'max_precision', 'regex', 'choices'] as $key) {
+        foreach (['min', 'max', 'unit', 'max_precision', 'regex', 'choices', 'file_mode'] as $key) {
             if (($validations[$key] ?? '') !== '' && ($validations[$key] ?? null) !== null) {
                 $clean[$key] = $validations[$key];
             }

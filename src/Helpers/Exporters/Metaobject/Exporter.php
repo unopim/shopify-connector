@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Metaobject;
 
+use Carbon\Carbon;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -262,10 +263,12 @@ class Exporter extends AbstractExporter
                 continue;
             }
 
+            $shopifyType = $type === 'link' ? 'url' : $type;
+
             $entry = [
                 'key'      => $field['key'],
                 'name'     => $field['name'] ?? $field['key'],
-                'type'     => ! empty($field['list']) ? 'list.'.$type : $type,
+                'type'     => ! empty($field['list']) ? 'list.'.$shopifyType : $shopifyType,
                 'required' => ! empty($field['required']),
             ];
 
@@ -302,9 +305,17 @@ class Exporter extends AbstractExporter
                 continue;
             }
 
-            $value = $unit
-                ? json_encode(['value' => $rules[$bound], 'unit' => $unit], JSON_UNESCAPED_SLASHES)
-                : (string) $rules[$bound];
+            if ($type === 'date' || $type === 'date_time') {
+                try {
+                    $value = Carbon::parse((string) $rules[$bound])->format($type === 'date' ? 'Y-m-d' : 'Y-m-d\TH:i:s');
+                } catch (\Throwable $e) {
+                    $value = (string) $rules[$bound];
+                }
+            } elseif ($unit) {
+                $value = json_encode(['value' => $rules[$bound], 'unit' => $unit], JSON_UNESCAPED_SLASHES);
+            } else {
+                $value = (string) $rules[$bound];
+            }
 
             $out[] = ['name' => $isRating ? 'scale_'.$bound : $bound, 'value' => $value];
         }
@@ -325,8 +336,17 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if ($type === 'file_reference' && ! empty($field['content_type'])) {
-            $out[] = ['name' => 'file_type_options', 'value' => json_encode([ucfirst(strtolower((string) $field['content_type']))], JSON_UNESCAPED_SLASHES)];
+        if ($type === 'file_reference') {
+            $fileTypes = match ($field['content_type'] ?? null) {
+                'IMAGE' => ['Image'],
+                'VIDEO' => ['Video'],
+                'FILE'  => (($field['validations']['file_mode'] ?? 'any') === 'media') ? ['Image', 'Video'] : [],
+                default => [],
+            };
+
+            if (! empty($fileTypes)) {
+                $out[] = ['name' => 'file_type_options', 'value' => json_encode($fileTypes, JSON_UNESCAPED_SLASHES)];
+            }
         }
 
         return $out;
@@ -492,6 +512,58 @@ class Exporter extends AbstractExporter
             }
 
             return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
+        }
+
+        if ($type === 'date' || $type === 'date_time') {
+            try {
+                $date = Carbon::parse((string) $raw);
+            } catch (\Throwable $e) {
+                return (string) $raw;
+            }
+
+            return $type === 'date' ? $date->format('Y-m-d') : $date->format('Y-m-d\TH:i:s');
+        }
+
+        if (in_array($type, ['dimension', 'volume', 'weight'], true)) {
+            return json_encode([
+                'value' => (float) $raw,
+                'unit'  => $field['validations']['unit'] ?? '',
+            ], JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($type === 'money') {
+            preg_match('/^\s*([0-9]*\.?[0-9]+)\s*([A-Za-z]{3})?/', (string) $raw, $matches);
+
+            return json_encode([
+                'amount'        => (float) ($matches[1] ?? 0),
+                'currency_code' => strtoupper($matches[2] ?? 'USD'),
+            ], JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($type === 'rating') {
+            $rules = $field['validations'] ?? [];
+
+            return json_encode([
+                'value'     => (string) $raw,
+                'scale_min' => (string) ($rules['min'] ?? '0'),
+                'scale_max' => (string) ($rules['max'] ?? '5'),
+            ], JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($type === 'json') {
+            $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+
+            return $decoded === null ? (string) $raw : json_encode($decoded, JSON_UNESCAPED_SLASHES);
+        }
+
+        if ($type === 'link') {
+            if (is_array($raw)) {
+                return (string) ($raw['url'] ?? '');
+            }
+
+            $decoded = is_string($raw) ? json_decode($raw, true) : null;
+
+            return is_array($decoded) ? (string) ($decoded['url'] ?? '') : (string) $raw;
         }
 
         return is_array($raw) ? json_encode($raw, JSON_UNESCAPED_SLASHES) : (string) $raw;

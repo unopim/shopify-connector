@@ -6,6 +6,7 @@
     <v-metaobject-binding
         initial-definition="{{ $binding->definition_id ?? '' }}"
         initial-multiple="{{ ($binding->is_list ?? false) ? '1' : '' }}"
+        is-edit="{{ isset($attribute) ? '1' : '' }}"
     ></v-metaobject-binding>
 </div>
 
@@ -22,6 +23,7 @@
                 :allow-empty="false"
                 :show-labels="false"
                 :placeholder="labels.select"
+                :disabled="!! isEdit"
                 @select="option => definitionId = option.id"
             ></v-multiselect>
             <input type="hidden" name="metaobject_definition" :value="definitionId" />
@@ -49,6 +51,7 @@
         props: {
             initialDefinition: { type: [String, Number], default: '' },
             initialMultiple: { type: [String, Number], default: '' },
+            isEdit: { type: [String, Number], default: '' },
         },
 
         data() {

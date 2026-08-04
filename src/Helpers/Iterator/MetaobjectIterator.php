@@ -149,6 +149,13 @@ class MetaobjectIterator implements \Iterator
             $list = str_starts_with($rawType, 'list.');
             $type = $list ? substr($rawType, 5) : $rawType;
             $validations = $this->reverseValidations($definition['validations'] ?? []);
+            $contentType = $type === 'file_reference' ? ($validations['content_type'] ?? '') : '';
+            $preset = match (true) {
+                ! empty($validations['rules']['choices']) => 'choice_list',
+                $contentType === 'IMAGE'                  => 'image',
+                $contentType === 'VIDEO'                  => 'video',
+                default                                   => '',
+            };
 
             $fields[] = array_filter([
                 'key'          => $definition['key'],
@@ -157,8 +164,8 @@ class MetaobjectIterator implements \Iterator
                 'list'         => $list,
                 'required'     => ! empty($definition['required']),
                 'child'        => $type === 'metaobject_reference' ? ($typeByGid[$validations['metaobject_definition_id'] ?? ''] ?? '') : '',
-                'content_type' => $type === 'file_reference' ? ($validations['content_type'] ?? '') : '',
-                'preset'       => ! empty($validations['rules']['choices']) ? 'choice_list' : '',
+                'content_type' => $contentType,
+                'preset'       => $preset,
                 'validations'  => $validations['rules'],
             ], fn ($value) => $value !== '' && $value !== null && $value !== []);
         }
@@ -197,8 +204,17 @@ class MetaobjectIterator implements \Iterator
             } elseif ($name === 'metaobject_definition_id') {
                 $extra['metaobject_definition_id'] = $value;
             } elseif ($name === 'file_type_options') {
-                $decoded = json_decode((string) $value, true);
-                $extra['content_type'] = strtoupper((string) ($decoded[0] ?? ''));
+                $decoded = json_decode((string) $value, true) ?: [];
+                $types = array_map('strtoupper', $decoded);
+
+                if ($types === ['IMAGE']) {
+                    $extra['content_type'] = 'IMAGE';
+                } elseif ($types === ['VIDEO']) {
+                    $extra['content_type'] = 'VIDEO';
+                } else {
+                    $extra['content_type'] = 'FILE';
+                    $rules['file_mode'] = in_array('IMAGE', $types, true) || in_array('VIDEO', $types, true) ? 'media' : 'any';
+                }
             }
         }
 

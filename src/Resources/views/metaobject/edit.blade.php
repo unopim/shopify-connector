@@ -418,7 +418,7 @@
 
                                 <label v-else-if="field.shopify_type === 'boolean'" class="relative inline-flex cursor-pointer items-center">
                                     <input type="checkbox" v-model="form.values[field.key]" class="peer sr-only" />
-                                    <span class="h-5 w-9 rounded-full bg-gray-200 after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-violet-700 peer-checked:after:translate-x-full"></span>
+                                    <span class="h-5 w-9 rounded-full bg-gray-200 dark:bg-cherry-800 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:bg-primary-700 peer-checked:after:translate-x-full peer-checked:after:border-white"></span>
                                 </label>
 
                                 <input v-else-if="field.shopify_type === 'color'" type="color" v-model="form.values[field.key]" class="h-9 w-16 rounded-md border border-gray-300 dark:border-gray-600" />
@@ -442,6 +442,7 @@
                                     :accept="acceptFor(field)"
                                     :content-type="field.content_type"
                                     :value="form.values[field.key] || ''"
+                                    base-url="{{ Storage::disk('public')->url('') }}"
                                     @picked="onFilePicked(field.key, $event)"
                                     @cleared="onFileCleared(field.key)"
                                 ></v-metaobject-file>
@@ -750,6 +751,10 @@
                             return 'video/*';
                         }
 
+                        if (field.content_type === 'FILE' && (field.validations?.file_mode || 'any') === 'media') {
+                            return 'image/*,video/*';
+                        }
+
                         return null;
                     },
 
@@ -782,11 +787,129 @@
                         this.form.values[key] = '';
                     },
 
+                    isValidUrl(value) {
+                        try {
+                            const url = new URL(String(value));
+
+                            return url.protocol === 'http:' || url.protocol === 'https:';
+                        } catch {
+                            return false;
+                        }
+                    },
+
+                    isValidEmail(value) {
+                        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value));
+                    },
+
+                    passesFieldRules(field, list) {
+                        const rules = field.validations || {};
+                        const numeric = ['number_integer', 'number_decimal', 'rating', 'money', 'weight', 'volume', 'dimension'];
+                        const text = ['single_line_text_field', 'multi_line_text_field', 'id'];
+                        const dates = ['date', 'date_time'];
+                        const has = key => rules[key] !== undefined && rules[key] !== null && rules[key] !== '';
+
+                        for (const item of list) {
+                            if (numeric.includes(field.shopify_type)) {
+                                const num = Number(item);
+
+                                if (Number.isNaN(num)) {
+                                    return false;
+                                }
+
+                                if (has('min') && num < Number(rules.min)) {
+                                    return false;
+                                }
+
+                                if (has('max') && num > Number(rules.max)) {
+                                    return false;
+                                }
+
+                                if (field.shopify_type === 'number_decimal' && has('max_precision')) {
+                                    const decimals = (String(item).split('.')[1] || '').length;
+
+                                    if (decimals > Number(rules.max_precision)) {
+                                        return false;
+                                    }
+                                }
+                            } else if (text.includes(field.shopify_type)) {
+                                const length = String(item).length;
+
+                                if (has('min') && length < Number(rules.min)) {
+                                    return false;
+                                }
+
+                                if (has('max') && length > Number(rules.max)) {
+                                    return false;
+                                }
+
+                                if (field.shopify_type === 'id' && rules.regex) {
+                                    try {
+                                        if (! new RegExp(rules.regex).test(String(item))) {
+                                            return false;
+                                        }
+                                    } catch (error) {
+                                        return true;
+                                    }
+                                }
+                            } else if (dates.includes(field.shopify_type)) {
+                                if (has('min') && String(item) < String(rules.min)) {
+                                    return false;
+                                }
+
+                                if (has('max') && String(item) > String(rules.max)) {
+                                    return false;
+                                }
+                            }
+                        }
+
+                        return true;
+                    },
+
                     save() {
                         if (! this.form.code.trim()) {
                             this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.entry-code-required')" });
 
                             return;
+                        }
+
+                        for (const field of this.formFields) {
+                            const value = this.form.values[field.key];
+
+                            if (value === undefined || value === null || value === '' || (Array.isArray(value) && ! value.length)) {
+                                continue;
+                            }
+
+                            if (field.shopify_type === 'link') {
+                                const url = (value && typeof value === 'object') ? (value.url || '') : '';
+
+                                if (url && ! this.isValidUrl(url)) {
+                                    this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.invalid-url')" });
+
+                                    return;
+                                }
+
+                                continue;
+                            }
+
+                            const list = Array.isArray(value) ? value : [value];
+
+                            if (field.shopify_type === 'url' && list.some(item => ! this.isValidUrl(item))) {
+                                this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.invalid-url')" });
+
+                                return;
+                            }
+
+                            if ((field.preset === 'email' || field.shopify_type === 'email') && list.some(item => ! this.isValidEmail(item))) {
+                                this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.invalid-email')" });
+
+                                return;
+                            }
+
+                            if (! this.passesFieldRules(field, list)) {
+                                this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.entry-value-invalid')".replace(':field', field.name) });
+
+                                return;
+                            }
                         }
 
                         this.saving = true;
@@ -817,7 +940,8 @@
             <div>
                 <div v-if="hasSelection" class="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-cherry-800 dark:bg-cherry-900" style="width:120px">
                     <div class="relative w-full" style="height:120px">
-                        <img v-if="isImage && previewUrl" :src="previewUrl" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" />
+                        <img v-if="isImage && imageSrc" :src="imageSrc" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" />
+                        <video v-else-if="isVideo && imageSrc" :src="imageSrc" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" muted playsinline></video>
                         <div v-else class="flex h-full w-full items-center justify-center bg-gray-50 dark:bg-cherry-800">
                             <span class="text-4xl text-gray-400" :class="isImage ? 'icon-image' : 'icon-file'"></span>
                         </div>
@@ -851,6 +975,7 @@
                     accept: { type: String, default: null },
                     contentType: { type: String, default: '' },
                     value: { type: String, default: '' },
+                    baseUrl: { type: String, default: '' },
                 },
 
                 emits: ['picked', 'cleared'],
@@ -866,6 +991,30 @@
 
                     hasSelection() {
                         return !! this.file || !! this.existing;
+                    },
+
+                    imageSrc() {
+                        if (this.previewUrl) {
+                            return this.previewUrl;
+                        }
+
+                        if (! this.existing) {
+                            return '';
+                        }
+
+                        return /^(https?:)?\/\//.test(this.existing) ? this.existing : this.baseUrl + this.existing;
+                    },
+
+                    isVideo() {
+                        if (this.file) {
+                            return (this.file.type || '').startsWith('video/');
+                        }
+
+                        if (this.contentType) {
+                            return this.contentType === 'VIDEO';
+                        }
+
+                        return /\.(mp4|webm|mov|m4v|ogg)$/i.test(this.existing);
                     },
 
                     isImage() {
@@ -905,6 +1054,8 @@
                             const reader = new FileReader();
                             reader.onload = e => { this.previewUrl = e.target.result; };
                             reader.readAsDataURL(file);
+                        } else if ((file.type || '').startsWith('video/')) {
+                            this.previewUrl = URL.createObjectURL(file);
                         }
 
                         this.$emit('picked', file);

@@ -94,14 +94,13 @@
 
             <div v-if="field.type === 'file_reference'" class="w-40">
                 <v-multiselect
-                    :options="contentTypeOptions"
+                    :options="fileModeOptions"
                     label="label"
                     track-by="id"
-                    :model-value="contentTypeOption"
+                    :model-value="fileModeOption"
                     :show-labels="false"
                     :placeholder="labels.contentType"
-                    @select="option => field.content_type = option.id"
-                    @remove="() => field.content_type = ''"
+                    @select="option => field.validations.file_mode = option.id"
                 ></v-multiselect>
             </div>
         </div>
@@ -135,10 +134,9 @@
         data() {
             return {
                 typeOptions: Object.entries(this.fieldTypes).map(([id, label]) => ({ id, label })),
-                contentTypeOptions: [
-                    { id: 'IMAGE', label: 'Image' },
-                    { id: 'VIDEO', label: 'Video' },
-                    { id: 'FILE', label: 'File' },
+                fileModeOptions: [
+                    { id: 'any', label: "@lang('shopify::app.shopify.metafield.index.any-file-type')" },
+                    { id: 'media', label: "@lang('shopify::app.shopify.metafield.index.media-file-only')" },
                 ],
                 regexPresetOptions: [
                     { id: '^[a-zA-Z]+$', label: "@lang('shopify::app.shopify.metafield.index.regex-alphabetical')" },
@@ -176,8 +174,9 @@
                     single_line_text_field: ['single_line_text_field', 'email', 'choice_list'],
                     email: ['single_line_text_field', 'email', 'choice_list'],
                     choice_list: ['single_line_text_field', 'email', 'choice_list'],
-                    image: ['image', 'file_reference'],
-                    file_reference: ['image', 'file_reference'],
+                    image: ['image', 'video', 'file_reference'],
+                    video: ['image', 'video', 'file_reference'],
+                    file_reference: ['image', 'video', 'file_reference'],
                 };
                 const allowed = groups[this.field.type] || [this.field.type];
 
@@ -192,8 +191,8 @@
                 return this.definitionOptions.find(option => option.id === this.field.child) || null;
             },
 
-            contentTypeOption() {
-                return this.contentTypeOptions.find(option => option.id === this.field.content_type) || null;
+            fileModeOption() {
+                return this.fileModeOptions.find(option => option.id === (this.field.validations.file_mode || 'any')) || null;
             },
 
             regexPresetOption() {
