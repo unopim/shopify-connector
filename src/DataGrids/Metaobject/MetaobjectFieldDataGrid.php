@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\DataGrids\Metaobject;
 
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Webkul\DataGrid\DataGrid;
 use Webkul\Shopify\Helpers\MetaobjectFieldType;
@@ -100,9 +101,10 @@ class MetaobjectFieldDataGrid extends DataGrid
             'type_label' => $this->typeLabels[$field['preset'] ?? ($field['type'] ?? '')] ?? ($field['type'] ?? ''),
         ]);
 
-        foreach ((array) request()->input('filters.all', []) as $term) {
-            $rows = $rows->filter(fn ($row): bool => stripos($row->name, (string) $term) !== false
-                || stripos($row->type_label, (string) $term) !== false);
+        foreach ((array) request()->input('filters', []) as $column => $values) {
+            $rows = $column === 'all'
+                ? $this->applySearch($rows, (array) $values)
+                : $this->applyColumnFilter($rows, (string) $column, (array) $values);
         }
 
         $sort = request()->input('sort', []);
@@ -124,5 +126,48 @@ class MetaobjectFieldDataGrid extends DataGrid
             $page,
             ['path' => request()->url()]
         );
+    }
+
+    /**
+     * Match each search term against every searchable field column.
+     */
+    protected function applySearch(Collection $rows, array $terms): Collection
+    {
+        foreach ($terms as $term) {
+            $rows = $rows->filter(fn ($row): bool => stripos($row->name, (string) $term) !== false
+                || stripos($row->type_label, (string) $term) !== false);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Apply one filterable column's condition (operator payload or plain values) to the rows.
+     */
+    protected function applyColumnFilter(Collection $rows, string $column, array $values): Collection
+    {
+        if (! in_array($column, ['name', 'type_label'], true)) {
+            return $rows;
+        }
+
+        $condition = reset($values);
+
+        if (is_array($condition) && ! empty($condition['operator'])) {
+            $value = (string) ($condition['value'] ?? '');
+
+            return $rows->filter(fn ($row): bool => match ($condition['operator']) {
+                'eq'        => (string) $row->{$column} === $value,
+                'neq'       => (string) $row->{$column} !== $value,
+                'blank'     => (string) $row->{$column} === '',
+                'not_blank' => (string) $row->{$column} !== '',
+                default     => stripos((string) $row->{$column}, $value) !== false,
+            });
+        }
+
+        foreach ($values as $value) {
+            $rows = $rows->filter(fn ($row): bool => stripos((string) $row->{$column}, (string) $value) !== false);
+        }
+
+        return $rows;
     }
 }
