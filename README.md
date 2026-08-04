@@ -3,7 +3,7 @@
 Effortlessly integrate your Shopify store with UnoPim for seamless product data management and synchronization. You can currently export catalogs, including categories and both simple and variant products, from UnoPim to Shopify.
 
 ## Requiremenets:
-* **Unopim**: v2.0.0
+* **Unopim**: v3.0.0
   
 ## ✨ Features
 
@@ -32,6 +32,12 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
   You can map Meta fields like strings, integers, and JSON strings to easily export product details from UnoPim to Shopify.
 
   ![Metafields Mapping Interface](https://raw.githubusercontent.com/unopim/temp-media/refs/heads/main/Shopify-Connector/Metafields%20Mapping.png)
+
+- **Metaobjects**  
+  Create and manage Shopify metaobject definitions and entries from UnoPim, and link them to products through metaobject reference metafields.
+
+- **Extended Metafield Types**  
+  Map a wide range of metafield types — text, integer, JSON, file/image/video reference, email, link, ID, date & time, measurement, and product, variant, collection and metaobject references.
 
 - **Tags, MetaFields, and Other Settings**  
   This module provides additional settings for exporting products data from UnoPim to Shopify.
