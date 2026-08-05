@@ -162,6 +162,18 @@ jobs:
           echo "Waiting for server..."
           timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
 
+      - name: Ensure admin user for E2E login
+        working-directory: unopim
+        run: |
+          php artisan tinker <<'PHP'
+          $role = \Webkul\User\Models\Role::where('permission_type', 'all')->first()
+              ?? \Webkul\User\Models\Role::create(['name' => 'Administrator', 'description' => 'Full access', 'permission_type' => 'all']);
+          \Webkul\User\Models\Admin::updateOrCreate(
+              ['email' => getenv('E2E_ADMIN_EMAIL') ?: 'admin@example.com'],
+              ['name' => 'Admin', 'password' => bcrypt(getenv('E2E_ADMIN_PASSWORD') ?: 'admin123'), 'status' => 1, 'role_id' => $role->id]
+          );
+          PHP
+
       - name: Merge Shopify tests into UnoPim Playwright
         run: |
           mkdir -p unopim/tests/e2e-pw/tests/shopify
