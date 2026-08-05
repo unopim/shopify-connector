@@ -245,8 +245,9 @@ return [
                 'option_name_label'            => 'Valor para el Nombre de Opción como Label del Atributo (Por Defecto Código de Atributo)',
             ],
             'errors' => [
-                'invalid-credential' => 'Credencial no válida. La credencial está deshabilitada o es incorrecta.',
-                'invalid-locale'     => 'Localización no válida. Por favor, mapea la localización en la sección de edición de credenciales',
+                'invalid-credential'             => 'Credencial no válida. La credencial está deshabilitada o es incorrecta.',
+                'invalid-locale'                 => 'Localización no válida. Por favor, mapea la localización en la sección de edición de credenciales',
+                'metaobject-entry-field-skipped' => 'Se omitió el campo no válido ":field" de la entrada de metaobjeto ":code": :error',
             ],
         ],
         'import' => [

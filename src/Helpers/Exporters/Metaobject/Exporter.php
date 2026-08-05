@@ -385,15 +385,17 @@ class Exporter extends AbstractExporter
             return null;
         }
 
-        $response = $this->requestGraphQlApiAction('metaobjectUpsert', $this->credentialArray, [
-            'handle'     => ['type' => $entry->type, 'handle' => $this->slug($entry->code)],
-            'metaobject' => [
-                'fields'       => $fields,
-                'capabilities' => ['publishable' => ['status' => 'ACTIVE']],
-            ],
-        ]);
-
+        $response = $this->sendMetaobjectUpsert($entry, $fields);
         $errors = $response['body']['data']['metaobjectUpsert']['userErrors'] ?? [];
+
+        if (! empty($errors)) {
+            $filtered = $this->dropInvalidEntryFields($fields, $errors, (string) $entry->code);
+
+            if (! empty($filtered) && count($filtered) < count($fields)) {
+                $response = $this->sendMetaobjectUpsert($entry, $filtered);
+                $errors = $response['body']['data']['metaobjectUpsert']['userErrors'] ?? [];
+            }
+        }
 
         if (! empty($errors)) {
             $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-entry-failed', ['code' => $entry->code]).' '.json_encode($errors));
@@ -410,6 +412,51 @@ class Exporter extends AbstractExporter
         $this->entryMappingRepository->putGid((int) $entry->id, $this->shopUrl, $gid);
 
         return $this->entryGidRun[$runKey] = $gid;
+    }
+
+    /**
+     * @param  array<int, array{key: string, value: string}>  $fields
+     */
+    protected function sendMetaobjectUpsert(object $entry, array $fields): array
+    {
+        return $this->requestGraphQlApiAction('metaobjectUpsert', $this->credentialArray, [
+            'handle'     => ['type' => $entry->type, 'handle' => $this->slug($entry->code)],
+            'metaobject' => [
+                'fields'       => $fields,
+                'capabilities' => ['publishable' => ['status' => 'ACTIVE']],
+            ],
+        ]);
+    }
+
+    /**
+     * Drop the fields Shopify flagged as invalid (by their index in the sent list),
+     * logging each so the entry can be re-sent with only its valid fields.
+     *
+     * @param  array<int, array{key: string, value: string}>  $fields
+     * @param  array<int, array<string, mixed>>  $errors
+     * @return array<int, array{key: string, value: string}>
+     */
+    protected function dropInvalidEntryFields(array $fields, array $errors, string $entryCode): array
+    {
+        $invalid = [];
+
+        foreach ($errors as $error) {
+            $path = $error['field'] ?? [];
+
+            if (($path[1] ?? null) === 'fields' && isset($path[2]) && is_numeric($path[2])) {
+                $invalid[(int) $path[2]] = $error['message'] ?? '';
+            }
+        }
+
+        foreach ($invalid as $index => $message) {
+            $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-entry-field-skipped', [
+                'field' => $fields[$index]['key'] ?? (string) $index,
+                'code'  => $entryCode,
+                'error' => $message,
+            ]));
+        }
+
+        return array_values(array_filter($fields, fn ($index) => ! isset($invalid[$index]), ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -551,9 +598,15 @@ class Exporter extends AbstractExporter
         }
 
         if ($type === 'json') {
-            $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (! is_string($raw)) {
+                return json_encode($raw, JSON_UNESCAPED_SLASHES);
+            }
 
-            return $decoded === null ? (string) $raw : json_encode($decoded, JSON_UNESCAPED_SLASHES);
+            $decoded = json_decode($raw, true);
+
+            return json_last_error() === JSON_ERROR_NONE
+                ? json_encode($decoded, JSON_UNESCAPED_SLASHES)
+                : json_encode($raw, JSON_UNESCAPED_SLASHES);
         }
 
         if ($type === 'link') {

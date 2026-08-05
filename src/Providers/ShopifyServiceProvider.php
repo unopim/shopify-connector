@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\DataTransfer\Services\JobLogger;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
@@ -47,6 +48,18 @@ class ShopifyServiceProvider extends ServiceProvider
 
         Event::listen('unopim.admin.layout.head', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::style');
+        });
+
+        Event::listen('data_transfer.exports.started', static function ($export) {
+            if (! str_starts_with(strtolower((string) ($export->type ?? '')), 'shopify')) {
+                return;
+            }
+
+            $path = storage_path(JobLogger::getJobLogPath($export->id));
+
+            if (file_exists($path)) {
+                file_put_contents($path, '');
+            }
         });
 
         Event::listen('unopim.admin.products.dynamic-attribute-fields.control.shopify_taxonomy.before', static function (ViewRenderEventManager $viewRenderEventManager) {

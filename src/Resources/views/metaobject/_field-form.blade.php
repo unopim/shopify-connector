@@ -105,7 +105,7 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-6" :class="isLocked ? 'pointer-events-none opacity-60' : ''">
+        <div v-if="canBeList" class="flex items-center gap-6" :class="isLocked ? 'pointer-events-none opacity-60' : ''">
             <span class="inline-flex cursor-pointer items-center gap-1 text-sm text-gray-600 dark:text-gray-300" @click="field.list = false">
                 <span class="text-2xl" :class="! field.list ? 'icon-radio-selected text-primary' : 'icon-radio-normal'"></span>
                 @lang('shopify::app.shopify.metaobject.field-single')
@@ -207,6 +207,10 @@
                 return ['dimension', 'volume', 'weight'].includes(this.field.type);
             },
 
+            canBeList() {
+                return ! ['boolean', 'multi_line_text_field', 'rich_text_field', 'money', 'json', 'id'].includes(this.field.type);
+            },
+
             unitsFor() {
                 const map = {
                     dimension: ['mm', 'cm', 'm', 'in', 'ft', 'yd'],
@@ -224,6 +228,10 @@
 
                 if (this.field.type !== 'metaobject_reference') {
                     this.field.child = '';
+                }
+
+                if (! this.canBeList) {
+                    this.field.list = false;
                 }
             },
         },

@@ -268,12 +268,13 @@ return [
             ],
 
             'errors' => [
-                'invalid-credential'            => 'Invalid Credential.The credential is either disabled or incorrect',
-                'invalid-locale'                => 'Invalid Locale. Please mapp the locale in credential edit section',
-                'metaobject-definition-missing' => 'Metaobject definition ":type" does not exist on store :store. Sync the definition to this store before exporting.',
-                'metaobject-definition-failed'  => 'Failed to export metaobject definition ":code".',
-                'metaobject-entry-failed'       => 'Failed to export metaobject entry ":code".',
-                'metaobject-reference-unmapped' => 'Metaobject reference skipped, no Shopify mapping found for identifier: :identifier',
+                'invalid-credential'             => 'Invalid Credential.The credential is either disabled or incorrect',
+                'invalid-locale'                 => 'Invalid Locale. Please mapp the locale in credential edit section',
+                'metaobject-definition-missing'  => 'Metaobject definition ":type" does not exist on store :store. Sync the definition to this store before exporting.',
+                'metaobject-definition-failed'   => 'Failed to export metaobject definition ":code".',
+                'metaobject-entry-failed'        => 'Failed to export metaobject entry ":code".',
+                'metaobject-entry-field-skipped' => 'Skipped invalid field ":field" of metaobject entry ":code": :error',
+                'metaobject-reference-unmapped'  => 'Metaobject reference skipped, no Shopify mapping found for identifier: :identifier',
             ],
         ],
 

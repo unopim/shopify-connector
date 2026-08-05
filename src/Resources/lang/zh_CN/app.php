@@ -245,8 +245,9 @@ return [
                 'option_name_label'            => '选项名称的值使用属性标签（默认使用属性代码）',
             ],
             'errors' => [
-                'invalid-credential' => '凭证无效。凭证已禁用或不正确',
-                'invalid-locale'     => '无效的区域设置。请在凭据编辑部分中映射区域设置',
+                'invalid-credential'             => '凭证无效。凭证已禁用或不正确',
+                'invalid-locale'                 => '无效的区域设置。请在凭据编辑部分中映射区域设置',
+                'metaobject-entry-field-skipped' => '已跳过元对象条目 ":code" 的无效字段 ":field"：:error',
             ],
         ],
         'import' => [

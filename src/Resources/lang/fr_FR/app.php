@@ -245,8 +245,9 @@ return [
                 'option_name_label'            => 'Valeur du nom de l\'option comme étiquette d\'attribut (par défaut Code d\'attribut)',
             ],
             'errors' => [
-                'invalid-credential' => 'Informations d\'identification non valides. Les informations d\'identification sont désactivées ou incorrectes.',
-                'invalid-locale'     => 'Locale invalide. Veuillez mapper la locale dans la section de modification des identifiants.',
+                'invalid-credential'             => 'Informations d\'identification non valides. Les informations d\'identification sont désactivées ou incorrectes.',
+                'invalid-locale'                 => 'Locale invalide. Veuillez mapper la locale dans la section de modification des identifiants.',
+                'metaobject-entry-field-skipped' => 'Champ non valide ":field" ignoré pour cette entrée de métaobjet ":code" : :error',
             ],
         ],
         'import' => [

@@ -229,7 +229,6 @@ class Exporter extends AbstractExporter
                 $category['id'] = $mapping[0]['externalId'];
                 $responseData = $this->apiRequestShopify($category, $category['id']);
                 $resultCollection = $responseData['body']['data']['collectionUpdate'] ?? [];
-                $this->logWarning($resultCollection['userErrors'], $rawData['code']);
                 if (! empty($resultCollection['userErrors'])) {
                     $resultCollection = $this->handleAfterApiRequest($rawData, $responseData, $mapping, $this->export->id, $category);
 

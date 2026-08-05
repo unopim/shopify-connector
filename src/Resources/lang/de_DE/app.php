@@ -245,8 +245,9 @@ return [
                 'option_name_label'            => 'Wert für Optionsnamen als Attributbeschriftung (Standardmäßig Attributcode)',
             ],
             'errors' => [
-                'invalid-credential' => 'Ungültige Anmeldeinformationen. Die Anmeldeinformationen sind entweder deaktiviert oder falsch',
-                'invalid-locale'     => 'Ungültige Locale. Bitte mappen Sie die Locale im Abschnitt zur Bearbeitung der Anmeldeinformationen.',
+                'invalid-credential'             => 'Ungültige Anmeldeinformationen. Die Anmeldeinformationen sind entweder deaktiviert oder falsch',
+                'invalid-locale'                 => 'Ungültige Locale. Bitte mappen Sie die Locale im Abschnitt zur Bearbeitung der Anmeldeinformationen.',
+                'metaobject-entry-field-skipped' => 'Ungültiges Feld ":field" des Metaobjekt-Eintrags ":code" übersprungen: :error',
             ],
         ],
         'import' => [

@@ -288,12 +288,6 @@
                     },
 
                     deleteField(url) {
-                        if ((this.$refs.datagrid?.available?.meta?.total ?? 0) <= 1) {
-                            this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.last-field')" });
-
-                            return;
-                        }
-
                         this.$emitter.emit('open-delete-modal', {
                             agree: () => {
                                 this.$axios.delete(url)
@@ -947,7 +941,7 @@
                         </div>
 
                         <div class="absolute inset-0 flex items-end justify-center gap-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                            <label class="icon-edit cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-white/30" :for="inputId"></label>
+                            <span class="icon-edit cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-white/30" @click="reselect"></span>
                             <span class="icon-delete cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-red-500/80" @click="clear"></span>
                         </div>
                     </div>
@@ -1059,6 +1053,15 @@
                         }
 
                         this.$emit('picked', file);
+
+                        event.target.value = '';
+                    },
+
+                    reselect() {
+                        if (this.$refs.input) {
+                            this.$refs.input.value = '';
+                            this.$refs.input.click();
+                        }
                     },
 
                     clear() {
