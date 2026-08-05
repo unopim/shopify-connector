@@ -408,7 +408,16 @@
                             <div v-for="field in formFields" :key="field.key" class="!mb-0">
                                 <x-admin::form.control-group.label><span v-text="field.name"></span></x-admin::form.control-group.label>
 
-                                <textarea v-if="isTextarea(field)" v-model="form.values[field.key]" rows="3" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900"></textarea>
+                                <div v-if="isScalarList(field)">
+                                    <v-metaobject-list-input
+                                        :key="field.key + '-' + openToken"
+                                        :field="field"
+                                        :model-value="listModel(field)"
+                                        @update:model-value="val => form.values[field.key] = val"
+                                    ></v-metaobject-list-input>
+                                </div>
+
+                                <textarea v-else-if="isTextarea(field)" v-model="form.values[field.key]" rows="3" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900"></textarea>
 
                                 <label v-else-if="field.shopify_type === 'boolean'" class="relative inline-flex cursor-pointer items-center">
                                     <input type="checkbox" v-model="form.values[field.key]" class="peer sr-only" />
@@ -420,13 +429,14 @@
                                 <div v-else-if="field.preset === 'choice_list' && choiceOptions(field).length">
                                     <v-multiselect
                                         :options="choiceOptions(field)"
-                                        :model-value="form.values[field.key] || null"
+                                        :multiple="field.list"
+                                        :model-value="field.list ? (Array.isArray(form.values[field.key]) ? form.values[field.key] : []) : (form.values[field.key] || null)"
                                         :allow-empty="true"
                                         :show-labels="false"
                                         :searchable="false"
                                         :placeholder="labels.select"
-                                        @select="value => form.values[field.key] = value"
-                                        @remove="() => form.values[field.key] = ''"
+                                        @select="value => onChoicePick(field, value)"
+                                        @remove="value => onChoiceUnpick(field, value)"
                                     ></v-multiselect>
                                 </div>
 
@@ -435,10 +445,10 @@
                                     :key="field.key + '-' + openToken"
                                     :accept="acceptFor(field)"
                                     :content-type="field.content_type"
+                                    :list="field.list"
                                     :value="form.values[field.key] || ''"
                                     base-url="{{ Storage::disk('public')->url('') }}"
-                                    @picked="onFilePicked(field.key, $event)"
-                                    @cleared="onFileCleared(field.key)"
+                                    @change="onFileChange(field.key, $event, field.list)"
                                 ></v-metaobject-file>
 
                                 <div v-else-if="isCatalogReference(field)">
@@ -752,9 +762,67 @@
                         return null;
                     },
 
+                    isScalarList(field) {
+                        if (! field.list || field.preset === 'choice_list') {
+                            return false;
+                        }
+
+                        return ['single_line_text_field', 'url', 'color', 'number_integer', 'number_decimal', 'rating', 'date', 'date_time', 'dimension', 'volume', 'weight', 'link'].includes(field.shopify_type);
+                    },
+
+                    listModel(field) {
+                        const value = this.form.values[field.key];
+
+                        if (Array.isArray(value)) {
+                            return value;
+                        }
+
+                        return (value === undefined || value === null || value === '') ? [] : [value];
+                    },
+
+                    onChoicePick(field, value) {
+                        if (field.list) {
+                            const current = Array.isArray(this.form.values[field.key]) ? this.form.values[field.key] : [];
+                            this.form.values[field.key] = [...current, value];
+
+                            return;
+                        }
+
+                        this.form.values[field.key] = value;
+                    },
+
+                    onChoiceUnpick(field, value) {
+                        if (field.list) {
+                            const current = Array.isArray(this.form.values[field.key]) ? this.form.values[field.key] : [];
+                            this.form.values[field.key] = current.filter(item => item !== value);
+
+                            return;
+                        }
+
+                        this.form.values[field.key] = '';
+                    },
+
+                    applyDefaults() {
+                        this.formFields.forEach(field => {
+                            const current = this.form.values[field.key];
+                            const isEmpty = current === undefined || current === null || current === '';
+
+                            if (! isEmpty || field.list) {
+                                return;
+                            }
+
+                            if (field.shopify_type === 'boolean') {
+                                this.form.values[field.key] = false;
+                            } else if (field.shopify_type === 'color') {
+                                this.form.values[field.key] = '#000000';
+                            }
+                        });
+                    },
+
                     openCreate() {
                         this.form = { id: null, code: '', values: {} };
                         this.pickedFiles = {};
+                        this.applyDefaults();
                         this.openToken++;
                         this.$refs.entryModal.open();
                     },
@@ -763,6 +831,7 @@
                         this.$axios.get(url).then(res => {
                             this.form = { id: res.data.id, code: res.data.code, values: { ...(res.data.values ?? {}) } };
                             this.pickedFiles = {};
+                            this.applyDefaults();
                             this.openToken++;
                             this.$refs.entryModal.open();
                         });
@@ -772,13 +841,14 @@
                         this.$refs.entryModal.close();
                     },
 
-                    onFilePicked(key, file) {
-                        this.pickedFiles[key] = file;
-                    },
+                    onFileChange(key, payload, list) {
+                        this.form.values[key] = list ? payload.existing : (payload.existing[0] || '');
 
-                    onFileCleared(key) {
-                        delete this.pickedFiles[key];
-                        this.form.values[key] = '';
+                        if (payload.files.length) {
+                            this.pickedFiles[key] = list ? payload.files : payload.files[0];
+                        } else {
+                            delete this.pickedFiles[key];
+                        }
                     },
 
                     isValidUrl(value) {
@@ -867,19 +937,52 @@
                         }
 
                         for (const field of this.formFields) {
-                            const value = this.form.values[field.key];
+                            const current = this.form.values[field.key];
+                            const isEmpty = current === undefined || current === null || current === '';
+
+                            if (field.shopify_type === 'boolean' && isEmpty) {
+                                this.form.values[field.key] = false;
+                            }
+
+                            if (field.shopify_type === 'color' && ! field.list && isEmpty) {
+                                this.form.values[field.key] = '#000000';
+                            }
+                        }
+
+                        for (const field of this.formFields) {
+                            let value = this.form.values[field.key];
+
+                            if (Array.isArray(value)) {
+                                value = value.filter(item => {
+                                    if (item === null || item === undefined || item === '') {
+                                        return false;
+                                    }
+
+                                    if (typeof item === 'object') {
+                                        return !! (item.url || item.text || item.value);
+                                    }
+
+                                    return true;
+                                });
+
+                                this.form.values[field.key] = value;
+                            }
 
                             if (value === undefined || value === null || value === '' || (Array.isArray(value) && ! value.length)) {
                                 continue;
                             }
 
                             if (field.shopify_type === 'link') {
-                                const url = (value && typeof value === 'object') ? (value.url || '') : '';
+                                const links = Array.isArray(value) ? value : [value];
 
-                                if (url && ! this.isValidUrl(url)) {
-                                    this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.invalid-url')" });
+                                for (const link of links) {
+                                    const url = (link && typeof link === 'object') ? (link.url || '') : '';
 
-                                    return;
+                                    if (url && ! this.isValidUrl(url)) {
+                                        this.$emitter.emit('add-flash', { type: 'warning', message: "@lang('shopify::app.shopify.metaobject.invalid-url')" });
+
+                                        return;
+                                    }
                                 }
 
                                 continue;
@@ -917,7 +1020,15 @@
                             payload.append('id', this.form.id);
                         }
 
-                        Object.keys(this.pickedFiles).forEach(key => payload.append(`files[${key}]`, this.pickedFiles[key]));
+                        Object.keys(this.pickedFiles).forEach(key => {
+                            const picked = this.pickedFiles[key];
+
+                            if (Array.isArray(picked)) {
+                                picked.forEach(file => payload.append(`files[${key}][]`, file));
+                            } else {
+                                payload.append(`files[${key}]`, picked);
+                            }
+                        });
 
                         this.$axios.post("{{ route('shopify.metaobject.entry.store') }}", payload)
                             .then(() => {
@@ -931,33 +1042,37 @@
         </script>
 
         <script type="text/x-template" id="v-metaobject-file-template">
-            <div>
-                <div v-if="hasSelection" class="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-cherry-800 dark:bg-cherry-900" style="width:120px">
+            <div class="flex flex-wrap gap-3">
+                <div v-for="(item, index) in items" :key="index" class="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-cherry-800 dark:bg-cherry-900" style="width:120px">
                     <div class="relative w-full" style="height:120px">
-                        <img v-if="isImage && imageSrc" :src="imageSrc" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" />
-                        <video v-else-if="isVideo && imageSrc" :src="imageSrc" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" muted playsinline></video>
-                        <div v-else class="flex h-full w-full items-center justify-center bg-gray-50 dark:bg-cherry-800">
-                            <span class="text-4xl text-gray-400" :class="isImage ? 'icon-image' : 'icon-file'"></span>
+                        <img v-if="itemIsImage(item) && itemSrc(item)" :src="itemSrc(item)" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" />
+                        <video v-else-if="itemIsVideo(item) && itemSrc(item)" :src="itemSrc(item)" class="h-full w-full bg-gray-100 object-cover dark:bg-cherry-800" muted playsinline></video>
+                        <div v-else class="flex h-full w-full flex-col items-center justify-center gap-1 bg-gray-50 text-gray-400 dark:bg-cherry-800">
+                            <span class="text-4xl" :class="itemIsImage(item) ? 'icon-image' : 'icon-file'"></span>
+                            <span class="text-[10px] font-semibold uppercase" v-text="itemExtension(item)"></span>
                         </div>
 
-                        <div class="absolute inset-0 flex items-end justify-center gap-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                            <span class="icon-edit cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-white/30" @click="reselect"></span>
-                            <span class="icon-delete cursor-pointer rounded-md bg-white/10 p-1.5 text-xl text-white hover:bg-red-500/80" @click="clear"></span>
-                        </div>
+                        <button type="button" class="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-red-600 shadow-sm hover:bg-red-600 hover:text-white dark:bg-cherry-900/90" @click="removeItem(index)">
+                            <span class="icon-delete text-base"></span>
+                        </button>
+
+                        <button v-if="! list" type="button" class="absolute right-8 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm hover:bg-primary-600 hover:text-white dark:bg-cherry-900/90" @click="reselect">
+                            <span class="icon-edit text-base"></span>
+                        </button>
                     </div>
 
-                    <p class="truncate px-2 py-1.5 text-center text-xs text-gray-700 dark:text-gray-300" :title="displayName" v-text="displayName"></p>
+                    <p class="truncate px-2 py-1.5 text-center text-xs text-gray-700 dark:text-gray-300" :title="itemName(item)" v-text="itemName(item)"></p>
                 </div>
 
-                <label v-else class="group flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 transition-all hover:border-violet-500 dark:border-cherry-500" style="width:120px;height:120px" :for="inputId">
-                    <span class="text-3xl text-gray-400 transition-colors group-hover:text-violet-600" :class="isImage ? 'icon-image' : 'icon-file'"></span>
+                <label v-if="canAddMore" class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-cherry-500" style="width:120px;height:120px" :for="inputId">
+                    <span class="text-3xl text-gray-400" :class="contentType === 'IMAGE' ? 'icon-image' : 'icon-file'"></span>
                     <p class="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        <template v-if="isImage">@lang('shopify::app.shopify.metaobject.add-image')</template>
+                        <template v-if="contentType === 'IMAGE'">@lang('shopify::app.shopify.metaobject.add-image')</template>
                         <template v-else>@lang('shopify::app.shopify.metaobject.add-file')</template>
                     </p>
                 </label>
 
-                <input type="file" class="hidden" :id="inputId" :accept="accept" ref="input" @change="onChange" />
+                <input type="file" class="hidden" :id="inputId" :accept="accept" :multiple="list" ref="input" @change="onChange" />
             </div>
         </script>
 
@@ -968,14 +1083,19 @@
                 props: {
                     accept: { type: String, default: null },
                     contentType: { type: String, default: '' },
-                    value: { type: String, default: '' },
+                    list: { type: Boolean, default: false },
+                    value: { type: [String, Array], default: '' },
                     baseUrl: { type: String, default: '' },
                 },
 
-                emits: ['picked', 'cleared'],
+                emits: ['change'],
 
                 data() {
-                    return { file: null, previewUrl: '', existing: this.value };
+                    const raw = Array.isArray(this.value) ? this.value : (this.value ? [this.value] : []);
+
+                    return {
+                        items: raw.map(path => ({ existing: path, file: null, previewUrl: '' })),
+                    };
                 },
 
                 computed: {
@@ -983,78 +1103,90 @@
                         return 'mo_file_' + this.$.uid;
                     },
 
-                    hasSelection() {
-                        return !! this.file || !! this.existing;
+                    canAddMore() {
+                        return this.list || ! this.items.length;
                     },
+                },
 
-                    imageSrc() {
-                        if (this.previewUrl) {
-                            return this.previewUrl;
+                methods: {
+                    itemSrc(item) {
+                        if (item.previewUrl) {
+                            return item.previewUrl;
                         }
 
-                        if (! this.existing) {
+                        if (! item.existing) {
                             return '';
                         }
 
-                        return /^(https?:)?\/\//.test(this.existing) ? this.existing : this.baseUrl + this.existing;
+                        return /^(https?:)?\/\//.test(item.existing) ? item.existing : this.baseUrl + item.existing;
                     },
 
-                    isVideo() {
-                        if (this.file) {
-                            return (this.file.type || '').startsWith('video/');
+                    itemIsVideo(item) {
+                        if (item.file) {
+                            return (item.file.type || '').startsWith('video/');
                         }
 
                         if (this.contentType) {
                             return this.contentType === 'VIDEO';
                         }
 
-                        return /\.(mp4|webm|mov|m4v|ogg)$/i.test(this.existing);
+                        return /\.(mp4|webm|mov|m4v|ogg)$/i.test(item.existing || '');
                     },
 
-                    isImage() {
-                        if (this.file) {
-                            return (this.file.type || '').startsWith('image/');
+                    itemIsImage(item) {
+                        if (item.file) {
+                            return (item.file.type || '').startsWith('image/');
                         }
 
                         if (this.contentType) {
                             return this.contentType === 'IMAGE';
                         }
 
-                        return /\.(jpe?g|png|gif|webp|svg)$/i.test(this.existing);
+                        return /\.(jpe?g|png|gif|webp|svg)$/i.test(item.existing || '');
                     },
 
-                    displayName() {
-                        if (this.file) {
-                            return this.file.name;
+                    itemName(item) {
+                        if (item.file) {
+                            return item.file.name;
                         }
 
-                        return this.existing ? this.existing.split('/').pop() : '';
+                        return item.existing ? item.existing.split('/').pop() : '';
                     },
-                },
 
-                methods: {
+                    itemExtension(item) {
+                        const name = this.itemName(item);
+
+                        return (name.split('.').pop() || '').toUpperCase();
+                    },
+
                     onChange(event) {
-                        const file = event.target.files[0];
+                        const files = Array.from(event.target.files || []);
 
-                        if (! file) {
+                        if (! files.length) {
                             return;
                         }
 
-                        this.file = file;
-                        this.existing = '';
-                        this.previewUrl = '';
-
-                        if ((file.type || '').startsWith('image/')) {
-                            const reader = new FileReader();
-                            reader.onload = e => { this.previewUrl = e.target.result; };
-                            reader.readAsDataURL(file);
-                        } else if ((file.type || '').startsWith('video/')) {
-                            this.previewUrl = URL.createObjectURL(file);
+                        if (! this.list) {
+                            this.items = [];
                         }
 
-                        this.$emit('picked', file);
+                        files.forEach(file => {
+                            this.items.push({ existing: '', file, previewUrl: '' });
+
+                            const item = this.items[this.items.length - 1];
+
+                            if ((file.type || '').startsWith('image/')) {
+                                const reader = new FileReader();
+                                reader.onload = e => { item.previewUrl = e.target.result; };
+                                reader.readAsDataURL(file);
+                            } else if ((file.type || '').startsWith('video/')) {
+                                item.previewUrl = URL.createObjectURL(file);
+                            }
+                        });
 
                         event.target.value = '';
+
+                        this.emitChange();
                     },
 
                     reselect() {
@@ -1064,19 +1196,172 @@
                         }
                     },
 
-                    clear() {
-                        this.file = null;
-                        this.previewUrl = '';
-                        this.existing = '';
+                    removeItem(index) {
+                        this.items.splice(index, 1);
 
-                        if (this.$refs.input) {
-                            this.$refs.input.value = '';
-                        }
+                        this.emitChange();
+                    },
 
-                        this.$emit('cleared');
+                    emitChange() {
+                        this.$emit('change', {
+                            existing: this.items.filter(item => item.existing).map(item => item.existing),
+                            files: this.items.filter(item => item.file).map(item => item.file),
+                        });
                     },
                 },
             });
         </script>
+        <script type="text/x-template" id="v-metaobject-list-input-template">
+            <div class="flex flex-col gap-2">
+                <div v-for="(item, index) in items" :key="index" class="flex items-start gap-2">
+                    <template v-if="field.shopify_type === 'link'">
+                        <div class="flex flex-1 flex-col gap-1">
+                            <input type="text" :value="item && item.text" @input="setLink(index, 'text', $event.target.value)" :placeholder="labels.linkText" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                            <input type="url" :value="item && item.url" @input="setLink(index, 'url', $event.target.value)" :placeholder="labels.linkUrl" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                        </div>
+                    </template>
+
+                    <input v-else-if="field.shopify_type === 'color'" type="color" :value="item || '#000000'" @input="setItem(index, $event.target.value)" class="h-9 w-16 rounded-md border border-gray-300 dark:border-gray-600" />
+
+                    <v-date-picker v-else-if="field.shopify_type === 'date'" class="flex-1">
+                        <input :value="item" @change="setItem(index, $event.target.value)" autocomplete="off" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                    </v-date-picker>
+
+                    <v-datetime-picker v-else-if="field.shopify_type === 'date_time'" class="flex-1">
+                        <input :value="item" @change="setItem(index, $event.target.value)" autocomplete="off" class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+                    </v-datetime-picker>
+
+                    <input v-else :type="inputType" :value="item" @input="setItem(index, $event.target.value)" @change="setItem(index, $event.target.value)" :min="numericBound('min')" :max="numericBound('max')" :maxlength="textMax" :step="stepValue" :pattern="field.validations?.regex || null" :placeholder="unitLabel" class="w-full flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-cherry-900" />
+
+                    <button type="button" class="mt-1.5 shrink-0" @click="removeItem(index)"><span class="icon-delete text-xl text-gray-500 hover:text-red-500"></span></button>
+                </div>
+
+                <div>
+                    <button type="button" class="secondary-button !py-1 !text-xs" @click="addItem">
+                        <span class="icon-add"></span>
+                        @lang('shopify::app.shopify.metaobject.add-item')
+                    </button>
+                </div>
+            </div>
+        </script>
+
+        <script type="module">
+            app.component('v-metaobject-list-input', {
+                template: '#v-metaobject-list-input-template',
+
+                props: {
+                    field: { type: Object, required: true },
+                    modelValue: { type: Array, default: () => [] },
+                },
+
+                emits: ['update:modelValue'],
+
+                data() {
+                    const source = Array.isArray(this.modelValue) ? this.modelValue : [];
+                    const blank = this.field.shopify_type === 'link' ? { text: '', url: '' } : '';
+
+                    return {
+                        items: source.length ? source.map(value => value) : [blank],
+                        labels: {
+                            linkText: "@lang('shopify::app.shopify.metaobject.link-text')",
+                            linkUrl: "@lang('shopify::app.shopify.metaobject.link-url')",
+                        },
+                    };
+                },
+
+                computed: {
+                    inputType() {
+                        if (['number_integer', 'number_decimal', 'rating', 'dimension', 'volume', 'weight'].includes(this.field.shopify_type)) {
+                            return 'number';
+                        }
+
+                        if (this.field.shopify_type === 'date') {
+                            return 'date';
+                        }
+
+                        if (this.field.shopify_type === 'date_time') {
+                            return 'datetime-local';
+                        }
+
+                        if (this.field.shopify_type === 'url') {
+                            return 'url';
+                        }
+
+                        if (this.field.preset === 'email') {
+                            return 'email';
+                        }
+
+                        return 'text';
+                    },
+
+                    textMax() {
+                        return this.field.shopify_type === 'single_line_text_field' ? (this.field.validations?.max || null) : null;
+                    },
+
+                    stepValue() {
+                        if (this.field.shopify_type === 'number_integer' || this.field.shopify_type === 'rating') {
+                            return '1';
+                        }
+
+                        if (this.field.shopify_type === 'number_decimal' && this.field.validations?.max_precision) {
+                            return (1 / Math.pow(10, Number(this.field.validations.max_precision))).toString();
+                        }
+
+                        if (['dimension', 'volume', 'weight'].includes(this.field.shopify_type)) {
+                            return 'any';
+                        }
+
+                        return null;
+                    },
+
+                    unitLabel() {
+                        return ['dimension', 'volume', 'weight'].includes(this.field.shopify_type) ? (this.field.validations?.unit || '') : '';
+                    },
+                },
+
+                methods: {
+                    blank() {
+                        return this.field.shopify_type === 'link' ? { text: '', url: '' } : '';
+                    },
+
+                    numericBound(bound) {
+                        const numeric = ['number_integer', 'number_decimal', 'rating', 'dimension', 'volume', 'weight'];
+
+                        return numeric.includes(this.field.shopify_type) ? (this.field.validations?.[bound] || null) : null;
+                    },
+
+                    setItem(index, value) {
+                        this.items[index] = value;
+                        this.emitChange();
+                    },
+
+                    setLink(index, part, value) {
+                        const current = (this.items[index] && typeof this.items[index] === 'object') ? this.items[index] : { text: '', url: '' };
+                        current[part] = value;
+                        this.items[index] = current;
+                        this.emitChange();
+                    },
+
+                    addItem() {
+                        this.items.push(this.blank());
+                    },
+
+                    removeItem(index) {
+                        this.items.splice(index, 1);
+
+                        if (! this.items.length) {
+                            this.items.push(this.blank());
+                        }
+
+                        this.emitChange();
+                    },
+
+                    emitChange() {
+                        this.$emit('update:modelValue', this.items.map(item => (item && typeof item === 'object') ? { ...item } : item));
+                    },
+                },
+            });
+        </script>
+
     @endPushOnce
 </x-admin::layouts.with-history>

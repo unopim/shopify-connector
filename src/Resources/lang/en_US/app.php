@@ -392,6 +392,7 @@ return [
             'field-content-type'         => 'Content type',
             'add-image'                  => 'Add image',
             'add-file'                   => 'Add file',
+            'add-item'                   => 'Add item',
             'add-field'                  => 'Add Field',
             'name-required'              => 'Name is required.',
             'fields-required'            => 'Add at least one field.',

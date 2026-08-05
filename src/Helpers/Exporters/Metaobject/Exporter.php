@@ -9,6 +9,7 @@ use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
 use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
+use Webkul\Shopify\Helpers\MetaobjectMeasurementUnit;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
@@ -312,7 +313,7 @@ class Exporter extends AbstractExporter
                     $value = (string) $rules[$bound];
                 }
             } elseif ($unit) {
-                $value = json_encode(['value' => $rules[$bound], 'unit' => $unit], JSON_UNESCAPED_SLASHES);
+                $value = json_encode(['value' => $rules[$bound], 'unit' => MetaobjectMeasurementUnit::toShopify($type, $unit)], JSON_UNESCAPED_SLASHES);
             } else {
                 $value = (string) $rules[$bound];
             }
@@ -561,42 +562,6 @@ class Exporter extends AbstractExporter
             return $list ? json_encode($gids, JSON_UNESCAPED_SLASHES) : $gids[0];
         }
 
-        if ($type === 'date' || $type === 'date_time') {
-            try {
-                $date = Carbon::parse((string) $raw);
-            } catch (\Throwable $e) {
-                return (string) $raw;
-            }
-
-            return $type === 'date' ? $date->format('Y-m-d') : $date->format('Y-m-d\TH:i:s');
-        }
-
-        if (in_array($type, ['dimension', 'volume', 'weight'], true)) {
-            return json_encode([
-                'value' => (float) $raw,
-                'unit'  => $field['validations']['unit'] ?? '',
-            ], JSON_UNESCAPED_SLASHES);
-        }
-
-        if ($type === 'money') {
-            preg_match('/^\s*([0-9]*\.?[0-9]+)\s*([A-Za-z]{3})?/', (string) $raw, $matches);
-
-            return json_encode([
-                'amount'        => (float) ($matches[1] ?? 0),
-                'currency_code' => strtoupper($matches[2] ?? 'USD'),
-            ], JSON_UNESCAPED_SLASHES);
-        }
-
-        if ($type === 'rating') {
-            $rules = $field['validations'] ?? [];
-
-            return json_encode([
-                'value'     => (string) $raw,
-                'scale_min' => (string) ($rules['min'] ?? '0'),
-                'scale_max' => (string) ($rules['max'] ?? '5'),
-            ], JSON_UNESCAPED_SLASHES);
-        }
-
         if ($type === 'json') {
             if (! is_string($raw)) {
                 return json_encode($raw, JSON_UNESCAPED_SLASHES);
@@ -609,6 +574,71 @@ class Exporter extends AbstractExporter
                 : json_encode($raw, JSON_UNESCAPED_SLASHES);
         }
 
+        if ($list) {
+            $elements = is_array($raw)
+                ? $raw
+                : (str_starts_with((string) $raw, '[') ? (json_decode((string) $raw, true) ?: []) : [$raw]);
+
+            $values = [];
+
+            foreach ($elements as $element) {
+                if ($element === null || $element === '') {
+                    continue;
+                }
+
+                $values[] = $this->elementValue($type, $field, $element);
+            }
+
+            return empty($values) ? null : json_encode(array_values($values), JSON_UNESCAPED_SLASHES);
+        }
+
+        $value = $this->elementValue($type, $field, $raw);
+
+        return is_array($value) ? json_encode($value, JSON_UNESCAPED_SLASHES) : (string) $value;
+    }
+
+    /**
+     * Convert one scalar field element to its Shopify form: a string, or an array
+     * (measurement/money/rating) that the caller JSON-encodes for single or list.
+     */
+    protected function elementValue(string $type, array $field, mixed $raw): mixed
+    {
+        if ($type === 'date' || $type === 'date_time') {
+            try {
+                $date = Carbon::parse((string) $raw);
+            } catch (\Throwable $e) {
+                return (string) $raw;
+            }
+
+            return $type === 'date' ? $date->format('Y-m-d') : $date->format('Y-m-d\TH:i:s');
+        }
+
+        if (in_array($type, ['dimension', 'volume', 'weight'], true)) {
+            return [
+                'value' => (float) $raw,
+                'unit'  => MetaobjectMeasurementUnit::toShopify($type, $field['validations']['unit'] ?? ''),
+            ];
+        }
+
+        if ($type === 'money') {
+            preg_match('/^\s*([0-9]*\.?[0-9]+)\s*([A-Za-z]{3})?/', (string) $raw, $matches);
+
+            return [
+                'amount'        => (float) ($matches[1] ?? 0),
+                'currency_code' => strtoupper($matches[2] ?? 'USD'),
+            ];
+        }
+
+        if ($type === 'rating') {
+            $rules = $field['validations'] ?? [];
+
+            return [
+                'value'     => (string) $raw,
+                'scale_min' => (string) ($rules['min'] ?? '0'),
+                'scale_max' => (string) ($rules['max'] ?? '5'),
+            ];
+        }
+
         if ($type === 'link') {
             if (is_array($raw)) {
                 return (string) ($raw['url'] ?? '');
@@ -619,7 +649,7 @@ class Exporter extends AbstractExporter
             return is_array($decoded) ? (string) ($decoded['url'] ?? '') : (string) $raw;
         }
 
-        return is_array($raw) ? json_encode($raw, JSON_UNESCAPED_SLASHES) : (string) $raw;
+        return (string) $raw;
     }
 
     protected function richText(string $text): string
@@ -678,7 +708,9 @@ class Exporter extends AbstractExporter
                         continue;
                     }
 
-                    $paths = is_string($raw) && str_starts_with($raw, '[') ? (json_decode($raw, true) ?: []) : [$raw];
+                    $paths = is_array($raw)
+                        ? $raw
+                        : (str_starts_with((string) $raw, '[') ? (json_decode((string) $raw, true) ?: []) : [$raw]);
 
                     foreach (array_filter((array) $paths) as $path) {
                         $fileValues[] = ['path' => $path, 'content_type' => $this->contentTypeFor($path)];

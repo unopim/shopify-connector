@@ -363,6 +363,7 @@ return [
             'field-content-type'         => 'सामग्री प्रकार',
             'add-image'                  => 'छवि जोड़ें',
             'add-file'                   => 'फ़ाइल जोड़ें',
+            'add-item'                   => 'आइटम जोड़ें',
             'add-field'                  => 'फ़ील्ड जोड़ें',
             'name-required'              => 'नाम आवश्यक है।',
             'fields-required'            => 'कम से कम एक फ़ील्ड जोड़ें।',

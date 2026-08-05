@@ -363,6 +363,7 @@ return [
             'field-content-type'         => 'نوع المحتوى',
             'add-image'                  => 'إضافة صورة',
             'add-file'                   => 'إضافة ملف',
+            'add-item'                   => 'إضافة عنصر',
             'add-field'                  => 'إضافة حقل',
             'name-required'              => 'الاسم مطلوب.',
             'fields-required'            => 'أضف حقلاً واحداً على الأقل.',

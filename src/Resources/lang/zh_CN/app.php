@@ -363,6 +363,7 @@ return [
             'field-content-type'         => '内容类型',
             'add-image'                  => '添加图片',
             'add-file'                   => '添加文件',
+            'add-item'                   => '添加项目',
             'add-field'                  => '添加字段',
             'name-required'              => '名称为必填项。',
             'fields-required'            => '请至少添加一个字段。',

@@ -363,6 +363,7 @@ return [
             'field-content-type'         => 'Type de contenu',
             'add-image'                  => 'Ajouter une image',
             'add-file'                   => 'Ajouter un fichier',
+            'add-item'                   => 'Ajouter un élément',
             'add-field'                  => 'Ajouter un champ',
             'name-required'              => 'Le nom est requis.',
             'fields-required'            => 'Ajoutez au moins un champ.',

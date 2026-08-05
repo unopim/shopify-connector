@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Iterator;
 
+use Webkul\Shopify\Helpers\MetaobjectMeasurementUnit;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class MetaobjectIterator implements \Iterator
@@ -149,6 +150,11 @@ class MetaobjectIterator implements \Iterator
             $list = str_starts_with($rawType, 'list.');
             $type = $list ? substr($rawType, 5) : $rawType;
             $validations = $this->reverseValidations($definition['validations'] ?? []);
+
+            if (in_array($type, ['dimension', 'volume', 'weight'], true) && ! empty($validations['rules']['unit'])) {
+                $validations['rules']['unit'] = MetaobjectMeasurementUnit::fromShopify($type, $validations['rules']['unit']);
+            }
+
             $contentType = $type === 'file_reference' ? ($validations['content_type'] ?? '') : '';
             $preset = match (true) {
                 ! empty($validations['rules']['choices']) => 'choice_list',

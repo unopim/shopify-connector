@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Metaobject;
 
+use Carbon\Carbon;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
@@ -236,14 +237,26 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            if ($type === 'link' || $list) {
+            if ($list) {
+                $decoded = json_decode((string) $raw, true);
+                $elements = is_array($decoded) ? $decoded : [];
+
+                $values[$key] = array_values(array_map(
+                    fn ($element) => $this->normalizeImportedScalar($type, $element),
+                    $elements
+                ));
+
+                continue;
+            }
+
+            if ($type === 'link') {
                 $decoded = json_decode((string) $raw, true);
                 $values[$key] = is_array($decoded) ? $decoded : $raw;
 
                 continue;
             }
 
-            $values[$key] = $raw;
+            $values[$key] = $this->normalizeImportedScalar($type, $raw);
         }
 
         return $values;
@@ -324,6 +337,37 @@ class Importer extends AbstractImporter
     /**
      * @return array<int, string>
      */
+    /**
+     * Reverse a Shopify scalar element to the plain value the entry UI edits:
+     * measurement/rating objects collapse to their value, money to "amount CUR".
+     */
+    protected function normalizeImportedScalar(string $type, mixed $element): mixed
+    {
+        if (in_array($type, ['dimension', 'volume', 'weight', 'rating'], true)) {
+            $decoded = is_array($element) ? $element : (is_string($element) ? json_decode($element, true) : null);
+
+            return is_array($decoded) ? ($decoded['value'] ?? '') : $element;
+        }
+
+        if ($type === 'money') {
+            $decoded = is_array($element) ? $element : (is_string($element) ? json_decode($element, true) : null);
+
+            return is_array($decoded) ? ($decoded['amount'] ?? '') : $element;
+        }
+
+        if ($type === 'date' || $type === 'date_time') {
+            try {
+                $date = Carbon::parse((string) $element);
+            } catch (\Throwable $e) {
+                return $element;
+            }
+
+            return $type === 'date' ? $date->format('Y-m-d') : $date->format('Y-m-d H:i:s');
+        }
+
+        return $element;
+    }
+
     protected function resolveReferenceCodes(mixed $raw, bool $list): array
     {
         $gids = $list ? (json_decode((string) $raw, true) ?: []) : [$raw];
