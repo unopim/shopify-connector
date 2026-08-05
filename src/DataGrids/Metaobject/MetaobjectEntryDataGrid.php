@@ -68,13 +68,25 @@ class MetaobjectEntryDataGrid extends DataGrid
             'sortable'   => true,
         ]);
 
+        $fieldColumns = [];
         foreach ($this->fields as $field) {
             if (in_array($field['type'] ?? '', $this->referenceTypes, true)) {
                 continue;
             }
 
+            $fieldColumns['field_'.($field['key'] ?? '')] = $field;
+        }
+
+        $orderedIndexes = $useManaged
+            ? array_merge(
+                array_values(array_filter($this->managedColumns, fn ($index) => isset($fieldColumns[$index]))),
+                array_values(array_filter(array_keys($fieldColumns), fn ($index) => ! in_array($index, $this->managedColumns, true)))
+            )
+            : array_keys($fieldColumns);
+
+        foreach ($orderedIndexes as $index) {
+            $field = $fieldColumns[$index];
             $key = $field['key'] ?? '';
-            $index = 'field_'.$key;
             $isImage = ($field['type'] ?? '') === 'file_reference'
                 && (($field['content_type'] ?? '') === 'IMAGE' || ($field['preset'] ?? '') === 'image');
 
