@@ -178,6 +178,8 @@ jobs:
         run: |
           mkdir -p unopim/tests/e2e-pw/tests/shopify
           cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/tests/shopify/* unopim/tests/e2e-pw/tests/shopify/
+          mkdir -p unopim/tests/e2e-pw/helpers
+          cp -r unopim/packages/Webkul/Shopify/tests/e2e-pw/helpers/* unopim/tests/e2e-pw/helpers/
 
       - name: Generate Shopify auth state
         run: |
