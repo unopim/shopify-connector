@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Iterator;
 
+use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Helpers\MetaobjectMeasurementUnit;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
@@ -162,6 +163,11 @@ class MetaobjectIterator implements \Iterator
                 $contentType === 'VIDEO'                  => 'video',
                 default                                   => '',
             };
+
+            if ($type === 'single_line_text_field' && ($validations['rules']['regex'] ?? '') === MetaobjectFieldType::EMAIL_REGEX) {
+                $preset = 'email';
+                unset($validations['rules']['regex']);
+            }
 
             $fields[] = array_filter([
                 'key'          => $definition['key'],

@@ -115,6 +115,7 @@ class Importer extends AbstractImporter
         $definition = $this->definitionRepository->findOneWhere(['code' => $type]);
 
         if ($definition) {
+            $fields = $this->preserveEmailPresets($fields, $definition->fields ?? []);
             $this->definitionRepository->update(['name' => $name, 'fields' => $fields, 'options' => $options], $definition->id);
             $this->updatedItemsCount++;
         } else {
@@ -129,6 +130,40 @@ class Importer extends AbstractImporter
                 'fields' => $fields,
             ]);
         }
+    }
+
+    /**
+     * Shopify has no email field type (email exports as single_line_text_field), so a
+     * re-import cannot tell email apart from plain text. Carry the email preset over
+     * from the existing local definition by field key.
+     *
+     * @param  array<int, array<string, mixed>>  $imported
+     * @param  array<int, array<string, mixed>>  $existing
+     * @return array<int, array<string, mixed>>
+     */
+    protected function preserveEmailPresets(array $imported, array $existing): array
+    {
+        $emailKeys = [];
+
+        foreach ($existing as $field) {
+            if (($field['type'] ?? '') === 'single_line_text_field' && ($field['preset'] ?? '') === 'email') {
+                $emailKeys[$field['key'] ?? ''] = true;
+            }
+        }
+
+        if ($emailKeys === []) {
+            return $imported;
+        }
+
+        return array_map(function ($field) use ($emailKeys) {
+            if (($field['type'] ?? '') === 'single_line_text_field'
+                && empty($field['preset'])
+                && ! empty($emailKeys[$field['key'] ?? ''])) {
+                $field['preset'] = 'email';
+            }
+
+            return $field;
+        }, $imported);
     }
 
     /**

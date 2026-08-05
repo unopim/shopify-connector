@@ -9,6 +9,7 @@ use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
 use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
+use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Helpers\MetaobjectMeasurementUnit;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
@@ -327,6 +328,8 @@ class Exporter extends AbstractExporter
 
         if (($rules['regex'] ?? '') !== '') {
             $out[] = ['name' => 'regex', 'value' => (string) $rules['regex']];
+        } elseif (($field['preset'] ?? '') === 'email') {
+            $out[] = ['name' => 'regex', 'value' => MetaobjectFieldType::EMAIL_REGEX];
         }
 
         if (($rules['choices'] ?? '') !== '') {

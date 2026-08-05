@@ -87,7 +87,7 @@ class MetaobjectEntryDataGrid extends DataGrid
                 'sortable'   => false,
                 'visible'    => $useManaged
                     ? in_array($index, $this->managedColumns, true)
-                    : (($field['type'] ?? '') === 'single_line_text_field' || $isImage),
+                    : true,
                 'closure'    => fn ($row): string => $isImage
                     ? $this->imageUrl($this->fieldValue($row, $key))
                     : $this->formatValue($this->fieldValue($row, $key)),
