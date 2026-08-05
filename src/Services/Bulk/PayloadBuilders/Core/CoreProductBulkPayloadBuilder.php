@@ -756,6 +756,7 @@ class CoreProductBulkPayloadBuilder
             $variantManifest[] = [
                 'sku'       => $variantRow['sku'],
                 'has_media' => $this->variantHasMedia($variantMergedFields),
+                'inventory' => $this->shopifyGraphQLDataFormatter->buildLocationInventory($variantMergedFields),
             ];
         }
 
@@ -797,9 +798,13 @@ class CoreProductBulkPayloadBuilder
                 'input' => $productInput,
             ],
             'manifest' => [
-                'product_sku'      => $productSku,
-                'product_handle'   => $productInput['handle'] ?? null,
-                'variant_skus'     => array_column($variantManifest, 'sku'),
+                'product_sku'       => $productSku,
+                'product_handle'    => $productInput['handle'] ?? null,
+                'variant_skus'      => array_column($variantManifest, 'sku'),
+                'variant_inventory' => collect($variantManifest)
+                    ->filter(fn ($variant) => ! empty($variant['inventory']))
+                    ->mapWithKeys(fn ($variant) => [$variant['sku'] => $variant['inventory']])
+                    ->all(),
                 'media_plan_items' => $mediaPlanItems,
                 'phase_context'    => [
                     'publishing'   => ! empty($this->credential?->extras['salesChannel']),

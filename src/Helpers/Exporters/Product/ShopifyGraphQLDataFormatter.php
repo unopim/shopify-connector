@@ -524,8 +524,28 @@ class ShopifyGraphQLDataFormatter
      */
     protected function applyLocationInventory(array &$formatted, array $rawData, bool $variantExists): void
     {
-        if (empty($this->locationAttributeMappings) || $variantExists) {
+        if ($variantExists) {
             return;
+        }
+
+        $list = $this->buildLocationInventory($rawData);
+
+        if (! empty($list)) {
+            $formatted['variant']['inventoryQuantities'] = $list;
+        }
+    }
+
+    /**
+     * Create-style per-location inventory list (mapped locations, numeric value or 0).
+     * Exposed so the recreate path can re-inject inventory when a deleted Shopify
+     * product is rebuilt from an update payload that omitted it.
+     *
+     * @return array<int, array{locationId: string, name: string, quantity: int}>
+     */
+    public function buildLocationInventory(array $rawData): array
+    {
+        if (empty($this->locationAttributeMappings)) {
+            return [];
         }
 
         $list = [];
@@ -543,9 +563,7 @@ class ShopifyGraphQLDataFormatter
             ];
         }
 
-        if (! empty($list)) {
-            $formatted['variant']['inventoryQuantities'] = $list;
-        }
+        return $list;
     }
 
     /**

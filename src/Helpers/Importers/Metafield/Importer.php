@@ -11,6 +11,7 @@ use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
 use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
+use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
@@ -448,6 +449,11 @@ class Importer extends AbstractImporter
                 'max'   => $validations->firstWhere('name', 'max')['value'] ?? null,
                 'regex' => $validations->firstWhere('name', 'regex')['value'] ?? null,
             ], fn ($value) => $value !== null && $value !== ''));
+        }
+
+        if (in_array($typeName, ['single_line_text_field', 'list.single_line_text_field'], true)
+            && (string) (collect($node['validations'] ?? [])->firstWhere('name', 'regex')['value'] ?? '') === MetaobjectFieldType::EMAIL_REGEX) {
+            $data['validations'] = json_encode(['content_type' => 'email']);
         }
 
         if (str_contains($typeName, 'file_reference')) {

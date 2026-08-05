@@ -234,6 +234,10 @@ class TranslationsBulkPayloadBuilder
                     continue;
                 }
 
+                if ($this->translationFieldMap[$shopifyField] === 'handle' && $value === ($defaultFields[$unopimField] ?? null)) {
+                    continue;
+                }
+
                 $productTranslations[] = [
                     'key'                       => $this->translationFieldMap[$shopifyField],
                     'value'                     => $value,

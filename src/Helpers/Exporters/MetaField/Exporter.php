@@ -11,6 +11,7 @@ use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
+use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
@@ -298,6 +299,23 @@ class Exporter extends AbstractExporter
     /**
      * Prepare meta field definition
      */
+    protected function isEmailMetafield(array $rowData): bool
+    {
+        if (($rowData['type'] ?? '') !== 'single_line_text_field') {
+            return false;
+        }
+
+        $validations = json_decode((string) ($rowData['validations'] ?? ''), true);
+
+        if (is_array($validations) && ($validations['content_type'] ?? null) === 'email') {
+            return true;
+        }
+
+        $attribute = app(AttributeRepository::class)->findOneByField('code', $rowData['code'] ?? '');
+
+        return $attribute?->type === 'text' && $attribute?->validation === 'email';
+    }
+
     public function prepareMetaFieldDefinition($rowData, $id = null): array
     {
         $formattedData = [
@@ -395,6 +413,15 @@ class Exporter extends AbstractExporter
             }
 
             $formattedData['validations'] = $validations;
+        }
+
+        if ($this->isEmailMetafield($rowData)) {
+            $emailValidations = array_values(array_filter(
+                $formattedData['validations'] ?? [],
+                fn ($validation) => ($validation['name'] ?? '') !== 'regex'
+            ));
+            $emailValidations[] = ['name' => 'regex', 'value' => MetaobjectFieldType::EMAIL_REGEX];
+            $formattedData['validations'] = $emailValidations;
         }
 
         $formattedData['name'] = $rowData['attribute'] ?? '';

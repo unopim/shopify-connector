@@ -280,6 +280,8 @@ class BulkResultFinalizer
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
         unset($variables['input']['files']);
 
+        $this->injectRecreateInventory($variables, $manifestLine);
+
         $result = $this->runRecreateProductSet($credential, $variables);
 
         // The handle is already owned by another (orphan) product: drop it and let Shopify
@@ -322,6 +324,30 @@ class BulkResultFinalizer
         $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
 
         return ['success' => true];
+    }
+
+    /**
+     * A stale mapping means the Shopify product was deleted, so the recreate is a
+     * fresh create. The original payload was an update and dropped inventory, so
+     * re-inject tracked + per-location quantities from the manifest per variant SKU.
+     */
+    protected function injectRecreateInventory(array &$variables, array $manifestLine): void
+    {
+        if (empty($variables['input']['variants'])) {
+            return;
+        }
+
+        $inventoryBySku = $manifestLine['variant_inventory'] ?? [];
+
+        foreach ($variables['input']['variants'] as &$variant) {
+            $variant['inventoryItem'] = array_merge($variant['inventoryItem'] ?? [], ['tracked' => true]);
+
+            $sku = $variant['inventoryItem']['sku'] ?? null;
+
+            if ($sku && ! empty($inventoryBySku[$sku])) {
+                $variant['inventoryQuantities'] = $inventoryBySku[$sku];
+            }
+        }
     }
 
     /**

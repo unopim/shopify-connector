@@ -119,6 +119,17 @@ class MetaFieldController extends Controller
     /**
      * Create a new MetaField.
      */
+    protected function isEmailAttribute(?string $code): bool
+    {
+        if (! $code) {
+            return false;
+        }
+
+        $attribute = $this->attributeRepository->findOneWhere(['code' => $code]);
+
+        return $attribute?->type === 'text' && $attribute?->validation === 'email';
+    }
+
     public function store(MetaFieldForm $request): JsonResponse
     {
         $data = $request->all();
@@ -239,6 +250,10 @@ class MetaFieldController extends Controller
 
         if (($data['type'] ?? null) === 'id' && ! empty($data['regex'])) {
             $validationValue['regex'] = $data['regex'];
+        }
+
+        if (($data['type'] ?? null) === 'single_line_text_field' && $this->isEmailAttribute($data['code'] ?? null)) {
+            $validationValue['content_type'] = 'email';
         }
 
         if ($referenceMode) {
@@ -485,6 +500,10 @@ class MetaFieldController extends Controller
 
         if (($requestData['type'] ?? null) === 'id' && ! empty($requestData['regex'])) {
             $validationValue['regex'] = $requestData['regex'];
+        }
+
+        if (($requestData['type'] ?? null) === 'single_line_text_field' && $this->isEmailAttribute($requestData['code'] ?? null)) {
+            $validationValue['content_type'] = 'email';
         }
 
         if ($referenceMode) {
