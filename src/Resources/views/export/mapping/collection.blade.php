@@ -1,4 +1,4 @@
-<x-admin::layouts.with-history>
+<x-admin::layouts.with-history :history-id="$historyId">
     <x-slot:entityName>
         shopify_exportmapping
     </x-slot>

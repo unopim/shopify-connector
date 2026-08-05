@@ -1,4 +1,4 @@
-<x-admin::layouts.with-history>
+<x-admin::layouts.with-history :history-id="$credential->id">
     <x-slot:entityName>
         shopify_credentials
     </x-slot>

@@ -1,4 +1,4 @@
-<x-admin::layouts.with-history>
+<x-admin::layouts.with-history :history-id="$definition->id">
     <x-slot:entityName>
         shopify_metaobject
     </x-slot>
@@ -280,7 +280,9 @@
                             : this.$axios.post("{{ route('shopify.metaobject.field.store', ':id') }}".replace(':id', this.definitionId), this.form);
 
                         request.then(() => {
-                            window.location.reload();
+                            this.savingField = false;
+                            this.$refs.fieldModal.close();
+                            this.$refs.datagrid.get();
                         }).catch(error => {
                             this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.errors?.name?.[0] ?? '' });
                             this.savingField = false;
@@ -292,7 +294,7 @@
                             agree: () => {
                                 this.$axios.delete(url)
                                     .then(() => {
-                                        window.location.reload();
+                                        this.$refs.datagrid.get();
                                     })
                                     .catch(error => {
                                         this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? '' });

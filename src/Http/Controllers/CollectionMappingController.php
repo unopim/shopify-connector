@@ -27,6 +27,7 @@ class CollectionMappingController extends Controller
         $shopifyMapping = $this->shopifyExportMappingRepository->find(self::CONFIG_ID);
 
         return view('shopify::export.mapping.collection', [
+            'historyId'         => $shopifyMapping?->id,
             'collectionFields'  => (new ShopifyFields)->getCollectionMappingField(),
             'sortOrderOptions'  => (new ShopifyFields)->getCollectionSortOrderOptions(),
             'collectionMapping' => $shopifyMapping->mapping['collection_mapping'] ?? [],

@@ -1,4 +1,4 @@
-<x-admin::layouts.with-history :active-tab="request('history') !== null ? 'history' : 'general'">
+<x-admin::layouts.with-history :history-id="$shopifyMapping?->id" :active-tab="request('history') !== null ? 'history' : 'general'">
     <x-slot:entityName>
         shopify_exportmapping
     </x-slot>

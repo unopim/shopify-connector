@@ -1,4 +1,4 @@
-<x-admin::layouts.with-history>
+<x-admin::layouts.with-history :history-id="$metaField->id">
     <x-slot:entityName>
         shopify_meta_fields
     </x-slot>

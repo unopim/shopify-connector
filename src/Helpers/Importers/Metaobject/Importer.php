@@ -400,6 +400,14 @@ class Importer extends AbstractImporter
             return $type === 'date' ? $date->format('Y-m-d') : $date->format('Y-m-d H:i:s');
         }
 
+        if ($type === 'json') {
+            $decoded = json_decode((string) $element, true);
+
+            return json_last_error() === JSON_ERROR_NONE && is_array($decoded)
+                ? json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                : $element;
+        }
+
         return $element;
     }
 
