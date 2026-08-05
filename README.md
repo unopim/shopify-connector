@@ -140,18 +140,30 @@ Download and unzip the respective extension zip. Rename the folder to `Shopify` 
    php artisan shopify-package:install
    php artisan optimize:clear
    ```
+## Enable Queue Operations
 
-## **Enable Queue Operations**  
-   - Start the queue to execute actions, such as job operations, by running the following command:
-     ```bash
-     php artisan queue:work
-     ```
-   - If the `queue:work` command is configured to run via a process manager like Supervisor, restart the Supervisor (or related) service after module installation to apply changes:
-     ```bash
-     sudo service supervisor restart
-     ```
+After installing the Shopify Connector module, start the Laravel queue worker to process background jobs:
 
-This ensures that the latest updates to the module are reflected in all background tasks.
+```bash
+php artisan queue:work
+```
+
+If your queue workers are managed by **Supervisor** (or another process manager), restart the workers so they load the latest module changes.
+
+Restart the Laravel queue workers:
+
+```bash
+php artisan queue:restart
+```
+
+Or, if you are using **Supervisor** to manage the queue workers, restart the Supervisor service (or restart the specific queue consumer):
+
+```bash
+sudo service supervisor restart
+```
+
+This ensures that all background jobs use the latest version of the Shopify Connector module and that queued operations are processed correctly.
+
 
 ## Running test cases
 1. **Register Test Directory**
