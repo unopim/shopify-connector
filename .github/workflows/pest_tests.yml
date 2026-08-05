@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.3']
+        php-versions: ['8.4']
 
     name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
 
@@ -94,7 +94,7 @@ jobs:
   pest_tests_elasticsearch:
     runs-on: ubuntu-latest
 
-    name: PHP 8.3 test on MySQL + Elasticsearch
+    name: PHP 8.4 test on MySQL + Elasticsearch
 
     services:
       mysql:
@@ -126,7 +126,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.3
+          php-version: 8.4
           extensions: curl, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, tokenizer, zip
           tools: composer:v2
 
