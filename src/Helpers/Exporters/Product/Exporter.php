@@ -340,19 +340,6 @@ class Exporter extends AbstractExporter
             ->count();
     }
 
-    /**
-     * Submit a Shopify bulk core product sync for the whole export.
-     *
-     * Shopify permits only one bulk mutation per app+shop at a time. A catalog
-     * larger than BATCH_SIZE is split into several export batches that run
-     * concurrently — if each submitted its own bulk op they would collide with
-     * "a bulk mutation operation for this app and shop is already in progress".
-     *
-     * Instead, the first batch to acquire the lock submits a single bulk op
-     * covering the entire export; every other batch finds that op already
-     * recorded and no-ops. Shopify bulk operations are designed to ingest a
-     * full catalog in one JSONL file, so one op per export is the correct unit.
-     */
     protected function exportCoreProductsInBulk(JobTrackBatchContract $batch): void
     {
         $lock = Cache::lock('shopify-core-bulk-'.$this->export->id, 600);
@@ -386,20 +373,6 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Mark a batch processed, writing its own slice of the catalog as its summary.
-     *
-     * The Shopify connector uses one bulk op for the whole export (lock pattern),
-     * so only the winner batch does real submission work and the rest no-op. But
-     * for the tracker UI to show a climbing count as batches finish — the behaviour
-     * users expect from other framework exporters — every batch needs to "own" its
-     * slice of the catalog. Each batch carries its slice in its `data` field; we
-     * write that count as the batch's summary on completion. Across all batches:
-     *
-     *     SUM(summary.created) = total catalog rows  (10000 for a 10k export)
-     *
-     * Then `Export::stats()` SUMs batches with state='processed' to produce a
-     * climbing live count for the tracker (500, 1000, 1500, …, 10000).
-     *
      * IMPORTANT: this is the "submitted to Shopify" count, NOT the
      * "accepted by Shopify" count. `BulkResultFinalizer::markBatchProcessed`
      * writes the real Shopify success count directly to `job_track.summary` once
@@ -431,13 +404,7 @@ class Exporter extends AbstractExporter
     protected function submitCoreBulkOperation(JobTrackBatchContract $batch): void
     {
         $payload = $this->coreProductBulkPayloadBuilder->build($this->getFilters(), $this->getAllCoreBatchRows(), $this->export);
-        // Do NOT seed batch summary with the builder's line count — that's
-        // "submitted to Shopify", not "accepted by Shopify". For a 10k-product
-        // bulk op the gap is minutes, during which the UI would show 10000 as
-        // if the export were done. BulkResultFinalizer::markBatchProcessed
-        // writes the real success/failure counts once Shopify finishes; until
-        // then the count stays at 0 so the user sees actual progress, not
-        // optimistic intent.
+
         if (empty($payload['lines'])) {
             $this->markBatchAsNoOp($batch->id);
 
@@ -491,11 +458,6 @@ class Exporter extends AbstractExporter
             now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
         );
 
-        // Winner batch: mark state processed with zero summary. BulkResultFinalizer
-        // is the single source of truth for the real created/processed counts on
-        // this batch — going through updateBatchState() here would risk picking up
-        // a polluted cumulative count from job_track.summary (see markBatchAsNoOp
-        // for the loser-side reasoning; the race is symmetric).
         $this->markBatchAsNoOp($batch->id);
 
         $this->jobLogger?->info(sprintf(
@@ -948,12 +910,7 @@ class Exporter extends AbstractExporter
         if (! empty($parentData)) {
             $this->parentMapping($rowData['sku'], $variantId, $this->export->id, $productId);
         } else {
-            // Simple product: the variant SKU equals the product SKU, so the
-            // single mapping row must encode both GIDs the same way the bulk
-            // path does (externalId=variant GID, relatedId=product GID). The row
-            // created above holds the product GID; overwrite it so a later
-            // re-export (bulk or sequential) resolves the variant id correctly
-            // instead of treating the product GID as the variant id.
+
             $existing = $this->shopifyMappingRepository->where('code', $rowData['sku'])
                 ->where('entityType', self::UNOPIM_ENTITY_NAME)
                 ->where('apiUrl', $this->credential->shopUrl)
@@ -1783,10 +1740,6 @@ class Exporter extends AbstractExporter
 
             $attribute = $this->attributesAll[$optionvalues['code']] ?? null;
 
-            // A variant value can drift out of sync with its attribute options
-            // (renamed/deleted options, casing). When it no longer matches an
-            // option, skip the translation enrichment instead of crashing the
-            // whole batch — the product still exports with its raw option value.
             $option = ($attribute && $optionValue !== null)
                 ? $attribute->options()->where('code', '=', $optionValue)->first()
                 : null;

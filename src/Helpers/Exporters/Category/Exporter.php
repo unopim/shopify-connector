@@ -436,13 +436,10 @@ class Exporter extends AbstractExporter
             return null;
         }
 
-        // Encode each path segment (spaces, brackets, etc.) so Shopify can fetch the image.
         $encodedPath = implode('/', array_map('rawurlencode', explode('/', $path)));
 
         $url = Storage::url($encodedPath);
 
-        // Shopify fetches the image by URL; a private/LAN store URL is unreachable,
-        // so skip the image and let the collection export without it.
         if (! $this->isPubliclyReachableUrl($url)) {
             $this->jobLogger->warning(
                 trans('shopify::app.shopify.export.mapping.collection.errors.image_skipped', ['code' => $categoryCode])

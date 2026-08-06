@@ -40,10 +40,6 @@ class MetaobjectEntryController extends Controller
 
     public function datagrid(string $type): JsonResponse
     {
-        if (! bouncer()->hasPermission('shopify.metaobjects.entry-save')) {
-            abort(403);
-        }
-
         $datagrid = resolve(MetaobjectEntryDataGrid::class);
         $datagrid->setType($type);
 
@@ -52,10 +48,6 @@ class MetaobjectEntryController extends Controller
 
     public function columns(string $type): JsonResponse
     {
-        if (! bouncer()->hasPermission('shopify.metaobjects.entry-save')) {
-            abort(403);
-        }
-
         $definition = $this->definitionRepository->findOneByField('code', $type);
         $query = strtolower((string) request()->get('query', ''));
 

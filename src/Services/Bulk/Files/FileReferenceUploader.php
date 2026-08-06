@@ -9,6 +9,7 @@ use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Services\ShopifyClientFactory;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\StagesShopifyAsset;
 
 /**
  * Uploads UnoPim file/image/video metafield values to Shopify and returns a
@@ -25,6 +26,7 @@ use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 class FileReferenceUploader
 {
     use ShopifyGraphqlRequest;
+    use StagesShopifyAsset;
 
     private const ENTITY_TYPE = 'shopify_file';
 
@@ -70,6 +72,7 @@ class FileReferenceUploader
             $toUpload[$path] = [
                 'content_type' => $value['content_type'],
                 'url'          => $value['url'] ?? $this->resolveUrl($path),
+                'asset'        => $value['asset'] ?? null,
             ];
         }
 
@@ -127,6 +130,20 @@ class FileReferenceUploader
         $files = [];
 
         foreach ($toUpload as $path => $meta) {
+            if (! empty($meta['asset'])) {
+                $source = $this->stageAssetUpload($meta['asset'], $credential);
+
+                if ($source) {
+                    $files[] = [
+                        'alt'            => $path,
+                        'contentType'    => $meta['content_type'],
+                        'originalSource' => $source,
+                    ];
+                }
+
+                continue;
+            }
+
             // Shopify rejects video external URLs; each video must be staged
             // uploaded on its own so one bad video never fails the image batch.
             if (($meta['content_type'] ?? '') === 'VIDEO') {
@@ -274,9 +291,14 @@ class FileReferenceUploader
         $lines = [];
         foreach ($toUpload as $path => $meta) {
             $contentType = $meta['content_type'] ?? '';
-            $source = $contentType === 'VIDEO'
-                ? $this->stageVideoUpload($path, $credential)
-                : ($meta['url'] ?? '');
+
+            if (! empty($meta['asset'])) {
+                $source = $this->stageAssetUpload($meta['asset'], $credential);
+            } elseif ($contentType === 'VIDEO') {
+                $source = $this->stageVideoUpload($path, $credential);
+            } else {
+                $source = $meta['url'] ?? '';
+            }
 
             if (empty($source)) {
                 continue;

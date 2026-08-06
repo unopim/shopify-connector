@@ -1,24 +1,7 @@
 <?php
 
 return [
-    /*
-    | Bulk-operation QUERY used by the product importer. Shopify runs this query
-    | server-side and returns a JSONL file. The %LOCALE% placeholder is replaced
-    | with the import's resolved Shopify locale (or '__NONE__' to skip translations).
-    |
-    | Bulk-operation rules respected here:
-    | - No `first` / `last` / `after` / `before` arguments anywhere
-    | - No fragments, no variables, no aliases
-    | - Nested connections use `edges { node { ... } }` and Shopify auto-paginates
-    */
-    /*
-    | Pass 1 — products + variants + nested-under-variant connections.
-    | Connections (5 max): products, variants, variant.metafields,
-    |                     variant.media, variant.inventoryItem.inventoryLevels.
-    | Inlined scalars on the variant: selectedOptions, inventoryItem.{id,tracked,
-    | requiresShipping,unitCost,measurement}.
-    | Inlined on the product: scalar fields + seo + options + translations.
-    */
+
     'productImportBulkQueryCore' => <<<'GRAPHQL'
 {
   products%PRODUCT_FILTER% {

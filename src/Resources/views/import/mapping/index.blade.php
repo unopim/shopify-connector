@@ -132,14 +132,16 @@
                                 $selectType = 'gallery' === $mediaType ? 'select' : 'multiselect';
                             }
 
-                        $supportedTypes = ['image', 'gallery'];
+                        $supportedTypes = ['image', 'gallery', 'asset'];
 
                         $attributeTypes = [];
 
                         foreach($supportedTypes as $type) {
+                            $typeLabelKey = 'admin::app.catalog.attributes.create.'. $type;
+                            $typeLabel = trans($typeLabelKey);
                             $attributeTypes[] = [
                                 'id'    => $type,
-                                'label' => trans('admin::app.catalog.attributes.create.'. $type)
+                                'label' => $typeLabel === $typeLabelKey ? ucfirst($type) : $typeLabel
                             ];
                         }
 
@@ -192,6 +194,22 @@
                                 async=true
                                 name="mediaAttributes"
                                 entityName="image"
+                                :list-route="route('admin.shopify.get-image-attribute')"
+                                ref="mediaAttributes"
+                                ::disabled="isDisabled()"
+                            />
+                            <x-admin::form.control-group.error control-name="mediaAttributes" />
+                        </x-admin::form.control-group>
+                        <x-admin::form.control-group v-if=" (mediaAttributeType === 'asset')">
+                        <p class="break-words py-3"> @lang('shopify::app.shopify.import.mapping.images.label.attribute')</p>
+                            <x-admin::form.control-group.control
+                                type="select"
+                                track-by="code"
+                                label-by="label"
+                                ::value="valueMedia"
+                                async=true
+                                name="mediaAttributes"
+                                entityName="asset"
                                 :list-route="route('admin.shopify.get-image-attribute')"
                                 ref="mediaAttributes"
                                 ::disabled="isDisabled()"

@@ -37,7 +37,7 @@ Effortlessly integrate your Shopify store with UnoPim for seamless product data 
   Create and manage Shopify metaobject definitions and entries from UnoPim, and link them to products through metaobject reference metafields.
 
 - **Extended Metafield Types**  
-  Map a wide range of metafield types — text, integer, JSON, file/image/video reference, email, link, ID, date & time, measurement, and product, variant, collection and metaobject references.
+  Map a wide range of metafield types — text, integer, JSON, file/image/video reference, email, link, ID, date & time, and product, variant, collection and metaobject references.
 
 - **Tags, MetaFields, and Other Settings**  
   This module provides additional settings for exporting products data from UnoPim to Shopify.
