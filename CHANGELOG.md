@@ -1,28 +1,16 @@
 # 3.0.0 ( 05 August 2026 )
 
 ## Features
-- Compatibility with UnoPim v3.0.0.
-- Compatibility with Shopify Admin API versions 2026-04 and 2026-07, with the latest version selected by default.
 - Metaobject support — new `shopify_metaobject` attribute type; create and manage Shopify metaobject definitions (with a fields datagrid) and entries from UnoPim, including metaobject options: active/draft status, translations, publish entries as web pages, Storefront API access, and Customer Account API access. Exported to Shopify and imported back.
 - Metaobject reference metafield — assign metaobject entries to products; referenced entries are created and updated automatically on export.
 - Shopify taxonomy category support — new `shopify_taxonomy` attribute type with a searchable category picker; the category is exported with the product and imported back.
 - Category-constrained metafield definitions — a metafield definition can be limited to selected taxonomy categories, and only matching products send that metafield.
-- Reference fields inside metaobjects — product, variant and collection references.
-- New metafield types — ID (with regex and length validation) and date & time.
-- Measurement attribute support — export and import weight, dimension and volume.
 - Dynamic product association mapping — metafield product references map to any active UnoPim association type, and newly added association types appear automatically.
 - File reference metafields can now restrict accepted file types (any or media only) and support mixed-media galleries (image, video and file).
 - Collection field mapping — a dedicated screen to map UnoPim category attributes to Shopify collection fields (title, description, SEO title, SEO description, handle and collection type), used for both category export and import.
-- Multi-location inventory export and import.
-- Unit price (unit price measurement) export and import.
-- Product status export mapping, including the Unlisted status.
-
-## Bug fixes
-- Fixed importing Shopify rich text metafields into UnoPim (converted to HTML).
-- Fixed populating measurement metafields (weight, volume and dimension) on import.
-
 
 ## Changed
+- Compatibility with UnoPim v3.0.0.
 - Inventory is always multi-location now; the old single-location handling has been removed.
 
 ## Bug fixes
