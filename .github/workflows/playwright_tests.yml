@@ -49,6 +49,14 @@ jobs:
       E2E_SHOPIFY_URL: ${{ secrets.E2E_SHOPIFY_URL }}
       E2E_SHOPIFY_CLIENT_ID: ${{ secrets.E2E_SHOPIFY_CLIENT_ID }}
       E2E_SHOPIFY_CLIENT_SECRET: ${{ secrets.E2E_SHOPIFY_CLIENT_SECRET }}
+      BASE_URL: http://127.0.0.1:8000
+      ADMIN_USERNAME: admin@example.com
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin123
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      UNOPIM_URL: ${{ secrets.UNOPIM_URL }}
+      INVALID_ADMIN_EMAIL: ${{ secrets.INVALID_ADMIN_EMAIL }}
+      INVALID_ADMIN_PASSWORD: ${{ secrets.INVALID_ADMIN_PASSWORD }}
       WEBHOOK_ALLOW_LOOPBACK: 'true'
 
     steps:
@@ -136,6 +144,10 @@ jobs:
           sed -i "s|^\(DB_DATABASE=\s*\).*$|\1unopim|" .env
           sed -i "s|^\(DB_USERNAME=\s*\).*$|\1root|" .env
           sed -i "s|^\(DB_PASSWORD=\s*\).*$|\1root|" .env
+          echo "REST_API_RATE_LIMIT=100000" >> .env
+          echo "ADMIN_LOGIN_RATE_LIMIT=20" >> .env
+          echo "OAUTH_TOKEN_RATE_LIMIT=100000" >> .env
+          echo "WEBHOOK_ALLOW_LOOPBACK=true" >> .env
 
       - name: Register Shopify Connector Package
         working-directory: unopim
@@ -155,9 +167,13 @@ jobs:
         run: |
           php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
           php artisan db:seed --class="Webkul\\Shopify\\Database\\Seeders\\ShopifySettingConfigurationValuesSeeder"
+          chmod 0600 packages/Webkul/AdminApi/src/Secrets/Oauth/oauth-*.key
+          php artisan unopim:passport:install-preset
+          php artisan db:seed --class=DiscardQaFixtureSeeder
+          php artisan tinker tests/e2e-pw/scripts/seed-dpp-e2e.php
 
           php artisan serve --host=0.0.0.0 --port=8000 > /tmp/server.log 2>&1 &
-          php artisan queue:work --queue=webhooks,default,system,completeness > /tmp/queue.log 2>&1 &
+          php artisan queue:work --queue=webhooks,default,system,completeness,publication > /tmp/queue.log 2>&1 &
 
           echo "Waiting for server..."
           timeout 60 bash -c 'until curl -fsS http://127.0.0.1:8000 >/dev/null; do sleep 1; done' || (cat /tmp/server.log && exit 1)
@@ -222,6 +238,8 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: unopim/tests/e2e-pw
+        env:
+          PASSPORT_E2E_LOCAL: '1'
         run: |
           npx playwright test \
             --shard=${{ matrix.shard-index }}/${{ matrix.shard-total }} \
