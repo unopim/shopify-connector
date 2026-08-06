@@ -90,6 +90,10 @@ class ShopifyServiceProvider extends ServiceProvider
             $viewRenderEventManager->addTemplate('shopify::catalog.attributes.metaobject-binding-modal');
         });
 
+        Event::listen('unopim.admin.settings.data_transfer.tracker.job.state.processing.after', static function (ViewRenderEventManager $viewRenderEventManager) {
+            $viewRenderEventManager->addTemplate('shopify::data-transfer.tracker.phase');
+        });
+
         $requireMetaobjectDefinition = static function () {
             if (request()->input('type') === 'shopify_metaobject' && ! request()->filled('metaobject_definition')) {
                 throw ValidationException::withMessages([
