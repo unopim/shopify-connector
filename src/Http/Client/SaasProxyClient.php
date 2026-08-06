@@ -49,81 +49,82 @@ class SaasProxyClient implements ShopifyClient
      */
     protected array $proxyEndpoints = [
         'createCollection' => [
-            'path' => '/graphql/api/collectionCreate.json',
+            'path'   => '/graphql/api/collectionCreate.json',
             'method' => 'POST',
-            'field' => 'collectionCreate',
+            'field'  => 'collectionCreate',
         ],
         'updateCollection' => [
-            'path' => '/graphql/api/collectionUpdate.json',
+            'path'   => '/graphql/api/collectionUpdate.json',
             'method' => 'PUT',
-            'field' => 'collectionUpdate',
+            'field'  => 'collectionUpdate',
         ],
         'publishablePublish' => [
-            'path' => '/graphql/api/publishablePublish.json',
+            'path'   => '/graphql/api/publishablePublish.json',
             'method' => 'POST',
-            'field' => 'publishablePublish',
+            'field'  => 'publishablePublish',
             'rename' => ['collectionId' => 'id'],
         ],
         'unpublishableUnpublish' => [
-            'path' => '/graphql/api/publishableUnpublish.json',
+            'path'   => '/graphql/api/publishableUnpublish.json',
             'method' => 'POST',
-            'field' => 'publishableUnpublish',
+            'field'  => 'publishableUnpublish',
             'rename' => ['collectionId' => 'id'],
         ],
         'metafieldDefinitionCreate' => [
-            'path' => '/graphql/api/metafieldDefinitionCreate.json',
+            'path'   => '/graphql/api/metafieldDefinitionCreate.json',
             'method' => 'POST',
-            'field' => 'metafieldDefinitionCreate',
+            'field'  => 'metafieldDefinitionCreate',
             'rename' => ['input' => 'definition'],
         ],
         'metafieldDefinitionUpdate' => [
-            'path' => '/graphql/api/metafieldDefinitionUpdate.json',
+            'path'   => '/graphql/api/metafieldDefinitionUpdate.json',
             'method' => 'PUT',
-            'field' => 'metafieldDefinitionUpdate',
+            'field'  => 'metafieldDefinitionUpdate',
             'rename' => ['input' => 'definition'],
         ],
 
         // --- Product (bulk) export -----------------------------------------
         'stagedUploadsCreate' => [
-            'path' => '/graphql/api/stagedUploadsCreate.json',
+            'path'   => '/graphql/api/stagedUploadsCreate.json',
             'method' => 'POST',
-            'field' => 'stagedUploadsCreate',
+            'field'  => 'stagedUploadsCreate',
         ],
+
         'bulkOperationRunMutation' => [
-            'path' => '/graphql/api/bulkOperationRunMutation.json',
+            'path'   => '/graphql/api/bulkOperationRunMutation.json',
             'method' => 'POST',
-            'field' => 'bulkOperationRunMutation',
-            'wrap' => 'input',
+            'field'  => 'bulkOperationRunMutation',
+            'wrap'   => 'input',
         ],
         'bulkOperationRunQuery' => [
-            'path' => '/graphql/api/bulkOperationRunQuery.json',
+            'path'   => '/graphql/api/bulkOperationRunQuery.json',
             'method' => 'POST',
-            'field' => 'bulkOperationRunQuery',
-            'wrap' => 'input',
+            'field'  => 'bulkOperationRunQuery',
+            'wrap'   => 'input',
         ],
         'bulkOperationStatus' => [
-            'path' => '/graphql/api/bulkOperationStatus.json',
-            'method' => 'GET',
-            'field' => 'bulkOperation',
+            'path'    => '/graphql/api/bulkOperationStatus.json',
+            'method'  => 'GET',
+            'field'   => 'bulkOperation',
             'respKey' => 'node',
         ],
         'bulkOperationCancel' => [
-            'path' => '/graphql/api/bulkOperationCancel.json',
+            'path'   => '/graphql/api/bulkOperationCancel.json',
             'method' => 'POST',
-            'field' => 'bulkOperationCancel',
+            'field'  => 'bulkOperationCancel',
         ],
         'productSet' => [
-            'path' => '/graphql/api/productSet.json',
+            'path'   => '/graphql/api/productSet.json',
             'method' => 'POST',
-            'field' => 'productSet',
+            'field'  => 'productSet',
             'rename' => ['input' => 'productSet'],
         ],
 
         // --- Translations --------------------------------------------------
         'createTranslation' => [
-            'path' => '/graphql/api/translationsRegister.json',
-            'method' => 'POST',
-            'field' => 'translationsRegister',
+            'path'         => '/graphql/api/translationsRegister.json',
+            'method'       => 'POST',
+            'field'        => 'translationsRegister',
             'targetFromId' => true,
         ],
 
@@ -131,16 +132,18 @@ class SaasProxyClient implements ShopifyClient
         // CategoryIterator / Category importer paginate collections; both the
         // first-page and the cursor operation hit the same proxy list endpoint.
         'manualCollectionGetting' => [
-            'path' => '/graphql/api/collections.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/collections.json',
+            'method'     => 'GET',
             'connection' => 'collections',
-            'defaults' => ['first' => 10],
+            'defaults'   => ['first' => 10],
+            'override'   => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
         'GetCollectionsByCursor' => [
-            'path' => '/graphql/api/collections.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/collections.json',
+            'method'     => 'GET',
             'connection' => 'collections',
-            'rename' => ['afterCursor' => 'after'],
+            'rename'     => ['afterCursor' => 'after'],
+            'override'   => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
 
         // --- Attribute / Family import ------------------------------------
@@ -153,18 +156,18 @@ class SaasProxyClient implements ShopifyClient
         // reject the whole query ("invalid value ... Expected type 'Boolean'")
         // and the proxy returns no `products`. Ordering is irrelevant here.
         'productGettingOptions' => [
-            'path' => '/graphql/api/products.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/products.json',
+            'method'     => 'GET',
             'connection' => 'products',
-            'altKeys' => ['product'],
-            'defaults' => ['first' => 50],
+            'altKeys'    => ['product'],
+            'defaults'   => ['first' => 50],
         ],
         'productOptionByCursor' => [
-            'path' => '/graphql/api/products.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/products.json',
+            'method'     => 'GET',
             'connection' => 'products',
-            'altKeys' => ['product'],
-            'rename' => ['afterCursor' => 'after'],
+            'altKeys'    => ['product'],
+            'rename'     => ['afterCursor' => 'after'],
         ],
 
         // --- Product import (non-bulk fallback) ---------------------------
@@ -173,18 +176,18 @@ class SaasProxyClient implements ShopifyClient
         // is disabled. The proxy product list returns shallower nesting than the
         // connector's GraphQL query, so the bulk path remains preferred.
         'productAllvalueGetting' => [
-            'path' => '/graphql/api/products.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/products.json',
+            'method'     => 'GET',
             'connection' => 'products',
-            'altKeys' => ['product'],
-            'defaults' => ['first' => 20],
+            'altKeys'    => ['product'],
+            'defaults'   => ['first' => 20],
         ],
         'productAllvalueGettingByCursor' => [
-            'path' => '/graphql/api/products.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/products.json',
+            'method'     => 'GET',
             'connection' => 'products',
-            'altKeys' => ['product'],
-            'rename' => ['afterCursor' => 'after'],
+            'altKeys'    => ['product'],
+            'rename'     => ['afterCursor' => 'after'],
         ],
 
         // --- Metafield import ---------------------------------------------
@@ -193,26 +196,65 @@ class SaasProxyClient implements ShopifyClient
         // caller's per-page `first` (20) is overridden to Shopify's maximum so
         // every definition is captured in that one page.
         'metafieldDefinitionsProductType' => [
-            'path' => '/graphql/api/metafieldDefinitions.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/metafieldDefinitions.json',
+            'method'     => 'GET',
             'connection' => 'metafieldDefinitions',
-            'override' => ['first' => 250, 'ownerType' => 'PRODUCT'],
+            'override'   => [
+                'first'     => 250,
+                'ownerType' => 'PRODUCT',
+                'fields'    => 'id namespace key name ownerType pinnedPosition type { name } validations { name type value } constraints { key values(first: 250) { nodes { value } } }',
+            ],
         ],
         'metafieldDefinitionsProductVariantType' => [
-            'path' => '/graphql/api/metafieldDefinitions.json',
-            'method' => 'GET',
+            'path'       => '/graphql/api/metafieldDefinitions.json',
+            'method'     => 'GET',
             'connection' => 'metafieldDefinitions',
-            'override' => ['first' => 250, 'ownerType' => 'PRODUCTVARIANT'],
+            'override'   => ['first' => 250, 'ownerType' => 'PRODUCTVARIANT'],
         ],
 
         // --- Translations (import read) -----------------------------------
         // Per-resource translation lookup used by the Category / Attribute /
         // Product importers. The proxy nests the resource under `node`.
         'getCollectionTranslations' => [
-            'path' => '/graphql/api/translatableResource.json',
-            'method' => 'GET',
-            'field' => 'translatableResource',
+            'path'    => '/graphql/api/translatableResource.json',
+            'method'  => 'GET',
+            'field'   => 'translatableResource',
             'respKey' => 'node',
+        ],
+
+        'metaobjectDefinitions' => [
+            'path'       => '/graphql/api/metaobjectDefinitions.json',
+            'method'     => 'POST',
+            'connection' => 'metaobjectDefinitions',
+            'override'   => ['fields' => 'id name type'],
+        ],
+        'metaobjectDefinitionByType' => [
+            'path'     => '/graphql/api/metaobjectDefinitionsByType/{type}.json',
+            'method'   => 'POST',
+            'field'    => 'metaobjectDefinitionByType',
+            'override' => ['fields' => 'id name type fieldDefinitions{ key name required type{ name } validations{ name value } }'],
+        ],
+        'metaobjectDefinitionCreate' => [
+            'path'   => '/graphql/api/metaobjectDefinitionCreate.json',
+            'method' => 'POST',
+            'field'  => 'metaobjectDefinitionCreate',
+        ],
+        'metaobjectDefinitionUpdate' => [
+            'path'   => '/graphql/api/metaobjectDefinitionUpdate.json',
+            'method' => 'PUT',
+            'field'  => 'metaobjectDefinitionUpdate',
+        ],
+        'metaobjectUpsert' => [
+            'path'     => '/graphql/api/metaobjectUpsert.json',
+            'method'   => 'PUT',
+            'field'    => 'metaobjectUpsert',
+            'override' => ['fields' => 'id handle'],
+        ],
+        'getMetaobjectsByType' => [
+            'path'       => '/graphql/api/metaobjects.json',
+            'method'     => 'GET',
+            'connection' => 'metaobjects',
+            'override'   => ['fields' => 'id type handle fields{ key value }'],
         ],
     ];
 
@@ -253,9 +295,9 @@ class SaasProxyClient implements ShopifyClient
 
         return array_map(function ($locale) {
             return [
-                'locale' => $locale['locale'],
-                'name' => $locale['name'] ?? $locale['locale'],
-                'primary' => (bool) ($locale['primary'] ?? false),
+                'locale'    => $locale['locale'],
+                'name'      => $locale['name'] ?? $locale['locale'],
+                'primary'   => (bool) ($locale['primary'] ?? false),
                 'published' => (bool) ($locale['published'] ?? true),
             ];
         }, $locales);
@@ -313,8 +355,8 @@ class SaasProxyClient implements ShopifyClient
 
         try {
             $response = Http::withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
+                'Accept'        => 'application/json',
+                'Content-Type'  => 'application/json',
                 'Authorization' => 'Bearer '.$this->jwt,
             ])
                 ->timeout($this->timeout)
@@ -328,7 +370,7 @@ class SaasProxyClient implements ShopifyClient
             return false;
         } catch (\Throwable $e) {
             Log::warning('Shopify SaaS proxy revoke failed', [
-                'url' => $url,
+                'url'     => $url,
                 'message' => $e->getMessage(),
             ]);
 
@@ -349,21 +391,21 @@ class SaasProxyClient implements ShopifyClient
 
         try {
             $response = Http::withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
+                'Accept'        => 'application/json',
+                'Content-Type'  => 'application/json',
                 'Authorization' => 'Bearer '.$this->jwt,
             ])
                 ->timeout($this->timeout)
                 ->post($url, $payload);
 
             return [
-                'ok' => $response->successful(),
+                'ok'   => $response->successful(),
                 'code' => $response->status(),
                 'body' => $response->json() ?? [],
             ];
         } catch (\Throwable $e) {
             Log::warning('Shopify SaaS proxy sync failed', [
-                'url' => $url,
+                'url'     => $url,
                 'message' => $e->getMessage(),
             ]);
 
@@ -384,13 +426,24 @@ class SaasProxyClient implements ShopifyClient
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
         }
 
+        if ($operation === 'getFileById') {
+            return $this->getFilesByIds((array) ($variables['ids'] ?? []));
+        }
+
         if (! isset($this->proxyEndpoints[$operation])) {
             return $this->proxyErrorResponse(null, "Shopify SaaS proxy does not support the '{$operation}' operation.");
         }
 
         $definition = $this->proxyEndpoints[$operation];
 
-        $url = rtrim($this->baseUrl, '/').$definition['path'];
+        $path = preg_replace_callback('/\{(\w+)\}/', function ($matches) use (&$variables) {
+            $value = rawurlencode((string) ($variables[$matches[1]] ?? ''));
+            unset($variables[$matches[1]]);
+
+            return $value;
+        }, $definition['path']);
+
+        $url = rtrim($this->baseUrl, '/').$path;
 
         // The data key the consumer reads the result under: a list operation
         // exposes its `connection` key, a single-result operation its `field`.
@@ -398,8 +451,8 @@ class SaasProxyClient implements ShopifyClient
 
         try {
             $request = Http::withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
+                'Accept'        => 'application/json',
+                'Content-Type'  => 'application/json',
                 'Authorization' => 'Bearer '.$this->jwt,
             ])
                 ->timeout($this->timeout)
@@ -449,8 +502,8 @@ class SaasProxyClient implements ShopifyClient
         } catch (\Throwable $e) {
             Log::error('Shopify SaaS proxy GraphQL call failed', [
                 'endpoint' => $operation,
-                'url' => $url,
-                'message' => $e->getMessage(),
+                'url'      => $url,
+                'message'  => $e->getMessage(),
             ]);
 
             return $this->proxyErrorResponse(null, $e->getMessage(), $dataKey);
@@ -580,6 +633,16 @@ class SaasProxyClient implements ShopifyClient
             }
         }
 
+        foreach ($definition['defaults'] ?? [] as $key => $value) {
+            if (! isset($body[$key]) || $body[$key] === '') {
+                $body[$key] = $value;
+            }
+        }
+
+        foreach ($definition['override'] ?? [] as $key => $value) {
+            $body[$key] = $value;
+        }
+
         // The proxy's translationsRegister endpoint requires the resource id as
         // a top-level `resourceId` (Shopify's translationsRegister(resourceId:)
         // argument); its doc also shows a per-item `target`. Send both so the
@@ -638,16 +701,35 @@ class SaasProxyClient implements ShopifyClient
         }, array_values($list));
     }
 
-    /**
-     * Run a JSON GET against the proxy with Bearer auth.
-     */
+    protected function getFilesByIds(array $ids): array
+    {
+        $ids = array_values(array_filter($ids));
+
+        if (empty($ids)) {
+            return ['code' => 200, 'body' => ['data' => ['nodes' => []]]];
+        }
+
+        $query = http_build_query([
+            'query'  => implode(' OR ', array_map(fn ($gid) => 'id:'.preg_replace('#^.*/#', '', (string) $gid), $ids)),
+            'fields' => 'id fileStatus preview{image{url}} ... on MediaImage{ image{url} } ... on Video{ sources{url} } ... on GenericFile{ url }',
+            'first'  => count($ids),
+        ]);
+
+        $result = $this->get('/graphql/api/files.json?'.$query);
+
+        return [
+            'code' => $result['code'] ?? null,
+            'body' => ['data' => ['nodes' => $result['body']['files']['nodes'] ?? []]],
+        ];
+    }
+
     protected function get(string $path): array
     {
         $url = rtrim($this->baseUrl, '/').$path;
 
         try {
             $response = Http::withHeaders([
-                'Accept' => 'application/json',
+                'Accept'        => 'application/json',
                 'Authorization' => 'Bearer '.$this->jwt,
             ])
                 ->timeout($this->timeout)
@@ -659,7 +741,7 @@ class SaasProxyClient implements ShopifyClient
             ];
         } catch (\Throwable $e) {
             Log::warning('Shopify SaaS proxy call failed', [
-                'url' => $url,
+                'url'     => $url,
                 'message' => $e->getMessage(),
             ]);
 

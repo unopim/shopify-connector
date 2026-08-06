@@ -142,7 +142,7 @@ class Importer extends AbstractImporter
             $mutationType = 'productGettingOptions';
             if ($cursor) {
                 $variables = [
-                    'first' => 50,
+                    'first'       => 50,
                     'afterCursor' => $cursor,
                 ];
                 $mutationType = 'productOptionByCursor';
@@ -183,7 +183,8 @@ class Importer extends AbstractImporter
 
         $simpleProductFamilyId = $importMapping['family_variant'] ?? null;
         unset($importMapping['family_variant']);
-        $metaFieldAllAttr = array_merge($optionWithVariant, array_unique($this->defintiionMapping), array_values($importMapping), $allImageAttr);
+        $locationAttrCodes = array_values($this->credential?->extras['locationAttributeMappings'] ?? []);
+        $metaFieldAllAttr = array_merge($optionWithVariant, array_unique($this->defintiionMapping), array_values($importMapping), $allImageAttr, $locationAttrCodes);
         $metaFieldAllAttr[] = 'sku';
         $metaFieldAttrIds = $this->attributeRepository->whereIn('code', $metaFieldAllAttr)->pluck('id')->toArray();
         if ($simpleProductFamilyId) {
@@ -196,7 +197,7 @@ class Importer extends AbstractImporter
             $allIds = $this->attributeFamilyGroupMappingRepository->whereIn('attribute_family_id', [$simpleProductFamilyId])->pluck('id')->toArray();
 
             $groupMappingId = $this->attributeFamilyGroupMappingRepository->findWhere([
-                'attribute_group_id' => $this->attributeGroupId,
+                'attribute_group_id'  => $this->attributeGroupId,
                 'attribute_family_id' => $simpleProductFamilyId,
             ])->first()?->id;
 
@@ -215,14 +216,14 @@ class Importer extends AbstractImporter
             if (! empty($notInMetafields)) {
                 if (! $groupMappingId) {
                     $groupMappingId = $this->attributeFamilyGroupMappingRepository->insertGetId([
-                        'attribute_group_id' => $this->attributeGroupId,
+                        'attribute_group_id'  => $this->attributeGroupId,
                         'attribute_family_id' => $simpleProductFamilyId,
                     ]);
                     $this->updatedItemsCount++;
                 }
                 $data = array_map(function ($notInMetafield) use ($groupMappingId) {
                     return [
-                        'attribute_id' => $notInMetafield,
+                        'attribute_id'              => $notInMetafield,
                         'attribute_family_group_id' => $groupMappingId,
                     ];
                 }, $notInMetafields);
@@ -268,7 +269,8 @@ class Importer extends AbstractImporter
             unset($importMappingAttr['images']);
             unset($importMappingAttr['family_variant']);
 
-            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->defintiionMapping);
+            $locationAttrCodes = array_values($this->credential?->extras['locationAttributeMappings'] ?? []);
+            $allAttrForFamily = array_merge(array_unique(array_values($importMappingAttr)), $lowercaseArray, explode(',', $imageMappingAttr), $this->defintiionMapping, $locationAttrCodes);
 
             $attrId = [];
 
@@ -282,18 +284,18 @@ class Importer extends AbstractImporter
                     continue;
                 }
                 $attrId[] = [
-                    'id' => (string) $attributeModel?->id,
+                    'id'       => (string) $attributeModel?->id,
                     'position' => (string) $key,
                 ];
             }
             $family[] = [
-                'code' => $family_code,
+                'code'        => $family_code,
                 $this->locale => [
                     'name' => $family_code,
                 ],
                 'attribute_groups' => [
                     $this->attributeGroupId => [
-                        'position' => 1,
+                        'position'          => 1,
                         'custom_attributes' => $attrId,
                     ],
                 ],
@@ -337,8 +339,8 @@ class Importer extends AbstractImporter
             ) {
                 $this->importBatchRepository->create([
                     'job_track_id' => $this->import->id,
-                    'data' => $batchRows,
-                    'summary' => [
+                    'data'         => $batchRows,
+                    'summary'      => [
                         'created' => $this->getCreatedItemsCount(),
                         'updated' => $this->getUpdatedItemsCount(),
                     ],

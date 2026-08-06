@@ -11,8 +11,9 @@ class ShopifyProductValidator extends JobValidator
      */
     protected array $rules = [
         'filters.credentials' => 'required|integer|min:0',
-        'filters.channel' => 'required',
-        'filters.currency' => 'required',
+        'filters.channel'     => 'required',
+        'filters.currency'    => 'required',
+        'filters.status'      => 'nullable|in:enable,disable',
     ];
 
     /**
@@ -20,8 +21,9 @@ class ShopifyProductValidator extends JobValidator
      */
     protected array $attributeNames = [
         'filters.credentials' => 'Credentials',
-        'filters.channel' => 'Channel',
-        'filters.currency' => 'Currency',
+        'filters.channel'     => 'Channel',
+        'filters.currency'    => 'Currency',
+        'filters.status'      => 'Status',
     ];
 
     public function getValidatorRule(): array

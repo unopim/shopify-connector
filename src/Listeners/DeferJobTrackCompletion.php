@@ -63,9 +63,9 @@ class DeferJobTrackCompletion
             $summary['follow_up_phases_finalize_pending'] = true;
 
             $this->jobTrackRepository->update([
-                'state' => ExportHelper::STATE_PROCESSING,
+                'state'        => ExportHelper::STATE_PROCESSING,
                 'completed_at' => null,
-                'summary' => $summary,
+                'summary'      => $summary,
             ], $jobTrackId);
         });
     }

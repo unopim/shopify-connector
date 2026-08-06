@@ -2,21 +2,25 @@
 
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
+use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\ProductPhaseDataService;
 
 class TranslationsBulkPayloadBuilder
 {
     protected array $translationFieldMap = [
-        'title' => 'title',
-        'descriptionHtml' => 'body_html',
-        'handle' => 'handle',
-        'productType' => 'product_type',
-        'metafields_global_title_tag' => 'meta_title',
+        'title'                             => 'title',
+        'descriptionHtml'                   => 'body_html',
+        'handle'                            => 'handle',
+        'productType'                       => 'product_type',
+        'metafields_global_title_tag'       => 'meta_title',
         'metafields_global_description_tag' => 'meta_description',
     ];
 
     public function __construct(
-        protected ProductPhaseDataService $productPhaseDataService
+        protected ProductPhaseDataService $productPhaseDataService,
+        protected ShopifyCredentialRepository $credentialRepository,
+        protected ShopifyMappingRepository $mappingRepository,
     ) {}
 
     /**
@@ -37,6 +41,7 @@ class TranslationsBulkPayloadBuilder
      * @param  string  $currency  Currency code
      * @param  array  $storeLocaleMapping  Map: shopifyLocale => unopimLocale
      * @param  array  $storeLocales  Array of locale objects from credential
+     * @param  array<string, string>  $metafieldAliases  Map: resultAlias => namespace.key
      * @return array JSONL lines
      */
     public function build(
@@ -45,7 +50,8 @@ class TranslationsBulkPayloadBuilder
         string $channel,
         string $currency,
         array $storeLocaleMapping,
-        array $storeLocales
+        array $storeLocales,
+        array $metafieldAliases = []
     ): array {
         if (count($storeLocaleMapping) < 2) {
             return [];
@@ -64,25 +70,61 @@ class TranslationsBulkPayloadBuilder
             ? ($storeLocaleMapping[$defaultLanguage['locale']] ?? null)
             : null;
 
+        $productIdBySku = [];
+        $unresolvedSkus = [];
+        $metafieldGidMap = [];
+
+        foreach ($entries as $entry) {
+            $sku = $entry['manifest']['product_sku'] ?? null;
+
+            if (! $sku) {
+                continue;
+            }
+
+            $product = $entry['product'] ?? [];
+
+            if (empty($product['id'])) {
+                $unresolvedSkus[$sku] = true;
+
+                continue;
+            }
+
+            $productIdBySku[$sku] = $product['id'];
+
+            // Metafield instance GIDs return inline in the core result under the aliases
+            // injected into productSetBulk — works for manual and SaaS alike, so no
+            // separate metafield read is needed.
+            foreach ($metafieldAliases as $alias => $nameSpaceKey) {
+                $gid = $product[$alias]['id'] ?? null;
+
+                if ($gid) {
+                    $metafieldGidMap[$product['id']][$nameSpaceKey] = $gid;
+                }
+            }
+        }
+
+        // Products recreated after a stale-mapping NOT_FOUND are absent from the core
+        // result file (null product id); resolve their GID from the freshly-synced
+        // mapping so their product-level translations are still registered.
+        $unresolvedSkus = array_diff_key($unresolvedSkus, $productIdBySku);
+
+        if (! empty($unresolvedSkus)) {
+            $productIdBySku += $this->resolveProductGidsBySku(array_keys($unresolvedSkus), $credentialId);
+        }
+
         $lines = [];
 
         foreach ($entries as $entry) {
-            if (! empty($entry['user_errors']) || empty($entry['product']['id'])) {
+            $productSku = $entry['manifest']['product_sku'] ?? null;
+            $productId = $productSku ? ($productIdBySku[$productSku] ?? null) : null;
+
+            if (! $productId) {
                 continue;
             }
 
-            $productId = $entry['product']['id'];
-            $manifest = $entry['manifest'] ?? [];
-            $productSku = $manifest['product_sku'] ?? null;
-
-            if (! $productSku) {
-                continue;
-            }
-
-            $translations = $this->buildTranslationsForProduct(
-                $productId,
+            $built = $this->buildTranslationsForProduct(
+                $metafieldGidMap[$productId] ?? [],
                 $productSku,
-                $manifest,
                 $credentialId,
                 $channel,
                 $currency,
@@ -90,89 +132,183 @@ class TranslationsBulkPayloadBuilder
                 $storeLocaleMapping
             );
 
-            if (empty($translations)) {
-                continue;
+            if (! empty($built['product'])) {
+                $lines[] = json_encode([
+                    'resourceId'   => $this->ensureGid($productId, 'Product'),
+                    'translations' => $built['product'],
+                ], JSON_UNESCAPED_SLASHES);
             }
 
-            $line = [
-                'resourceId' => $this->ensureGid($productId, 'Product'),
-                'translations' => $translations,
-            ];
-
-            $lines[] = json_encode($line, JSON_UNESCAPED_SLASHES);
+            foreach ($built['metafields'] as $gid => $translations) {
+                $lines[] = json_encode([
+                    'resourceId'   => $gid,
+                    'translations' => $translations,
+                ], JSON_UNESCAPED_SLASHES);
+            }
         }
 
         return $lines;
     }
 
     /**
-     * Build all translation entries for a single product.
+     * Resolve `productSku => productGid` from synced product mappings, for products
+     * absent from the core result file (recreated after a stale-mapping NOT_FOUND).
+     *
+     * @param  array<int, string>  $skus
+     * @return array<string, string>
+     */
+    protected function resolveProductGidsBySku(array $skus, int $credentialId): array
+    {
+        $credential = $this->credentialRepository->find($credentialId);
+
+        if (! $credential) {
+            return [];
+        }
+
+        $map = [];
+
+        foreach ($this->mappingRepository->findWhereIn('code', array_values($skus)) as $row) {
+            if ($row->entityType !== 'product' || $row->apiUrl !== $credential->shopUrl) {
+                continue;
+            }
+
+            $gid = $row->relatedId ?: $row->externalId;
+
+            if ($gid) {
+                $map[$row->code] = $gid;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Build product and metafield translation entries for a single product.
+     *
+     * @return array{product: array<int, array>, metafields: array<string, array<int, array>>}
      */
     protected function buildTranslationsForProduct(
-        string $productId,
+        array $metafieldGidMap,
         string $sku,
-        array $manifest,
         int $credentialId,
         string $channel,
         string $currency,
         ?string $shopifyDefaultLocale,
         array $storeLocaleMapping
     ): array {
-        $translations = [];
-
-        // Fetch product context once per product SKU
-        $context = $this->productPhaseDataService->getProductContext(
-            $sku,
-            $credentialId,
-            $channel,
-            $currency
-        );
+        $context = $this->productPhaseDataService->getProductContext($sku, $credentialId, $channel, $currency);
 
         if (! $context) {
-            return [];
+            return ['product' => [], 'metafields' => []];
         }
 
         $productData = $context['parent_data'] ?: $context['row_data'];
         $defaultFields = $context['merged_fields'] ?? [];
         $exportMapping = $context['export_mapping']->mapping ?? [];
 
+        $metafieldDefs = $this->resolveTranslatableMetafields(
+            $context['product_metafields'] ?? [],
+            $metafieldGidMap,
+            $defaultFields,
+            $context['attributes'] ?? []
+        );
+
+        $productTranslations = [];
+        $metafieldTranslations = [];
+
         foreach ($storeLocaleMapping as $shopifyLocaleCode => $unopimLocaleCode) {
             if ($shopifyDefaultLocale === $unopimLocaleCode) {
-                continue; // Skip default locale
+                continue;
             }
 
-            $localeFields = $this->productPhaseDataService->getAllAttributeValues(
-                $productData,
-                $channel,
-                $unopimLocaleCode
-            );
+            $localeFields = $this->productPhaseDataService->getAllAttributeValues($productData, $channel, $unopimLocaleCode);
 
             foreach (($exportMapping['shopify_connector_settings'] ?? []) as $shopifyField => $unopimField) {
                 if (! isset($this->translationFieldMap[$shopifyField])) {
                     continue;
                 }
 
-                $translationKey = $this->translationFieldMap[$shopifyField];
                 $value = $localeFields[$unopimField] ?? '';
-                $defaultValue = $defaultFields[$unopimField] ?? '';
 
                 if (empty($value) || ! is_string($value)) {
                     continue;
                 }
-                if ($shopifyField === 'handle') {
-                    $value = strtolower($value).'-'.$shopifyLocaleCode;
-                    $defaultValue = strtolower($defaultValue);
+
+                if ($this->translationFieldMap[$shopifyField] === 'handle' && $value === ($defaultFields[$unopimField] ?? null)) {
+                    continue;
                 }
-                $translations[] = [
-                    'key' => $translationKey,
-                    'value' => $value,
-                    'locale' => $shopifyLocaleCode,
-                    'translatableContentDigest' => hash('sha256', (string) $defaultValue),
+
+                $productTranslations[] = [
+                    'key'                       => $this->translationFieldMap[$shopifyField],
+                    'value'                     => $value,
+                    'locale'                    => $shopifyLocaleCode,
+                    'translatableContentDigest' => hash('sha256', (string) ($defaultFields[$unopimField] ?? '')),
+                ];
+            }
+
+            foreach ($metafieldDefs as $def) {
+                $value = $localeFields[$def['code']] ?? '';
+
+                if (empty($value) || ! is_string($value)) {
+                    continue;
+                }
+
+                $metafieldTranslations[$def['gid']][] = [
+                    'key'                       => 'value',
+                    'value'                     => $value,
+                    'locale'                    => $shopifyLocaleCode,
+                    'translatableContentDigest' => $def['digest'],
                 ];
             }
         }
 
-        return $translations;
+        return ['product' => $productTranslations, 'metafields' => $metafieldTranslations];
+    }
+
+    /**
+     * Resolve translatable text-type, per-locale metafield definitions to their
+     * exported GID and default-value digest.
+     *
+     * @return array<int, array{code: string, gid: string, digest: string}>
+     */
+    protected function resolveTranslatableMetafields(array $definitions, array $gidByKey, array $defaultFields, array $attributes): array
+    {
+        if (empty($definitions) || empty($gidByKey)) {
+            return [];
+        }
+
+        $resolved = [];
+
+        foreach ($definitions as $def) {
+            if (! empty($def['listvalue']) || ! $this->isTranslatableType($def['type'] ?? null)) {
+                continue;
+            }
+
+            $code = $def['code'] ?? null;
+
+            if (! $code || empty($attributes[$code]) || ! $attributes[$code]->value_per_locale) {
+                continue;
+            }
+
+            $gid = $gidByKey[$def['name_space_key'] ?? ''] ?? null;
+
+            if (! $gid) {
+                continue;
+            }
+
+            $resolved[] = [
+                'code'   => $code,
+                'gid'    => $gid,
+                'digest' => hash('sha256', (string) ($defaultFields[$code] ?? '')),
+            ];
+        }
+
+        return $resolved;
+    }
+
+    protected function isTranslatableType(?string $type): bool
+    {
+        return in_array($type, ['single_line_text_field', 'multi_line_text_field', 'rich_text_field'], true);
     }
 
     /**

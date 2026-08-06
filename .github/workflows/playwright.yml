@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         operating-systems: [ubuntu-latest]
-        php-versions: ['8.3']
+        php-versions: ['8.4']
 
     services:
       mysql:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Install UnoPIM
         run: |
-          git clone --branch v2.1.2 --single-branch https://github.com/unopim/unopim.git
+          git clone --branch 3.0 --single-branch https://github.com/unopim/unopim.git
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env
@@ -76,6 +76,18 @@ jobs:
           composer dump-autoload
           php artisan shopify-package:install
           php artisan optimize:clear
+
+      - name: Ensure admin user for E2E login
+        run: |
+          cd unopim
+          php artisan tinker <<'PHP'
+          $role = \Webkul\User\Models\Role::where('permission_type', 'all')->first()
+              ?? \Webkul\User\Models\Role::create(['name' => 'Administrator', 'description' => 'Full access', 'permission_type' => 'all']);
+          \Webkul\User\Models\Admin::updateOrCreate(
+              ['email' => 'admin@example.com'],
+              ['name' => 'Admin', 'password' => bcrypt('admin123'), 'status' => 1, 'role_id' => $role->id]
+          );
+          PHP
 
       - name: Start UnoPim server
         run: |

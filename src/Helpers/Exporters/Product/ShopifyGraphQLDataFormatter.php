@@ -2,27 +2,72 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
+use Illuminate\Support\Carbon;
+use Webkul\Shopify\Helpers\MeasurementUnitMapper;
+use Webkul\Shopify\Helpers\ShopifyFields;
+
 class ShopifyGraphQLDataFormatter
 {
     protected $productIndexes = ['title', 'handle', 'vendor', 'descriptionHtml', 'productType'];
 
     protected $seoFields = ['metafields_global_title_tag', 'metafields_global_description_tag'];
 
-    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
+    protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price'];
 
     protected $currency = 'USD';
 
     protected $locationId = null;
 
+    protected $locationAttributeMappings = [];
+
     protected $separators = [
         'colon' => ': ',
-        'dash' => '- ',
+        'dash'  => '- ',
         'space' => ' ',
     ];
 
     protected $settingMapping;
 
     protected $attributeAll;
+
+    /** @var array<string, string> assetPath => Shopify File GID */
+    protected array $fileReferenceMap = [];
+
+    /**
+     * Resolved attribute labels memoized per "code|locale". The label is an
+     * export-wide constant, but translate() is costly (~17ms), so resolving it
+     * once instead of per product removes it from the hot path.
+     *
+     * @var array<string, string>
+     */
+    protected array $attributeLabelCache = [];
+
+    /**
+     * Option code => translated label maps memoized per "attributeCode|locale".
+     * Option labels are export-wide constants, but resolving them queried the
+     * options + translations on every product; caching removes that N+1.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $optionLabelCache = [];
+
+    /**
+     * Memoized option code => swatch hex map, keyed by attribute code.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $swatchHexCache = [];
+
+    /**
+     * Inject the asset-path → File GID map built by FileReferenceUploader before
+     * a product batch is formatted, so file_reference metafields resolve to GIDs.
+     *
+     * @param  array<string, string>  $map
+     */
+    public function setFileReferenceMap(array $map): void
+    {
+        $this->fileReferenceMap = $map;
+    }
 
     /**
      * Formats raw product data for GraphQL API based on export mapping and other parameters.
@@ -34,15 +79,18 @@ class ShopifyGraphQLDataFormatter
         array $parentData = [],
         $productMetaField = [],
         $variantMetaField = [],
+        bool $variantExists = false,
     ): array {
-        $status = $this->getStatus($rawData, $parentData);
+        $configuredStatus = $exportMapping['shopify_connector_settings']['status'] ?? null;
+
+        $status = $this->getStatus($rawData, $parentData, $configuredStatus);
 
         $formatted = [
-            'title' => $parentData['sku'] ?? $rawData['sku'],
+            'title'  => $parentData['sku'] ?? $rawData['sku'],
             'status' => $status,
         ];
 
-        if ($this->locationId) {
+        if ($this->locationId && empty($this->locationAttributeMappings)) {
             $formatted['variant']['inventoryQuantities']['locationId'] = $this->locationId;
             $formatted['variant']['inventoryQuantities']['name'] = 'available';
             $formatted['variant']['inventoryQuantities']['quantity'] = 0;
@@ -50,6 +98,10 @@ class ShopifyGraphQLDataFormatter
 
         $formatted = $this->processShopifyConnectorSettings($formatted, $rawData, $exportMapping, $locale, $parentData);
         $formatted = $this->processShopifyConnectorDefaults($formatted, $exportMapping);
+
+        $this->applyUnitPriceMeasurement($formatted, $rawData, $exportMapping);
+
+        $this->applyLocationInventory($formatted, $rawData, $variantExists);
 
         $this->processShopifyMetafieldDefintions($formatted, $rawData, $locale, $parentData, $productMetaField, $variantMetaField, $exportMapping['unit'] ?? []);
 
@@ -94,8 +146,11 @@ class ShopifyGraphQLDataFormatter
 
                 switch ($type) {
                     case 'multi_line_text_field':
-                    case 'color':
                         $metafieldValue = $rawData[$unoAttribute] ?? '';
+                        break;
+
+                    case 'color':
+                        $metafieldValue = $this->resolveColorMetafield($attribute, $rawData[$unoAttribute] ?? '');
                         break;
 
                     case 'rating':
@@ -111,24 +166,67 @@ class ShopifyGraphQLDataFormatter
                         break;
 
                     case 'weight':
-                        $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['weight'] ?? 'GRAMS',
-                        ]);
-                        break;
-
                     case 'volume':
+                    case 'dimension':
+                        $rawMeasure = $rawData[$unoAttribute] ?? null;
+
+                        if (($attribute?->type ?? null) === 'measurement') {
+                            $resolved = is_array($rawMeasure)
+                                ? (new MeasurementUnitMapper)->resolve($type, $rawMeasure)
+                                : null;
+                            $metafieldValue = $resolved === null
+                                ? null
+                                : json_encode(['value' => $resolved[0], 'unit' => $resolved[1]]);
+
+                            break;
+                        }
+
+                        $fallbackUnit = ['weight' => 'GRAMS', 'volume' => 'MILLILITERS', 'dimension' => 'MILLIMETERS'][$type];
                         $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['volume'] ?? 'MILLILITERS',
+                            'value' => $rawMeasure ?? 0,
+                            'unit'  => $units[$type] ?? $fallbackUnit,
                         ]);
+
                         break;
 
-                    case 'dimension':
-                        $metafieldValue = json_encode([
-                            'value' => $rawData[$unoAttribute] ?? 0,
-                            'unit' => $units['dimension'] ?? 'MILLIMETERS',
-                        ]);
+                    case 'file_reference':
+                        $rawValue = $rawData[$unoAttribute] ?? [];
+                        $references = ($attribute?->type ?? null) === 'asset'
+                            ? array_filter(array_map('trim', explode(',', (string) $rawValue)))
+                            : (array) $rawValue;
+                        $gids = array_values(array_filter(array_map(
+                            fn ($v) => $this->fileReferenceMap[(string) $v] ?? null,
+                            $references
+                        )));
+                        $metafieldValue = ! empty($field['listvalue'])
+                            ? (empty($gids) ? null : json_encode($gids))
+                            : ($gids[0] ?? null);
+                        break;
+
+                    case 'link':
+                        $url = $rawData[$unoAttribute] ?? null;
+
+                        if (empty($url)) {
+                            $metafieldValue = null;
+                            break;
+                        }
+
+                        $textAttr = json_decode($field['validations'] ?? '[]', true)['link_text_attribute'] ?? null;
+                        $text = ($textAttr ? ($rawData[$textAttr] ?? null) : null) ?: $url;
+
+                        $metafieldValue = json_encode(['text' => $text, 'url' => $url], JSON_UNESCAPED_SLASHES);
+                        break;
+
+                    case 'json':
+                        $metafieldValue = $this->encodeJsonMetafield($rawData[$unoAttribute] ?? null);
+                        break;
+
+                    case 'rich_text_field':
+                        $metafieldValue = $this->htmlToShopifyRichText($rawData[$unoAttribute] ?? null);
+                        break;
+
+                    case 'date_time':
+                        $metafieldValue = Carbon::parse($rawData[$unoAttribute])->format('Y-m-d\TH:i:s');
                         break;
 
                     default:
@@ -139,20 +237,170 @@ class ShopifyGraphQLDataFormatter
                 }
 
                 if (! empty($field['listvalue'])) {
-                    $type = $field['listvalue'] ? 'list.'.$type : $type;
-                    $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    if ($type !== 'file_reference' && $type !== 'link') {
+                        $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                    }
+                    $type = 'list.'.$type;
+                }
+
+                if ($metafieldValue === null) {
+                    continue;
                 }
 
                 $formatted[] = [
-                    'key' => $nameSpaceAndKey[1],
-                    'value' => $metafieldValue,
-                    'type' => $type,
+                    'key'       => $nameSpaceAndKey[1],
+                    'value'     => $metafieldValue,
+                    'type'      => $type,
                     'namespace' => $nameSpaceAndKey[0],
                 ];
             }
         }
 
         return $formatted;
+    }
+
+    /**
+     * Encode a value for a `json` type metafield. Already-valid JSON is kept as
+     * is; a plain string/scalar is wrapped into a JSON string Shopify accepts.
+     */
+    protected function encodeJsonMetafield(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $value = is_string($value) ? $value : (string) $value;
+
+        json_decode($value);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Convert a UnoPim WYSIWYG/HTML value into Shopify's `rich_text_field` JSON schema.
+     * Returns null when there is nothing to send.
+     */
+    protected function htmlToShopifyRichText(?string $html): ?string
+    {
+        if (empty($html)) {
+            return null;
+        }
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8"><div>'.$html.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $wrapper = $dom->getElementsByTagName('div')->item(0);
+        $children = $wrapper ? $this->richTextBlocks($wrapper) : [];
+
+        if (empty($children)) {
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($html)));
+
+            if ($text === '') {
+                return null;
+            }
+
+            $children = [['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $text]]]];
+        }
+
+        return json_encode(['type' => 'root', 'children' => $children], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Build Shopify rich-text block nodes (paragraph, heading, list) from a DOM node.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextBlocks(\DOMNode $node): array
+    {
+        $blocks = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if (trim($child->textContent) !== '') {
+                    $blocks[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $child->textContent]]];
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true)) {
+                $blocks[] = ['type' => 'heading', 'level' => (int) substr($tag, 1), 'children' => $this->richTextInline($child)];
+            } elseif (in_array($tag, ['ul', 'ol'], true)) {
+                $items = [];
+                foreach ($child->childNodes as $li) {
+                    if ($li->nodeType === XML_ELEMENT_NODE && strtolower($li->nodeName) === 'li') {
+                        $items[] = ['type' => 'list-item', 'children' => $this->richTextInline($li)];
+                    }
+                }
+                if (! empty($items)) {
+                    $blocks[] = ['type' => 'list', 'listType' => $tag === 'ol' ? 'ordered' : 'unordered', 'children' => $items];
+                }
+            } else {
+                $inline = $this->richTextInline($child);
+                if (! empty($inline)) {
+                    $blocks[] = ['type' => 'paragraph', 'children' => $inline];
+                }
+            }
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * Build Shopify rich-text inline nodes (text with bold/italic marks, links) from a DOM node.
+     *
+     * @param  array<string, bool>  $marks
+     * @return array<int, array<string, mixed>>
+     */
+    protected function richTextInline(\DOMNode $node, array $marks = []): array
+    {
+        $result = [];
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                if ($child->textContent !== '') {
+                    $text = ['type' => 'text', 'value' => $child->textContent];
+                    if (! empty($marks['bold'])) {
+                        $text['bold'] = true;
+                    }
+                    if (! empty($marks['italic'])) {
+                        $text['italic'] = true;
+                    }
+                    $result[] = $text;
+                }
+
+                continue;
+            }
+
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($child->nodeName);
+
+            if (in_array($tag, ['strong', 'b'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['bold' => true])));
+            } elseif (in_array($tag, ['em', 'i'], true)) {
+                $result = array_merge($result, $this->richTextInline($child, array_merge($marks, ['italic' => true])));
+            } elseif ($tag === 'a' && $child->getAttribute('href') !== '') {
+                $result[] = ['type' => 'link', 'url' => $child->getAttribute('href'), 'children' => $this->richTextInline($child, $marks)];
+            } else {
+                $result = array_merge($result, $this->richTextInline($child, $marks));
+            }
+        }
+
+        return $result;
     }
 
     public function formatMetafieldValue($metafieldValue, $attribute, $locale)
@@ -172,10 +420,20 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
-     * Get status of the product
-     * */
-    protected function getStatus(array $rawData, array $parentData): string
+     * Resolve the Shopify product status.
+     *
+     * When the export mapping defines a status, that value overrides every
+     * product (static override). Otherwise fall back to the legacy mapping of
+     * the UnoPim product flag: enabled -> ACTIVE, disabled -> DRAFT.
+     */
+    protected function getStatus(array $rawData, array $parentData, ?string $configuredStatus = null): string
     {
+        if ($configuredStatus !== null
+            && in_array($configuredStatus, (new ShopifyFields)->getStatusEnumValues(), true)
+        ) {
+            return $configuredStatus;
+        }
+
         $status = 'ACTIVE';
 
         if (! empty($rawData['status']) && $rawData['status'] == 'false') {
@@ -191,6 +449,121 @@ class ShopifyGraphQLDataFormatter
         }
 
         return $status;
+    }
+
+    /**
+     * Build the variant unitPriceMeasurement from mapping['unit_price'] and always
+     * show the unit price. Skips when unconfigured, quantity is non-positive, the unit
+     * is not a Shopify enum, or a non-AUTO reference unit is a different measure.
+     */
+    protected function applyUnitPriceMeasurement(array &$formatted, array $rawData, array $exportMapping): void
+    {
+        $cfg = $exportMapping['unit_price'] ?? null;
+
+        if (empty($cfg) || empty($cfg['quantityValueAttr'])) {
+            return;
+        }
+
+        $fields = new ShopifyFields;
+        $valueAttr = $cfg['quantityValueAttr'];
+
+        if (($this->attributeAll[$valueAttr]?->type ?? null) === 'measurement') {
+            $measure = $rawData[$valueAttr] ?? null;
+
+            if (! is_array($measure)) {
+                return;
+            }
+
+            $resolved = (new MeasurementUnitMapper)->resolve(MeasurementUnitMapper::UNIT_PRICE, $measure);
+
+            if ($resolved === null || $resolved[0] <= 0) {
+                return;
+            }
+
+            $quantityValue = (float) $resolved[0];
+            $quantityUnit = $resolved[1];
+        } else {
+            if (empty($cfg['quantityUnitAttr'])) {
+                return;
+            }
+
+            $rawQuantityValue = $rawData[$valueAttr] ?? null;
+            $quantityUnit = strtoupper(trim((string) ($rawData[$cfg['quantityUnitAttr']] ?? '')));
+
+            if (! is_numeric($rawQuantityValue) || (float) $rawQuantityValue <= 0
+                || ! in_array($quantityUnit, $fields->getUnitPriceUnitValues(), true)
+            ) {
+                return;
+            }
+
+            $quantityValue = (float) $rawQuantityValue;
+        }
+
+        $referenceUnit = ($cfg['referenceUnit'] ?? 'AUTO') === 'AUTO' ? $quantityUnit : $cfg['referenceUnit'];
+
+        if ($fields->getUnitPriceMeasure($referenceUnit) !== $fields->getUnitPriceMeasure($quantityUnit)) {
+            return;
+        }
+
+        $formatted['variant']['unitPriceMeasurement'] = [
+            'quantityValue'  => $quantityValue,
+            'quantityUnit'   => $quantityUnit,
+            'referenceValue' => (int) ($cfg['referenceValue'] ?? 100),
+            'referenceUnit'  => $referenceUnit,
+        ];
+
+        $formatted['variant']['showUnitPrice'] = true;
+    }
+
+    /**
+     * Build the variant inventoryQuantities list from the per-location attribute map
+     * (credential extras['locationAttributeMappings']). On create only mapped locations
+     * are sent (mapped+numeric value, otherwise 0); unmapped locations are skipped. On
+     * update no location is sent, leaving all stock untouched. No-op when no per-location
+     * mappings are configured.
+     */
+    protected function applyLocationInventory(array &$formatted, array $rawData, bool $variantExists): void
+    {
+        if ($variantExists) {
+            return;
+        }
+
+        $list = $this->buildLocationInventory($rawData);
+
+        if (! empty($list)) {
+            $formatted['variant']['inventoryQuantities'] = $list;
+        }
+    }
+
+    /**
+     * Create-style per-location inventory list (mapped locations, numeric value or 0).
+     * Exposed so the recreate path can re-inject inventory when a deleted Shopify
+     * product is rebuilt from an update payload that omitted it.
+     *
+     * @return array<int, array{locationId: string, name: string, quantity: int}>
+     */
+    public function buildLocationInventory(array $rawData): array
+    {
+        if (empty($this->locationAttributeMappings)) {
+            return [];
+        }
+
+        $list = [];
+        foreach ($this->locationAttributeMappings as $locationId => $attributeCode) {
+            if (empty($locationId) || empty($attributeCode)) {
+                continue;
+            }
+
+            $hasValue = isset($rawData[$attributeCode]) && is_numeric($rawData[$attributeCode]);
+
+            $list[] = [
+                'locationId' => $locationId,
+                'name'       => 'available',
+                'quantity'   => $hasValue ? (int) $rawData[$attributeCode] : 0,
+            ];
+        }
+
+        return $list;
     }
 
     /**
@@ -295,9 +668,28 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'weight':
+                $weightValue = $rawData[$unopimField] ?? null;
+
+                if (($this->attributeAll[$unopimField]?->type ?? null) === 'measurement') {
+                    if (! is_array($weightValue)) {
+                        break;
+                    }
+
+                    $resolved = (new MeasurementUnitMapper)->resolve(MeasurementUnitMapper::WEIGHT, $weightValue);
+
+                    if ($resolved !== null) {
+                        $formatted['variant']['inventoryItem']['measurement']['weight'] = [
+                            'value' => $resolved[0],
+                            'unit'  => $resolved[1],
+                        ];
+                    }
+
+                    break;
+                }
+
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
-                    'value' => (float) ($rawData[$unopimField] ?? 0),
-                    'unit' => $units['weight'] ?? 'GRAMS',
+                    'value' => (float) ($weightValue ?? 0),
+                    'unit'  => $units['weight'] ?? 'GRAMS',
                 ];
 
                 break;
@@ -306,7 +698,7 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) ($rawData[$unopimField] ?? 0);
                 }
 
@@ -327,7 +719,7 @@ class ShopifyGraphQLDataFormatter
 
         foreach ($unopimAttr as $attributeCode) {
             $attribute = $this->attributeAll[$attributeCode] ?? null;
-            $attributeLabel = empty($attribute?->translate($locale)->name) ? $attribute?->code : $attribute?->translate($locale)->name;
+            $attributeLabel = $this->resolveAttributeLabel($attribute, $locale);
             $value = strip_tags((string) ($parentData[$attributeCode] ?? ($rawData[$attributeCode] ?? '')));
             if (in_array($attribute?->type, ['multiselect', 'select'])) {
                 $value = $this->getTranslatedOptionLabels($attribute, $value, $locale);
@@ -360,21 +752,98 @@ class ShopifyGraphQLDataFormatter
     }
 
     /**
+     * Resolve an attribute's translated label, memoized per code+locale.
+     */
+    protected function resolveAttributeLabel(?object $attribute, string $locale): ?string
+    {
+        if (! $attribute) {
+            return null;
+        }
+
+        $key = $attribute->code.'|'.$locale;
+
+        if (array_key_exists($key, $this->attributeLabelCache)) {
+            return $this->attributeLabelCache[$key];
+        }
+
+        $name = $attribute->translate($locale)->name ?? null;
+
+        return $this->attributeLabelCache[$key] = (empty($name) ? $attribute->code : $name);
+    }
+
+    /**
      * Get option label from option code
      */
     protected function getTranslatedOptionLabels($attribute, $value, string $locale)
     {
-        $values = explode(',', $value);
-        $optionTrans = $attribute->options()->whereIn('code', $values)->get()->toArray();
-        $translationsArray = array_column($optionTrans, 'translations');
-        $translateLabels = array_map(function ($translations, $index) use ($locale, $values) {
-            $labelArr = array_column(array_filter($translations, fn ($t) => $t['locale'] === $locale), 'label');
-            $label = $labelArr[0] ?? null;
+        $map = $this->optionLabelMap($attribute, $locale);
 
-            return ! empty($label) ? $label : $values[$index];
-        }, $translationsArray, array_keys($translationsArray));
+        return array_map(fn ($code) => $map[$code] ?? $code, explode(',', $value));
+    }
 
-        return $translateLabels;
+    /**
+     * Resolve a color metafield value. A color-swatch select/multiselect stores
+     * option codes; Shopify's color type needs the hex, so map each code to its
+     * swatch hex. Any value that is not a swatch option (already a hex) passes through.
+     */
+    protected function resolveColorMetafield(?object $attribute, $value): string
+    {
+        $value = (string) $value;
+
+        if ($value === '' || ($attribute?->swatch_type ?? null) !== 'color'
+            || ! in_array($attribute?->type, ['select', 'multiselect'], true)) {
+            return $value;
+        }
+
+        $map = $this->swatchHexMap($attribute);
+
+        return implode(',', array_map(fn ($code) => $map[$code] ?? $code, explode(',', $value)));
+    }
+
+    /**
+     * Build (and memoize) an option code => swatch hex map for a swatch attribute.
+     *
+     * @return array<string, string>
+     */
+    protected function swatchHexMap(object $attribute): array
+    {
+        if (isset($this->swatchHexCache[$attribute->code])) {
+            return $this->swatchHexCache[$attribute->code];
+        }
+
+        $map = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $map[$option->code] = (string) $option->swatch_value;
+        }
+
+        return $this->swatchHexCache[$attribute->code] = $map;
+    }
+
+    /**
+     * Build (and memoize) an option code => translated label map for an attribute.
+     */
+    protected function optionLabelMap(object $attribute, string $locale): array
+    {
+        $key = $attribute->code.'|'.$locale;
+
+        if (isset($this->optionLabelCache[$key])) {
+            return $this->optionLabelCache[$key];
+        }
+
+        $map = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $option = $option->toArray();
+            $label = array_column(
+                array_filter($option['translations'] ?? [], fn ($t) => $t['locale'] === $locale),
+                'label'
+            )[0] ?? null;
+
+            $map[$option['code']] = ! empty($label) ? $label : $option['code'];
+        }
+
+        return $this->optionLabelCache[$key] = $map;
     }
 
     /**
@@ -423,7 +892,7 @@ class ShopifyGraphQLDataFormatter
                 $formatted['variant']['compareAtPrice'] = (int) $defaultValue;
                 break;
             case 'inventoryQuantity':
-                if ($this->locationId) {
+                if ($this->locationId && empty($this->locationAttributeMappings)) {
                     $formatted['variant']['inventoryQuantities']['quantity'] = (int) $defaultValue;
                 }
                 break;
@@ -436,7 +905,7 @@ class ShopifyGraphQLDataFormatter
             case 'weight':
                 $formatted['variant']['inventoryItem']['measurement']['weight'] = [
                     'value' => (float) $defaultValue,
-                    'unit' => 'GRAMS',
+                    'unit'  => 'GRAMS',
                 ];
                 break;
         }
@@ -467,11 +936,15 @@ class ShopifyGraphQLDataFormatter
     /**
      * Sets the initial data for the class properties.
      */
-    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll)
+    public function setInitialData(?string $locationId, string $currency, $settings, $attributeAll, array $locationAttributeMappings = [])
     {
         $this->locationId = $locationId;
         $this->currency = $currency;
         $this->settingMapping = $settings;
         $this->attributeAll = $attributeAll;
+        $this->locationAttributeMappings = $locationAttributeMappings;
+        $this->attributeLabelCache = [];
+        $this->optionLabelCache = [];
+        $this->swatchHexCache = [];
     }
 }

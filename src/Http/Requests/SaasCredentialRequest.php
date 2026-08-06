@@ -14,8 +14,8 @@ class SaasCredentialRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'shopUrl' => ['required', 'string', 'max:255'],
-            'accessToken' => ['required', 'string'],
+            'shopUrl'          => ['required', 'string', 'max:255'],
+            'accessToken'      => ['required', 'string'],
             'unopim_client_id' => ['nullable', 'string', 'max:255'],
         ];
     }

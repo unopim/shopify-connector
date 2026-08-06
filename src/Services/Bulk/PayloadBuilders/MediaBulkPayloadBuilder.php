@@ -3,11 +3,11 @@
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Webkul\DAM\Models\Directory;
 use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\ProductPhaseDataService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
@@ -51,6 +51,32 @@ class MediaBulkPayloadBuilder
     protected array $mediaPlan = [];
 
     /**
+     * Code-refresh plan recorded during build().
+     *
+     * Maps each updated Shopify media GID to the mapping row whose `code` (attribute
+     * + path) must be rewritten once the bulk productUpdateMedia completes, so a later
+     * export sees the new path and does not re-update. Persisted in the phase manifest
+     * for BulkResultFinalizer.
+     *
+     * Shape: [ "gid://shopify/MediaImage/123" => ['rowId' => int, 'code' => string] ]
+     *
+     * @var array<string, array{rowId: int, code: string}>
+     */
+    protected array $updatePlan = [];
+
+    /**
+     * Update JSONL lines recorded during build().
+     *
+     * One productUpdateMedia line per product whose attribute-mapped image path
+     * changed — computed in the SAME pass as the create lines (no second diff /
+     * getProductContext pass). The media phase persists these so the media_update
+     * phase can run them via bulk without recomputing.
+     *
+     * @var array<int, string>
+     */
+    protected array $updateLines = [];
+
+    /**
      * Mime types resolved as Shopify IMAGE media when expanding DAM assets.
      * Mirrors the non-bulk export path's allow-list.
      */
@@ -66,6 +92,7 @@ class MediaBulkPayloadBuilder
     public function __construct(
         protected ProductPhaseDataService $productPhaseDataService,
         protected ShopifyMappingRepository $shopifyMappingRepository,
+        protected AssetUrlResolver $assetUrlResolver,
     ) {}
 
     /**
@@ -106,94 +133,69 @@ class MediaBulkPayloadBuilder
      * }
      *
      * For each media the (attribute, image path) pair is matched against the
-     * stored mappings:
+     * stored mappings, in a SINGLE pass:
      *   - same attribute + same path  => skip entirely (no unnecessary update)
-     *   - same attribute, path changed => update the existing Shopify media
-     *   - attribute not mapped yet     => create the media (bulk line)
+     *   - same attribute, path changed => record an update line (media_update phase)
+     *   - attribute not mapped yet     => create the media (bulk line returned here)
+     *
+     * Both the create lines (returned) and the update lines + plan (recorded for
+     * getUpdateLines()/getUpdatePlan()) come from this one pass, so the expensive
+     * product-context diff is computed only once per export.
      *
      * @param  array  $entries  productSet entries from core bulk result
-     * @param  array  $credential  credential array used for the inline media-update calls
+     * @param  array  $credential  credential array used for staged video uploads
      */
     public function build(array $entries, int $credentialId, ?string $shopUrl = null, string $channel = 'default', string $currency = 'USD', array $credential = []): array
     {
         $this->mediaPlan = [];
+        $this->updateLines = [];
+        $this->updatePlan = [];
         $lines = [];
 
         // Cache parsed mappings per SKU within this build to avoid repeat queries.
         $mappingsBySku = [];
 
         foreach ($entries as $entry) {
-            $productSku = $entry['manifest']['product_sku'] ?? null;
+            $resolved = $this->resolveEntryMatches($entry, $credentialId, $shopUrl, $channel, $currency, $mappingsBySku);
 
-            if (! $productSku) {
+            if (! $resolved) {
                 continue;
             }
 
-            // Prefer the bulk-result product id. If the line failed (e.g. stale
-            // mapping), BulkResultFinalizer may have recreated the product
-            // out-of-band and written the new id to wk_shopify_data_mapping.
-            // Fall back to that mapping so recreated products still get media.
-            $productId = $entry['product']['id'] ?? null;
-
-            if (empty($productId)) {
-                $productId = $this->resolveProductIdFromMapping($productSku, $shopUrl);
-            }
-
-            if (empty($productId)) {
-                continue;
-            }
-
-            $productId = $this->ensureGid($productId, 'Product');
-            $variantSkus = $entry['manifest']['variant_skus'] ?? [];
-
-            $desiredMedia = $this->collectMediaForProduct($productSku, $variantSkus, $credentialId, $channel, $currency);
-
-            if (empty($desiredMedia)) {
-                continue;
-            }
-
+            $productId = $resolved['productId'];
             $createMedia = [];
-            $updateMedia = [];
-            $codeRefresh = [];
             $planItems = [];
+            $updateMedia = [];
 
-            foreach ($desiredMedia as $item) {
-                $sku = $item['sku'];
-                $attribute = $item['code'];
-                $path = $item['path'];
-                $alt = $sku.' - '.$attribute;
+            foreach ($resolved['matches'] as $match) {
+                $item = $match['item'];
 
-                $mappings = $mappingsBySku[$sku]
-                    ??= $this->getMediaMappings($sku, $shopUrl);
-
-                [$exact, $byAttribute] = $this->matchMapping($mappings, $attribute, $path);
-
-                if ($exact) {
+                if ($match['exact']) {
                     // Mapping already exists for this image path + attribute —
-                    // nothing changed, skip the media update entirely.
+                    // nothing changed, skip entirely.
                     continue;
                 }
 
-                $compositeCode = $this->buildCode($attribute, $path);
-
                 $mediaContentType = $item['mediaContentType'] ?? 'IMAGE';
 
-                if ($mediaContentType === 'IMAGE' && $byAttribute && ! empty($byAttribute['row']->externalId)) {
+                if ($mediaContentType === 'IMAGE' && $match['byAttribute'] && ! empty($match['byAttribute']['row']->externalId)) {
                     // Media already exists for this attribute but the image path
-                    // changed — update the existing Shopify media in place.
-                    // (Videos cannot be updated in place via previewImageSource,
-                    // so they always fall through to a fresh create.)
+                    // changed — record an in-place update for the media_update phase.
+                    // (Videos cannot be updated via previewImageSource, so they
+                    // always fall through to a fresh create here.)
+                    $mediaId = $match['byAttribute']['row']->externalId;
+
                     $updateMedia[] = [
-                        'id' => $byAttribute['row']->externalId,
+                        'id'                 => $mediaId,
                         'previewImageSource' => $item['url'],
-                        'alt' => $alt,
+                        'alt'                => $item['sku'].' - '.$item['code'],
                     ];
 
-                    // Refresh the mapping `code` with the new path once the
-                    // update succeeds (see updateExistingMedia below).
-                    $codeRefresh[] = [
-                        'id' => $byAttribute['row']->id,
-                        'code' => $compositeCode,
+                    // Refresh the mapping `code` with the new path once the update
+                    // completes (BulkResultFinalizer reads this from the manifest).
+                    $this->updatePlan[$mediaId] = [
+                        'rowId' => $match['byAttribute']['row']->id,
+                        'code'  => $this->buildCode($item['code'], $item['path']),
                     ];
 
                     continue;
@@ -215,22 +217,23 @@ class MediaBulkPayloadBuilder
                 // No mapping for this attribute — create the media. The finalizer
                 // stores the mapping (composite code) once Shopify returns the id.
                 $createMedia[] = [
-                    'originalSource' => $originalSource,
+                    'originalSource'   => $originalSource,
                     'mediaContentType' => $mediaContentType,
-                    'alt' => $alt,
+                    'alt'              => $item['sku'].' - '.$item['code'],
                 ];
 
                 $planItems[] = [
-                    'sku' => $sku,
-                    'code' => $compositeCode,
-                    'alt' => $alt,
+                    'sku'  => $item['sku'],
+                    'code' => $this->buildCode($item['code'], $item['path']),
+                    'alt'  => $item['sku'].' - '.$item['code'],
                 ];
             }
 
-            if (! empty($updateMedia) && $this->updateExistingMedia($productId, $updateMedia, $credential)) {
-                foreach ($codeRefresh as $refresh) {
-                    $this->shopifyMappingRepository->update(['code' => $refresh['code']], $refresh['id']);
-                }
+            if (! empty($updateMedia)) {
+                $this->updateLines[] = json_encode([
+                    'productId' => $productId,
+                    'media'     => $updateMedia,
+                ], JSON_UNESCAPED_SLASHES);
             }
 
             if (empty($createMedia)) {
@@ -241,16 +244,149 @@ class MediaBulkPayloadBuilder
 
             $lines[] = json_encode([
                 'productId' => $productId,
-                'media' => $createMedia,
+                'media'     => $createMedia,
             ], JSON_UNESCAPED_SLASHES);
 
             $this->mediaPlan[$lineIndex] = [
                 'productId' => $productId,
-                'items' => $planItems,
+                'items'     => $planItems,
             ];
         }
 
         return $lines;
+    }
+
+    /**
+     * The productUpdateMedia JSONL lines recorded by the most recent build() call.
+     */
+    public function getUpdateLines(): array
+    {
+        return $this->updateLines;
+    }
+
+    /**
+     * The code-refresh plan (media GID => {rowId, code}) recorded by build().
+     */
+    public function getUpdatePlan(): array
+    {
+        return $this->updatePlan;
+    }
+
+    /**
+     * Build a product's complete productSet `files` list: existing media referenced
+     * by id (preserved, since productSet deletes media absent from the list), new
+     * media by source. Returns the files plus plan items to persist new mappings.
+     *
+     * @return array{files: array<int, array>, planItems: array<int, array{sku: string, code: string, alt: string}>}
+     */
+    public function collectProductSetFiles(string $productSku, array $variantSkus, int $credentialId, ?string $shopUrl, string $channel = 'default', string $currency = 'USD', array $credential = []): array
+    {
+        $desiredMedia = $this->collectMediaForProduct($productSku, $variantSkus, $credentialId, $channel, $currency);
+
+        if (empty($desiredMedia)) {
+            return ['files' => [], 'planItems' => []];
+        }
+
+        $mappingsBySku = [];
+        $files = [];
+        $planItems = [];
+
+        foreach ($desiredMedia as $item) {
+            $mappings = $mappingsBySku[$item['sku']]
+                ??= $this->getMediaMappings($item['sku'], $shopUrl);
+
+            [$exact, $byAttribute] = $this->matchMapping($mappings, $item['code'], $item['path']);
+
+            $existingGid = $exact['row']->externalId ?? $byAttribute['row']->externalId ?? null;
+
+            if (! empty($existingGid)) {
+                $files[] = ['id' => $existingGid];
+
+                continue;
+            }
+
+            $mediaContentType = $item['mediaContentType'] ?? 'IMAGE';
+            $originalSource = $item['url'] ?? '';
+
+            if ($mediaContentType === 'VIDEO') {
+                $originalSource = $this->stageVideoUpload($item['asset'] ?? [], $credential);
+            }
+
+            if (empty($originalSource)) {
+                continue;
+            }
+
+            $files[] = [
+                'originalSource' => $originalSource,
+                'contentType'    => $mediaContentType,
+                'alt'            => $item['sku'].' - '.$item['code'],
+            ];
+
+            $planItems[] = [
+                'sku'  => $item['sku'],
+                'code' => $this->buildCode($item['code'], $item['path']),
+                'alt'  => $item['sku'].' - '.$item['code'],
+            ];
+        }
+
+        return ['files' => $files, 'planItems' => $planItems];
+    }
+
+    /**
+     * Resolve a productSet entry to its Shopify product GID and the desired media
+     * matched against stored mappings. Used by build()'s single create+update pass.
+     *
+     * @param  array<string, array>  $mappingsBySku  per-SKU mapping cache (by ref)
+     * @return array{productId: string, matches: array<int, array{item: array, exact: ?array, byAttribute: ?array}>}|null
+     */
+    protected function resolveEntryMatches(array $entry, int $credentialId, ?string $shopUrl, string $channel, string $currency, array &$mappingsBySku): ?array
+    {
+        $productSku = $entry['manifest']['product_sku'] ?? null;
+
+        if (! $productSku) {
+            return null;
+        }
+
+        // Prefer the bulk-result product id. If the line failed (e.g. stale
+        // mapping), BulkResultFinalizer may have recreated the product
+        // out-of-band and written the new id to wk_shopify_data_mapping.
+        // Fall back to that mapping so recreated products still get media.
+        $productId = $entry['product']['id'] ?? null;
+
+        if (empty($productId)) {
+            $productId = $this->resolveProductIdFromMapping($productSku, $shopUrl);
+        }
+
+        if (empty($productId)) {
+            return null;
+        }
+
+        $variantSkus = $entry['manifest']['variant_skus'] ?? [];
+        $desiredMedia = $this->collectMediaForProduct($productSku, $variantSkus, $credentialId, $channel, $currency);
+
+        if (empty($desiredMedia)) {
+            return null;
+        }
+
+        $matches = [];
+
+        foreach ($desiredMedia as $item) {
+            $mappings = $mappingsBySku[$item['sku']]
+                ??= $this->getMediaMappings($item['sku'], $shopUrl);
+
+            [$exact, $byAttribute] = $this->matchMapping($mappings, $item['code'], $item['path']);
+
+            $matches[] = [
+                'item'        => $item,
+                'exact'       => $exact,
+                'byAttribute' => $byAttribute,
+            ];
+        }
+
+        return [
+            'productId' => $this->ensureGid($productId, 'Product'),
+            'matches'   => $matches,
+        ];
     }
 
     /**
@@ -263,6 +399,11 @@ class MediaBulkPayloadBuilder
 
     /**
      * Look up a Shopify productId from the local mapping table.
+     *
+     * For a simple product the SKU's mapping row holds the variant GID in
+     * externalId and the product GID in relatedId (the variant sync overwrites the
+     * product sync), so relatedId is preferred and externalId is the parent-row
+     * fallback.
      */
     protected function resolveProductIdFromMapping(string $sku, ?string $shopUrl): ?string
     {
@@ -276,7 +417,7 @@ class MediaBulkPayloadBuilder
             ->where('apiUrl', $shopUrl)
             ->first();
 
-        return $mapping?->externalId ?: null;
+        return $mapping?->relatedId ?: ($mapping?->externalId ?: null);
     }
 
     /**
@@ -302,9 +443,9 @@ class MediaBulkPayloadBuilder
             [$attribute, $path] = $this->parseCode($row->code);
 
             $mappings[] = [
-                'row' => $row,
+                'row'       => $row,
                 'attribute' => $attribute,
-                'path' => $path,
+                'path'      => $path,
             ];
         }
 
@@ -363,31 +504,6 @@ class MediaBulkPayloadBuilder
         }
 
         return [substr($code, 0, $position), substr($code, $position + 1)];
-    }
-
-    /**
-     * Update already-mapped media on Shopify when its source path changed.
-     *
-     * @return bool whether the update completed without errors
-     */
-    protected function updateExistingMedia(string $productId, array $media, array $credential): bool
-    {
-        if (empty($credential)) {
-            return false;
-        }
-
-        try {
-            $response = $this->requestGraphQlApiAction('productUpdateMedia', $credential, [
-                'productId' => $productId,
-                'media' => $media,
-            ]);
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        $payload = $response['body']['data']['productUpdateMedia'] ?? [];
-
-        return empty($payload['mediaUserErrors']) && ! empty($payload['media']);
     }
 
     /**
@@ -460,10 +576,10 @@ class MediaBulkPayloadBuilder
 
                         if ($resolved !== null) {
                             $items[] = [
-                                'sku' => $sku,
-                                'code' => $code.'_'.$index,
-                                'path' => $resolved['path'],
-                                'url' => $resolved['url'],
+                                'sku'              => $sku,
+                                'code'             => $code.'_'.$index,
+                                'path'             => $resolved['path'],
+                                'url'              => $resolved['url'],
                                 'mediaContentType' => 'IMAGE',
                             ];
                         }
@@ -477,10 +593,10 @@ class MediaBulkPayloadBuilder
 
                 if ($resolved !== null) {
                     $items[] = [
-                        'sku' => $sku,
-                        'code' => $code,
-                        'path' => $resolved['path'],
-                        'url' => $resolved['url'],
+                        'sku'              => $sku,
+                        'code'             => $code,
+                        'path'             => $resolved['path'],
+                        'url'              => $resolved['url'],
                         'mediaContentType' => 'IMAGE',
                     ];
                 }
@@ -497,27 +613,7 @@ class MediaBulkPayloadBuilder
      */
     protected function resolveMedia(mixed $path): ?array
     {
-        if (! is_string($path) || $path === '') {
-            return null;
-        }
-
-        // The stored value may already be an absolute URL — e.g. an externally
-        // hosted image, or a public S3 URL kept directly in the attribute value.
-        // Use it verbatim; running it through Storage::url() would corrupt it
-        // (the disk base would be prepended to a full URL). The original value is
-        // kept as `path` so re-export dedup still matches on the unchanged source.
-        if ($this->isAbsoluteUrl($path)) {
-            return ['path' => $path, 'url' => str_replace(' ', '%20', $path)];
-        }
-
-        $normalizedPath = ltrim($path, '/');
-        $fullUrl = Storage::url(str_replace(' ', '%20', $normalizedPath));
-
-        if (empty($fullUrl)) {
-            return null;
-        }
-
-        return ['path' => $normalizedPath, 'url' => $fullUrl];
+        return $this->assetUrlResolver->resolveMedia($path);
     }
 
     /**
@@ -526,7 +622,7 @@ class MediaBulkPayloadBuilder
      */
     protected function isAbsoluteUrl(string $value): bool
     {
-        return (bool) preg_match('#^https?://#i', $value);
+        return $this->assetUrlResolver->isAbsoluteUrl($value);
     }
 
     /**
@@ -572,12 +668,12 @@ class MediaBulkPayloadBuilder
 
             if ($mimeType === 'video/mp4') {
                 $items[] = [
-                    'sku' => $sku,
-                    'code' => $assetCode,
-                    'path' => $path,
-                    'url' => '',
+                    'sku'              => $sku,
+                    'code'             => $assetCode,
+                    'path'             => $path,
+                    'url'              => '',
                     'mediaContentType' => 'VIDEO',
-                    'asset' => $asset,
+                    'asset'            => $asset,
                 ];
 
                 continue;
@@ -594,10 +690,10 @@ class MediaBulkPayloadBuilder
             }
 
             $items[] = [
-                'sku' => $sku,
-                'code' => $assetCode,
-                'path' => $path,
-                'url' => $url,
+                'sku'              => $sku,
+                'code'             => $assetCode,
+                'path'             => $path,
+                'url'              => $url,
                 'mediaContentType' => 'IMAGE',
             ];
         }
@@ -614,17 +710,7 @@ class MediaBulkPayloadBuilder
      */
     protected function resolveAssetUrl(string $path): string
     {
-        // An asset path may already be an absolute URL (e.g. stored on a remote
-        // host) — use it directly rather than routing through the DAM fetch route.
-        if ($this->isAbsoluteUrl($path)) {
-            return str_replace(' ', '%20', $path);
-        }
-
-        if (! Route::has('admin.dam.file.fetch')) {
-            return '';
-        }
-
-        return route('admin.dam.file.fetch', ['path' => $path]);
+        return $this->assetUrlResolver->resolveAssetUrl($path);
     }
 
     /**
@@ -682,10 +768,10 @@ class MediaBulkPayloadBuilder
 
             try {
                 $multipart[] = [
-                    'name' => 'file',
+                    'name'     => 'file',
                     'contents' => $stream,
                     'filename' => $asset['file_name'] ?? 'video.mp4',
-                    'headers' => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
+                    'headers'  => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
                 ];
 
                 $upload = Http::asMultipart()->timeout(300)->post($target['url'], $multipart);

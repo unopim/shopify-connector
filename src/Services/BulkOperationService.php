@@ -21,9 +21,9 @@ class BulkOperationService
     {
         $response = $this->requestGraphQlApiAction('stagedUploadsCreate', $credential, [
             'input' => [[
-                'resource' => 'BULK_MUTATION_VARIABLES',
-                'filename' => $filename,
-                'mimeType' => 'text/jsonl',
+                'resource'   => 'BULK_MUTATION_VARIABLES',
+                'filename'   => $filename,
+                'mimeType'   => 'text/jsonl',
                 'httpMethod' => 'POST',
             ]],
         ]);
@@ -47,16 +47,16 @@ class BulkOperationService
 
         foreach ($target['parameters'] ?? [] as $parameter) {
             $multipart[] = [
-                'name' => $parameter['name'],
+                'name'     => $parameter['name'],
                 'contents' => $parameter['value'],
             ];
         }
 
         $multipart[] = [
-            'name' => 'file',
+            'name'     => 'file',
             'contents' => fopen($absoluteFilePath, 'r'),
             'filename' => basename($absoluteFilePath),
-            'headers' => [
+            'headers'  => [
                 'Content-Type' => 'text/jsonl',
             ],
         ];
@@ -76,7 +76,7 @@ class BulkOperationService
     public function runMutation(array $credential, string $mutation, string $stagedUploadPath): array
     {
         $response = $this->requestGraphQlApiAction('bulkOperationRunMutation', $credential, [
-            'mutation' => $mutation,
+            'mutation'         => $mutation,
             'stagedUploadPath' => $stagedUploadPath,
         ]);
 

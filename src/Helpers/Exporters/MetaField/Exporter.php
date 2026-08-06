@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Helpers\Exporters\MetaField;
 
 use Illuminate\Support\Facades\Event;
+use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -10,9 +11,11 @@ use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
+use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\TranslationTrait;
@@ -53,6 +56,8 @@ class Exporter extends AbstractExporter
 
     protected bool $exportsFile = false;
 
+    protected ?array $currentConstraintsMap = null;
+
     /**
      * Create a new instance of the exporter.
      */
@@ -61,7 +66,8 @@ class Exporter extends AbstractExporter
         protected FileExportFileBuffer $exportFileBuffer,
         protected ShopifyCredentialRepository $shopifyRepository,
         protected ShoifyMetaFieldType $shoifyMetaFieldType,
-        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository
+        protected ShopifyMetaFieldRepository $shopifyMetaFieldRepository,
+        protected ShopifyMetaobjectMappingRepository $shopifyMetaobjectMappingRepository
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
     }
@@ -135,6 +141,8 @@ class Exporter extends AbstractExporter
 
         $this->prepareMetafieldShopify($batch, $filePath);
 
+        $this->syncMetafieldExtras($batch->data);
+
         /**
          * Update export batch process state summary
          */
@@ -184,6 +192,41 @@ class Exporter extends AbstractExporter
                 $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl);
             }
         }
+    }
+
+    /**
+     * Register exported definition codes in the credential's metafield extras so
+     * the product importer's whitelist picks them up without a metafield re-import.
+     */
+    private function syncMetafieldExtras(array $rows): void
+    {
+        $product = [];
+        $variant = [];
+
+        foreach ($rows as $row) {
+            $code = $row['code'] ?? null;
+            if (empty($code)) {
+                continue;
+            }
+
+            $namespace = explode('.', (string) ($row['name_space_key'] ?? ''))[0] ?: 'custom';
+
+            if (($row['ownerType'] ?? '') === 'PRODUCTVARIANT') {
+                $variant[$code] = $namespace;
+            } else {
+                $product[$code] = $namespace;
+            }
+        }
+
+        if (empty($product) && empty($variant)) {
+            return;
+        }
+
+        $extras = $this->credential->extras ?? [];
+        $extras['productMetafield'] = array_merge($extras['productMetafield'] ?? [], $product);
+        $extras['productVariantMetafield'] = array_merge($extras['productVariantMetafield'] ?? [], $variant);
+
+        $this->shopifyRepository->update(['extras' => $extras], $this->credential->id);
     }
 
     private function extractId(?string $apiUrl, string $shopUrl): ?string
@@ -256,6 +299,23 @@ class Exporter extends AbstractExporter
     /**
      * Prepare meta field definition
      */
+    protected function isEmailMetafield(array $rowData): bool
+    {
+        if (($rowData['type'] ?? '') !== 'single_line_text_field') {
+            return false;
+        }
+
+        $validations = json_decode((string) ($rowData['validations'] ?? ''), true);
+
+        if (is_array($validations) && ($validations['content_type'] ?? null) === 'email') {
+            return true;
+        }
+
+        $attribute = app(AttributeRepository::class)->findOneByField('code', $rowData['code'] ?? '');
+
+        return $attribute?->type === 'text' && $attribute?->validation === 'email';
+    }
+
     public function prepareMetaFieldDefinition($rowData, $id = null): array
     {
         $formattedData = [
@@ -286,38 +346,92 @@ class Exporter extends AbstractExporter
             $minunit = $validationDatas['minunit'] ?? null;
             unset($validationDatas['maxunit'], $validationDatas['minunit']);
             foreach ($validationDatas as $key => $validationData) {
+                if (in_array($key, ['content_type', 'file_types', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute', 'metaobject_type', 'metaobject_definition_id'], true)) {
+                    continue;
+                }
                 if ($validationData == null) {
                     continue;
                 }
                 if ($maxunit && $key == 'max') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit' => $maxunit,
+                        'unit'  => $maxunit,
                     ], true);
                 } elseif ($minunit && $key == 'min') {
                     $validationData = json_encode([
                         'value' => $validationData,
-                        'unit' => $minunit,
+                        'unit'  => $minunit,
                     ], true);
                 }
                 $key = in_array($type, ['list.rating', 'rating']) ? 'scale_'.$key : $key;
 
                 $validations[] = [
-                    'name' => $key,
+                    'name'  => $key,
                     'value' => $validationData ?? 0,
                 ];
             }
 
+            if (($validationDatas['content_type'] ?? null) === 'choice_list') {
+                $choices = $this->resolveChoiceListValues($rowData['code'] ?? '');
+                if (! empty($choices)) {
+                    $validations[] = [
+                        'name'  => 'choices',
+                        'value' => json_encode($choices, JSON_UNESCAPED_SLASHES),
+                    ];
+                }
+            }
+
+            $fileTypeOptions = $this->resolveFileTypeOptions(
+                $validationDatas['content_type'] ?? null,
+                $validationDatas['file_types'] ?? []
+            );
+            if (! empty($fileTypeOptions)) {
+                $validations[] = [
+                    'name'  => 'file_type_options',
+                    'value' => json_encode($fileTypeOptions),
+                ];
+            }
+
+            if (($rowData['type'] ?? null) === 'metaobject_reference') {
+                $metaobjectType = $validationDatas['metaobject_type'] ?? null;
+
+                $definitionGid = $metaobjectType
+                    ? $this->shopifyMetaobjectMappingRepository->findOneWhere([
+                        'api_url' => $this->credentialArray['shopUrl'],
+                        'type'    => $metaobjectType,
+                    ])?->gid
+                    : null;
+
+                if ($definitionGid) {
+                    $validations[] = ['name' => 'metaobject_definition_id', 'value' => $definitionGid];
+                } else {
+                    $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.metaobject-definition-missing', [
+                        'type'  => $metaobjectType ?? '',
+                        'store' => $this->credentialArray['shopUrl'],
+                    ]));
+                }
+            }
+
             $formattedData['validations'] = $validations;
+        }
+
+        if ($this->isEmailMetafield($rowData)) {
+            $emailValidations = array_values(array_filter(
+                $formattedData['validations'] ?? [],
+                fn ($validation) => ($validation['name'] ?? '') !== 'regex'
+            ));
+            $emailValidations[] = ['name' => 'regex', 'value' => MetaobjectFieldType::EMAIL_REGEX];
+            $formattedData['validations'] = $emailValidations;
         }
 
         $formattedData['name'] = $rowData['attribute'] ?? '';
         $formattedData['description'] = $rowData['description'] ?? '';
         $formattedData['pin'] = (bool) $rowData['pin'];
 
+        $capabilities = [];
+
         if (! empty($rowData['options'])) {
             $options = json_decode($rowData['options'], true);
-            $capabilities = [];
             foreach ($options as $key => $option) {
                 if (isset($this->shoifyMetaFieldTypeData[$rowData['type']][$key])) {
                     $capabilities[$key] = [
@@ -325,11 +439,139 @@ class Exporter extends AbstractExporter
                     ];
                 }
             }
+        }
 
+        if (! empty($capabilities)) {
             $formattedData['capabilities'] = $capabilities;
         }
 
+        $desired = array_values(array_filter(array_map(
+            fn ($gid) => substr((string) $gid, strrpos((string) $gid, '/') + 1),
+            (array) ($rowData['taxonomy_category'] ?? [])
+        )));
+
+        if ($desired !== []) {
+            $formattedData['pin'] = false;
+        }
+
+        if (! $id && $desired !== []) {
+            $formattedData['constraints'] = ['key' => 'category', 'values' => $desired];
+        } elseif ($id) {
+            $current = $this->fetchCurrentCategoryConstraint($rowData);
+            $toCreate = array_values(array_diff($desired, $current));
+            $toDelete = array_values(array_diff($current, $desired));
+
+            if ($toCreate !== [] || $toDelete !== []) {
+                $values = array_merge(
+                    array_map(fn ($v) => ['create' => $v], $toCreate),
+                    array_map(fn ($v) => ['delete' => $v], $toDelete)
+                );
+
+                $formattedData['constraintsUpdates'] = ['key' => 'category', 'values' => $values];
+            }
+        }
+
         return $formattedData;
+    }
+
+    /**
+     * Map a file_reference metafield's content type + accepted-file-types into the
+     * Shopify `file_type_options` values. Image/Video presets restrict to that kind;
+     * the generic File preset uses the stored file_types (media) or none (any).
+     *
+     * @param  array<int, string>  $fileTypes
+     * @return array<int, string>
+     */
+    protected function resolveFileTypeOptions(?string $contentType, array $fileTypes): array
+    {
+        return match ($contentType) {
+            'IMAGE' => ['Image'],
+            'VIDEO' => ['Video'],
+            'FILE'  => array_values($fileTypes),
+            default => [],
+        };
+    }
+
+    /**
+     * Resolve a select/multiselect attribute's option labels for the Shopify default
+     * locale, matching the exported metafield value so the `choices` validation accepts it.
+     *
+     * @return array<int, string>
+     */
+    protected function resolveChoiceListValues(string $code): array
+    {
+        if (empty($code) || empty($this->shopifyDefaultLocale)) {
+            return [];
+        }
+
+        $attribute = app(AttributeRepository::class)->findOneByField('code', $code);
+
+        if (! $attribute || ! in_array($attribute->type, ['select', 'multiselect'], true)) {
+            return [];
+        }
+
+        $choices = [];
+
+        foreach ($attribute->options()->get() as $option) {
+            $option = $option->toArray();
+            $label = array_column(
+                array_filter($option['translations'] ?? [], fn ($t) => $t['locale'] === $this->shopifyDefaultLocale),
+                'label'
+            )[0] ?? null;
+
+            $choices[] = ! empty($label) ? $label : $option['code'];
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fetchCurrentCategoryConstraint(array $rowData): array
+    {
+        return $this->currentCategoryConstraints()[$rowData['name_space_key'] ?? ''] ?? [];
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function currentCategoryConstraints(): array
+    {
+        if ($this->currentConstraintsMap !== null) {
+            return $this->currentConstraintsMap;
+        }
+
+        $map = [];
+        $cursor = null;
+
+        do {
+            $response = $this->requestGraphQlApiAction('metafieldDefinitionsProductType', $this->credentialArray, [
+                'first' => 250,
+                'after' => $cursor,
+            ]);
+
+            $edges = $response['body']['data']['metafieldDefinitions']['edges'] ?? [];
+
+            foreach ($edges as $edge) {
+                $node = $edge['node'] ?? [];
+                $nsKey = ($node['namespace'] ?? '').'.'.($node['key'] ?? '');
+
+                if (($node['constraints']['key'] ?? null) === 'category') {
+                    $map[$nsKey] = array_map(fn ($v) => $v['value'], $node['constraints']['values']['nodes'] ?? []);
+                }
+            }
+
+            $lastCursor = ! empty($edges) ? end($edges)['cursor'] : null;
+
+            if ($cursor === $lastCursor || empty($lastCursor)) {
+                break;
+            }
+
+            $cursor = $lastCursor;
+        } while (! empty($edges));
+
+        return $this->currentConstraintsMap = $map;
     }
 
     /**

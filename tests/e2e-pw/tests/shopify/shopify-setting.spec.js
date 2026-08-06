@@ -34,9 +34,9 @@ test.describe('UnoPim Shopify setting tab Navigation', () => {
     };
 
     test.beforeEach(async ({ page }) => {
-        // Navigate to the Shopify Credentials Page
-        await page.goto('admin/shopify/credentials');
-        await page.getByRole('link', { name: 'Settings', exact: true }).click()
+        // Navigate directly to the Settings page (sidebar sub-menu links are
+        // hover-revealed, so a direct goto is more reliable than clicking them).
+        await page.goto('admin/shopify/export/settings/2')
     });
     test('Verify page loads correctly', async ({ page }) => {
         await expect(page).toHaveURL(new URL('/admin/shopify/export/settings/2', baseUrl).toString());

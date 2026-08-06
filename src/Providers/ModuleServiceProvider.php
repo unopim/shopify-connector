@@ -8,6 +8,11 @@ use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 use Webkul\Shopify\Models\ShopifyExportMappingConfig;
 use Webkul\Shopify\Models\ShopifyMappingConfig;
 use Webkul\Shopify\Models\ShopifyMetaFieldsConfig;
+use Webkul\Shopify\Models\ShopifyMetaobjectAttribute;
+use Webkul\Shopify\Models\ShopifyMetaobjectDefinition;
+use Webkul\Shopify\Models\ShopifyMetaobjectEntry;
+use Webkul\Shopify\Models\ShopifyMetaobjectEntryMapping;
+use Webkul\Shopify\Models\ShopifyMetaobjectMapping;
 
 class ModuleServiceProvider extends CoreModuleServiceProvider
 {
@@ -17,5 +22,10 @@ class ModuleServiceProvider extends CoreModuleServiceProvider
         ShopifyBulkOperation::class,
         ShopifyMappingConfig::class,
         ShopifyMetaFieldsConfig::class,
+        ShopifyMetaobjectMapping::class,
+        ShopifyMetaobjectEntry::class,
+        ShopifyMetaobjectDefinition::class,
+        ShopifyMetaobjectAttribute::class,
+        ShopifyMetaobjectEntryMapping::class,
     ];
 }

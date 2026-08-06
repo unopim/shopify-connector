@@ -95,7 +95,7 @@ class CredentialController extends Controller
         } catch (\RuntimeException $exception) {
             return new JsonResponse([
                 'errors' => [
-                    'clientId' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
+                    'clientId'     => [trans('shopify::app.shopify.credential.token_refresh_failed')],
                     'clientSecret' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -104,7 +104,7 @@ class CredentialController extends Controller
         if (empty($data['accessToken'])) {
             return new JsonResponse([
                 'errors' => [
-                    'clientId' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
+                    'clientId'     => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
                     'clientSecret' => [trans('shopify::app.shopify.credential.token_required_or_oauth')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -115,7 +115,7 @@ class CredentialController extends Controller
         if ($response['code'] != JsonResponse::HTTP_OK) {
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl' => [trans('shopify::app.shopify.credential.invalid')],
+                    'shopUrl'     => [trans('shopify::app.shopify.credential.invalid')],
                     'accessToken' => [trans('shopify::app.shopify.credential.invalid')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -167,7 +167,7 @@ class CredentialController extends Controller
      */
     public function sync(int $id): JsonResponse
     {
-        $credential = $this->resolveOwnedSaasCredential($id);
+        $credential = $this->resolveSaasCredential($id);
         $unopimClientId = $credential->extras['unopim_client_id'] ?? null;
         $shopDomain = $this->extractShopDomain((string) $credential->shopUrl);
 
@@ -201,8 +201,8 @@ class CredentialController extends Controller
 
         $payload = [
             'secret_key' => $oauthClient->secret,
-            'base_url' => rtrim((string) config('app.url'), '/'),
-            'domain' => $shopDomain,
+            'base_url'   => rtrim((string) config('app.url'), '/'),
+            'domain'     => $shopDomain,
         ];
 
         $proxy = new SaasProxyClient(
@@ -218,9 +218,9 @@ class CredentialController extends Controller
         if (! $result['ok'] || ! $okStatus) {
             Log::warning('Shopify SaaS sync failed', [
                 'credential_id' => $credential->id,
-                'domain' => $shopDomain,
-                'http_code' => $result['code'],
-                'body' => $result['body'],
+                'domain'        => $shopDomain,
+                'http_code'     => $result['code'],
+                'body'          => $result['body'],
             ]);
 
             return new JsonResponse([
@@ -239,7 +239,7 @@ class CredentialController extends Controller
      */
     public function revoke(int $id): JsonResponse
     {
-        $credential = $this->resolveOwnedSaasCredential($id);
+        $credential = $this->resolveSaasCredential($id);
 
         $proxy = new SaasProxyClient(
             (string) config('shopify.saas.proxy_url'),
@@ -277,31 +277,14 @@ class CredentialController extends Controller
     }
 
     /**
-     * Load the SaaS credential and verify the logged-in admin owns it via
-     * matching extras.unopim_client_id against an api_keys.oauth_client_id row.
+     * Load the SaaS credential, failing if it is missing or not a SaaS row.
      */
-    protected function resolveOwnedSaasCredential(int $id): ShopifyCredentialsConfig
+    protected function resolveSaasCredential(int $id): ShopifyCredentialsConfig
     {
         $credential = $this->shopifyRepository->find($id);
 
         if (! $credential || empty($credential->extras['saas'])) {
             abort(404);
-        }
-
-        $unopimClientId = $credential->extras['unopim_client_id'] ?? null;
-        $adminId = auth()->guard('admin')->id() ?? auth()->id();
-
-        if (! $unopimClientId || ! $adminId) {
-            abort(403);
-        }
-
-        $owns = DB::table('api_keys')
-            ->where('admin_id', $adminId)
-            ->where('oauth_client_id', $unopimClientId)
-            ->exists();
-
-        if (! $owns) {
-            abort(403);
         }
 
         return $credential;
@@ -364,10 +347,10 @@ class CredentialController extends Controller
         $requestData['storelocaleMapping'] = $this->normalizeStoreLocaleMapping($requestData['storelocaleMapping'] ?? []);
 
         $this->validate(request(), [
-            'shopUrl' => 'required|url:http,https',
-            'apiVersion' => 'required',
-            'accessToken' => 'nullable',
-            'clientId' => 'nullable',
+            'shopUrl'      => 'required|url:http,https',
+            'apiVersion'   => 'required',
+            'accessToken'  => 'nullable',
+            'clientId'     => 'nullable',
             'clientSecret' => 'nullable',
         ]);
 
@@ -429,7 +412,7 @@ class CredentialController extends Controller
         if (! $connectionOk) {
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
-                    'shopUrl' => trans('shopify::app.shopify.credential.invalid'),
+                    'shopUrl'     => trans('shopify::app.shopify.credential.invalid'),
                     'accessToken' => trans('shopify::app.shopify.credential.invalid'),
                 ])
                 ->withInput();
@@ -455,14 +438,13 @@ class CredentialController extends Controller
 
         $extras = is_array($credential->extras) ? $credential->extras : [];
 
-        $extras['locations'] = $requestData['locations'] ?? null;
-
         $extras['salesChannel'] = $requestData['salesChannel'] ?? null;
+        $extras['locationAttributeMappings'] = $requestData['locationAttributeMappings'];
 
         $requestData['extras'] = $extras;
 
         unset($requestData['salesChannel']);
-        unset($requestData['locations']);
+        unset($requestData['locationAttributeMappings']);
 
         $this->shopifyRepository->update($requestData, $id);
 

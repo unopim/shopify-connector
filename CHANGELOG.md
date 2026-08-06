@@ -1,28 +1,46 @@
-# 2.0.0 ( 4 June 2026 )
+# 3.0.0 ( 05 August 2026 )
 
 ## Features
-- UnoPIM–Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click **Connect**. No manual credential setup needed in UnoPIM.
-- SaaS authentication flow with auto-login and proxy-based Shopify API access (`SaasProxyClient`, `SaasAutoLoginController`, `SaasCredentialController`).
-- Automatic credential revocation when the linked API key is deleted.
-- **Bulk product export** built on a phase-based architecture (Core, Media, Translation, Publishing phases) using Shopify Bulk Operations for large catalogs.
-- **Bulk product import** using Shopify Bulk Operations with batched mapping and caching for high-volume catalogs.
-- Variant SKU filter support in product export.
-- New `ShopifyPollBulkOperations` command and polling job to track bulk operation status.
-
-## Changed
-- Restructured product export into a modular, phase-based pipeline with per-phase progress tracking and deferred job-track completion.
-- Widened the Shopify credentials `access_token` column to support longer tokens.
-- Updated Vite to `^6.4.2` and laravel-vite-plugin to `^1.2.0`.
-- Enhanced credential UI tooltips and field handling for SaaS credentials.
+- Compatibility with UnoPim v3.0.0.
+- Compatibility with Shopify Admin API versions 2026-04 and 2026-07, with the latest version selected by default.
+- Metaobject support — new `shopify_metaobject` attribute type; create and manage Shopify metaobject definitions (with a fields datagrid) and entries from UnoPim, including metaobject options: active/draft status, translations, publish entries as web pages, Storefront API access, and Customer Account API access. Exported to Shopify and imported back.
+- Metaobject reference metafield — assign metaobject entries to products; referenced entries are created and updated automatically on export.
+- Shopify taxonomy category support — new `shopify_taxonomy` attribute type with a searchable category picker; the category is exported with the product and imported back.
+- Category-constrained metafield definitions — a metafield definition can be limited to selected taxonomy categories, and only matching products send that metafield.
+- Reference fields inside metaobjects — product, variant and collection references.
+- New metafield types — ID (with regex and length validation) and date & time.
+- Measurement attribute support — export and import weight, dimension and volume.
+- Dynamic product association mapping — metafield product references map to any active UnoPim association type, and newly added association types appear automatically.
+- File reference metafields can now restrict accepted file types (any or media only) and support mixed-media galleries (image, video and file).
+- Collection field mapping — a dedicated screen to map UnoPim category attributes to Shopify collection fields (title, description, SEO title, SEO description, handle and collection type), used for both category export and import.
+- Multi-location inventory export and import.
+- Unit price (unit price measurement) export and import.
+- Product status export mapping, including the Unlisted status.
 
 ## Bug fixes
-- Skip variants missing super-attribute values to prevent import crashes on Configurable product updates.
-- Added a 3-retry guard when downloading bulk-operation results.
-- Handle product recreation when a product was deleted from Shopify.
-- Fixed collection assignment and updates during bulk export.
-- Fixed inventory quantity sync and simple product export in bulk mode.
-- Fixed incorrect product count in job status and synced the UI job tracker with running phase jobs.
-- Show a UI error when no credential is configured.
+- Fixed importing Shopify rich text metafields into UnoPim (converted to HTML).
+- Fixed populating measurement metafields (weight, volume and dimension) on import.
+
+
+## Changed
+- Inventory is always multi-location now; the old single-location handling has been removed.
+
+## Bug fixes
+- Fixed the image metafield not being exported for the parent of a configurable product.
+- Fixed inventory being reset to zero on product update.
+- Fixed metafield definition export failing on the newer Shopify API versions.
+
+# 2.0.0 ( 20 May 2026 )
+
+## Features
+- UnoPIM-Shopify connector app — install from Shopify, enter your UnoPIM integration details, and click Connect.
+- No manual credential setup needed in UnoPIM.
+
+# 1.5.0 ( 30 April 2026 )
+
+## Features
+- Bulk product export.
+- Bulk product import.
 
 # 1.4.0 ( 15 April 2026 )
 

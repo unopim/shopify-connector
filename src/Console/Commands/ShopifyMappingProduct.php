@@ -52,7 +52,7 @@ class ShopifyMappingProduct extends Command
         parent::__construct();
     }
 
-    public function initialize(InputInterface $input, OutputInterface $output)
+    public function initialize(InputInterface $input, OutputInterface $output): void
     {
         $mappings = $this->shopifyExportmapping->find(1);
         $exportSettings = $mappings->mapping['shopify_connector_settings'];
@@ -129,7 +129,7 @@ class ShopifyMappingProduct extends Command
         if ($page) {
             $mutationType = 'productAllvalueGettingByCursor';
             $variable = [
-                'first' => 10,
+                'first'       => 10,
                 'afterCursor' => $page,
             ];
         }

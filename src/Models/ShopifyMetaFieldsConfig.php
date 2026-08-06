@@ -37,11 +37,13 @@ class ShopifyMetaFieldsConfig extends Model implements HistoryContract, Presenta
         'storefronts',
         'ContentTypeName',
         'apiUrl',
+        'taxonomy_category',
     ];
 
     protected $casts = [
-        'validations' => 'string',
-        'options' => 'string',
+        'validations'       => 'string',
+        'options'           => 'string',
+        'taxonomy_category' => 'array',
     ];
 
     /**
@@ -51,8 +53,8 @@ class ShopifyMetaFieldsConfig extends Model implements HistoryContract, Presenta
     {
         return [
             'validations' => JsonDataPresenter::class,
-            'options' => JsonDataPresenter::class,
-            'apiUrl' => JsonDataPresenter::class,
+            'options'     => JsonDataPresenter::class,
+            'apiUrl'      => JsonDataPresenter::class,
         ];
     }
 

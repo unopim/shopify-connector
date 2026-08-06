@@ -7,14 +7,21 @@ use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\Category\Repositories\CategoryFieldRepository;
+use Webkul\Category\Repositories\CategoryRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\Core\Repositories\CurrencyRepository;
 use Webkul\Core\Repositories\LocaleRepository;
+use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
+use Webkul\Shopify\Services\Taxonomy\ShopifyTaxonomyLoader;
+use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
 class OptionController extends Controller
 {
+    use ShopifyGraphqlRequest;
+
     /**
      * Create a new controller instance.
      *
@@ -29,6 +36,9 @@ class OptionController extends Controller
         protected AttributeGroupRepository $attributeGroupRepository,
         protected AttributeFamilyRepository $attributeFamilyRepository,
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
+        protected CategoryFieldRepository $categoryFieldRepository,
+        protected ProductRepository $productRepository,
+        protected CategoryRepository $categoryRepository,
     ) {}
 
     /**
@@ -61,7 +71,7 @@ class OptionController extends Controller
 
         foreach ($allActivateCredntial as $credentialArray) {
             $allCredential[] = [
-                'id' => $credentialArray['id'],
+                'id'    => $credentialArray['id'],
                 'label' => $credentialArray['shopUrl'],
             ];
         }
@@ -96,7 +106,7 @@ class OptionController extends Controller
 
         foreach ($allActivateChannel as $channel) {
             $allChannel[] = [
-                'id' => $channel['code'],
+                'id'    => $channel['code'],
                 'label' => $channel['name'] ?? $channel['code'],
             ];
         }
@@ -137,7 +147,7 @@ class OptionController extends Controller
 
         $allCurrency = $currencyRepository->get()->map(function ($item) {
             return [
-                'id' => $item->code,
+                'id'    => $item->code,
                 'label' => $item->name,
             ];
         });
@@ -209,7 +219,7 @@ class OptionController extends Controller
 
         $allLocale = array_map(function ($item) {
             return [
-                'id' => $item['code'],
+                'id'    => $item['code'],
                 'label' => $item['name'],
             ];
         }, $allActivateLocale);
@@ -233,9 +243,18 @@ class OptionController extends Controller
         $attributeRepository = $this->attributeRepository;
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
-            $attributeRepository = in_array('number', $entityName)
-                ? $attributeRepository->whereIn('validation', $entityName)
-                : $attributeRepository->whereIn('type', $entityName);
+
+            if (in_array('number', $entityName)) {
+                $attributeRepository = $attributeRepository->where(function ($query) use ($entityName) {
+                    $query->where(fn ($q) => $q->whereIn('validation', $entityName)->where('type', '!=', 'price'));
+
+                    if (in_array('measurement', $entityName, true)) {
+                        $query->orWhere('type', 'measurement');
+                    }
+                });
+            } else {
+                $attributeRepository = $attributeRepository->whereIn('type', $entityName);
+            }
         }
 
         if (! empty($query)) {
@@ -279,18 +298,65 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
-                'type' => $attribute?->type,
-                'validation' => $attribute->validation,
-                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
+                'id'          => $attribute->id,
+                'code'        => $attribute->code,
+                'type'        => $attribute?->type,
+                'validation'  => $attribute->validation,
+                'swatch_type' => $attribute?->swatch_type,
+                'label'       => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
 
         return new JsonResponse([
-            'options' => $formattedoptions,
-            'page' => $attributes->currentPage(),
+            'options'  => $formattedoptions,
+            'page'     => $attributes->currentPage(),
             'lastPage' => $attributes->lastPage(),
+        ]);
+    }
+
+    /**
+     * List active category fields for collection mapping, type-filtered by entityName.
+     */
+    public function listCategoryFields(): JsonResponse
+    {
+        $entityName = request()->get('entityName');
+        $query = request()->get('query') ?? '';
+        $page = request()->get('page');
+        $identifiers = request()->input('identifiers');
+
+        $repository = $this->categoryFieldRepository->where('status', 1);
+
+        if (! empty($entityName)) {
+            $types = json_decode($entityName);
+            $repository = $repository->whereIn('type', is_array($types) ? $types : [$types]);
+        }
+
+        if (! empty($identifiers['columnName']) && isset($identifiers['values'])) {
+            $values = $identifiers['values'];
+            $repository = $repository->whereIn($identifiers['columnName'], is_array($values) ? $values : [$values]);
+        } elseif (! empty($query)) {
+            $repository = $repository->where('code', 'LIKE', '%'.$query.'%');
+        }
+
+        $fields = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+        $currentLocaleCode = core()->getRequestedLocaleCode();
+        $formattedoptions = [];
+
+        foreach ($fields as $field) {
+            $translatedLabel = $field->translate($currentLocaleCode)?->name;
+            $formattedoptions[] = [
+                'id'    => $field->id,
+                'code'  => $field->code,
+                'type'  => $field->type,
+                'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$field->code}]",
+            ];
+        }
+
+        return new JsonResponse([
+            'options'  => $formattedoptions,
+            'page'     => $fields->currentPage(),
+            'lastPage' => $fields->lastPage(),
         ]);
     }
 
@@ -331,8 +397,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
+                'id'    => $attribute->id,
+                'code'  => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -377,8 +443,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
+                'id'    => $attribute->id,
+                'code'  => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -427,8 +493,8 @@ class OptionController extends Controller
         foreach ($attributes as $attribute) {
             $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id' => $attribute->id,
-                'code' => $attribute->code,
+                'id'    => $attribute->id,
+                'code'  => $attribute->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
             ];
         }
@@ -454,8 +520,8 @@ class OptionController extends Controller
                 $translatedLabel = $attribute->translate($currentLocaleCode)?->name;
 
                 $formattedoptions[$key][] = [
-                    'id' => $attribute->id,
-                    'code' => $attribute->code,
+                    'id'    => $attribute->id,
+                    'code'  => $attribute->code,
                     'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attribute->code}]",
                 ];
             }
@@ -486,7 +552,7 @@ class OptionController extends Controller
 
         $attrGroupList = array_map(function ($item) {
             return [
-                'id' => $item['id'],
+                'id'    => $item['id'],
                 'label' => $item['name'] ?? $item['code'],
             ];
         }, $allAttributegroup);
@@ -531,14 +597,105 @@ class OptionController extends Controller
         foreach ($attributesFamilies as $attributesFamily) {
             $translatedLabel = $attributesFamily->translate($currentLocaleCode)?->name;
             $formattedoptions[] = [
-                'id' => $attributesFamily->id,
-                'code' => $attributesFamily->code,
+                'id'    => $attributesFamily->id,
+                'code'  => $attributesFamily->code,
                 'label' => ! empty($translatedLabel) ? $translatedLabel : "[{$attributesFamily->code}]",
             ];
         }
 
         return new JsonResponse([
             'options' => $formattedoptions,
+        ]);
+    }
+
+    public function listTaxonomyTree(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $query = trim((string) (request()->get('query') ?? ''));
+
+        if ($query !== '') {
+            $options = array_map(
+                fn ($e) => ['id' => $e['id'], 'name' => $e['path'], 'path' => $e['path'], 'hasChildren' => false],
+                $loader->search($query)
+            );
+
+            return new JsonResponse(['options' => $options]);
+        }
+
+        $parent = (string) (request()->get('parent') ?? '');
+
+        $rows = $parent === '' ? $loader->topLevel() : $loader->children($parent);
+
+        $options = array_map(
+            fn ($r) => ['id' => $r['id'], 'name' => $r['name'], 'path' => $r['name'], 'hasChildren' => $r['hasChildren']],
+            $rows
+        );
+
+        return new JsonResponse(['options' => $options]);
+    }
+
+    public function listTaxonomyDescendants(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $id = (string) (request()->get('id') ?? '');
+
+        return new JsonResponse(['ids' => $id === '' ? [] : $loader->descendants($id)]);
+    }
+
+    public function listTaxonomyNames(ShopifyTaxonomyLoader $loader): JsonResponse
+    {
+        $ids = (array) request()->get('ids', []);
+
+        return new JsonResponse(['names' => $loader->namesFor($ids)]);
+    }
+
+    /**
+     * List UnoPim products, variants or categories for metaobject reference fields.
+     */
+    public function referenceOptions(): JsonResponse
+    {
+        $refType = request()->get('refType');
+        $query = request()->get('query') ?? '';
+        $page = request()->get('page');
+
+        if ($refType === 'collection_reference') {
+            $repository = $this->categoryRepository;
+
+            if (! empty($query)) {
+                $repository = $repository->where('code', 'LIKE', '%'.$query.'%');
+            }
+
+            $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+            $options = array_map(fn ($category) => [
+                'id'    => $category->code,
+                'label' => $category->code,
+            ], $records->items());
+
+            return new JsonResponse([
+                'options'  => $options,
+                'page'     => $records->currentPage(),
+                'lastPage' => $records->lastPage(),
+            ]);
+        }
+
+        $repository = $refType === 'variant_reference'
+            ? $this->productRepository->where(fn ($builder) => $builder->whereNotNull('parent_id')->orWhere('type', 'simple'))
+            : $this->productRepository->whereNull('parent_id');
+
+        if (! empty($query)) {
+            $repository = $repository->where('sku', 'LIKE', '%'.$query.'%');
+        }
+
+        $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
+
+        $options = array_map(fn ($product) => [
+            'id'    => $product->sku,
+            'label' => $product->sku,
+        ], $records->items());
+
+        return new JsonResponse([
+            'options'  => $options,
+            'page'     => $records->currentPage(),
+            'lastPage' => $records->lastPage(),
         ]);
     }
 }

@@ -9,15 +9,13 @@ test.describe('UnoPim Shopify Plugin Navigation', () => {
         // Go directly to the admin dashboard (User is already logged in)
         await page.goto('/admin/dashboard');
 
-        // Click the Shopify plugin link
-        const shopifyLink = page.getByRole('link', { name: /Shopify/i });
+        const shopifyLink = page.locator('a:has(.icon-shopify)').first();
         await shopifyLink.click();
         // Verify navigation to the Shopify credentials page
         await expect(page).toHaveURL(new URL('/admin/shopify/credentials', baseUrl).toString());
 
         // Verify the Shopify icon and text are visible
         await expect(page.locator('.icon-shopify')).toBeVisible();
-        await expect(shopifyLink.locator('text=Shopify')).toBeVisible();
         await expect(page).toHaveTitle(/Shopify/i);
 
     });

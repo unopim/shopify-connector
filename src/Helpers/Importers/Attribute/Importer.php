@@ -154,10 +154,10 @@ class Importer extends AbstractImporter
 
                     if ($existingOption) {
                         $optionArray[$existingOption->id] = [
-                            'isNew' => 'false',
-                            'isDelete' => 'false',
-                            'code' => $existingOption->code,
-                            'sort_order' => $existingOption->sort_order,
+                            'isNew'       => 'false',
+                            'isDelete'    => 'false',
+                            'code'        => $existingOption->code,
+                            'sort_order'  => $existingOption->sort_order,
                             $this->locale => [
                                 'label' => $optionLabel,
                             ],
@@ -167,10 +167,10 @@ class Importer extends AbstractImporter
                     }
 
                     $optionArray['option_'.$newOptionIndex] = [
-                        'isNew' => 'true',
-                        'isDelete' => '',
-                        'code' => $optValue,
-                        'sort_order' => $initialOrder,
+                        'isNew'       => 'true',
+                        'isDelete'    => '',
+                        'code'        => $optValue,
+                        'sort_order'  => $initialOrder,
                         $this->locale => [
                             'label' => $optionLabel,
                         ],
@@ -194,16 +194,16 @@ class Importer extends AbstractImporter
                     $newOptionKey = 'option_'.($newkey + 1);
                     $optionLabel = $rowData['labels'][$optValue] ?? $optValue;
                     $newOptionArray[$newOptionKey] = [
-                        'position' => $newkey,
-                        'code' => $optValue,
+                        'position'    => $newkey,
+                        'code'        => $optValue,
                         $this->locale => [
                             'label' => $optionLabel,
                         ],
                     ];
                 }
                 $newAttrCreate = [
-                    'code' => strtolower($rowData['name']),
-                    'type' => 'select',
+                    'code'        => strtolower($rowData['name']),
+                    'type'        => 'select',
                     $this->locale => [
                         'name' => $rowData['label'] ?? $rowData['name'],
                     ],
@@ -216,7 +216,7 @@ class Importer extends AbstractImporter
         }
 
         $batch = $this->importBatchRepository->update([
-            'state' => Import::STATE_PROCESSED,
+            'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
                 'updated' => $this->getUpdatedItemsCount(),

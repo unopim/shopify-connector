@@ -113,11 +113,11 @@ trait DataMappingTrait
         $entityFound = self::UNOPIM_ENTITY_NAME == 'product' ? 'product' : 'collection';
         if (empty($data[0]['userErrors']) && ! ($mapping)) {
             $mappingData = [
-                'entityType' => self::UNOPIM_ENTITY_NAME,
-                'code' => $item['code'],
-                'externalId' => $data[0][$entityFound]['id'],
+                'entityType'    => self::UNOPIM_ENTITY_NAME,
+                'code'          => $item['code'],
+                'externalId'    => $data[0][$entityFound]['id'],
                 'jobInstanceId' => $exportId,
-                'apiUrl' => $this?->credential?->shopUrl,
+                'apiUrl'        => $this?->credential?->shopUrl,
             ];
 
             $this->shopifyMappingRepository->create($mappingData);
@@ -132,25 +132,29 @@ trait DataMappingTrait
             $response = $response['body']['data']['collectionCreate'] ?? [];
             if (! empty($response['collection']['id'])) {
                 $mappingData = [
-                    'entityType' => self::UNOPIM_ENTITY_NAME,
-                    'code' => $item['code'],
-                    'externalId' => $response['collection']['id'],
+                    'entityType'    => self::UNOPIM_ENTITY_NAME,
+                    'code'          => $item['code'],
+                    'externalId'    => $response['collection']['id'],
                     'jobInstanceId' => $exportId,
-                    'apiUrl' => $this->credential->shopUrl,
+                    'apiUrl'        => $this->credential->shopUrl,
                 ];
 
                 $this->shopifyMappingRepository->create($mappingData);
             }
-        } else {
+        } elseif (! empty($data[0][$entityFound]['id'])) {
             $mappingData = [
-                'entityType' => self::UNOPIM_ENTITY_NAME,
-                'code' => $item['code'],
-                'externalId' => $data[0][$entityFound]['id'],
+                'entityType'    => self::UNOPIM_ENTITY_NAME,
+                'code'          => $item['code'],
+                'externalId'    => $data[0][$entityFound]['id'],
                 'jobInstanceId' => $exportId,
-                'apiUrl' => $this->credential->shopUrl,
+                'apiUrl'        => $this->credential->shopUrl,
             ];
 
             $this->shopifyMappingRepository->update($mappingData, $mapping[0]['id']);
+        } else {
+            // Update failed (userErrors, collection null): return the response so the
+            // caller skips and logs instead of crashing on a null collection.
+            return $data[0];
         }
 
         return $response;
@@ -162,12 +166,12 @@ trait DataMappingTrait
     protected function parentMapping(string $code, string $id, int $exportId, $productId = null): void
     {
         $mappingData = [
-            'entityType' => self::UNOPIM_ENTITY_NAME,
-            'code' => $code,
-            'externalId' => $id,
-            'relatedId' => $productId,
+            'entityType'    => self::UNOPIM_ENTITY_NAME,
+            'code'          => $code,
+            'externalId'    => $id,
+            'relatedId'     => $productId,
             'jobInstanceId' => $exportId,
-            'apiUrl' => $this->credential->shopUrl,
+            'apiUrl'        => $this->credential->shopUrl,
         ];
 
         $this->shopifyMappingRepository->create($mappingData);
@@ -180,11 +184,11 @@ trait DataMappingTrait
     {
         if ($mappingId) {
             $mappingData = [
-                'entityType' => self::UNOPIM_ENTITY_NAME,
-                'code' => $code,
-                'externalId' => $id,
+                'entityType'    => self::UNOPIM_ENTITY_NAME,
+                'code'          => $code,
+                'externalId'    => $id,
                 'jobInstanceId' => $exportId,
-                'apiUrl' => $this->credential->shopUrl,
+                'apiUrl'        => $this->credential->shopUrl,
             ];
 
             $this->shopifyMappingRepository->update($mappingData, $mappingId);
@@ -204,13 +208,13 @@ trait DataMappingTrait
         ?int $mappingId = null
     ): void {
         $mappingData = [
-            'entityType' => $entityType,
-            'code' => $code,
-            'externalId' => $externalId,
+            'entityType'    => $entityType,
+            'code'          => $code,
+            'externalId'    => $externalId,
             'jobInstanceId' => $jobInstanceId,
-            'relatedId' => $productId,
+            'relatedId'     => $productId,
             'relatedSource' => $productSku,
-            'apiUrl' => $this->credential->shopUrl,
+            'apiUrl'        => $this->credential->shopUrl,
         ];
 
         $this->shopifyMappingRepository->create($mappingData);

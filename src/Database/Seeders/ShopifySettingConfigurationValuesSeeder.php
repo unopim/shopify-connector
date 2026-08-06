@@ -13,27 +13,33 @@ class ShopifySettingConfigurationValuesSeeder extends Seeder
     public function run(): void
     {
         $existingIds = DB::table('shopify_setting_configuration_values')
-            ->whereIn('id', [1, 2, 3])
+            ->whereIn('id', [1, 2, 3, 4])
             ->pluck('id')
             ->toArray();
 
         $records = [
             [
-                'id' => 1,
-                'mapping' => null,
-                'extras' => null,
+                'id'         => 1,
+                'mapping'    => null,
+                'extras'     => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], [
-                'id' => 2,
-                'mapping' => null,
-                'extras' => null,
+                'id'         => 2,
+                'mapping'    => null,
+                'extras'     => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ], [
-                'id' => 3,
-                'mapping' => null,
-                'extras' => null,
+                'id'         => 3,
+                'mapping'    => null,
+                'extras'     => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], [
+                'id'         => 4,
+                'mapping'    => null,
+                'extras'     => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

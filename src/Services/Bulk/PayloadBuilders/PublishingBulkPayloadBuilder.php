@@ -50,7 +50,7 @@ class PublishingBulkPayloadBuilder
             $input = array_map(fn ($pid) => ['publicationId' => $pid], $publicationIds);
 
             $line = [
-                'id' => $this->ensureGid($productId, 'Product'),
+                'id'    => $this->ensureGid($productId, 'Product'),
                 'input' => $input,
             ];
 

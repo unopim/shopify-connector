@@ -4,6 +4,7 @@ namespace Webkul\Shopify\DataGrids\Catalog;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
 use Webkul\DataGrid\DataGrid;
 
 class MetaFieldDataGrid extends DataGrid
@@ -38,50 +39,70 @@ class MetaFieldDataGrid extends DataGrid
     public function prepareColumns()
     {
         $this->addColumn([
-            'index' => 'ownerType',
-            'label' => trans('shopify::app.shopify.metafield.datagrid.definitiontype'),
-            'type' => 'string',
+            'index'      => 'ownerType',
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.definitiontype'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
+            'sortable'   => true,
         ]);
 
         $this->addColumn([
-            'index' => 'code',
-            'label' => trans('shopify::app.shopify.metafield.datagrid.attribute-label'),
-            'type' => 'string',
+            'index'      => 'code',
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.attribute-label'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
+            'sortable'   => true,
         ]);
 
         $this->addColumn([
-            'index' => 'attribute',
-            'label' => trans('shopify::app.shopify.metafield.datagrid.definitionName'),
-            'type' => 'string',
+            'index'      => 'attribute',
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.definitionName'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
+            'sortable'   => true,
         ]);
 
         $this->addColumn([
-            'index' => 'ContentTypeName',
-            'label' => trans('shopify::app.shopify.metafield.datagrid.contentTypeName'),
-            'type' => 'string',
+            'index'      => 'ContentTypeName',
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.contentTypeName'),
+            'type'       => 'string',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
-            'closure' => fn ($row) => ! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type,
+            'sortable'   => true,
+            'closure'    => function ($row) {
+                $referenceLabels = [
+                    'product_reference'    => trans('shopify::app.shopify.metafield.datagrid.product-reference'),
+                    'variant_reference'    => trans('shopify::app.shopify.metafield.datagrid.variant-reference'),
+                    'collection_reference' => trans('shopify::app.shopify.metafield.datagrid.collection-reference'),
+                    'file_reference'       => trans('shopify::app.shopify.metafield.datagrid.file-reference'),
+                    'metaobject_reference' => trans('shopify::app.shopify.metafield.datagrid.metaobject-reference'),
+                ];
+
+                if (isset($referenceLabels[$row->type])) {
+                    return $referenceLabels[$row->type];
+                }
+
+                $typeKey = 'shopify::app.shopify.metafield.type.'.$row->type;
+
+                if (Lang::has($typeKey)) {
+                    return trans($typeKey);
+                }
+
+                return ! empty($row->ContentTypeName) ? $row->ContentTypeName : $row->type;
+            },
         ]);
 
         $this->addColumn([
-            'index' => 'pin',
-            'label' => trans('shopify::app.shopify.metafield.datagrid.pin'),
-            'type' => 'boolean',
+            'index'      => 'pin',
+            'label'      => trans('shopify::app.shopify.metafield.datagrid.pin'),
+            'type'       => 'boolean',
             'searchable' => true,
             'filterable' => true,
-            'sortable' => true,
-            'closure' => fn ($row) => $row->pin ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
+            'sortable'   => true,
+            'closure'    => fn ($row) => $row->pin ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
         ]);
     }
 
@@ -94,10 +115,10 @@ class MetaFieldDataGrid extends DataGrid
     {
         if (bouncer()->hasPermission('shopify.meta-fields.edit')) {
             $this->addAction([
-                'icon' => 'icon-edit',
-                'title' => trans('admin::app.catalog.attributes.index.datagrid.edit'),
+                'icon'   => 'icon-edit',
+                'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url' => function ($row) {
+                'url'    => function ($row) {
                     return route('shopify.metafield.edit', $row->id);
                 },
             ]);
@@ -105,10 +126,10 @@ class MetaFieldDataGrid extends DataGrid
 
         if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
             $this->addAction([
-                'icon' => 'icon-delete',
-                'title' => trans('admin::app.catalog.attributes.index.datagrid.delete'),
+                'icon'   => 'icon-delete',
+                'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url' => function ($row) {
+                'url'    => function ($row) {
                     return route('shopify.metafield.delete', $row->id);
                 },
             ]);
@@ -124,9 +145,9 @@ class MetaFieldDataGrid extends DataGrid
     {
         if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
             $this->addMassAction([
-                'title' => trans('admin::app.catalog.products.index.datagrid.delete'),
-                'url' => route('shopify.metafield.mass_delete'),
-                'method' => 'POST',
+                'title'   => trans('admin::app.catalog.products.index.datagrid.delete'),
+                'url'     => route('shopify.metafield.mass_delete'),
+                'method'  => 'POST',
                 'options' => ['actionType' => 'delete'],
             ]);
         }

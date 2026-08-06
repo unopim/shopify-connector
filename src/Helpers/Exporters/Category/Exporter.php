@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Helpers\Exporters\Category;
 
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -11,6 +12,7 @@ use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
+use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
@@ -61,6 +63,13 @@ class Exporter extends AbstractExporter
      */
     protected $shopifyDefaultLocale;
 
+    /**
+     * Collection mapping config (row id 4).
+     *
+     * @var mixed
+     */
+    protected $collectionMapping;
+
     protected bool $exportsFile = false;
 
     /**
@@ -71,6 +80,7 @@ class Exporter extends AbstractExporter
         protected FileExportFileBuffer $exportFileBuffer,
         protected ShopifyCredentialRepository $shopifyRepository,
         protected ShopifyMappingRepository $shopifyMappingRepository,
+        protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
     }
@@ -87,6 +97,8 @@ class Exporter extends AbstractExporter
         $this->initPublications();
 
         $this->initDefaultLocale();
+
+        $this->collectionMapping = $this->shopifyExportMappingRepository->find(4);
     }
 
     /**
@@ -184,15 +196,21 @@ class Exporter extends AbstractExporter
 
     public function prepareCategoriesShopify(JobTrackBatchContract $batch, mixed $filePath)
     {
+        $fieldMap = $this->collectionMapping?->mapping['collection_mapping'] ?? [];
+
         foreach ($batch->data as $rawData) {
             $mapping = $this->checkMappingInDb($rawData) ?? null;
-            $localeSpecificFields = $this->getLocaleSpecificFields($rawData, $this->shopifyDefaultLocale);
 
-            $category = [
-                'handle' => $rawData['code'] ?? '',
-                'title' => $localeSpecificFields['name'] ?? $rawData['code'],
-                'descriptionHtml' => $localeSpecificFields['description'] ?? '',
-            ];
+            $category = $this->buildCollectionPayload($rawData, $fieldMap);
+
+            if (empty($category['title'])) {
+                $this->jobLogger->warning(
+                    trans('shopify::app.shopify.export.mapping.collection.errors.empty_title', ['code' => $rawData['code'] ?? ''])
+                );
+                $this->skippedItemsCount++;
+
+                continue;
+            }
 
             if (empty($mapping)) {
                 $responseData = $this->apiRequestShopify($category);
@@ -211,7 +229,6 @@ class Exporter extends AbstractExporter
                 $category['id'] = $mapping[0]['externalId'];
                 $responseData = $this->apiRequestShopify($category, $category['id']);
                 $resultCollection = $responseData['body']['data']['collectionUpdate'] ?? [];
-                $this->logWarning($resultCollection['userErrors'], $rawData['code']);
                 if (! empty($resultCollection['userErrors'])) {
                     $resultCollection = $this->handleAfterApiRequest($rawData, $responseData, $mapping, $this->export->id, $category);
 
@@ -231,7 +248,7 @@ class Exporter extends AbstractExporter
             }
 
             $this->categoryTranslation($this->shopifyDefaultLocale, $rawData, $this->credential,
-                $this->credentialArray, $resultCollection['collection'] ?? []);
+                $this->credentialArray, $resultCollection['collection'] ?? [], $fieldMap);
         }
     }
 
@@ -249,14 +266,14 @@ class Exporter extends AbstractExporter
         sort($newIds);
         if ($existingIds !== $newIds) {
             $this->requestGraphQlApiAction(self::UPDATE_PUBLISH_CHANNEL, $this->credentialArray, [
-                'id' => $collectionId,
+                'id'    => $collectionId,
                 'input' => $publicationIds,
             ]);
 
             $removePublication = array_values(array_diff($existingIds, $newIds));
             if (! empty($removePublication)) {
                 $this->requestGraphQlApiAction(self::UPDATE_UNPUBLISH_CHANNEL, $this->credentialArray, [
-                    'id' => $collectionId,
+                    'id'    => $collectionId,
                     'input' => array_map(fn ($id) => ['publicationId' => $id], $removePublication),
                 ]);
             }
@@ -291,6 +308,179 @@ class Exporter extends AbstractExporter
         }
 
         return $data['additional_data']['locale_specific'][$locale] ?? [];
+    }
+
+    /**
+     * Merge common and locale-specific category field values for a locale.
+     */
+    private function getMergedFields(array $data, ?string $locale): array
+    {
+        $additional = $data['additional_data'] ?? [];
+
+        if (! is_array($additional)) {
+            return [];
+        }
+
+        $common = is_array($additional['common'] ?? null) ? $additional['common'] : [];
+        $localeSpecific = is_array($additional['locale_specific'][$locale] ?? null) ? $additional['locale_specific'][$locale] : [];
+
+        return array_merge($common, $localeSpecific);
+    }
+
+    /**
+     * Build the Shopify CollectionInput payload from the mapping config.
+     *
+     * @param  array<string, string>  $fieldMap
+     */
+    private function buildCollectionPayload(array $rawData, array $fieldMap): array
+    {
+        $merged = $this->getMergedFields($rawData, $this->shopifyDefaultLocale);
+        $config = $this->collectionMapping?->mapping ?? [];
+
+        $category = [];
+
+        $titleCode = $fieldMap['title'] ?? null;
+        $category['title'] = $titleCode ? ($merged[$titleCode] ?? '') : '';
+
+        foreach (['descriptionHtml' => 'descriptionHtml', 'handle' => 'handle'] as $mapKey => $payloadKey) {
+            if (! empty($fieldMap[$mapKey]) && ! empty($merged[$fieldMap[$mapKey]])) {
+                $category[$payloadKey] = $merged[$fieldMap[$mapKey]];
+            }
+        }
+
+        $seo = [];
+        foreach (['seoTitle' => 'title', 'seoDescription' => 'description'] as $mapKey => $seoKey) {
+            if (! empty($fieldMap[$mapKey]) && ! empty($merged[$fieldMap[$mapKey]])) {
+                $seo[$seoKey] = $merged[$fieldMap[$mapKey]];
+            }
+        }
+        if (! empty($seo)) {
+            $category['seo'] = $seo;
+        }
+
+        if (! empty($config['sort_order'])) {
+            $category['sortOrder'] = $config['sort_order'];
+        }
+
+        if (! empty($category['title']) && $this->isSmartCollection($fieldMap, $merged)) {
+            $category['ruleSet'] = $this->defaultSmartRuleSet($category['title']);
+        }
+
+        $imageUrl = $this->resolveCollectionImageUrl($config, $merged, $rawData['code'] ?? '');
+        if (! empty($imageUrl)) {
+            $category['image'] = ['src' => $imageUrl];
+        }
+
+        return $category;
+    }
+
+    /**
+     * Resolve whether the mapped collection-type boolean attribute is truthy.
+     * True => Smart collection; false or unmapped => Manual.
+     *
+     * @param  array<string, string>  $fieldMap
+     */
+    private function isSmartCollection(array $fieldMap, array $merged): bool
+    {
+        $code = $fieldMap['collectionType'] ?? null;
+
+        if (empty($code)) {
+            return false;
+        }
+
+        $value = strtolower(trim((string) ($merged[$code] ?? '')));
+
+        return in_array($value, ['1', 'true', 'yes'], true);
+    }
+
+    /**
+     * Default rule set for a smart collection: products whose title contains the
+     * collection title. Used when the type resolves to Smart but no per-rule
+     * configuration exists.
+     */
+    private function defaultSmartRuleSet(string $title): array
+    {
+        return [
+            'appliedDisjunctively' => false,
+            'rules'                => [
+                [
+                    'column'    => 'TITLE',
+                    'relation'  => 'CONTAINS',
+                    'condition' => $title,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Resolve the mapped collection image attribute to a public URL.
+     */
+    private function resolveCollectionImageUrl(array $config, array $merged, string $categoryCode = ''): ?string
+    {
+        $mediaAttr = $config['mediaMapping']['mediaAttributes'] ?? '';
+
+        if (empty($mediaAttr)) {
+            return null;
+        }
+
+        $code = is_array($mediaAttr) ? ($mediaAttr[0] ?? '') : trim(explode(',', $mediaAttr)[0]);
+
+        if (empty($code) || empty($merged[$code])) {
+            return null;
+        }
+
+        $value = $merged[$code];
+        $path = is_array($value) ? ($value[0] ?? '') : (string) $value;
+
+        if (empty($path)) {
+            return null;
+        }
+
+        // Encode each path segment (spaces, brackets, etc.) so Shopify can fetch the image.
+        $encodedPath = implode('/', array_map('rawurlencode', explode('/', $path)));
+
+        $url = Storage::url($encodedPath);
+
+        // Shopify fetches the image by URL; a private/LAN store URL is unreachable,
+        // so skip the image and let the collection export without it.
+        if (! $this->isPubliclyReachableUrl($url)) {
+            $this->jobLogger->warning(
+                trans('shopify::app.shopify.export.mapping.collection.errors.image_skipped', ['code' => $categoryCode])
+            );
+
+            return null;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Whether Shopify can fetch a URL from the public internet. Loopback,
+     * private/reserved IPs and local-only hostnames are not reachable.
+     */
+    private function isPubliclyReachableUrl(?string $url): bool
+    {
+        $host = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+
+        if ($host === '') {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return (bool) filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+        }
+
+        if ($host === 'localhost' || ! str_contains($host, '.')) {
+            return false;
+        }
+
+        foreach (['.local', '.localhost', '.test', '.invalid', '.example', '.internal'] as $suffix) {
+            if (str_ends_with($host, $suffix)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

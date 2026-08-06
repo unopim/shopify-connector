@@ -62,9 +62,9 @@ class DownloadShopifyImage implements ShouldQueue
 
             if (! $response->successful()) {
                 Log::warning('Shopify image download failed', [
-                    'url' => $this->imageUrl,
+                    'url'    => $this->imageUrl,
                     'status' => $response->status(),
-                    'path' => $this->storagePath,
+                    'path'   => $this->storagePath,
                 ]);
 
                 return;
@@ -73,8 +73,8 @@ class DownloadShopifyImage implements ShouldQueue
             Storage::disk($this->disk)->put($this->storagePath, $response->body());
         } catch (\Throwable $e) {
             Log::warning('Shopify image download exception', [
-                'url' => $this->imageUrl,
-                'path' => $this->storagePath,
+                'url'     => $this->imageUrl,
+                'path'    => $this->storagePath,
                 'message' => $e->getMessage(),
             ]);
         }

@@ -1,10 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shopify\Http\Controllers\CollectionMappingController;
 use Webkul\Shopify\Http\Controllers\CredentialController;
 use Webkul\Shopify\Http\Controllers\ImportMappingController;
 use Webkul\Shopify\Http\Controllers\MappingController;
 use Webkul\Shopify\Http\Controllers\MetaFieldController;
+use Webkul\Shopify\Http\Controllers\MetaobjectController;
+use Webkul\Shopify\Http\Controllers\MetaobjectEntryController;
 use Webkul\Shopify\Http\Controllers\OptionController;
 use Webkul\Shopify\Http\Controllers\SaasAutoLoginController;
 use Webkul\Shopify\Http\Controllers\SettingController;
@@ -65,6 +68,12 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
                 Route::post('create', 'store')->name('shopify.export-mappings.create');
             });
 
+            Route::controller(CollectionMappingController::class)->prefix('collection-mapping')->group(function () {
+                Route::get('{id}', 'index')->name('admin.shopify.collection-mappings');
+
+                Route::post('create', 'store')->name('shopify.collection-mappings.create');
+            });
+
         });
 
         Route::prefix('import')->group(function () {
@@ -78,6 +87,14 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
         Route::controller(OptionController::class)->group(function () {
 
             Route::get('get-attribute', 'listAttributes')->name('admin.shopify.get-attribute');
+
+            Route::get('get-category-field', 'listCategoryFields')->name('admin.shopify.get-category-field');
+
+            Route::get('get-taxonomy-tree', 'listTaxonomyTree')->name('admin.shopify.get-taxonomy-tree');
+
+            Route::get('get-taxonomy-descendants', 'listTaxonomyDescendants')->name('admin.shopify.get-taxonomy-descendants');
+
+            Route::get('get-taxonomy-names', 'listTaxonomyNames')->name('admin.shopify.get-taxonomy-names');
 
             Route::get('get-image-attribute', 'listImageAttributes')->name('admin.shopify.get-image-attribute');
 
@@ -98,6 +115,54 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
             Route::get('get-shopify-attrGroup', 'listAttributeGroup')->name('shopify.attribute-group.fetch-all');
 
             Route::get('get-shopify-family', 'listShopifyFamily')->name('admin.shopify.get-all-family-variants');
+
+            Route::get('metaobject/reference-options', 'referenceOptions')->name('shopify.metaobject.reference-options');
+        });
+
+        Route::controller(MetaobjectController::class)->group(function () {
+            Route::get('metaobject', 'index')->name('shopify.metaobject.index');
+
+            Route::post('metaobject', 'store')->name('shopify.metaobject.store');
+
+            Route::get('metaobject/create', 'create')->name('shopify.metaobject.create');
+
+            Route::get('metaobject/definitions', 'definitions')->name('shopify.metaobject.local-definitions');
+
+            Route::get('metaobject/for-attribute', 'forAttribute')->name('shopify.metaobject.for-attribute');
+
+            Route::post('metaobject/mass-delete', 'massDestroy')->name('shopify.metaobject.mass_delete');
+
+            Route::get('metaobject/{id}/edit', 'edit')->name('shopify.metaobject.edit');
+
+            Route::put('metaobject/{id}', 'update')->name('shopify.metaobject.update');
+
+            Route::delete('metaobject/{id}', 'destroy')->name('shopify.metaobject.destroy');
+
+            Route::patch('metaobject/{id}/general', 'updateGeneral')->name('shopify.metaobject.general');
+
+            Route::get('metaobject-field/datagrid/{id}', 'fieldDatagrid')->name('shopify.metaobject.field.datagrid');
+
+            Route::post('metaobject-field/{id}', 'fieldStore')->name('shopify.metaobject.field.store');
+
+            Route::get('metaobject-field/{id}/{key}', 'fieldGet')->name('shopify.metaobject.field.get');
+
+            Route::put('metaobject-field/{id}/{key}', 'fieldUpdate')->name('shopify.metaobject.field.update');
+
+            Route::delete('metaobject-field/{id}/{key}', 'fieldDestroy')->name('shopify.metaobject.field.destroy');
+        });
+
+        Route::controller(MetaobjectEntryController::class)->group(function () {
+            Route::get('metaobject-entry/list', 'list')->name('shopify.metaobject.entry.list');
+
+            Route::get('metaobject-entry/datagrid/{type}', 'datagrid')->name('shopify.metaobject.entry.datagrid');
+
+            Route::get('metaobject-entry/columns/{type}', 'columns')->name('shopify.metaobject.entry.columns');
+
+            Route::post('metaobject-entry', 'store')->name('shopify.metaobject.entry.store');
+
+            Route::get('metaobject-entry/{id}', 'get')->name('shopify.metaobject.entry.get');
+
+            Route::delete('metaobject-entry/{id}', 'delete')->name('shopify.metaobject.entry.delete');
         });
 
     });
