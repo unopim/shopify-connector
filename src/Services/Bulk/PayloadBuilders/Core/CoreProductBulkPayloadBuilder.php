@@ -403,6 +403,7 @@ class CoreProductBulkPayloadBuilder
                 'path'         => $path,
                 'content_type' => $this->assetFileContentType($mime),
                 'url'          => $url,
+                'asset'        => $asset,
             ];
         }
 

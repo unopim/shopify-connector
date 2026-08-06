@@ -2,18 +2,17 @@
 
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
-use Webkul\DAM\Models\Directory;
 use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\ProductPhaseDataService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
+use Webkul\Shopify\Traits\StagesShopifyAsset;
 
 class MediaBulkPayloadBuilder
 {
     use ShopifyGraphqlRequest;
+    use StagesShopifyAsset;
 
     /**
      * entityType used to store media mappings in wk_shopify_data_mapping.
@@ -185,9 +184,17 @@ class MediaBulkPayloadBuilder
                     // always fall through to a fresh create here.)
                     $mediaId = $match['byAttribute']['row']->externalId;
 
+                    $previewSource = ! empty($item['asset'])
+                        ? $this->stageAssetUpload($item['asset'], $credential)
+                        : ($item['url'] ?? '');
+
+                    if (empty($previewSource)) {
+                        continue;
+                    }
+
                     $updateMedia[] = [
                         'id'                 => $mediaId,
-                        'previewImageSource' => $item['url'],
+                        'previewImageSource' => $previewSource,
                         'alt'                => $item['sku'].' - '.$item['code'],
                     ];
 
@@ -206,8 +213,8 @@ class MediaBulkPayloadBuilder
                 // upload target first and referenced by its resourceUrl.
                 $originalSource = $item['url'] ?? '';
 
-                if ($mediaContentType === 'VIDEO') {
-                    $originalSource = $this->stageVideoUpload($item['asset'] ?? [], $credential);
+                if ($mediaContentType === 'VIDEO' || ! empty($item['asset'])) {
+                    $originalSource = $this->stageAssetUpload($item['asset'] ?? [], $credential);
                 }
 
                 if (empty($originalSource)) {
@@ -308,8 +315,8 @@ class MediaBulkPayloadBuilder
             $mediaContentType = $item['mediaContentType'] ?? 'IMAGE';
             $originalSource = $item['url'] ?? '';
 
-            if ($mediaContentType === 'VIDEO') {
-                $originalSource = $this->stageVideoUpload($item['asset'] ?? [], $credential);
+            if ($mediaContentType === 'VIDEO' || ! empty($item['asset'])) {
+                $originalSource = $this->stageAssetUpload($item['asset'] ?? [], $credential);
             }
 
             if (empty($originalSource)) {
@@ -695,6 +702,7 @@ class MediaBulkPayloadBuilder
                 'path'             => $path,
                 'url'              => $url,
                 'mediaContentType' => 'IMAGE',
+                'asset'            => $asset,
             ];
         }
 
@@ -711,84 +719,6 @@ class MediaBulkPayloadBuilder
     protected function resolveAssetUrl(string $path): string
     {
         return $this->assetUrlResolver->resolveAssetUrl($path);
-    }
-
-    /**
-     * Push a DAM video asset to a Shopify staged upload target and return the
-     * resourceUrl to use as originalSource. Mirrors Exporter::videoAddToShopify,
-     * but reads the file from the configured asset disk so it works on S3 too.
-     *
-     * @return string|null resourceUrl on success, null on any failure
-     */
-    protected function stageVideoUpload(array $asset, array $credential): ?string
-    {
-        if (empty($asset) || empty($credential) || ! $this->assetRepository()) {
-            return null;
-        }
-
-        $path = $asset['path'] ?? null;
-
-        if (empty($path)) {
-            return null;
-        }
-
-        try {
-            $response = $this->requestGraphQlApiAction('stagedUploadsCreate', $credential, [
-                'input' => [
-                    'filename' => $asset['file_name'] ?? 'video.mp4',
-                    'mimeType' => $asset['mime_type'] ?? 'video/mp4',
-                    'resource' => strtoupper((string) ($asset['file_type'] ?? 'VIDEO')),
-                    'fileSize' => (string) ($asset['file_size'] ?? 0),
-                ],
-            ]);
-
-            $target = $response['body']['data']['stagedUploadsCreate']['stagedTargets'][0] ?? null;
-
-            if (! $target || empty($target['url'])) {
-                return null;
-            }
-
-            $disk = Directory::getAssetDisk();
-
-            if (! Storage::disk($disk)->exists($path)) {
-                return null;
-            }
-
-            $multipart = [];
-
-            foreach ($target['parameters'] ?? [] as $param) {
-                $multipart[] = ['name' => $param['name'], 'contents' => $param['value']];
-            }
-
-            $stream = Storage::disk($disk)->readStream($path);
-
-            if ($stream === false) {
-                return null;
-            }
-
-            try {
-                $multipart[] = [
-                    'name'     => 'file',
-                    'contents' => $stream,
-                    'filename' => $asset['file_name'] ?? 'video.mp4',
-                    'headers'  => ['Content-Type' => $asset['mime_type'] ?? 'video/mp4'],
-                ];
-
-                $upload = Http::asMultipart()->timeout(300)->post($target['url'], $multipart);
-
-                if ($upload->failed()) {
-                    return null;
-                }
-            } finally {
-                if (is_resource($stream)) {
-                    fclose($stream);
-                }
-            }
-
-            return $target['resourceUrl'] ?? null;
-        } catch (\Throwable $e) {
-            return null;
-        }
     }
 
     protected function ensureGid(string $id, string $type): string
