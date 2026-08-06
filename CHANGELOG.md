@@ -1,4 +1,4 @@
-# 3.0.0 ( 05 August 2026 )
+# 3.0.0 ( 06 August 2026 )
 
 ## Features
 - Metaobject support — new `shopify_metaobject` attribute type; create and manage Shopify metaobject definitions (with a fields datagrid) and entries from UnoPim, including metaobject options: active/draft status, translations, publish entries as web pages, Storefront API access, and Customer Account API access. Exported to Shopify and imported back.
