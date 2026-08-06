@@ -7,13 +7,28 @@ use Illuminate\Support\Facades\Storage;
 use Webkul\DAM\Jobs\ProcessAssetUpload;
 use Webkul\DAM\Models\Asset;
 use Webkul\DAM\Models\Directory;
+use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 
 class DamAssetImporter
 {
-    public function importFromUrl(string $url, string $prefix = '', string $subdir = 'Shopify'): ?int
+    public function __construct(protected ShopifyMappingRepository $mappingRepository) {}
+
+    public function importFromUrl(string $url, string $shopUrl = '', string $subdir = 'Shopify'): ?int
     {
         if ($url === '' || ! class_exists(Asset::class)) {
             return null;
+        }
+
+        $dedupKey = md5(strtok($url, '?'));
+
+        $cached = $this->mappingRepository->findOneWhere([
+            'entityType' => 'shopifyFileAsset',
+            'code'       => $dedupKey,
+            'apiUrl'     => $shopUrl,
+        ]);
+
+        if ($cached && $cached->externalId && Asset::whereKey($cached->externalId)->exists()) {
+            return (int) $cached->externalId;
         }
 
         try {
@@ -28,7 +43,7 @@ class DamAssetImporter
 
             $body = $response->body();
             $mimeType = strtok((string) $response->header('Content-Type'), ';') ?: 'application/octet-stream';
-            $fileName = $this->buildFileName($url, $prefix, $mimeType);
+            $fileName = $this->buildFileName($url, $mimeType);
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
             $relativePath = Directory::ASSETS_DIRECTORY.'/'.$directory->generatePath().'/'.$fileName;
 
@@ -47,13 +62,20 @@ class DamAssetImporter
 
             ProcessAssetUpload::dispatch($asset->id);
 
+            $this->mappingRepository->create([
+                'entityType' => 'shopifyFileAsset',
+                'code'       => $dedupKey,
+                'externalId' => (string) $asset->id,
+                'apiUrl'     => $shopUrl,
+            ]);
+
             return $asset->id;
         } catch (\Throwable $e) {
             return null;
         }
     }
 
-    private function buildFileName(string $url, string $prefix, string $mimeType): string
+    private function buildFileName(string $url, string $mimeType): string
     {
         $name = explode('?', basename($url))[0];
 
@@ -61,9 +83,7 @@ class DamAssetImporter
             $name = ($name !== '' ? $name : 'asset').'.'.$this->extensionForMime($mimeType);
         }
 
-        $prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?? '';
-
-        return $prefix !== '' ? $prefix.'-'.$name : $name;
+        return bin2hex(random_bytes(6)).'-'.$name;
     }
 
     private function fileType(string $mimeType): string

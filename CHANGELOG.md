@@ -8,6 +8,7 @@
 - Dynamic product association mapping — metafield product references map to any active UnoPim association type, and newly added association types appear automatically.
 - File reference metafields can now restrict accepted file types (any or media only) and support mixed-media galleries (image, video and file).
 - Collection field mapping — a dedicated screen to map UnoPim category attributes to Shopify collection fields (title, description, SEO title, SEO description, handle and collection type), used for both category export and import.
+- Digital Asset Management (DAM) support
 
 ## Changed
 - Compatibility with UnoPim v3.0.0.

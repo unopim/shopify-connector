@@ -36,6 +36,7 @@ use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
+use Webkul\Shopify\Services\Import\DamAssetImporter;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -643,6 +644,8 @@ class Importer extends AbstractImporter
                 $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
             } elseif ($mediaMapping['mediaType'] === 'gallery') {
                 $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
+            } elseif ($mediaMapping['mediaType'] === 'asset') {
+                $mappedImageAttr = $this->processMappedAsset($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
             }
 
             if (! is_array($mappedImageAttr)) {
@@ -1164,6 +1167,10 @@ class Importer extends AbstractImporter
             $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $simpleId, $storeForVariant, $rowData['node']['title'] ?? '', $imageMediaids, $vcommon['sku'], $rowData['node']['id']);
         }
 
+        if (! empty($mediaMapping) && $mediaMapping['mediaType'] === 'asset') {
+            $mappedImageAttr = $this->processMappedAsset($mediaMapping, $image, $simpleId, $storeForVariant, $rowData['node']['title'] ?? '', $imageMediaids, $vcommon['sku'], $rowData['node']['id']);
+        }
+
         if (! $mappedImageAttr && ! empty($mediaMapping)) {
             return false;
         }
@@ -1375,11 +1382,19 @@ class Importer extends AbstractImporter
             }
 
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
-                $stored = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
-                if (empty($stored)) {
-                    continue;
+                if ($attribute->type === 'asset') {
+                    $ids = $this->resolveFileReferenceAssetIds($metaData['node']);
+                    if (empty($ids)) {
+                        continue;
+                    }
+                    $source = implode(',', $ids);
+                } else {
+                    $stored = $this->resolveFileReferenceValue($metaData['node'], $unoAttr);
+                    if (empty($stored)) {
+                        continue;
+                    }
+                    $source = $attribute->type === 'gallery' ? $stored : implode(',', $stored);
                 }
-                $source = $attribute->type === 'gallery' ? $stored : implode(',', $stored);
             }
 
             if ($metaData['node']['type'] === 'date_time' && ! empty($source)) {
@@ -1562,6 +1577,38 @@ class Importer extends AbstractImporter
         }
 
         return empty($stored) ? null : $stored;
+    }
+
+    /**
+     * Resolve a file_reference metafield into DAM asset id(s), creating each asset
+     * from its Shopify file URL (deduped by URL so re-imports reuse the same asset).
+     *
+     * @return array<int, int>
+     */
+    private function resolveFileReferenceAssetIds(array $metaNode): array
+    {
+        $urls = $this->fileReferenceUrlsInline($metaNode);
+
+        if (empty($urls)) {
+            $urls = $this->fileReferenceUrlsByIds((string) ($metaNode['value'] ?? ''));
+        }
+
+        if (empty($urls)) {
+            return [];
+        }
+
+        $damAssetImporter = app(DamAssetImporter::class);
+        $assetIds = [];
+
+        foreach ($urls as $url) {
+            $assetId = $damAssetImporter->importFromUrl($url, $this->credential->shopUrl ?? '');
+
+            if ($assetId) {
+                $assetIds[] = $assetId;
+            }
+        }
+
+        return $assetIds;
     }
 
     /**
@@ -1768,6 +1815,79 @@ class Importer extends AbstractImporter
 
             if ($attribute?->value_per_locale && $attribute?->value_per_channel) {
                 $channelAndLocaleSpecific[$mappedImageAttr] = $imgStore;
+            }
+        }
+
+        return [
+            $common,
+            $localeSpecific,
+            $channelSpecific,
+            $channelAndLocaleSpecific,
+        ];
+    }
+
+    public function processMappedAsset(array $mediaMapping, array $image, string $configId, array &$storeForVariant, string $title, $imageMediaids, $mappingSku, $productId, $allMediaIdVariants = []): ?array
+    {
+        $common = [];
+        $localeSpecific = [];
+        $channelSpecific = [];
+        $channelAndLocaleSpecific = [];
+        $allMediaAttributes = $mediaMapping['mediaAttributes'] ?? [];
+        if (! is_array($allMediaAttributes)) {
+            $allMediaAttributes = explode(',', $allMediaAttributes);
+        }
+
+        $damAssetImporter = app(DamAssetImporter::class);
+
+        foreach ($allMediaAttributes as $mappedImageAttr) {
+            if (! isset($this->attributes[$mappedImageAttr])) {
+                continue;
+            }
+            $attribute = $this->attributes[$mappedImageAttr];
+
+            if ($attribute?->is_required && empty($image)) {
+                $this->jobLogger->warning($mappedImageAttr.':- Field Is required '.$title);
+
+                return null;
+            }
+
+            $assetIds = [];
+
+            if (! empty($image)) {
+                $init = 0;
+                foreach ($image as $imageUrl) {
+                    if (in_array($imageMediaids[$init], array_unique($allMediaIdVariants))) {
+                        unset($imageMediaids[$init]);
+                        $imageMediaids = array_values($imageMediaids);
+
+                        continue;
+                    }
+
+                    $assetId = $damAssetImporter->importFromUrl($imageUrl, $this->credential->shopUrl ?? '');
+
+                    if ($assetId) {
+                        $assetIds[] = $assetId;
+                    }
+                    $init++;
+                }
+            }
+
+            $value = implode(',', $assetIds);
+
+            if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
+                $common[$mappedImageAttr] = $value;
+            }
+
+            if ($attribute?->value_per_locale && ! $attribute?->value_per_channel) {
+                $localeSpecific[$mappedImageAttr] = $value;
+            }
+
+            if (! $attribute?->value_per_locale && $attribute?->value_per_channel) {
+                $channelSpecific[$mappedImageAttr] = $value;
+            }
+
+            if ($attribute?->value_per_locale && $attribute?->value_per_channel) {
+                $channelAndLocaleSpecific[$mappedImageAttr] = $value;
             }
         }
 
