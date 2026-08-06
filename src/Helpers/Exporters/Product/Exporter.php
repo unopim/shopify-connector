@@ -340,7 +340,6 @@ class Exporter extends AbstractExporter
             ->count();
     }
 
-
     protected function exportCoreProductsInBulk(JobTrackBatchContract $batch): void
     {
         $lock = Cache::lock('shopify-core-bulk-'.$this->export->id, 600);
@@ -374,7 +373,6 @@ class Exporter extends AbstractExporter
     }
 
     /**
-
      * IMPORTANT: this is the "submitted to Shopify" count, NOT the
      * "accepted by Shopify" count. `BulkResultFinalizer::markBatchProcessed`
      * writes the real Shopify success count directly to `job_track.summary` once
@@ -459,7 +457,6 @@ class Exporter extends AbstractExporter
         PollBulkShopifyOperation::dispatch($bulkOperation->id)->delay(
             now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
         );
-
 
         $this->markBatchAsNoOp($batch->id);
 

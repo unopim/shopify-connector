@@ -440,7 +440,6 @@ class Exporter extends AbstractExporter
 
         $url = Storage::url($encodedPath);
 
-        
         if (! $this->isPubliclyReachableUrl($url)) {
             $this->jobLogger->warning(
                 trans('shopify::app.shopify.export.mapping.collection.errors.image_skipped', ['code' => $categoryCode])

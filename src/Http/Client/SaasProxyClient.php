@@ -109,7 +109,6 @@ class SaasProxyClient implements ShopifyClient
             'targetFromId' => true,
         ],
 
-
         'manualCollectionGetting' => [
             'path'       => '/graphql/api/collections.json',
             'method'     => 'GET',
@@ -124,7 +123,6 @@ class SaasProxyClient implements ShopifyClient
             'rename'     => ['afterCursor' => 'after'],
             'override'   => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
-
 
         'productGettingOptions' => [
             'path'       => '/graphql/api/products.json',
@@ -141,7 +139,6 @@ class SaasProxyClient implements ShopifyClient
             'rename'     => ['afterCursor' => 'after'],
         ],
 
-
         'productAllvalueGetting' => [
             'path'       => '/graphql/api/products.json',
             'method'     => 'GET',
@@ -156,7 +153,6 @@ class SaasProxyClient implements ShopifyClient
             'altKeys'    => ['product'],
             'rename'     => ['afterCursor' => 'after'],
         ],
-
 
         'metafieldDefinitionsProductType' => [
             'path'       => '/graphql/api/metafieldDefinitions.json',
@@ -174,7 +170,6 @@ class SaasProxyClient implements ShopifyClient
             'connection' => 'metafieldDefinitions',
             'override'   => ['first' => 250, 'ownerType' => 'PRODUCTVARIANT'],
         ],
-
 
         'getCollectionTranslations' => [
             'path'    => '/graphql/api/translatableResource.json',
@@ -406,7 +401,6 @@ class SaasProxyClient implements ShopifyClient
 
         $url = rtrim($this->baseUrl, '/').$path;
 
-
         $dataKey = $definition['connection'] ?? $definition['field'] ?? $operation;
 
         try {
@@ -546,7 +540,6 @@ class SaasProxyClient implements ShopifyClient
             ));
         }
 
-
         if (! empty($edges)) {
             $lastIndex = count($edges) - 1;
 
@@ -601,7 +594,6 @@ class SaasProxyClient implements ShopifyClient
             $body[$key] = $value;
         }
 
-
         if (! empty($definition['targetFromId'])) {
             $resourceId = $body['id'] ?? null;
             unset($body['id']);
@@ -611,7 +603,6 @@ class SaasProxyClient implements ShopifyClient
                 $body['translations'] ?? []
             );
         }
-
 
         if (! empty($definition['wrap'])) {
             $body = [$definition['wrap'] => $body];
