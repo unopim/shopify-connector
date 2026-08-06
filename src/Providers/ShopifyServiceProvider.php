@@ -86,7 +86,7 @@ class ShopifyServiceProvider extends ServiceProvider
             $viewRenderEventManager->addTemplate('shopify::catalog.attributes.metaobject-binding');
         });
 
-        Event::listen('unopim.admin.catalog.attributes.list.before', static function (ViewRenderEventManager $viewRenderEventManager) {
+        Event::listen('unopim.admin.catalog.attributes.list.after', static function (ViewRenderEventManager $viewRenderEventManager) {
             $viewRenderEventManager->addTemplate('shopify::catalog.attributes.metaobject-binding-modal');
         });
 
