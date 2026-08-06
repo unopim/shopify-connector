@@ -45,24 +45,12 @@ module.exports = defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    // {
-    //   name: 'chromium',
-    //   use: {
-    //     ...devices['Desktop Chrome'],
-    //     headless: true,
-    //   },
-    // },
     {
-      name: 'firefox',
-      use: { 
-        ...devices['Desktop Firefox'],
-        headless: true, // Keep the browser open
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
       },
     },
-
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
   ],
 });
