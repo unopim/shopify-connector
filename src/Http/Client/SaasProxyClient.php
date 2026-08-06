@@ -22,25 +22,6 @@ use Webkul\Shopify\Contracts\ShopifyClient;
 class SaasProxyClient implements ShopifyClient
 {
     /**
-     * Map of internal GraphQL endpoint name => proxy route definition.
-     *
-     * The proxy is a per-operation REST API (one endpoint per Shopify
-     * mutation/query), not a GraphQL passthrough. request() uses this map to
-     * route export AND import calls and reshape the response into the Shopify
-     * GraphQL envelope so exporters/importers consuming requestGraphQlApiAction()
-     * stay unchanged.
-     *
-     * - path:       proxy path appended to the base URL
-     * - method:     HTTP method
-     * - field:      GraphQL field the proxy nests a single (non-list) result under
-     * - connection: GraphQL data key for a paginated list result; when set the
-     *               proxy response is normalised into a {edges,pageInfo} envelope
-     * - altKeys:    extra top-level keys the proxy may nest the list under
-     * - rename:     [graphqlVariableKey => proxyKey] adjustments (body or query)
-     * - defaults:   query/body values applied when the caller did not supply them
-     * - respKey:    read the result from a different proxy key than `field`
-     * - wrap:       nest all variables under one key (e.g. {input:{...}})
-     *
      * Scope: Category and Metafield export endpoints, the product bulk-operation
      * flow, and the Category / Attribute / Family / Metafield / Product import
      * read endpoints.
@@ -128,9 +109,7 @@ class SaasProxyClient implements ShopifyClient
             'targetFromId' => true,
         ],
 
-        // --- Category import ----------------------------------------------
-        // CategoryIterator / Category importer paginate collections; both the
-        // first-page and the cursor operation hit the same proxy list endpoint.
+
         'manualCollectionGetting' => [
             'path'       => '/graphql/api/collections.json',
             'method'     => 'GET',
@@ -146,15 +125,7 @@ class SaasProxyClient implements ShopifyClient
             'override'   => ['fields' => 'id,title,handle,descriptionHtml,seo{title,description},image{id,url},ruleSet{appliedDisjunctively},updatedAt,sortOrder,templateSuffix,productsCount{count,precision}'],
         ],
 
-        // --- Attribute / Family import ------------------------------------
-        // AttributeIterator and the Family importer read product options from
-        // the product list (only node.options is consumed downstream).
-        //
-        // NOTE: `reverse` is intentionally NOT sent — the proxy forwards the
-        // query param verbatim into Shopify's GraphQL `products(reverse:)`
-        // argument, which is a Boolean; the string "true"/"false" makes Shopify
-        // reject the whole query ("invalid value ... Expected type 'Boolean'")
-        // and the proxy returns no `products`. Ordering is irrelevant here.
+
         'productGettingOptions' => [
             'path'       => '/graphql/api/products.json',
             'method'     => 'GET',
@@ -170,11 +141,7 @@ class SaasProxyClient implements ShopifyClient
             'rename'     => ['afterCursor' => 'after'],
         ],
 
-        // --- Product import (non-bulk fallback) ---------------------------
-        // The default product import path is the bulk-operation flow above;
-        // these back the ProductIterator fallback when import_use_bulk_operation
-        // is disabled. The proxy product list returns shallower nesting than the
-        // connector's GraphQL query, so the bulk path remains preferred.
+
         'productAllvalueGetting' => [
             'path'       => '/graphql/api/products.json',
             'method'     => 'GET',
@@ -190,11 +157,7 @@ class SaasProxyClient implements ShopifyClient
             'rename'     => ['afterCursor' => 'after'],
         ],
 
-        // --- Metafield import ---------------------------------------------
-        // ownerType is required by the proxy. The proxy's metafieldDefinitions
-        // endpoint exposes no `after` cursor, so it returns a single page; the
-        // caller's per-page `first` (20) is overridden to Shopify's maximum so
-        // every definition is captured in that one page.
+
         'metafieldDefinitionsProductType' => [
             'path'       => '/graphql/api/metafieldDefinitions.json',
             'method'     => 'GET',
@@ -212,9 +175,7 @@ class SaasProxyClient implements ShopifyClient
             'override'   => ['first' => 250, 'ownerType' => 'PRODUCTVARIANT'],
         ],
 
-        // --- Translations (import read) -----------------------------------
-        // Per-resource translation lookup used by the Category / Attribute /
-        // Product importers. The proxy nests the resource under `node`.
+
         'getCollectionTranslations' => [
             'path'    => '/graphql/api/translatableResource.json',
             'method'  => 'GET',
@@ -445,8 +406,7 @@ class SaasProxyClient implements ShopifyClient
 
         $url = rtrim($this->baseUrl, '/').$path;
 
-        // The data key the consumer reads the result under: a list operation
-        // exposes its `connection` key, a single-result operation its `field`.
+
         $dataKey = $definition['connection'] ?? $definition['field'] ?? $operation;
 
         try {
@@ -586,9 +546,7 @@ class SaasProxyClient implements ShopifyClient
             ));
         }
 
-        // The import iterators advance pagination from the LAST edge's cursor.
-        // When the proxy returns nodes without per-edge cursors, fall back to
-        // the connection's endCursor so the next page can still be requested.
+
         if (! empty($edges)) {
             $lastIndex = count($edges) - 1;
 
@@ -643,10 +601,7 @@ class SaasProxyClient implements ShopifyClient
             $body[$key] = $value;
         }
 
-        // The proxy's translationsRegister endpoint requires the resource id as
-        // a top-level `resourceId` (Shopify's translationsRegister(resourceId:)
-        // argument); its doc also shows a per-item `target`. Send both so the
-        // proxy resolves the resource id whichever field it reads.
+
         if (! empty($definition['targetFromId'])) {
             $resourceId = $body['id'] ?? null;
             unset($body['id']);
@@ -657,8 +612,7 @@ class SaasProxyClient implements ShopifyClient
             );
         }
 
-        // Some proxy endpoints expect every variable nested under one key
-        // (e.g. bulkOperationRunMutation wants {input: {mutation, ...}}).
+
         if (! empty($definition['wrap'])) {
             $body = [$definition['wrap'] => $body];
         }
