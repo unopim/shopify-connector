@@ -382,6 +382,10 @@ class CredentialController extends Controller
         try {
             $requestData = $this->prepareCredentialToken($requestData, $credential);
         } catch (\RuntimeException) {
+            if (request()->expectsJson()) {
+                return response()->json(['errors' => ['accessToken' => [trans('shopify::app.shopify.credential.token_refresh_failed')]]], 422);
+            }
+
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'accessToken' => trans('shopify::app.shopify.credential.token_refresh_failed'),
@@ -390,6 +394,10 @@ class CredentialController extends Controller
         }
 
         if (empty($requestData['accessToken'])) {
+            if (request()->expectsJson()) {
+                return response()->json(['errors' => ['accessToken' => [trans('shopify::app.shopify.credential.token_required_or_oauth')]]], 422);
+            }
+
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'accessToken' => trans('shopify::app.shopify.credential.token_required_or_oauth'),
@@ -410,6 +418,13 @@ class CredentialController extends Controller
         }
 
         if (! $connectionOk) {
+            if (request()->expectsJson()) {
+                return response()->json(['errors' => [
+                    'shopUrl'     => [trans('shopify::app.shopify.credential.invalid')],
+                    'accessToken' => [trans('shopify::app.shopify.credential.invalid')],
+                ]], 422);
+            }
+
             return redirect()->route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'shopUrl'     => trans('shopify::app.shopify.credential.invalid'),
@@ -447,6 +462,10 @@ class CredentialController extends Controller
         unset($requestData['locationAttributeMappings']);
 
         $this->shopifyRepository->update($requestData, $id);
+
+        if (request()->expectsJson()) {
+            return response()->json(['message' => trans('shopify::app.shopify.credential.update-success')]);
+        }
 
         session()->flash('success', trans('shopify::app.shopify.credential.update-success'));
 

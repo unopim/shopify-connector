@@ -133,6 +133,10 @@ return [
             'saas-readonly-note'    => '这是一个 Shopify SaaS 连接。连接详情为只读 — 您只能在下方配置发布（销售渠道）、位置和语言。',
         ],
         'export' => [
+            'filters' => [
+                'shopify' => 'Shopify 筛选条件',
+            ],
+
             'mapping' => [
                 'title'         => '导出映射',
                 'back-btn'      => '返回',

@@ -12,9 +12,10 @@
         id="v-create-attributes-mapping-template"
     >
         <x-admin::form
-            :action="route('shopify.import-mappings.create')" enctype="multipart/form-data"
+            :action="route('shopify.import-mappings.create')"
+            :ajax="true"
+            enctype="multipart/form-data"
         >
-        @method('POST')
             <div class="flex justify-between items-center">
                 <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
                     @lang('shopify::app.shopify.import.mapping.title')

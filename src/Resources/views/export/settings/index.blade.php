@@ -11,10 +11,10 @@
         type="text/x-template"
         id="v-create-attributes-mapping-template"
     >
-    <x-admin::form  
-        :action="route('shopify.export-settings.create', 2)" 
+    <x-admin::form
+        :action="route('shopify.export-settings.create', 2)"
+        :ajax="true"
     >
-    @method('POST')
     <div class="flex justify-between items-center">
         <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
             @lang('shopify::app.shopify.export.setting.title')

@@ -283,10 +283,16 @@
                             this.savingField = false;
                             this.$refs.fieldModal.close();
                             this.$refs.datagrid.get();
+                            this.emitFieldsUpdated();
                         }).catch(error => {
                             this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.errors?.name?.[0] ?? '' });
                             this.savingField = false;
                         });
+                    },
+
+                    emitFieldsUpdated() {
+                        this.$axios.get("{{ route('shopify.metaobject.fields', ':id') }}".replace(':id', this.definitionId))
+                            .then(res => this.$emitter.emit('metaobject-fields-updated', res.data.formFields ?? []));
                     },
 
                     deleteField(url) {
@@ -295,6 +301,7 @@
                                 this.$axios.delete(url)
                                     .then(() => {
                                         this.$refs.datagrid.get();
+                                        this.emitFieldsUpdated();
                                     })
                                     .catch(error => {
                                         this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? '' });
@@ -535,6 +542,7 @@
 
                 data() {
                     return {
+                        liveFields: [...(this.fields || [])],
                         gridColumns: [],
                         childEntries: {},
                         referenceCache: {},
@@ -553,7 +561,7 @@
 
                 computed: {
                     formFields() {
-                        return this.fields.filter(field => this.supported(field));
+                        return this.liveFields.filter(field => this.supported(field));
                     },
 
                     visibleColumns() {
@@ -581,11 +589,18 @@
 
                         this.gridColumns = payload.available.columns;
                     });
+
+                    this.$emitter.on('metaobject-fields-updated', fields => {
+                        this.liveFields = Array.isArray(fields) ? fields : [];
+                        this.childEntries = {};
+                        this.loadChildren();
+                        this.$refs.datagrid?.get();
+                    });
                 },
 
                 methods: {
                     loadChildren() {
-                        this.fields.filter(field => field.source === 'metaobject' && field.child_type).forEach(field => {
+                        this.liveFields.filter(field => field.source === 'metaobject' && field.child_type).forEach(field => {
                             if (this.childEntries[field.child_type]) {
                                 return;
                             }

@@ -552,12 +552,21 @@ class MetaFieldController extends Controller
         }
 
         if (! empty($errors)) {
+            if (request()->expectsJson()) {
+                return response()->json(['errors' => array_map(fn ($message) => [$message], $errors)], 422);
+            }
+
             return redirect()->route('shopify.metafield.edit', $id)
                 ->withErrors($errors)
                 ->withInput();
         }
         // Proceed to update after validation passes.
         $this->shopifyMetaFieldRepository->update($requestData, $id);
+
+        if (request()->expectsJson()) {
+            return response()->json(['message' => trans('shopify::app.shopify.metafield.update-success')]);
+        }
+
         session()->flash('success', trans('shopify::app.shopify.metafield.update-success'));
 
         return redirect()->route('shopify.metafield.edit', $id);

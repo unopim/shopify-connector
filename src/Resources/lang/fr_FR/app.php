@@ -133,6 +133,10 @@ return [
             'saas-readonly-note'    => 'Il s’agit d’une connexion SaaS Shopify. Les détails de connexion sont en lecture seule — vous pouvez uniquement configurer la publication (canaux de vente), l’emplacement et la langue ci-dessous.',
         ],
         'export' => [
+            'filters' => [
+                'shopify' => 'Filtres Shopify',
+            ],
+
             'mapping' => [
                 'title'         => 'Mappages d\'exportation',
                 'back-btn'      => 'Retour',
