@@ -76,7 +76,7 @@
                     },
 
                     onSaved(data) {
-                        window.location.href = "{{ route('shopify.metaobject.edit', ':id') }}".replace(':id', data.id);
+                        this.$navigate("{{ route('shopify.metaobject.edit', ':id') }}".replace(':id', data.id));
                     },
                 },
             });

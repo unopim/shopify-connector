@@ -134,6 +134,8 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
 
             Route::get('metaobject/{id}/edit', 'edit')->name('shopify.metaobject.edit');
 
+            Route::get('metaobject/{id}/fields', 'fields')->name('shopify.metaobject.fields');
+
             Route::put('metaobject/{id}', 'update')->name('shopify.metaobject.update');
 
             Route::delete('metaobject/{id}', 'destroy')->name('shopify.metaobject.destroy');

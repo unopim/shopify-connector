@@ -13,10 +13,11 @@
         type="text/x-template"
         id="v-create-attributes-mapping-template"
     >
-        <x-admin::form  
-            :action="route('shopify.export-mappings.create')" enctype="multipart/form-data"
+        <x-admin::form
+            :action="route('shopify.export-mappings.create')"
+            :ajax="true"
+            enctype="multipart/form-data"
         >
-        @method('POST')
             <div class="flex justify-between items-center">
                 <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
                     @lang('shopify::app.shopify.export.mapping.title')

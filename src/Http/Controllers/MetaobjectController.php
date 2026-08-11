@@ -49,6 +49,15 @@ class MetaobjectController extends Controller
         return new JsonResponse(['entries' => $entries]);
     }
 
+    public function fields(int $id): JsonResponse
+    {
+        $definition = $this->definitionRepository->find($id);
+
+        return new JsonResponse([
+            'formFields' => $definition ? $this->normalizeFields($definition->fields ?? []) : [],
+        ]);
+    }
+
     public function index(): View|JsonResponse
     {
         if (request()->ajax()) {

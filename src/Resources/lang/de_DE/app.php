@@ -133,6 +133,10 @@ return [
             'saas-readonly-note'    => 'Dies ist eine SaaS-Shopify-Verbindung. Verbindungsdetails sind schreibgeschützt — Sie können nur die Veröffentlichung (Vertriebskanäle), Standort- und Sprachzuordnung unten konfigurieren.',
         ],
         'export' => [
+            'filters' => [
+                'shopify' => 'Shopify-Filter',
+            ],
+
             'mapping' => [
                 'title'         => 'Export-Zuordnungen',
                 'back-btn'      => 'Zurück',

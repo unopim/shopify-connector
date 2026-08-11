@@ -78,6 +78,10 @@ class ImportMappingController extends Controller
                 $input[$duplicateKey] = null;
             }
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => trans('shopify::app.shopify.import.mapping.save_failed'), 'errors' => $keysAsArray], 422);
+            }
+
             return redirect()->route('admin.shopify.import-mappings', 3)
                 ->withErrors($keysAsArray)
                 ->withInput($input);
@@ -92,6 +96,9 @@ class ImportMappingController extends Controller
         $shopifyMapping = $this->shopifyExportMappingRepository->find(3);
 
         if (is_null($shopifyMapping)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => trans('shopify::app.shopify.import.mapping.save_failed'), 'type' => 'error'], 422);
+            }
 
             session()->flash('error', trans('shopify::app.shopify.import.mapping.save_failed'));
 
@@ -100,6 +107,10 @@ class ImportMappingController extends Controller
 
         if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFieldss['mapping']) {
             $shopifyMapping = $this->shopifyExportMappingRepository->update($mappingFieldss, 3);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => trans('shopify::app.shopify.import.mapping.created')]);
         }
 
         session()->flash('success', trans('shopify::app.shopify.import.mapping.created'));

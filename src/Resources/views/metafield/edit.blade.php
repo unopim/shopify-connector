@@ -7,11 +7,11 @@
         @lang('shopify::app.shopify.metafield.index.title')
     </x-slot>
     
-    <x-admin::form  
+    <x-admin::form
         :action="route('shopify.metafield.update', ['id' => $metaField->id])"
+        method="PUT"
+        :ajax="true"
     >
-        @method('PUT')
-
         <div class="flex justify-between items-center">
             <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
                 @lang('shopify::app.shopify.metafield.edit.title')

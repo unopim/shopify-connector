@@ -40,6 +40,9 @@ class SettingController extends Controller
         $shopifySettings = $this->shopifyExportMappingRepository->find(2);
 
         if (is_null($shopifySettings)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => trans('shopify::app.shopify.export.settings.save_failed'), 'type' => 'error'], 422);
+            }
 
             session()->flash('error', trans('shopify::app.shopify.export.settings.save_failed'));
 
@@ -56,6 +59,10 @@ class SettingController extends Controller
             if ($shopifySettings->mapping != $filteredDataforSettings['mapping']) {
                 $shopifyMapping = $this->shopifyExportMappingRepository->update($filteredDataforSettings, 2);
             }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => trans('shopify::app.shopify.export.settings.created')]);
         }
 
         session()->flash('success', trans('shopify::app.shopify.export.settings.created'));

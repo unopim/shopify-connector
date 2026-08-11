@@ -133,6 +133,10 @@ return [
             'saas-readonly-note'    => 'هذا اتصال Shopify بنظام SaaS. تفاصيل الاتصال للقراءة فقط — يمكنك فقط تكوين النشر (قنوات البيع) والموقع واللغة أدناه.',
         ],
         'export' => [
+            'filters' => [
+                'shopify' => 'فلاتر Shopify',
+            ],
+
             'mapping' => [
                 'title'         => 'تعيينات التصدير',
                 'back-btn'      => 'عودة',

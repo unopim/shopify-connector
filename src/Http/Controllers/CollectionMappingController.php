@@ -63,6 +63,10 @@ class CollectionMappingController extends Controller
         $config = $this->shopifyExportMappingRepository->find(self::CONFIG_ID);
 
         if (is_null($config)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => trans('shopify::app.shopify.export.mapping.collection.save_failed'), 'type' => 'error'], 422);
+            }
+
             session()->flash('error', trans('shopify::app.shopify.export.mapping.collection.save_failed'));
 
             return redirect()->back();
@@ -70,6 +74,10 @@ class CollectionMappingController extends Controller
 
         if ($config->mapping != $mapping) {
             $this->shopifyExportMappingRepository->update(['mapping' => $mapping], self::CONFIG_ID);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => trans('shopify::app.shopify.export.mapping.collection.created')]);
         }
 
         session()->flash('success', trans('shopify::app.shopify.export.mapping.collection.created'));

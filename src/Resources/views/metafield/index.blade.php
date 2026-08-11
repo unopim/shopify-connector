@@ -808,7 +808,7 @@
                         }
                         this.$axios.post("{{ route('shopify.metafield.store') }}", formData)
                             .then((response) => {
-                                window.location.href = response.data.redirect_url;
+                                this.$navigate(response.data.redirect_url);
                             })
                             .catch(error => {
                                 if (error.response.status == 422) {
