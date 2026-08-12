@@ -6,6 +6,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
+use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeFamilyRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Category\Repositories\CategoryRepository;
@@ -20,6 +21,7 @@ use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
 use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
+use Webkul\Product\Models\VariantStructure;
 use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Shopify\Helpers\Iterator\BulkOperationProductIterator;
@@ -605,15 +607,41 @@ class Importer extends AbstractImporter
         $shopifyProductId = $rowData['node']['id'];
         $configProductMapping = $this->checkMappingInDb(['code' => $rowData['node']['handle']]);
         $parentSkuFromUnopim = null;
+        $isNested = count($attributes) === 2;
+        $variantStructureId = $isNested
+            ? $this->resolveNestedVariantStructure((int) $familyModel->id, $rowData['node']['handle'], array_keys($attributes))
+            : null;
+
+        if ($isNested && ! $variantStructureId) {
+            $isNested = false;
+        }
+
         $configId = $this->processConfigurableProductData(
             $rowData,
             $familyModel,
             $attributes,
             $parentSkuFromUnopim,
+            $variantStructureId,
         );
 
         if ($configId === null) {
             return null;
+        }
+
+        $existingIdBySku = [];
+
+        if ($isNested) {
+            $existingRoot = $this->findProductBySkuCached($parentSkuFromUnopim ?? $rowData['node']['handle']);
+
+            $existingRoot?->loadMissing('variants.variants');
+
+            foreach ($existingRoot?->variants ?? [] as $group) {
+                $existingIdBySku[$group->sku] = $group->id;
+
+                foreach ($group->variants as $leaf) {
+                    $existingIdBySku[$leaf->sku] = $leaf->id;
+                }
+            }
         }
 
         if (! $configProductMapping) {
@@ -676,9 +704,14 @@ class Importer extends AbstractImporter
                     ],
                 ],
             ],
-            'variants'   => $variantProductData,
             'categories' => $unopimCategory,
         ];
+
+        if ($isNested) {
+            $dataToUpdate['variant_groups'] = $this->buildVariantGroups($variantProductData, (string) array_key_first($attributes), $rowData['node']['handle'], $existingIdBySku);
+        } else {
+            $dataToUpdate['variants'] = $variantProductData;
+        }
 
         foreach ($associations as $assocKey => $assocSkus) {
             $dataToUpdate[$assocKey] = $assocSkus;
@@ -686,6 +719,37 @@ class Importer extends AbstractImporter
 
         $product = $this->productRepository->update($dataToUpdate, $configId);
         $this->trackTouchedProduct($configId);
+
+        if ($isNested) {
+            $level1Code = (string) array_key_first($attributes);
+            $leafDataBySku = [];
+
+            foreach ($variantProductData as $leafData) {
+                if (empty($leafData['sku'])) {
+                    continue;
+                }
+
+                unset($leafData['values']['common'][$level1Code]);
+                $leafDataBySku[$leafData['sku']] = $leafData;
+            }
+
+            $product->load('variants.variants');
+
+            foreach ($product->variants as $group) {
+                $this->trackTouchedProduct((int) $group->id);
+
+                foreach ($group->variants as $leaf) {
+                    $this->trackTouchedProduct((int) $leaf->id);
+
+                    if (isset($leafDataBySku[$leaf->sku])) {
+                        $this->productRepository->update($leafDataBySku[$leaf->sku], $leaf->id);
+                    }
+                }
+            }
+
+            return true;
+        }
+
         $allVariant = $product->variants?->toArray();
         $ids = array_column($allVariant, 'id');
         foreach ($ids as $variantId) {
@@ -982,7 +1046,7 @@ class Importer extends AbstractImporter
         }
     }
 
-    private function processConfigurableProductData($rowData, $familyModel, $attributes, &$parentSkuFromUnopim)
+    private function processConfigurableProductData($rowData, $familyModel, $attributes, &$parentSkuFromUnopim, $variantStructureId = null)
     {
         $variantSku = $rowData['node']['variants']['edges'][0]['node']['sku'];
         $variantData = $this->findProductBySkuCached($variantSku);
@@ -1007,11 +1071,12 @@ class Importer extends AbstractImporter
             }
             $this->updateVarint = false;
             $data[$rowData['node']['handle']] = [
-                'type'                => 'configurable',
-                'sku'                 => $rowData['node']['handle'],
-                'status'              => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
-                'attribute_family_id' => $familyModel->id,
-                'super_attributes'    => $attributes,
+                'type'                 => 'configurable',
+                'sku'                  => $rowData['node']['handle'],
+                'status'               => $rowData['node']['status'] == 'ACTIVE' ? 1 : 0,
+                'attribute_family_id'  => $familyModel->id,
+                'super_attributes'     => $attributes,
+                'variant_structure_id' => $variantStructureId,
             ];
 
             $createdConfigProduct = $this->productRepository->create($data[$rowData['node']['handle']]);
@@ -1022,6 +1087,102 @@ class Importer extends AbstractImporter
         }
 
         return $configId;
+    }
+
+    /**
+     * Create or reuse a 2-level variant structure for a nested configurable import.
+     * The first Shopify option becomes level_1 (the variant_group / sub_parent axis,
+     * e.g. colour); the second becomes level_2 (the leaf axis, e.g. size). Returns
+     * null when an axis attribute cannot be resolved, so the caller falls back to flat.
+     *
+     * @param  array<int, string>  $axisCodes  ordered [level_1_code, level_2_code]
+     */
+    private function resolveNestedVariantStructure(int $familyId, string $handle, array $axisCodes): ?int
+    {
+        $code = $handle.'-structure';
+
+        $structure = VariantStructure::where('attribute_family_id', $familyId)
+            ->where('code', $code)
+            ->first();
+
+        if ($structure) {
+            return $structure->id;
+        }
+
+        $axisCodes = array_values($axisCodes);
+        $attributeIds = [];
+
+        foreach ($axisCodes as $axisCode) {
+            $attribute = $this->attributes[$axisCode] ?? null;
+
+            if (! $attribute) {
+                return null;
+            }
+
+            $attributeIds[] = $attribute->id;
+        }
+
+        $structure = VariantStructure::create([
+            'attribute_family_id' => $familyId,
+            'code'                => $code,
+            'name'                => $handle,
+            'levels'              => 2,
+        ]);
+
+        foreach ($attributeIds as $index => $attributeId) {
+            $structure->axes()->create([
+                'attribute_id' => $attributeId,
+                'level'        => $index === 0 ? 'level_1' : 'level_2',
+                'position'     => $index + 1,
+            ]);
+        }
+
+        return $structure->id;
+    }
+
+    /**
+     * Regroup the flat variant payload into core's `variant_groups` shape: one group
+     * per distinct level_1 axis value, each holding the leaves it covers. The level_1
+     * value is lifted onto the group and removed from every leaf so it is inherited
+     * down the chain rather than re-stored. Existing group/leaf ids (matched by SKU)
+     * are reused as keys so a re-import updates in place instead of duplicating.
+     *
+     * @param  array<int|string, array>  $variantProductData
+     * @param  array<string, int>  $existingIdBySku
+     * @return array<int|string, array>
+     */
+    private function buildVariantGroups(array $variantProductData, string $level1Code, string $handle, array $existingIdBySku = []): array
+    {
+        $groups = [];
+        $groupKeyByValue = [];
+
+        foreach ($variantProductData as $variant) {
+            $groupValue = $variant['values']['common'][$level1Code] ?? null;
+
+            if ($groupValue === null || $groupValue === '') {
+                continue;
+            }
+
+            if (! isset($groupKeyByValue[$groupValue])) {
+                $groupSku = $handle.'-'.Str::slug($groupValue);
+                $groupKeyByValue[$groupValue] = $existingIdBySku[$groupSku] ?? 'group_'.count($groups);
+
+                $groups[$groupKeyByValue[$groupValue]] = [
+                    'group_axis_option' => $groupValue,
+                    'sku'               => $groupSku,
+                    'variants'          => [],
+                ];
+            }
+
+            $groupKey = $groupKeyByValue[$groupValue];
+            $leafSku = $variant['sku'] ?? '';
+            $variantKey = $existingIdBySku[$leafSku] ?? 'variant_'.count($groups[$groupKey]['variants']);
+
+            unset($variant['values']['common'][$level1Code]);
+            $groups[$groupKey]['variants'][$variantKey] = $variant;
+        }
+
+        return $groups;
     }
 
     /**

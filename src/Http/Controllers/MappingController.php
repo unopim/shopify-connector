@@ -29,7 +29,7 @@ class MappingController extends Controller
     {
         $mappingFields = (new ShopifyFields)->getMappingField();
         $statusOptions = (new ShopifyFields)->getStatusOptions();
-        $shopifyMapping = $this->shopifyExportMappingRepository->first();
+        $shopifyMapping = $this->shopifyExportMappingRepository->find(1);
 
         $object = (new ShoifyMetaFieldType);
         $metaFieldTypeInShopify = $object->getMetaFieldTypeInShopify();
@@ -101,7 +101,7 @@ class MappingController extends Controller
             $mappingFields[$sectionName][$row] = $value;
         }
 
-        $shopifyMapping = $this->shopifyExportMappingRepository->first();
+        $shopifyMapping = $this->shopifyExportMappingRepository->find(1);
 
         if (is_null($shopifyMapping)) {
             if ($request->expectsJson()) {

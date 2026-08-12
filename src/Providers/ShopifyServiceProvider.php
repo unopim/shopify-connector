@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\DataTransfer\Models\JobInstancesProxy;
 use Webkul\DataTransfer\Services\JobLogger;
 use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
@@ -171,6 +172,12 @@ class ShopifyServiceProvider extends ServiceProvider
             $import->field_separator = ',';
             $import->save();
         };
+
+        JobInstancesProxy::creating(static function ($jobInstance) {
+            if (str_starts_with($jobInstance->entity_type ?? '', 'shopify') && empty($jobInstance->validation_strategy)) {
+                $jobInstance->validation_strategy = 'stop-on-errors';
+            }
+        });
 
         Event::listen('data_transfer.imports.create.after', $ensureShopifyImportFilePath);
 

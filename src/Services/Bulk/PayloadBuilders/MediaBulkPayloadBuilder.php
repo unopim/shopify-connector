@@ -284,6 +284,11 @@ class MediaBulkPayloadBuilder
      * by id (preserved, since productSet deletes media absent from the list), new
      * media by source. Returns the files plus plan items to persist new mappings.
      *
+     * Cached media ids are first checked against Shopify: any the platform has moved
+     * to FAILED (an unreachable originalSource — e.g. a localhost app URL — leaves the
+     * id stuck there) are purged and re-uploaded, otherwise the whole productSet is
+     * rejected with "File ... is in the FAILED state and cannot be associated".
+     *
      * @return array{files: array<int, array>, planItems: array<int, array{sku: string, code: string, alt: string}>}
      */
     public function collectProductSetFiles(string $productSku, array $variantSkus, int $credentialId, ?string $shopUrl, string $channel = 'default', string $currency = 'USD', array $credential = []): array
@@ -297,16 +302,32 @@ class MediaBulkPayloadBuilder
         $mappingsBySku = [];
         $files = [];
         $planItems = [];
+        $resolvedGids = [];
+        $candidateGids = [];
 
-        foreach ($desiredMedia as $item) {
+        foreach ($desiredMedia as $index => $item) {
             $mappings = $mappingsBySku[$item['sku']]
                 ??= $this->getMediaMappings($item['sku'], $shopUrl);
 
             [$exact, $byAttribute] = $this->matchMapping($mappings, $item['code'], $item['path']);
 
-            $existingGid = $exact['row']->externalId ?? $byAttribute['row']->externalId ?? null;
+            $resolvedGids[$index] = $exact['row']->externalId ?? $byAttribute['row']->externalId ?? null;
 
-            if (! empty($existingGid)) {
+            if (! empty($resolvedGids[$index])) {
+                $candidateGids[] = $resolvedGids[$index];
+            }
+        }
+
+        $unusableGids = $this->unusableMediaGids($candidateGids, $credential);
+
+        if (! empty($unusableGids)) {
+            $this->purgeMediaMappings($unusableGids);
+        }
+
+        foreach ($desiredMedia as $index => $item) {
+            $existingGid = $resolvedGids[$index];
+
+            if (! empty($existingGid) && ! in_array($existingGid, $unusableGids, true)) {
                 $files[] = ['id' => $existingGid];
 
                 continue;
@@ -337,6 +358,66 @@ class MediaBulkPayloadBuilder
         }
 
         return ['files' => $files, 'planItems' => $planItems];
+    }
+
+    /**
+     * Of the given media GIDs, return those that can no longer be associated with a
+     * product: FAILED on Shopify, or absent from the response. Fail-safe — any API
+     * error or unexpected shape yields an empty list, preserving the reuse path and
+     * SaaS proxies that do not expose getFileById.
+     *
+     * @param  array<int, string>  $gids
+     * @return array<int, string>
+     */
+    protected function unusableMediaGids(array $gids, array $credential): array
+    {
+        $gids = array_values(array_unique(array_filter($gids)));
+
+        if (empty($gids) || empty($credential)) {
+            return [];
+        }
+
+        try {
+            $response = $this->requestGraphQlApiAction('getFileById', $credential, ['ids' => $gids]);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $nodes = $response['body']['data']['nodes'] ?? null;
+
+        if (! is_array($nodes)) {
+            return [];
+        }
+
+        $healthy = [];
+
+        foreach ($nodes as $node) {
+            if (! empty($node['id']) && ($node['fileStatus'] ?? 'READY') !== 'FAILED') {
+                $healthy[$node['id']] = true;
+            }
+        }
+
+        return array_values(array_filter($gids, static fn ($gid) => ! isset($healthy[$gid])));
+    }
+
+    /**
+     * Delete stored media mappings for the given GIDs so the next productSet
+     * re-uploads the image instead of reusing a dead id.
+     *
+     * @param  array<int, string>  $gids
+     */
+    protected function purgeMediaMappings(array $gids): void
+    {
+        foreach ($gids as $gid) {
+            $rows = $this->shopifyMappingRepository
+                ->where('entityType', self::MEDIA_ENTITY_TYPE)
+                ->where('externalId', $gid)
+                ->get();
+
+            foreach ($rows as $row) {
+                $this->shopifyMappingRepository->delete($row->id);
+            }
+        }
     }
 
     /**
