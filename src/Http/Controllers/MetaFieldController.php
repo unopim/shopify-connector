@@ -560,6 +560,11 @@ class MetaFieldController extends Controller
                 ->withErrors($errors)
                 ->withInput();
         }
+        $requestData['description'] = $requestData['description'] ?? '';
+        $requestData['ContentTypeName'] = $requestData['ContentTypeName'] ?? ($requestData['type'] ?? '');
+        $requestData['ownerTypeName'] = $requestData['ownerTypeName'] ?? ($requestData['ownerType'] ?? '');
+        $requestData['attributeLabel'] = $requestData['attributeLabel'] ?? ($requestData['attribute'] ?? '');
+
         // Proceed to update after validation passes.
         $this->shopifyMetaFieldRepository->update($requestData, $id);
 

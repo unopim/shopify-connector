@@ -2,13 +2,15 @@
 
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
+use Webkul\Product\Models\Product;
+use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Product\Services\ProductValueMapper;
+use Webkul\Product\Services\VariantValueResolver;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Helpers\Exporters\Product\ShopifyGraphQLDataFormatter;
@@ -68,6 +70,8 @@ class CoreProductBulkPayloadBuilder
         protected ShopifyMetaobjectEntryRepository $metaobjectEntryRepository,
         protected ShopifyMetaobjectEntryMappingRepository $metaobjectEntryMappingRepository,
         protected ShopifyClientFactory $clientFactory,
+        protected ProductRepository $productRepository,
+        protected VariantValueResolver $variantValueResolver,
     ) {}
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -436,70 +440,109 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Fetch product rows for the current batch.
+     * Fetch the batch's products as flat leaf-variant rows.
+     *
+     * Handles UnoPim's 1- and 2-level variant structures uniformly: a configurable
+     * root's sellable leaves are its direct `simple` children (flat) or the `simple`
+     * grandchildren under each `variant_group` node (nested). Intermediate
+     * `variant_group` nodes are never emitted. Each leaf's values are resolved up the
+     * ancestor chain so a nested leaf carries both the sub_parent axis (e.g. colour,
+     * stored on the group) and its own variant axis.
      */
     protected function fetchProducts(array $batchRows): array
     {
         $skus = array_column($batchRows, 'sku');
-        $tablePrefix = DB::getTablePrefix();
 
-        return DB::table('products')
-            ->leftJoin('attribute_families as aft', 'products.attribute_family_id', '=', 'aft.id')
-            ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
-            ->leftJoin('product_super_attributes as psa', function ($join) {
-                $join->on('parent_products.id', '=', 'psa.product_id')
-                    ->orOn('products.id', '=', 'psa.product_id');
+        $roots = $this->productRepository->getModel()->newQuery()
+            ->whereIn('sku', $skus)
+            ->where(static function ($q) {
+                $q->whereNull('parent_id')->orWhere('parent_id', 0);
             })
-            ->leftJoin('attributes as attr', 'psa.attribute_id', '=', 'attr.id')
-            ->select(
-                'products.id',
-                'products.sku',
-                'products.status',
-                'products.type',
-                'products.values',
-                'products.attribute_family_id',
-                'products.additional',
-                'aft.code as attribute_family_code',
-                'parent_products.id as parent_id',
-                'parent_products.sku as parent_sku',
-                'parent_products.type as parent_type',
-                'parent_products.status as parent_status',
-                'parent_products.values as parent_values',
-                'parent_products.attribute_family_id as parent_attribute_family_id',
-                DB::raw("COALESCE(GROUP_CONCAT(DISTINCT {$tablePrefix}attr.code ORDER BY {$tablePrefix}attr.code ASC SEPARATOR ','), '') as super_attributes")
-            )
-            ->where(function ($query) use ($skus) {
-                $query->whereIn('products.sku', $skus)
-                    ->orWhereIn('parent_products.sku', $skus);
-            })
-            ->where('products.type', '!=', 'configurable')
-            ->groupBy('products.id')
-            ->get()
-            ->map(function ($product) {
-                $parent = $product?->parent_values ? [
-                    'id'                  => $product->parent_id,
-                    'sku'                 => $product->parent_sku,
-                    'type'                => $product->parent_type,
-                    'status'              => $product->parent_status,
-                    'values'              => json_decode($product->parent_values, true),
-                    'attribute_family_id' => $product->parent_attribute_family_id,
-                    'super_attributes'    => $this->hydrateSuperAttributes(explode(',', $product->super_attributes)),
-                ] : null;
+            ->with(['super_attributes', 'variants.variants'])
+            ->get();
 
-                return [
-                    'id'                  => $product->id,
-                    'sku'                 => $product->sku,
-                    'type'                => $product->type,
-                    'parent'              => $parent,
-                    'status'              => $product->status,
-                    'values'              => json_decode($product->values, true),
-                    'parent_id'           => $product->parent_id,
-                    'attribute_family_id' => $product->attribute_family_id,
-                    'additional'          => $product->additional ? json_decode($product->additional, true) : [],
-                    'super_attributes'    => [],
-                ];
-            })
-            ->all();
+        $rows = [];
+
+        foreach ($roots as $root) {
+            if ($root->type !== 'configurable') {
+                $rows[] = $this->buildLeafRow($root, null);
+
+                continue;
+            }
+
+            $parentData = $this->buildParentData(
+                $root,
+                $this->hydrateSuperAttributes($root->super_attributes->pluck('code')->all())
+            );
+
+            foreach ($this->collectLeafVariants($root) as $leaf) {
+                $rows[] = $this->buildLeafRow($leaf, $parentData);
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Flatten a configurable root to its sellable leaf variants, descending through
+     * `variant_group` nodes for 2-level structures. Parent relations are primed so
+     * the value resolver walks the already-loaded chain instead of re-querying.
+     *
+     * @return array<int, Product>
+     */
+    protected function collectLeafVariants(Product $root): array
+    {
+        $leaves = [];
+
+        foreach ($root->variants as $child) {
+            if ($child->type === 'variant_group') {
+                $child->setRelation('parent', $root);
+
+                foreach ($child->variants as $leaf) {
+                    $leaf->setRelation('parent', $child);
+                    $leaves[] = $leaf;
+                }
+
+                continue;
+            }
+
+            $child->setRelation('parent', $root);
+            $leaves[] = $child;
+        }
+
+        return $leaves;
+    }
+
+    /**
+     * @param  array<int, array>  $superAttributes
+     */
+    protected function buildParentData(Product $root, array $superAttributes): array
+    {
+        return [
+            'id'                  => $root->id,
+            'sku'                 => $root->sku,
+            'type'                => $root->type,
+            'status'              => $root->status,
+            'values'              => $root->values ?? [],
+            'attribute_family_id' => $root->attribute_family_id,
+            'super_attributes'    => $superAttributes,
+        ];
+    }
+
+    protected function buildLeafRow(Product $product, ?array $parentData): array
+    {
+        return [
+            'id'                  => $product->id,
+            'sku'                 => $product->sku,
+            'type'                => $product->type,
+            'parent'              => $parentData,
+            'status'              => $product->status,
+            'values'              => $this->variantValueResolver->resolve($product),
+            'parent_id'           => $product->parent_id,
+            'attribute_family_id' => $product->attribute_family_id,
+            'additional'          => $product->additional ?? [],
+            'super_attributes'    => [],
+        ];
     }
 
     /**
