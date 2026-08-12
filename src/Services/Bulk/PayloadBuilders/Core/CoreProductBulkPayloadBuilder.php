@@ -453,7 +453,7 @@ class CoreProductBulkPayloadBuilder
     {
         $skus = array_column($batchRows, 'sku');
 
-$roots = $this->productRepository->getModel()->newQuery()
+        $roots = $this->productRepository->getModel()->newQuery()
             ->whereIn('sku', $skus)
             ->where(static function ($q) {
                 $q->whereNull('parent_id')->orWhere('parent_id', 0);

@@ -408,15 +408,19 @@ class MediaBulkPayloadBuilder
      */
     protected function purgeMediaMappings(array $gids): void
     {
-        foreach ($gids as $gid) {
-            $rows = $this->shopifyMappingRepository
-                ->where('entityType', self::MEDIA_ENTITY_TYPE)
-                ->where('externalId', $gid)
-                ->get();
+        $gids = array_values(array_unique(array_filter($gids)));
 
-            foreach ($rows as $row) {
-                $this->shopifyMappingRepository->delete($row->id);
-            }
+        if (empty($gids)) {
+            return;
+        }
+
+        $rows = $this->shopifyMappingRepository
+            ->where('entityType', self::MEDIA_ENTITY_TYPE)
+            ->whereIn('externalId', $gids)
+            ->get();
+
+        foreach ($rows as $row) {
+            $this->shopifyMappingRepository->delete($row->id);
         }
     }
 

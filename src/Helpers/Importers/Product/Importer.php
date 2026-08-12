@@ -1061,7 +1061,27 @@ class Importer extends AbstractImporter
         $this->update = true;
 
         $this->updateVarint = true;
-        $this->allChildInUnopim = $configProductExist?->variants?->toArray() ?? [];
+
+        if ($variantStructureId && $configProductExist) {
+            $configProductExist->loadMissing('variants.variants');
+            $level1Code = (string) array_key_first($attributes);
+
+            $this->allChildInUnopim = $configProductExist->variants
+                ->flatMap(function ($group) use ($level1Code) {
+                    $groupValue = $group->values['common'][$level1Code] ?? null;
+
+                    return $group->variants->map(function ($leaf) use ($level1Code, $groupValue) {
+                        $leafArray = $leaf->toArray();
+                        $leafArray['values']['common'][$level1Code] = $groupValue;
+
+                        return $leafArray;
+                    });
+                })
+                ->values()
+                ->toArray();
+        } else {
+            $this->allChildInUnopim = $configProductExist?->variants?->toArray() ?? [];
+        }
         if (! $configProductExist) {
 
             if (! $familyModel) {
