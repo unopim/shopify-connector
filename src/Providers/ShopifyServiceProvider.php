@@ -25,7 +25,6 @@ use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
 use Webkul\Shopify\Support\ProFeatures;
 use Webkul\Shopify\Support\ShopifyMapping;
-use Webkul\Shopify\Support\ShopifySchedule;
 use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
@@ -108,19 +107,6 @@ class ShopifyServiceProvider extends ServiceProvider
                 ShopifyPollBulkOperations::class,
             ]);
         }
-
-        /**
-         * A preset names its own cron expression, so the saved profile carries
-         * that expression too: the screen, the stored filters and the run that
-         * reads them then all say the same thing.
-         */
-        Event::listen(['data_transfer.exports.create.after', 'data_transfer.exports.update.after'], static function (object $export): void {
-            $filters = ShopifySchedule::fill($export->filters ?? []);
-
-            if ($filters !== ($export->filters ?? [])) {
-                $export->update(['filters' => $filters]);
-            }
-        });
 
         Event::listen('unopim.admin.layout.head', static function (ViewRenderEventManager $viewRenderEventManager): void {
             $viewRenderEventManager->addTemplate('shopify::style');

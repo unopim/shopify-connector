@@ -1,6 +1,7 @@
 {{--
     When a Shopify export may run unattended, the schedule it keeps. The Pro
-    package runs it; here it is only offered, and stays read only without it.
+    package owns what a schedule holds; here it is only offered, and stays read
+    only without it.
 --}}
 @php
     $shopifyExport = app(\Webkul\DataTransfer\Repositories\JobInstancesRepository::class)->find(request()->route('id'));
@@ -8,16 +9,8 @@
 
     $shopifySchedule = collect(config("exporters.{$shopifyEntityType}.filters.fields", []))
         ->pluck('name')
-        ->intersect(['schedule_cron_preset', 'schedule_cron_expression', 'schedule_timezone', 'schedule_type'])
+        ->intersect(array_column(config('shopify_schedule.fields', []), 'name'))
         ->values();
-
-    /**
-     * Without Pro only the preset is offered: the rest shape a schedule that
-     * cannot run, so they are noise beside what is being sold.
-     */
-    if (! $shopifyProInstalled) {
-        $shopifySchedule = $shopifySchedule->intersect(['schedule_cron_preset'])->values();
-    }
 @endphp
 
 @if ($shopifySchedule->isNotEmpty())
@@ -31,15 +24,11 @@
         <fieldset @disabled(! $shopifyProInstalled)>
             <x-admin::data-transfer.filter-fields
                 :entity-type="$shopifyEntityType"
-                :values="\Webkul\Shopify\Support\ShopifySchedule::fill($shopifyExport?->filters ?? [])"
+                :values="$shopifyExport?->filters ?? []"
                 :exporter-config="config('exporters')"
                 :only="$shopifySchedule->implode(',')"
                 grid-class="grid grid-cols-1"
             />
         </fieldset>
     </div>
-
-    @if ($shopifyProInstalled)
-        @include('shopify::data-transfer._cron-field')
-    @endif
 @endif
