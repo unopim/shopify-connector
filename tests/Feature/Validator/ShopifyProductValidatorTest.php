@@ -102,7 +102,20 @@ it('rejects an unknown status value', function () {
         ->and($validator->errors()->keys())->toContain('filters.status');
 });
 
-it('accepts a sku list', function () {
+it('accepts a sku list as the identifiers control serialises it', function () {
+    $validator = Validator::make([
+        'filters' => [
+            'credentials' => 1,
+            'channels'    => 'shopify_default',
+            'currencies'  => 'USD',
+            'sku'         => 'SKU-1,SKU-2',
+        ],
+    ], $this->validator->getValidatorRule());
+
+    expect($validator->passes())->toBeTrue();
+});
+
+it('rejects a sku list sent as an array', function () {
     $validator = Validator::make([
         'filters' => [
             'credentials' => 1,
@@ -112,5 +125,6 @@ it('accepts a sku list', function () {
         ],
     ], $this->validator->getValidatorRule());
 
-    expect($validator->passes())->toBeTrue();
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('filters.sku');
 });

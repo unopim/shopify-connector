@@ -11,8 +11,7 @@ class ShopifyProductValidator extends JobValidator
         'filters.channels'    => 'required',
         'filters.currencies'  => 'required',
         'filters.status'      => 'nullable|in:enable,disable,all',
-        'filters.sku'         => 'nullable|array',
-        'filters.sku.*'       => 'nullable|string',
+        'filters.sku'         => 'nullable|string',
     ];
 
     protected array $attributeNames = [
