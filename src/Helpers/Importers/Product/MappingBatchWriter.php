@@ -5,13 +5,6 @@ namespace Webkul\Shopify\Helpers\Importers\Product;
 use Illuminate\Support\Facades\DB;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 
-/**
- * Buffered writer for wk_shopify_data_mapping rows produced during product import.
- *
- * Replaces per-row `$shopifyMappingRepository->create(...)` calls (one INSERT per
- * variant + per image) with a single chunked INSERT per flush. Falls back to the
- * repository on any error so existing behavior is preserved.
- */
 class MappingBatchWriter
 {
     /** @var array<int, array<string, mixed>> */
@@ -48,9 +41,12 @@ class MappingBatchWriter
         }
     }
 
+    /**
+     * Write the buffered rows, skipping duplicate and constraint failures so the batch can finish.
+     */
     public function flush(): void
     {
-        if (empty($this->buffer)) {
+        if ($this->buffer === []) {
             return;
         }
 
@@ -60,8 +56,8 @@ class MappingBatchWriter
         try {
             DB::table($this->shopifyMappingRepository->getModel()->getTable())
                 ->insert($rows);
-        } catch (\Throwable $e) {
-            // Fall back to one-by-one through the repository if bulk insert fails.
+        } catch (\Throwable) {
+
             foreach ($rows as $row) {
                 try {
                     $this->shopifyMappingRepository->create([
@@ -74,7 +70,6 @@ class MappingBatchWriter
                         'apiUrl'        => $row['apiUrl'],
                     ]);
                 } catch (\Throwable) {
-                    // skip duplicates / constraint failures so the batch can finish
                 }
             }
         }

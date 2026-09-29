@@ -3,6 +3,8 @@
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -14,10 +16,13 @@ use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Core\Repositories\ChannelRepository;
 use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
+use Webkul\DataTransfer\Enums\ProductFilter;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
+use Webkul\DataTransfer\Helpers\Sources\Export\Filters\ProductExportFilter;
 use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
+use Webkul\Product\Models\Product;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
@@ -60,17 +65,10 @@ class Exporter extends AbstractExporter
 
     protected $imageData = [];
 
-    /**
-     * Cached count of product rows (simple + configurable + variants) in this
-     * export, used to pick the core path.
-     */
     protected ?int $totalExportProductCount = null;
 
     public const BATCH_SIZE = 500;
 
-    /**
-     * @var array
-     */
     protected $childImageAttr = [];
 
     protected $removeImgAttr = [];
@@ -81,14 +79,8 @@ class Exporter extends AbstractExporter
 
     protected bool $exportsFile = false;
 
-    /**
-     * @var array
-     */
     protected $currencies = [];
 
-    /**
-     * @var array
-     */
     protected $attributes = [];
 
     protected $currency;
@@ -135,8 +127,6 @@ class Exporter extends AbstractExporter
 
     /**
      * Create a new instance.
-     *
-     * @return void
      */
     public function __construct(
         protected JobTrackBatchRepository $exportBatchRepository,
@@ -160,10 +150,8 @@ class Exporter extends AbstractExporter
 
     /**
      * Initializes the channels and locales for the export process.
-     *
-     * @return void
      */
-    public function initilize()
+    public function initilize(): void
     {
         $this->initCredential();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code');
@@ -183,9 +171,9 @@ class Exporter extends AbstractExporter
     {
         $filters = $this->getFilters();
 
-        $this->currency = $filters['currency'];
+        $this->currency = $filters['currencies'];
 
-        $this->jobChannel = $filters['channel'];
+        $this->jobChannel = $filters['channels'];
 
         $this->credential = $this->shopifyRepository->find($filters['credentials']);
         $this->definitionMapping = $this->credential?->extras;
@@ -237,9 +225,7 @@ class Exporter extends AbstractExporter
     protected function initDefaultLocale(): void
     {
         if ($this->credential->storeLocales) {
-            $defaultLanguage = array_values(array_filter($this->credential->storeLocales, function ($language) {
-                return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
-            }))[0] ?? null;
+            $defaultLanguage = array_values(array_filter($this->credential->storeLocales, fn (array $language): bool => isset($language['defaultlocale']) && $language['defaultlocale'] === true))[0] ?? null;
 
             $this->shopifyDefaultLocale = $this->credential->storelocaleMapping[$defaultLanguage['locale']] ?? null;
         }
@@ -268,11 +254,8 @@ class Exporter extends AbstractExporter
         }
 
         $this->initilize();
-        $products = $this->prepareProductsForShopify($batch, $filePath);
+        $this->prepareProductsForShopify($batch, $filePath);
 
-        /**
-         * Update export batch process state summary
-         */
         $this->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
 
         Event::dispatch('shopify.product.export.after', $batch);
@@ -304,36 +287,24 @@ class Exporter extends AbstractExporter
         }
 
         $filters = $this->getFilters();
-        $hasProductFilter = ! empty($filters['productfilter']);
-        $hasStatusFilter = in_array($filters['productstatus'] ?? null, ['enable', 'disable'], true);
 
-        // No filter: the whole catalog — every simple, configurable, and variant.
-        if (! $hasProductFilter && ! $hasStatusFilter) {
+        if (! $this->hasProductFilters($filters)) {
             return $this->totalExportProductCount = DB::table('products')->count();
         }
 
         $rootIdsQuery = DB::table('products')
-            ->where(function ($q) {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $q): void {
                 $q->whereNull('parent_id')->orWhere('parent_id', 0);
             });
 
-        $this->applyStatusFilter($rootIdsQuery, $filters);
-
-        if ($hasProductFilter) {
-            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
-
-            if (empty($rootSkus)) {
-                return $this->totalExportProductCount = 0;
-            }
-
-            $rootIdsQuery->whereIn('sku', $rootSkus);
+        if (! $this->applyProductFilters($rootIdsQuery, $filters)) {
+            return $this->totalExportProductCount = 0;
         }
 
         $rootIds = $rootIdsQuery->pluck('id');
 
-        // Roots (simple + configurable) plus all variants belonging to them.
         return $this->totalExportProductCount = DB::table('products')
-            ->where(function ($q) use ($rootIds) {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $q) use ($rootIds): void {
                 $q->whereIn('id', $rootIds)
                     ->orWhereIn('parent_id', $rootIds);
             })
@@ -346,9 +317,7 @@ class Exporter extends AbstractExporter
 
         try {
             $lock->block(90);
-        } catch (LockTimeoutException $e) {
-            // Another batch is still submitting the export-wide bulk op; its
-            // JSONL already covers this batch's products, so nothing to do.
+        } catch (LockTimeoutException) {
             $this->markBatchAsNoOp($batch->id);
 
             return;
@@ -419,7 +388,7 @@ class Exporter extends AbstractExporter
         $jsonlAbsolutePath = $this->bulkOperationService->writeJsonl($jsonlPath, $payload['lines']);
         $this->bulkOperationService->writeManifest($manifestPath, $payload['manifest']);
         $uploadTarget = $this->bulkOperationService->createJsonlUploadTarget($payload['credential'], $jsonlFileName);
-        if (empty($uploadTarget)) {
+        if ($uploadTarget === []) {
             throw new \RuntimeException(json_encode([['message' => 'Unable to create Shopify bulk upload target.']]));
         }
 
@@ -454,7 +423,7 @@ class Exporter extends AbstractExporter
             ],
         ]);
 
-        PollBulkShopifyOperation::dispatch($bulkOperation->id)->delay(
+        dispatch(new PollBulkShopifyOperation($bulkOperation->id))->delay(
             now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
         );
 
@@ -482,24 +451,16 @@ class Exporter extends AbstractExporter
 
         $query = DB::table('products')
             ->select('sku')
-            ->where(function ($q) {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $q): void {
                 $q->whereNull('parent_id')->orWhere('parent_id', 0);
             });
 
-        if (! empty($filters['productfilter'])) {
-            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
-
-            if (empty($rootSkus)) {
-                return [];
-            }
-
-            $query->whereIn('sku', $rootSkus);
+        if (! $this->applyProductFilters($query, $filters)) {
+            return [];
         }
 
-        $this->applyStatusFilter($query, $filters);
-
         return $query->get()
-            ->map(fn ($row) => ['sku' => $row->sku])
+            ->map(fn ($row): array => ['sku' => $row->sku])
             ->all();
     }
 
@@ -509,16 +470,12 @@ class Exporter extends AbstractExporter
      * authoritative, so a variant must always be exported as part of its full
      * parent product to avoid deleting siblings on Shopify.
      *
+     * @param  array<int, string>  $skus
      * @return array<int, string>
      */
-    protected function resolveFilterSkusToRoots(string $productFilter): array
+    protected function resolveFilterSkusToRoots(array $skus): array
     {
-        $skus = array_values(array_filter(
-            array_map('trim', explode(',', $productFilter)),
-            fn ($s) => $s !== ''
-        ));
-
-        if (empty($skus)) {
+        if ($skus === []) {
             return [];
         }
 
@@ -534,18 +491,80 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Apply the optional UnoPim product-status filter to a root-product query.
-     * Absent or unrecognised value leaves the query untouched (every status).
+     * Constrain a root-product query to the job's filters.
+     *
+     * Core's ProductExportFilter needs an Eloquent builder because it calls
+     * whereHas(); this exporter builds on the query builder. The id subquery
+     * bridges the two in one statement, with no id list held in PHP.
+     *
+     * The sku filter is applied here rather than delegated, because Shopify's
+     * productSet treats the variants list as authoritative: a variant SKU must
+     * pull in its configurable parent or exporting it would delete its siblings.
+     *
+     * @return bool false when a sku filter matched nothing, so the caller
+     *              should return an empty result instead of running the query
      */
-    protected function applyStatusFilter($query, array $filters): void
+    protected function applyProductFilters($query, array $filters): bool
     {
-        $status = $filters['productstatus'] ?? null;
+        $filter = resolve(ProductExportFilter::class);
 
-        if ($status === 'enable') {
-            $query->where('status', 1);
-        } elseif ($status === 'disable') {
-            $query->where('status', 0);
+        $skus = $filter->skuValues($filters);
+
+        if ($skus !== []) {
+            $rootSkus = $this->resolveFilterSkusToRoots($skus);
+
+            if ($rootSkus === []) {
+                return false;
+            }
+
+            $query->whereIn('sku', $rootSkus);
         }
+
+        $delegated = Arr::except($filters, [ProductFilter::SKU->value]);
+
+        if ($this->hasDelegatedFilters($delegated)) {
+            $query->whereIn('id', Product::query()
+                ->select('id')
+                ->tap(fn (Builder $builder) => $filter->applyToQuery($builder, $delegated)));
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether any filter narrows the export below the whole catalogue.
+     */
+    protected function hasProductFilters(array $filters): bool
+    {
+        return resolve(ProductExportFilter::class)->skuValues($filters) !== []
+            || $this->hasDelegatedFilters($filters);
+    }
+
+    /**
+     * Whether any filter core's ProductExportFilter understands carries a value.
+     *
+     * Without this guard an unfiltered export would still run the id subquery
+     * against every product for no benefit.
+     */
+    protected function hasDelegatedFilters(array $filters): bool
+    {
+        foreach ([
+            ProductFilter::STATUS,
+            ProductFilter::ATTRIBUTE_FAMILIES,
+            ProductFilter::CATEGORIES,
+            ProductFilter::COMPLETENESS,
+            ProductFilter::UPDATED_AFTER,
+            ProductFilter::UPDATED_BEFORE,
+            ProductFilter::CUSTOM_ATTRIBUTES,
+        ] as $case) {
+            $value = $filters[$case->value] ?? null;
+
+            if (is_array($value) ? array_filter($value) !== [] : ! in_array($value, [null, '', 'none'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function getResults()
@@ -554,21 +573,13 @@ class Exporter extends AbstractExporter
 
         $query = DB::table('products')
             ->select('sku')
-            ->where(function ($q) {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $q): void {
                 $q->whereNull('parent_id')->orWhere('parent_id', 0);
             });
 
-        if (isset($filters['productfilter']) && ! empty($filters['productfilter'])) {
-            $rootSkus = $this->resolveFilterSkusToRoots($filters['productfilter']);
-
-            if (empty($rootSkus)) {
-                return new \ArrayIterator([]);
-            }
-
-            $query->whereIn('sku', $rootSkus);
+        if (! $this->applyProductFilters($query, $filters)) {
+            return new \ArrayIterator([]);
         }
-
-        $this->applyStatusFilter($query, $filters);
 
         $rows = $query->get();
 
@@ -580,7 +591,7 @@ class Exporter extends AbstractExporter
         return $rows->getIterator();
     }
 
-    public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath)
+    public function prepareProductsForShopify(JobTrackBatchContract $batch, mixed $filePath): void
     {
         $skus = array_column($batch->data, 'sku');
         $tablePrefix = DB::getTablePrefix();
@@ -589,7 +600,7 @@ class Exporter extends AbstractExporter
             ->leftJoin('attribute_families as aft', 'products.attribute_family_id', '=', 'aft.id')
             ->leftJoin('products as parent_products', 'products.parent_id', '=', 'parent_products.id')
 
-            ->leftJoin('product_super_attributes as psa', function ($join) {
+            ->leftJoin('product_super_attributes as psa', function ($join): void {
                 $join->on('parent_products.id', '=', 'psa.product_id')
                     ->orOn('products.id', '=', 'psa.product_id');
             })
@@ -607,7 +618,6 @@ class Exporter extends AbstractExporter
                 'products.updated_at',
                 'aft.code as attribute_family_code',
 
-                // Parent Product Data
                 'parent_products.id as parent_id',
                 'parent_products.sku as parent_sku',
                 'parent_products.type as parent_type',
@@ -615,10 +625,9 @@ class Exporter extends AbstractExporter
                 'parent_products.values as parent_values',
                 'parent_products.attribute_family_id as parent_attribute_family_id',
 
-                // Fetch super attributes, ensuring they are retrieved from the parent
                 DB::raw("COALESCE(GROUP_CONCAT(DISTINCT {$tablePrefix}attr.code ORDER BY {$tablePrefix}attr.code ASC SEPARATOR ','), '') as super_attributes")
             )
-            ->where(function ($query) use ($skus) {
+            ->where(function (\Illuminate\Contracts\Database\Query\Builder $query) use ($skus): void {
                 $query->whereIn('products.sku', $skus)
                     ->orWhereIn('parent_products.sku', $skus);
             })
@@ -717,7 +726,7 @@ class Exporter extends AbstractExporter
         if (! empty($rowData['parent'])) {
             $parentMapping = $this->checkMappingInDb(['code' => $rowData['parent']['sku']]) ?? null;
 
-            $skipParent = $parentMapping ? $this->export->id == $parentMapping[0]['jobInstanceId'] : false;
+            $skipParent = $parentMapping && $this->export->id == $parentMapping[0]['jobInstanceId'];
 
             $parentData = $rowData['parent'];
 
@@ -735,14 +744,14 @@ class Exporter extends AbstractExporter
 
         $imageData = [];
         if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'image') {
-            $imageData = $this->formatImageDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? []);
+            $imageData = $this->formatImageDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields);
         }
 
         if (! empty($mediaMappings) && $mediaMappings['mediaType'] === 'gallery') {
-            $imageData = $this->formatGalleryDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields ?? [], $skipParent);
+            $imageData = $this->formatGalleryDataForGraphqlImage($mergedFields, $mediaMappings, $parentMergedFields, $skipParent);
         }
 
-        if (! empty($imageData)) {
+        if ($imageData !== []) {
             $this->imageData = array_merge($imageData[$parentData['sku'] ?? ''] ?? [], $imageData[$rowData['sku']] ?? []);
         }
 
@@ -773,13 +782,8 @@ class Exporter extends AbstractExporter
 
                 ['variantId' => $variantId, 'optionsGetting' => $optionsGetting, 'productId' => $productId] = $createResult;
             } else {
-                $variantData = $variantData + $productOptionValues;
-                // For a simple product the mapping row encodes both GIDs: the bulk
-                // path stores externalId=variant GID and relatedId=product GID. Use
-                // relatedId first so we resolve the product GID regardless of which
-                // path created the mapping (sequential stores externalId=product GID,
-                // relatedId=null). Parent mappings always have relatedId=null, so
-                // configurable handling is unchanged.
+                $variantData += $productOptionValues;
+
                 $productId = ! empty($parentMapping)
                     ? ($parentMapping[0]['relatedId'] ?? $parentMapping[0]['externalId'])
                     : ($mapping[0]['relatedId'] ?? $mapping[0]['externalId']);
@@ -838,7 +842,7 @@ class Exporter extends AbstractExporter
         array $imageData,
         array $productOptionValues
     ): ?array {
-        if (! empty($parentData)) {
+        if ($parentData !== []) {
             $variantData = $productOptionValues + $variantData;
             if (! empty($formattedGraphqlData['metafields'])) {
                 $variantData['metafields'] = $formattedGraphqlData['metafields'];
@@ -873,12 +877,12 @@ class Exporter extends AbstractExporter
             $existingPublicationId = $productDataByApi['resourcePublications']['edges'] ?? [];
             $this->updateSalesChannelPublishing($productId, $existingPublicationId, $this->publicationId, $this->credentialAsArray);
         }
-        if (! empty($parentData) && $variantMediaId) {
+        if ($parentData !== [] && $variantMediaId) {
             $variantData['mediaId'] = $variantMediaId;
         }
         $this->parentMapping($parentData['sku'] ?? $rowData['sku'], $productId, $this->export->id);
 
-        $this->imageIdMapping($imageIds, $imageData, $rowData, $parentData ?? [], $productId);
+        $this->imageIdMapping($imageIds, $imageData, $rowData, $parentData, $productId);
 
         $finalVariantData = [
             'productId'     => $productId,
@@ -907,10 +911,9 @@ class Exporter extends AbstractExporter
         $variantId = $result['body']['data'][self::VARIANT_CREATE]['productVariants'][0]['id'];
 
         $productOption = $result['body']['data'][self::VARIANT_CREATE]['product']['options'];
-        if (! empty($parentData)) {
+        if ($parentData !== []) {
             $this->parentMapping($rowData['sku'], $variantId, $this->export->id, $productId);
         } else {
-
             $existing = $this->shopifyMappingRepository->where('code', $rowData['sku'])
                 ->where('entityType', self::UNOPIM_ENTITY_NAME)
                 ->where('apiUrl', $this->credential->shopUrl)
@@ -937,7 +940,7 @@ class Exporter extends AbstractExporter
      * */
     public function updateSalesChannelPublishing(string $productId, array $existingPublicationId, array $publicationsIds, array $credential): void
     {
-        $existingIds = array_map(fn ($item) => $item['node']['publication']['id'], $existingPublicationId);
+        $existingIds = array_map(fn (array $item) => $item['node']['publication']['id'], $existingPublicationId);
         $newIds = array_column($publicationsIds, 'publicationId');
         sort($existingIds);
         sort($newIds);
@@ -948,8 +951,8 @@ class Exporter extends AbstractExporter
             ];
             $this->requestGraphQlApiAction('productPublish', $credential, ['input' => $productPublishFormate]);
             $removePublication = array_values(array_diff($existingIds, $newIds));
-            if (! empty($removePublication)) {
-                $removePublicationIds = array_map(fn ($id) => ['publicationId' => $id], $removePublication);
+            if ($removePublication !== []) {
+                $removePublicationIds = array_map(fn ($id): array => ['publicationId' => $id], $removePublication);
                 $this->updateSalesChannelUnpublishing($productId, $removePublicationIds, $credential);
             }
         }
@@ -989,6 +992,8 @@ class Exporter extends AbstractExporter
     ): array|null|bool {
         $productOption = [];
         $productOptionExist = [];
+        $variantId = null;
+        $result = [];
         if (! $skipParent) {
             $mediaType = $mediaMappings['mediaType'] ?? null;
             $galleryAttr = false;
@@ -1001,10 +1006,10 @@ class Exporter extends AbstractExporter
                     $galleryAttr = true;
                 }
 
-                $mediaAttr = array_merge($mediaAttr, $this->assetAttr); // Working on this point
+                $mediaAttr = array_merge($mediaAttr, $this->assetAttr);
                 $allimageAttr = $this->getAllImageMappingBySku('productImage', $productId, $mediaAttr, $galleryAttr);
                 $deleteIds = array_merge(array_column($allimageAttr, 'externalId'), $this->removeImgAttr);
-                if (! empty($deleteIds)) {
+                if ($deleteIds !== []) {
                     $this->requestGraphQlApiAction('productDeleteMedia', $this->credentialAsArray, [
                         'mediaIds'  => $deleteIds,
                         'productId' => $productId,
@@ -1025,7 +1030,7 @@ class Exporter extends AbstractExporter
             $errorUpdate = $result['body']['data']['productUpdate']['userErrors'] ?? [];
             if (isset($errorUpdate[0]['message']) && $errorUpdate[0]['message'] == self::NOT_EXIST_PRODUCT) {
                 $this->deleteProductMapping($productId);
-                if (! empty($parentData)) {
+                if ($parentData !== []) {
                     $rowData['parent'] = $parentData;
                 }
 
@@ -1053,9 +1058,9 @@ class Exporter extends AbstractExporter
         }
 
         $this->handleMediaUpdates($productId, $rowData, $parentData, $imageData);
-        if (empty($parentMapping)) {
+        if ($parentMapping === []) {
             $this->handleAfterApiRequest($rowData, $result, $mapping, $this->export->id, $formattedGraphqlData);
-            $variants = $result['body']['data']['productUpdate']['product']['variants']['edges'];
+            $variants = $result['body']['data']['productUpdate']['product']['variants']['edges'] ?? [];
             foreach ($variants as $variant) {
                 $variantId = $variant['node']['id'];
                 $inventoryData = $variantData['inventoryQuantities'] ?? [];
@@ -1077,10 +1082,8 @@ class Exporter extends AbstractExporter
             }
         } else {
             $needToAdd = array_diff(array_column($finalOption, 'name'), $productOptionExist);
-            if (! empty($needToAdd) && count($finalOption) !== count($productOptionExist)) {
-                $filteredOptions = array_values(array_filter($finalOption, function ($option) use ($needToAdd) {
-                    return in_array($option['name'], $needToAdd);
-                }));
+            if ($needToAdd !== [] && count($finalOption) !== count($productOptionExist)) {
+                $filteredOptions = array_values(array_filter($finalOption, fn (array $option): bool => in_array($option['name'], $needToAdd)));
 
                 $formateOptCreate = [
                     'productId' => $productId,
@@ -1142,7 +1145,7 @@ class Exporter extends AbstractExporter
         $finalCategories = array_filter($finalCategories);
         $formattedGraphqlData['collectionsToJoin'] = $finalCategories;
 
-        if (! empty($parentMergedFields) && empty($parentMapping)) {
+        if ($parentMergedFields !== [] && $parentMapping === []) {
             $formattedGraphqlData['productOptions'] = $finalOption;
         }
 
@@ -1177,7 +1180,7 @@ class Exporter extends AbstractExporter
      * */
     public function logWarning(array $data, string $identifier): void
     {
-        if (! empty($data) && ! empty($identifier)) {
+        if ($data !== [] && ! empty($identifier)) {
             $error = json_encode($data, true);
             $this->jobLogger->warning(
                 "Warning for product with SKU: {$identifier}, : {$error}"
@@ -1190,16 +1193,10 @@ class Exporter extends AbstractExporter
      * */
     public function prependAttributeCodesToErrors(array &$errorUpdate, array $metafields): void
     {
-        $metafieldErrorIndexes = array_map(function ($error) {
-            return $error['field'][1] ?? null;
-        }, array_filter($errorUpdate, function ($error) {
-            return isset($error['field'][0]) && $error['field'][0] === 'metafields';
-        }));
+        $metafieldErrorIndexes = array_map(fn (array $error) => $error['field'][1] ?? null, array_filter($errorUpdate, fn (array $error): bool => isset($error['field'][0]) && $error['field'][0] === 'metafields'));
 
-        if (! empty($metafieldErrorIndexes)) {
-            $attrCode = array_map(function ($index) use ($metafields) {
-                return isset($metafields[$index]['key']) ? $metafields[$index]['key'] : null;
-            }, $metafieldErrorIndexes);
+        if ($metafieldErrorIndexes !== []) {
+            $attrCode = array_map(fn ($index) => $metafields[$index]['key'] ?? null, $metafieldErrorIndexes);
 
             $errorUpdate['attrcode'] = $attrCode;
         }
@@ -1210,16 +1207,10 @@ class Exporter extends AbstractExporter
      * */
     public function variantMetafieldAttributeCodeError(&$error, array $variantMetaField, array $metafields): void
     {
-        $variantMetafieldError = array_map(function ($error) {
-            return $error['field'][3] ?? null;
-        }, array_filter($variantMetaField, function ($error) {
-            return isset($error['field'][2]) && $error['field'][2] === 'metafields';
-        }));
+        $variantMetafieldError = array_map(fn (array $error) => $error['field'][3] ?? null, array_filter($variantMetaField, fn (array $error): bool => isset($error['field'][2]) && $error['field'][2] === 'metafields'));
 
-        if (! empty($variantMetafieldError)) {
-            $attrCode = array_map(function ($index) use ($metafields) {
-                return isset($metafields[$index]['key']) ? $metafields[$index]['key'] : null;
-            }, $variantMetafieldError);
+        if ($variantMetafieldError !== []) {
+            $attrCode = array_map(fn ($index) => $metafields[$index]['key'] ?? null, $variantMetafieldError);
             $error['metafieldDefinition'] = [
                 'attrcode' => $attrCode,
             ];
@@ -1255,7 +1246,7 @@ class Exporter extends AbstractExporter
         $sku = $parentData['sku'] ?? $rowData['sku'];
         $mappingId = $parentMapping[0]['id'] ?? $mapping[0]['id'];
         $this->updateMapping($sku, $productId, $this->export->id, $mappingId);
-        if (! empty($parentData)) {
+        if ($parentData !== []) {
             $this->productOptions[$parentData['sku']] = $result['body']['data']['productUpdate']['product']['options'];
         }
 
@@ -1275,7 +1266,7 @@ class Exporter extends AbstractExporter
         ?string $variantId,
         array $rowData
     ): void {
-        if (! empty($parentData)) {
+        if ($parentData !== []) {
             $childValues = array_values(array_intersect(array_values($this->variantMetafieldAttrCode), array_keys($mergedFields)));
 
             if (! $skipParent) {
@@ -1325,14 +1316,12 @@ class Exporter extends AbstractExporter
         if (! empty($productId) && ! in_array($productId, $this->productId)) {
             $this->productId[] = $productId;
 
-            $productData = ! empty($parentMergedFields) ? $parentMergedFields : $mergedFields;
-            $productItem = ! empty($parentData) ? $parentData : $rowData;
+            $productData = $parentMergedFields !== [] ? $parentMergedFields : $mergedFields;
+            $productItem = $parentData !== [] ? $parentData : $rowData;
             $parentValues = array_values(array_intersect(array_values($this->metaFieldAttributeCode), array_keys($productData)));
             $addedMetafields = $this->getExisitingMetafields($this->credentialAsArray, $productId, null);
 
-            $filteredMetafields = array_filter($addedMetafields, function ($item) {
-                return ! in_array($item['node']['key'], ['description_tag', 'title_tag']);
-            });
+            $filteredMetafields = array_filter($addedMetafields, fn (array $item): bool => ! in_array($item['node']['key'], ['description_tag', 'title_tag']));
 
             $filteredMetafields = array_values($filteredMetafields);
             $this->metafieldTranslation(
@@ -1403,7 +1392,7 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if (! empty($errors)) {
+        if ($errors !== []) {
             if (! empty($formattedGraphqlData['metafields'])) {
                 $this->variantMetafieldAttributeCodeError($errors, $productVariant['userErrors'], $formattedGraphqlData['metafields']);
             }
@@ -1515,7 +1504,7 @@ class Exporter extends AbstractExporter
             $resultImage = $this->requestGraphQlApiAction('productCreateMedia', $this->credentialAsArray, $newImageAdded);
             $mediasUpdate = $this->updateMedia = $resultImage['body']['data']['productCreateMedia']['media'];
 
-            if (! empty($parentData) && ! empty($imageData[$parentData['sku']])) {
+            if ($parentData !== [] && ! empty($imageData[$parentData['sku']])) {
                 $this->mapMediaImages($parentData, $mediasUpdate, $productId, $imageData, $this->parentImageAttr);
             }
 
@@ -1557,7 +1546,7 @@ class Exporter extends AbstractExporter
         array $productOptionValues,
         string $parentId,
         ?string $variantMediaId = null,
-    ) {
+    ): array {
         if (isset($formattedGraphqlData['metafields'])) {
             $variantData['metafields'] = $formattedGraphqlData['metafields'];
         }
@@ -1584,9 +1573,7 @@ class Exporter extends AbstractExporter
             $finalVariant['strategy'] = 'REMOVE_STANDALONE_VARIANT';
         }
 
-        $result = $this->requestGraphQlApiAction('CreateProductVariants', $this->credentialAsArray, $finalVariant);
-
-        return $result;
+        return $this->requestGraphQlApiAction('CreateProductVariants', $this->credentialAsArray, $finalVariant);
     }
 
     /**
@@ -1633,7 +1620,7 @@ class Exporter extends AbstractExporter
                 -count($imageData[$rowData['sku']])
             );
 
-            if (! empty($medias)) {
+            if ($medias !== []) {
                 foreach ($imageData[$rowData['sku']] as $key => $imageUrl) {
                     $this->imageMapping(
                         'productImage',
@@ -1683,7 +1670,7 @@ class Exporter extends AbstractExporter
      */
     public function getCategoriesByCode(array $categoriesCode, array &$finalCategories): void
     {
-        foreach ($categoriesCode ?? [] as $key => $value) {
+        foreach ($categoriesCode as $value) {
             $check = $this->checkMappingInDb(['code' => $value], 'category');
             if (isset($check[0]['externalId'])) {
                 $finalCategories[] = $check[0]['externalId'];
@@ -1714,18 +1701,20 @@ class Exporter extends AbstractExporter
         array $mergedFields,
         ?array $parentMapping,
         ?array $mapping
-    ): ?array {
+    ): array {
         $optionsValues = ['optionValues' => []];
 
         $variableOption = [];
 
         $finalOption = [];
 
+        $optionValuesTranslation = [];
+
         foreach ($superAttributes as $key => $optionvalues) {
             $translationsOption = $optionvalues['translations'];
             $name = $optionvalues['code'];
             if (isset($this->settingMapping->mapping['option_name_label']) && $this->settingMapping->mapping['option_name_label']) {
-                $name = array_column(array_filter($translationsOption, fn ($item) => $item['locale'] === $shopifyDefaultLocale), 'name')[0] ?? $optionvalues['name'];
+                $name = array_column(array_filter($translationsOption, fn (array $item): bool => $item['locale'] === $shopifyDefaultLocale), 'name')[0] ?? $optionvalues['name'];
             }
 
             $optionValue = $mergedFields[$optionvalues['code']] ?? null;
@@ -1809,12 +1798,11 @@ class Exporter extends AbstractExporter
 
         if ($id) {
             $formattedGraphqlData['id'] = $id;
-            $response = $this->requestGraphQlApiAction('productUpdate', $credential, ['product' => $formattedGraphqlData]);
-        } else {
-            $response = $this->requestGraphQlApiAction('createProduct', $credential, ['product' => $formattedGraphqlData, 'media' => $this->imageData]);
+
+            return $this->requestGraphQlApiAction('productUpdate', $credential, ['product' => $formattedGraphqlData]);
         }
 
-        return $response;
+        return $this->requestGraphQlApiAction('createProduct', $credential, ['product' => $formattedGraphqlData, 'media' => $this->imageData]);
     }
 
     /**
@@ -1823,9 +1811,7 @@ class Exporter extends AbstractExporter
      * */
     public function apiRequestShopifyDefaultVariantCreate(array $variantData, array $credential): ?array
     {
-        $response = $this->requestGraphQlApiAction('CreateProductVariantsDefault', $credential, $variantData);
-
-        return $response;
+        return $this->requestGraphQlApiAction('CreateProductVariantsDefault', $credential, $variantData);
     }
 
     /**
@@ -1881,7 +1867,7 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            $response = $this->requestGraphQlApiAction($endPoint, $credential, $variable, $productType);
+            $response = $this->requestGraphQlApiAction($endPoint, $credential, $variable);
 
             if (! isset($response['body']['data'][$productType]['metafields'])) {
                 return [];
@@ -1893,7 +1879,7 @@ class Exporter extends AbstractExporter
                 $existingMetaFields = array_merge($existingMetaFields, $gettingMetaFields);
             }
 
-            if ($first != count($gettingMetaFields)) {
+            if ($first !== count($gettingMetaFields)) {
                 break;
             }
 
@@ -1924,7 +1910,7 @@ class Exporter extends AbstractExporter
 
         $imagesAttr = explode(',', $mediaMapping['mediaAttributes']);
         foreach ($imagesAttr as $imageAttr) {
-            // Process parent data
+
             if (! empty($parentRawData[$imageAttr])) {
                 $medias = $this->handleImageAttribute(
                     $imageAttr,
@@ -1938,7 +1924,6 @@ class Exporter extends AbstractExporter
                 $this->removeIfMappedInDb($imageAttr, $parentRawData['sku'] ?? null);
             }
 
-            // Process child data
             if (! empty($rawData[$imageAttr])) {
                 $medias = $this->handleImageAttribute(
                     $imageAttr,
@@ -1978,13 +1963,14 @@ class Exporter extends AbstractExporter
                 $imageKey = $imageAttr.'_'.$asset['id'];
                 $assetAttrCode[] = $imageKey;
                 if ($asset['mime_type'] == 'video/mp4') {
-                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageKey, $updateMedia);
+                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageKey);
                     if (! empty($videoInstance)) {
                         $imageAttrCode[] = $imageKey;
                     }
 
                     continue;
-                } elseif (in_array($asset['mime_type'], $this->imageMineType)) {
+                }
+                if (in_array($asset['mime_type'], $this->imageMineType)) {
                     $medias = $this->processMedia($imageKey, $data, $imageAttrCode, $updateMedia, $medias, $asset['path']);
                 } else {
                     continue;
@@ -2007,7 +1993,7 @@ class Exporter extends AbstractExporter
         }
     }
 
-    private function videoAddToShopify($asset, $sku, &$medias, $imageAttrKey, &$updateMedia)
+    private function videoAddToShopify($asset, string $sku, &$medias, string $imageAttrKey)
     {
         $mappingImage = $this->checkMappingInDbForImage($imageAttrKey, 'productImage', $sku);
         if (! empty($mappingImage)) {
@@ -2036,9 +2022,7 @@ class Exporter extends AbstractExporter
 
             $filePath = base_path('storage/app/private/'.$asset['path']);
 
-            if (! file_exists($filePath) || ! is_readable($filePath)) {
-                throw new \Exception('File does not exist or not Readable at path: '.$filePath);
-            }
+            throw_if(! file_exists($filePath) || ! is_readable($filePath), \Exception::class, 'File does not exist or not Readable at path: '.$filePath);
 
             $multipart[] = [
                 'name'     => 'file',
@@ -2050,7 +2034,7 @@ class Exporter extends AbstractExporter
             ];
 
             $response = Http::withOptions([
-                'headers' => ['Accept' => '*/*'], // Optional but safe
+                'headers' => ['Accept' => '*/*'],
             ])->asMultipart()->post($stagedTarget['url'], $multipart);
 
             if ($response->failed()) {
@@ -2084,8 +2068,8 @@ class Exporter extends AbstractExporter
         $allRemoveGallery = [];
 
         foreach ($imageAttrs as $imageAttr) {
-            // Process child data
-            if (! empty($rawData)) {
+
+            if ($rawData !== []) {
                 $this->processGalleryAttribute(
                     $rawData,
                     $imageAttr,
@@ -2096,8 +2080,7 @@ class Exporter extends AbstractExporter
                 );
             }
 
-            // Process parent data
-            if (! empty($parentRawData) && ! $skipParent) {
+            if ($parentRawData !== [] && ! $skipParent) {
                 $this->processGalleryAttribute(
                     $parentRawData,
                     $imageAttr,
@@ -2139,13 +2122,14 @@ class Exporter extends AbstractExporter
             foreach ($assets ?? [] as $asset) {
                 $imageAttrKey = $imageAttr.'_'.$asset['id'];
                 if ($asset['mime_type'] == 'video/mp4') {
-                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageAttrKey, $updateMedia);
+                    $videoInstance = $this->videoAddToShopify($asset, $data['sku'], $medias, $imageAttrKey);
                     if (! empty($videoInstance)) {
                         $imageAttrCode[] = $imageAttrKey;
                     }
 
                     continue;
-                } elseif (in_array($asset['mime_type'], $this->imageMineType)) {
+                }
+                if (in_array($asset['mime_type'], $this->imageMineType)) {
                     $medias = $this->processMedia($imageAttrKey, $data, $imageAttrCode, $updateMedia, $medias, $asset['path']);
                 } else {
                     continue;
@@ -2159,7 +2143,10 @@ class Exporter extends AbstractExporter
         }
     }
 
-    public function removeGalleryImages(string $galleryAttr, array $itemData)
+    /**
+     * @return mixed[]
+     */
+    public function removeGalleryImages(string $galleryAttr, array $itemData): array
     {
         $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku']);
         $removeGalleryAttr = [];
@@ -2172,7 +2159,10 @@ class Exporter extends AbstractExporter
         return $removeGalleryAttr;
     }
 
-    public function removeAssetsImages(string $galleryAttr, array $itemData)
+    /**
+     * @return mixed[]
+     */
+    public function removeAssetsImages(string $galleryAttr, array $itemData): array
     {
         $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku'], $asset = true);
         $assetIds = explode(',', $itemData[$galleryAttr]);
@@ -2189,9 +2179,8 @@ class Exporter extends AbstractExporter
     public function removeEmptyGallery(string $galleryAttr, array $itemData): array
     {
         $mappingGallery = $this->checkMappingInDbForGallery($galleryAttr, 'productImage', $itemData['sku']);
-        $removeGalleryAttr = array_column($mappingGallery, 'externalId');
 
-        return $removeGalleryAttr ?? [];
+        return array_column($mappingGallery, 'externalId');
     }
 
     /**

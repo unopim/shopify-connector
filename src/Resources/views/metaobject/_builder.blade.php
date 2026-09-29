@@ -15,6 +15,14 @@
         <div class="rounded bg-white p-4 box-shadow dark:bg-cherry-900">
             <p class="mb-4 text-base font-semibold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.fields')</p>
 
+            @unless ($shopifyProInstalled)
+                <div class="mb-4 flex items-center gap-2">
+                    <x-shopify::pro-cta variant="badge" />
+
+                    <p class="text-sm text-gray-600 dark:text-gray-300">@lang('shopify::app.shopify.pro.types-note')</p>
+                </div>
+            @endunless
+
             <div v-for="(field, index) in fields" :key="index" class="mb-2 rounded-md border border-gray-200 p-3 dark:border-gray-700">
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1">

@@ -2,9 +2,6 @@
 
 namespace Webkul\Shopify\Traits;
 
-/**
- * Trait for handling ValidatedBatched requests.
- */
 trait ValidatedBatched
 {
     /**
@@ -17,9 +14,7 @@ trait ValidatedBatched
         $batchRows = [];
 
         $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
+
         $this->importBatchRepository->deleteWhere([
             'job_track_id' => $this->import->id,
         ]);

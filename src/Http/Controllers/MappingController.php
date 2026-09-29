@@ -2,7 +2,6 @@
 
 namespace Webkul\Shopify\Http\Controllers;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Attribute\Repositories\AttributeRepository;
@@ -10,13 +9,12 @@ use Webkul\Shopify\Helpers\ShoifyMetaFieldType;
 use Webkul\Shopify\Helpers\ShopifyFields;
 use Webkul\Shopify\Http\Requests\ExportMappingForm;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
+use Webkul\Shopify\Support\ShopifyMapping;
 
 class MappingController extends Controller
 {
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct(
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
@@ -41,7 +39,6 @@ class MappingController extends Controller
         }
 
         $formattedShopifyMapping = $attribute;
-        $metafieldattr = [];
 
         foreach ($shopifyMapping->mapping['shopify_connector_others'] ?? [] as $row => $value) {
             $metafieldattrs[$row] = $value;
@@ -63,15 +60,13 @@ class MappingController extends Controller
         $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
 
         $unitPriceValueIsMeasurement = ! empty($unitPriceMapping['quantityValueAttr'])
-            && app(AttributeRepository::class)->findOneByField('code', $unitPriceMapping['quantityValueAttr'])?->type === 'measurement';
+            && resolve(AttributeRepository::class)->findOneByField('code', $unitPriceMapping['quantityValueAttr'])?->type === 'measurement';
 
-        return view('shopify::export.mapping.index', compact('mappingFields', 'statusOptions', 'unitPriceUnitOptions', 'unitPriceMapping', 'unitPriceValueIsMeasurement', 'formattedShopifyMapping', 'shopifyDefaultMapping', 'formattedOtherMapping', 'shopifyMapping', 'mediaMapping', 'metaFieldTypeInShopify'));
+        return view('shopify::export.mapping.index', ['mappingFields' => $mappingFields, 'statusOptions' => $statusOptions, 'unitPriceUnitOptions' => $unitPriceUnitOptions, 'unitPriceMapping' => $unitPriceMapping, 'unitPriceValueIsMeasurement' => $unitPriceValueIsMeasurement, 'formattedShopifyMapping' => $formattedShopifyMapping, 'shopifyDefaultMapping' => $shopifyDefaultMapping, 'formattedOtherMapping' => $formattedOtherMapping, 'shopifyMapping' => $shopifyMapping, 'mediaMapping' => $mediaMapping, 'metaFieldTypeInShopify' => $metaFieldTypeInShopify]);
     }
 
     /**
      * Create or update Shopify export mapping.
-     *
-     * @param  FormRequest  $request
      */
     public function store(ExportMappingForm $request)
     {
@@ -110,7 +105,7 @@ class MappingController extends Controller
 
             session()->flash('error', trans('shopify::app.shopify.export.mapping.save_failed'));
 
-            return redirect()->back();
+            return back();
         }
 
         if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFields) {
@@ -123,10 +118,10 @@ class MappingController extends Controller
 
         session()->flash('success', trans('shopify::app.shopify.export.mapping.created'));
 
-        return redirect()->route('admin.shopify.export-mappings', 1);
+        return to_route('admin.shopify.export-mappings', ShopifyMapping::EXPORT_ID);
     }
 
-    public function formatMediaMapping(array &$filteredData, array &$mappingFields)
+    public function formatMediaMapping(array &$filteredData, array &$mappingFields): void
     {
         $type = 'mediaType';
         $attributes = 'mediaAttributes';
@@ -141,7 +136,7 @@ class MappingController extends Controller
         }
     }
 
-    public function formatUnitMapping(array &$filteredData, array &$mappingFields)
+    public function formatUnitMapping(array &$filteredData, array &$mappingFields): void
     {
         $mappingFields['unit']['weight'] = $filteredData['weightunit'] ?? null;
         $mappingFields['unit']['volume'] = $filteredData['volumeunit'] ?? null;
@@ -153,7 +148,7 @@ class MappingController extends Controller
      * $filteredData. Read from the request so a falsy reference value survives
      * array_filter(). Skipped when both quantity attributes are not set (blank = no-op).
      */
-    public function formatUnitPriceMapping(ExportMappingForm $request, array &$filteredData, array &$mappingFields)
+    public function formatUnitPriceMapping(ExportMappingForm $request, array &$filteredData, array &$mappingFields): void
     {
         foreach (ShopifyFields::UNIT_PRICE_FORM_FIELDS as $key) {
             unset($filteredData[$key]);

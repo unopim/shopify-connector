@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'taxonomy_file' => dirname(__DIR__).'/Resources/taxonomy/shopify-taxonomy.txt',
+    'taxonomy_file' => __DIR__.'/../Resources/taxonomy/shopify-taxonomy.txt',
 ];

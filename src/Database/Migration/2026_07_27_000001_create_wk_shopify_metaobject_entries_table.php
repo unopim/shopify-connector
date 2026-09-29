@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('wk_shopify_metaobject_entries', function (Blueprint $table) {
+        Schema::create('wk_shopify_metaobject_entries', function (Blueprint $table): void {
             $table->id();
             $table->string('type')->index();
             $table->string('code');

@@ -22,10 +22,7 @@ class MetaobjectDataGrid extends DataGrid
             ->selectSub($entriesCount, 'entries_count');
     }
 
-    /**
-     * @return void
-     */
-    public function prepareColumns()
+    public function prepareColumns(): void
     {
         $this->addColumn([
             'index'      => 'name',
@@ -55,19 +52,14 @@ class MetaobjectDataGrid extends DataGrid
         ]);
     }
 
-    /**
-     * @return void
-     */
-    public function prepareActions()
+    public function prepareActions(): void
     {
         if (bouncer()->hasPermission('shopify.metaobjects.edit')) {
             $this->addAction([
                 'icon'   => 'icon-edit',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url'    => function ($row) {
-                    return route('shopify.metaobject.edit', $row->id);
-                },
+                'url'    => fn ($row): string => route('shopify.metaobject.edit', $row->id),
             ]);
         }
 
@@ -76,17 +68,12 @@ class MetaobjectDataGrid extends DataGrid
                 'icon'   => 'icon-delete',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url'    => function ($row) {
-                    return route('shopify.metaobject.destroy', $row->id);
-                },
+                'url'    => fn ($row): string => route('shopify.metaobject.destroy', $row->id),
             ]);
         }
     }
 
-    /**
-     * @return void
-     */
-    public function prepareMassActions()
+    public function prepareMassActions(): void
     {
         if (bouncer()->hasPermission('shopify.metaobjects.delete')) {
             $this->addMassAction([

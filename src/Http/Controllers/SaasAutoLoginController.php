@@ -11,24 +11,8 @@ use Illuminate\Support\Facades\Log;
 use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 use Webkul\User\Models\Admin;
 
-/**
- * Public endpoint Shopify (via the SaaS proxy) redirects to in order to log
- * an admin into UnoPim without password input. The request is authenticated
- * by an HMAC computed against the OAuth client's secret_key that was pushed
- * to Shopify via the Sync flow.
- *
- *   GET /shopify/saas/secure-login?shop=...&timestamp=...&hmac=...
- *
- * Signed data is "{shop}|{timestamp}" with SHA-256 HMAC using the secret_key
- * stored in oauth_clients.secret for the credential's extras.unopim_client_id.
- */
 class SaasAutoLoginController extends Controller
 {
-    /**
-     * Maximum age, in seconds, of an inbound signed request. Defends against
-     * link replay. Five minutes matches the OAuth state-token window most
-     * Shopify-facing apps use.
-     */
     protected const TIMESTAMP_TOLERANCE_SECONDS = 300;
 
     public function login(Request $request): JsonResponse|RedirectResponse
@@ -92,7 +76,7 @@ class SaasAutoLoginController extends Controller
         auth()->guard('admin')->login($admin);
         $request->session()->regenerate();
 
-        return redirect()->route('admin.dashboard.index');
+        return to_route('admin.dashboard.index');
     }
 
     /**
@@ -103,8 +87,7 @@ class SaasAutoLoginController extends Controller
     {
         Log::warning('Shopify SaaS secure-login rejected', array_merge(['reason' => $reason], $context));
 
-        return redirect()
-            ->route('admin.session.create')
+        return to_route('admin.session.create')
             ->withErrors(['email' => trans('shopify::app.shopify.credential.secure-login-failed')]);
     }
 }

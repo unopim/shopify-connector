@@ -60,7 +60,7 @@ class DamAssetImporter
 
             $directory->assets()->attach($asset->id);
 
-            ProcessAssetUpload::dispatch($asset->id);
+            dispatch(new ProcessAssetUpload($asset->id));
 
             $this->mappingRepository->create([
                 'entityType' => 'shopifyFileAsset',
@@ -70,7 +70,7 @@ class DamAssetImporter
             ]);
 
             return $asset->id;
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             return null;
         }
     }

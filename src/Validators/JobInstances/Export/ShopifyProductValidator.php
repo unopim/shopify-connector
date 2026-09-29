@@ -6,24 +6,20 @@ use Webkul\DataTransfer\Validators\JobInstances\Default\JobValidator;
 
 class ShopifyProductValidator extends JobValidator
 {
-    /**
-     * Stores validation rules for data
-     */
     protected array $rules = [
         'filters.credentials' => 'required|integer|min:0',
-        'filters.channel'     => 'required',
-        'filters.currency'    => 'required',
-        'filters.status'      => 'nullable|in:enable,disable',
+        'filters.channels'    => 'required',
+        'filters.currencies'  => 'required',
+        'filters.status'      => 'nullable|in:enable,disable,all',
+        'filters.sku'         => 'nullable|string',
     ];
 
-    /**
-     * Names to be used for attributes during generation of error message
-     */
     protected array $attributeNames = [
         'filters.credentials' => 'Credentials',
-        'filters.channel'     => 'Channel',
-        'filters.currency'    => 'Currency',
+        'filters.channels'    => 'Channel',
+        'filters.currencies'  => 'Currency',
         'filters.status'      => 'Status',
+        'filters.sku'         => 'SKU',
     ];
 
     public function getValidatorRule(): array

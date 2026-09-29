@@ -10,7 +10,7 @@ trait StagesShopifyAsset
 {
     protected function stageAssetUpload(array $asset, array $credential): ?string
     {
-        if (empty($asset) || empty($credential) || ! class_exists(Directory::class)) {
+        if ($asset === [] || $credential === [] || ! class_exists(Directory::class)) {
             return null;
         }
 
@@ -88,7 +88,7 @@ trait StagesShopifyAsset
             }
 
             return $target['resourceUrl'] ?? null;
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             return null;
         }
     }

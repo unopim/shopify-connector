@@ -24,7 +24,7 @@ class JsonDataPresenter extends JsonDataPresenters
             $oldArray = static::flattenForHistory($oldArray);
             $newArray = static::flattenForHistory($newArray);
 
-            if (empty($oldArray) && empty($newArray)) {
+            if ($oldArray === [] && $newArray === []) {
                 return $normalizedData;
             }
 
@@ -66,7 +66,7 @@ class JsonDataPresenter extends JsonDataPresenters
             $newArray = static::flattenForHistory($newArray);
         }
 
-        if (empty($oldArray) && empty($newArray)) {
+        if ($oldArray === [] && $newArray === []) {
             return $normalizedData;
         }
 
@@ -88,7 +88,7 @@ class JsonDataPresenter extends JsonDataPresenters
             $value = is_array($decoded) ? $decoded : [];
         }
 
-        if (! is_array($value) || empty($value)) {
+        if (! is_array($value) || $value === []) {
             return '';
         }
 
@@ -137,12 +137,6 @@ class JsonDataPresenter extends JsonDataPresenters
      */
     protected static function hasNestedValues(array $values): bool
     {
-        foreach ($values as $value) {
-            if (is_array($value)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($values, fn ($value): bool => is_array($value));
     }
 }

@@ -5,12 +5,6 @@ namespace Webkul\Shopify\Services\Bulk\Media;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * Resolves a stored UnoPim asset/media value to a publicly fetchable URL.
- *
- * Single home for the path→URL logic shared by the product media payload
- * builder and the file_reference metafield uploader, so neither duplicates it.
- */
 class AssetUrlResolver
 {
     /**

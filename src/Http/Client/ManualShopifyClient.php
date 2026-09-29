@@ -6,14 +6,6 @@ use Illuminate\Support\Facades\Log;
 use Webkul\Shopify\Contracts\ShopifyClient;
 use Webkul\Shopify\Services\ShopifyAccessTokenManager;
 
-/**
- * Shopify client for manually-entered credentials.
- *
- * Talks to the merchant's Shopify Admin GraphQL endpoint directly using their
- * own access token, and owns the manual-credential token lifecycle:
- * proactive validation before each call and 401 auto-regeneration with a
- * single retry. Knows nothing about the SaaS proxy flow.
- */
 class ManualShopifyClient implements ShopifyClient
 {
     /**

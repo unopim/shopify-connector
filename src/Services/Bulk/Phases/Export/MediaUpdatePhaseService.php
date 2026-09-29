@@ -5,14 +5,6 @@ namespace Webkul\Shopify\Services\Bulk\Phases\Export;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Shopify\Services\Bulk\Phases\BasePhaseService;
 
-/**
- * Media-update phase — updates already-mapped product images whose source path
- * changed, via bulk productUpdateMedia. It does NOT recompute the diff: the media
- * phase already computed the update lines + code-refresh plan in its single build()
- * pass and persisted them to a file; this phase just reads and runs them. Bulk
- * transport keeps it working on SaaS, where the proxy exposes no single
- * productUpdateMedia mutation. Chained from the media phase only when updates exist.
- */
 class MediaUpdatePhaseService extends BasePhaseService
 {
     /**

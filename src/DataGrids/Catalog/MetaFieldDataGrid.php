@@ -16,7 +16,7 @@ class MetaFieldDataGrid extends DataGrid
      */
     public function prepareQueryBuilder()
     {
-        $queryBuilder = DB::table('wk_shopify_metafield_defination')
+        return DB::table('wk_shopify_metafield_defination')
             ->select(
                 'id',
                 'ownerType',
@@ -27,16 +27,12 @@ class MetaFieldDataGrid extends DataGrid
                 'code',
                 'pin'
             );
-
-        return $queryBuilder;
     }
 
     /**
      * Add columns.
-     *
-     * @return void
      */
-    public function prepareColumns()
+    public function prepareColumns(): void
     {
         $this->addColumn([
             'index'      => 'ownerType',
@@ -102,25 +98,21 @@ class MetaFieldDataGrid extends DataGrid
             'searchable' => true,
             'filterable' => true,
             'sortable'   => true,
-            'closure'    => fn ($row) => $row->pin ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
+            'closure'    => fn ($row): string => $row->pin ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
         ]);
     }
 
     /**
      * Prepare actions.
-     *
-     * @return void
      */
-    public function prepareActions()
+    public function prepareActions(): void
     {
         if (bouncer()->hasPermission('shopify.meta-fields.edit')) {
             $this->addAction([
                 'icon'   => 'icon-edit',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url'    => function ($row) {
-                    return route('shopify.metafield.edit', $row->id);
-                },
+                'url'    => fn ($row): string => route('shopify.metafield.edit', $row->id),
             ]);
         }
 
@@ -129,19 +121,15 @@ class MetaFieldDataGrid extends DataGrid
                 'icon'   => 'icon-delete',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url'    => function ($row) {
-                    return route('shopify.metafield.delete', $row->id);
-                },
+                'url'    => fn ($row): string => route('shopify.metafield.delete', $row->id),
             ]);
         }
     }
 
     /**
      * Prepare mass actions for delete MetaField Definition.
-     *
-     * @return void
      */
-    public function prepareMassActions()
+    public function prepareMassActions(): void
     {
         if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
             $this->addMassAction([

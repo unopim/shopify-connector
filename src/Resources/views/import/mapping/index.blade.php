@@ -5,24 +5,13 @@
     <x-slot:title>
         @lang('shopify::app.shopify.import.mapping.title')
     </x-slot>
-    <v-create-attributes-mappings></v-create-attributes-mappings>
-    @pushOnce('scripts')
-    <script
-        type="text/x-template"
-        id="v-create-attributes-mapping-template"
-    >
-        <x-admin::form
-            :action="route('shopify.import-mappings.create')"
-            :ajax="true"
-            enctype="multipart/form-data"
-        >
-            <div class="flex justify-between items-center">
-                <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
-                    @lang('shopify::app.shopify.import.mapping.title')
-                </p>
 
+    <x-slot:pageHeader>
+        <div class="flex min-h-10 items-center justify-between gap-4 max-sm:flex-wrap">
+            <x-admin::page-title :title="trans('shopify::app.shopify.import.mapping.title')" />
+
+            @if (request('history') === null)
                 <div class="flex gap-x-2.5 items-center">
-                    <!-- Cancel Button -->
                     <a
                         href="{{ route('shopify.credentials.index') }}"
                         class="transparent-button"
@@ -30,21 +19,37 @@
                         @lang('admin::app.catalog.attribute-groups.create.back-btn')
                     </a>
 
-                    <!-- Save Button -->
                     <button
                         type="submit"
+                        form="shopify-import-mapping-form"
                         class="primary-button"
                     >
                         @lang('shopify::app.shopify.import.mapping.save')
                     </button>
                 </div>
-            </div>
+            @endif
+        </div>
+    </x-slot>
+    <v-create-attributes-mappings></v-create-attributes-mappings>
+    @pushOnce('scripts')
+    <script
+        type="text/x-template"
+        id="v-create-attributes-mapping-template"
+    >
+        <x-admin::form
+            id="shopify-import-mapping-form"
+            :action="route('shopify.import-mappings.create')"
+            :ajax="true"
+            enctype="multipart/form-data"
+        >
+            <x-shopify::pro-notice variant="page" />
+
             <div class="flex gap-2.5 mt-3.5 max-xl:flex-wrap">
                 
                 <div class="flex flex-col gap-2 flex-1 max-xl:flex-auto">
 
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="break-words font-bold">@lang('shopify::app.shopify.import.mapping.filed-shopify')</p>
                             <p class="break-words font-bold">@lang('shopify::app.shopify.import.mapping.attribute')</p>
                         </div>
@@ -68,7 +73,7 @@
                                 $defaultValue = $defaultMapping[$fields] ?? null;
                             @endphp
 
-                            <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                            <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                                 <div>
                                     <p class="break-words">@lang($field['label']) {{ ' ['.$field['name'].']' }} 
                                     @if(isset($field['tooltip']))
@@ -114,14 +119,14 @@
 
                     <!----- Image mappings ---->
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="text-base text-gray-800 dark:text-white font-semibold">
                             @lang('shopify::app.shopify.import.mapping.images.title')
                             </p>
                         </div>
 
 
-                        <div class="grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                            
                         @php
                             $mediaAttributes = '';
@@ -226,13 +231,13 @@
                         $unitExamples = implode(', ', array_slice((new \Webkul\Shopify\Helpers\ShopifyFields)->getUnitPriceUnitValues(), 0, 3));
                     @endphp
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="text-base text-gray-800 dark:text-white font-semibold">
                                 @lang('shopify::app.shopify.export.mapping.unit_price.title')
                             </p>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <div>
                                 <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_value')</p>
                                 <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_value_info')</p> </div>
@@ -251,7 +256,7 @@
                             </x-admin::form.control-group>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <div>
                                 <p class="break-words">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit')</p>
                                 <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400">@lang('shopify::app.shopify.export.mapping.unit_price.quantity_unit_info', ['units' => $unitExamples])</p> </div>
@@ -272,7 +277,7 @@
                     </div>
 
                     <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="text-base text-gray-800 dark:text-white font-semibold">
                             @lang('shopify::app.shopify.import.mapping.other')
                             </p>
@@ -293,7 +298,7 @@
                         @endphp
 
     
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="break-words required"> @lang('shopify::app.shopify.import.mapping.family')</p>
                             <x-admin::form.control-group class="!mb-0">
                                 <x-admin::form.control-group.control

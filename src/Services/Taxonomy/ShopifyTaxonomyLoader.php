@@ -6,7 +6,7 @@ use RuntimeException;
 
 class ShopifyTaxonomyLoader
 {
-    private const SEARCH_LIMIT = 50;
+    private const int SEARCH_LIMIT = 50;
 
     /** @var array<int, array{id: string, path: string, depth: int}>|null */
     private ?array $entries = null;
@@ -27,9 +27,7 @@ class ShopifyTaxonomyLoader
 
         $path = (string) config('shopify_taxonomy.taxonomy_file');
 
-        if ($path === '' || ! is_readable($path)) {
-            throw new RuntimeException("Shopify taxonomy file not found or unreadable: {$path}");
-        }
+        throw_if($path === '' || ! is_readable($path), RuntimeException::class, "Shopify taxonomy file not found or unreadable: {$path}");
 
         $entries = [];
         $handle = fopen($path, 'r');
@@ -42,8 +40,6 @@ class ShopifyTaxonomyLoader
                     continue;
                 }
 
-                // First whitespace-free token is the GID (contains no spaces); the
-                // path follows the aligned `:` separator.
                 if (! preg_match('/^(\S+)\s*:\s*(.+)$/', $line, $m)) {
                     continue;
                 }
@@ -174,7 +170,7 @@ class ShopifyTaxonomyLoader
             ];
         }
 
-        usort($rows, fn ($a, $b) => strcmp($a['name'], $b['name']));
+        usort($rows, fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
 
         return $rows;
     }

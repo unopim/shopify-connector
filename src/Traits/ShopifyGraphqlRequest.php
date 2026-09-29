@@ -9,9 +9,6 @@ use Webkul\DataTransfer\Models\JobTrack;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Services\ShopifyClientFactory;
 
-/**
- * Trait for making GraphQL API requests to Shopify.
- */
 trait ShopifyGraphqlRequest
 {
     /**
@@ -29,7 +26,7 @@ trait ShopifyGraphqlRequest
      */
     protected function requestGraphQlApiAction(string $mutationType, ?array $credential = [], ?array $formatedVariable = []): array
     {
-        $client = app(ShopifyClientFactory::class)->make($credential ?? []);
+        $client = resolve(ShopifyClientFactory::class)->make($credential ?? []);
 
         $response = $client->request($mutationType, $formatedVariable ?? []);
 
@@ -53,7 +50,6 @@ trait ShopifyGraphqlRequest
      */
     public function handleUrlField(mixed $imageUrl, string $imagePath): string|bool
     {
-
         try {
             $response = Http::get($imageUrl);
 
@@ -76,7 +72,7 @@ trait ShopifyGraphqlRequest
             StorageFacade::disk('public')->put($path, $imageContents);
 
             return $path;
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return false;
         }
     }

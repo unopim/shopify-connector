@@ -11,8 +11,6 @@ class SettingController extends Controller
 {
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct(
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
@@ -25,7 +23,7 @@ class SettingController extends Controller
     {
         $shopifySettings = $this->shopifyExportMappingRepository->find(2);
 
-        return view('shopify::export.settings.index', compact('shopifySettings'));
+        return view('shopify::export.settings.index', ['shopifySettings' => $shopifySettings]);
     }
 
     /**
@@ -46,7 +44,7 @@ class SettingController extends Controller
 
             session()->flash('error', trans('shopify::app.shopify.export.settings.save_failed'));
 
-            return redirect()->back();
+            return back();
         }
 
         if ($shopifySettings) {
@@ -67,6 +65,6 @@ class SettingController extends Controller
 
         session()->flash('success', trans('shopify::app.shopify.export.settings.created'));
 
-        return redirect()->route('admin.shopify.settings', 2);
+        return to_route('admin.shopify.settings', 2);
     }
 }

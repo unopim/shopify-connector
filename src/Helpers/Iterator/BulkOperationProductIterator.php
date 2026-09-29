@@ -5,21 +5,8 @@ namespace Webkul\Shopify\Helpers\Iterator;
 use Illuminate\Support\Facades\Log;
 use Webkul\Shopify\Services\Bulk\Import\BulkProductFetcher;
 
-/**
- * Iterates Shopify products fetched via bulkOperationRunQuery.
- *
- * BulkProductFetcher returns one JSONL per pass (products+variants pass,
- * relations pass). This iterator ingests both into a single in-memory map
- * keyed by Shopify GID, then yields products in the EXACT same shape as
- * Webkul\Shopify\Helpers\Iterator\ProductIterator so the downstream importer
- * (Importer::saveProductsData) does not need to change.
- *
- * Memory: for typical Shopify catalogs (under ~50k products) the in-memory
- * map is acceptable. For larger shops, switch to a streaming reassembly.
- */
 class BulkOperationProductIterator implements \Iterator
 {
-    /** Shopify-translation key -> path inside the assembled product node. */
     protected const TRANSLATION_TARGETS = [
         'title'            => ['title'],
         'body_html'        => ['descriptionHtml'],
@@ -28,13 +15,10 @@ class BulkOperationProductIterator implements \Iterator
         'meta_description' => ['seo', 'description'],
     ];
 
-    /** Top-level product rows keyed by id. Merged across all passes. */
     protected array $productRows = [];
 
-    /** Children keyed by __parentId. Merged across all passes. */
     protected array $rowsByParent = [];
 
-    /** Order in which products were first encountered (preserves Shopify order). */
     protected array $productIds = [];
 
     protected int $index = 0;
@@ -133,9 +117,7 @@ class BulkOperationProductIterator implements \Iterator
     protected function ingest(string $jsonlPath): void
     {
         $stream = @fopen($jsonlPath, 'r');
-        if ($stream === false) {
-            throw new \RuntimeException('Unable to open Shopify bulk import JSONL file: '.$jsonlPath);
-        }
+        throw_if($stream === false, \RuntimeException::class, 'Unable to open Shopify bulk import JSONL file: '.$jsonlPath);
 
         try {
             while (($line = fgets($stream)) !== false) {
@@ -154,7 +136,7 @@ class BulkOperationProductIterator implements \Iterator
                         $this->productIds[] = $row['id'];
                         $this->productRows[$row['id']] = $row;
                     } else {
-                        // Merge subsequent passes into the existing product (relations pass)
+
                         $this->productRows[$row['id']] = $row + $this->productRows[$row['id']];
                     }
                 } else {
@@ -218,12 +200,11 @@ class BulkOperationProductIterator implements \Iterator
             $inventoryItem = $variant['inventoryItem'] ?? [];
             $inventoryItemId = $inventoryItem['id'] ?? null;
 
-            // InventoryLevel rows may be parented to inventoryItem id (typical) or variant id.
             $inventoryLevels = [];
             if ($inventoryItemId) {
                 $inventoryLevels = $this->childrenOf($inventoryItemId, 'InventoryLevel');
             }
-            if (empty($inventoryLevels)) {
+            if ($inventoryLevels === []) {
                 $inventoryLevels = $this->childrenOf($variantId, 'InventoryLevel');
             }
 
@@ -266,9 +247,7 @@ class BulkOperationProductIterator implements \Iterator
 
         $mediaTypes = ['MediaImage', 'Video', 'ExternalVideo', 'Model3d'];
 
-        return array_values(array_filter($rows, function ($row) use ($mediaTypes) {
-            return in_array($this->resolveTypename($row), $mediaTypes, true);
-        }));
+        return array_values(array_filter($rows, fn (array $row): bool => in_array($this->resolveTypename($row), $mediaTypes, true)));
     }
 
     /**
@@ -282,7 +261,7 @@ class BulkOperationProductIterator implements \Iterator
 
         return array_values(array_filter(
             $rows,
-            fn ($row) => $this->resolveTypename($row) === $typename,
+            fn (array $row): bool => $this->resolveTypename($row) === $typename,
         ));
     }
 
@@ -313,7 +292,7 @@ class BulkOperationProductIterator implements \Iterator
      */
     protected function wrapEdges(array $nodes): array
     {
-        $edges = array_map(fn ($node) => ['cursor' => null, 'node' => $node], $nodes);
+        $edges = array_map(fn ($node): array => ['cursor' => null, 'node' => $node], $nodes);
 
         return ['edges' => $edges];
     }
@@ -324,7 +303,7 @@ class BulkOperationProductIterator implements \Iterator
      */
     protected function applyTranslations(array &$node, array $translations): void
     {
-        if (empty($translations) || empty($this->shopifyLocale)) {
+        if ($translations === [] || empty($this->shopifyLocale)) {
             return;
         }
 

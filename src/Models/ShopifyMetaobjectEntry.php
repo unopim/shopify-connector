@@ -2,14 +2,17 @@
 
 namespace Webkul\Shopify\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 use Webkul\Shopify\Contracts\ShopifyMetaobjectEntry as ShopifyMetaobjectEntryContract;
 
+#[Fillable(['type', 'code', 'values'])]
+#[Table(name: 'wk_shopify_metaobject_entries')]
 class ShopifyMetaobjectEntry extends Model implements ShopifyMetaobjectEntryContract
 {
-    protected $table = 'wk_shopify_metaobject_entries';
-
-    protected $fillable = ['type', 'code', 'values'];
-
-    protected $casts = ['values' => 'array'];
+    protected function casts(): array
+    {
+        return ['values' => 'array'];
+    }
 }

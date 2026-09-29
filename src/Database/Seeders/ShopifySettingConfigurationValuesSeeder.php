@@ -45,11 +45,9 @@ class ShopifySettingConfigurationValuesSeeder extends Seeder
             ],
         ];
 
-        $newRecords = array_filter($records, function ($record) use ($existingIds) {
-            return ! in_array($record['id'], $existingIds);
-        });
+        $newRecords = array_filter($records, fn (array $record): bool => ! in_array($record['id'], $existingIds));
 
-        if (! empty($newRecords)) {
+        if ($newRecords !== []) {
             DB::table('shopify_setting_configuration_values')->insert($newRecords);
         }
     }

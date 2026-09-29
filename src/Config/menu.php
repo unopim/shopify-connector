@@ -1,9 +1,7 @@
 <?php
 
 return [
-    /**
-     * Shopify.
-     */
+
     [
         'key'   => 'shopify',
         'name'  => 'shopify::app.components.layouts.sidebar.shopify',
@@ -49,5 +47,10 @@ return [
         'route'  => 'admin.shopify.settings',
         'params' => [2],
         'sort'   => 7,
+    ], [
+        'key'   => 'shopify.upgrade',
+        'name'  => 'shopify::app.components.layouts.sidebar.upgrade',
+        'route' => 'shopify.upgrade',
+        'sort'  => 8,
     ],
 ];

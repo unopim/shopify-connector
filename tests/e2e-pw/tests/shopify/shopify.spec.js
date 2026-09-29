@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAdmin } from '../../helpers/ui.js';
 
 test.use({ storageState: 'storage/auth.json' }); // Reuse login session
 
@@ -7,7 +8,7 @@ const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:8000';
 test.describe('UnoPim Shopify Plugin Navigation', () => {
     test('should navigate to Shopify credentials page', async ({ page }) => {
         // Go directly to the admin dashboard (User is already logged in)
-        await page.goto('/admin/dashboard');
+        await gotoAdmin(page, '/admin/dashboard');
 
         const shopifyLink = page.locator('a:has(.icon-shopify)').first();
         await shopifyLink.click();

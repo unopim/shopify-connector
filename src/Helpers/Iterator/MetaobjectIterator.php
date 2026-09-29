@@ -11,7 +11,7 @@ class MetaobjectIterator implements \Iterator
     use ShopifyGraphqlRequest;
 
     /** @var array<int, array<string, mixed>> */
-    private array $rows = [];
+    private array $rows;
 
     private int $currentKey = 0;
 
@@ -179,7 +179,7 @@ class MetaobjectIterator implements \Iterator
                 'content_type' => $contentType,
                 'preset'       => $preset,
                 'validations'  => $validations['rules'],
-            ], fn ($value) => $value !== '' && $value !== null && $value !== []);
+            ], fn ($value): bool => ! in_array($value, ['', null, []], true));
         }
 
         return $fields;
@@ -198,7 +198,7 @@ class MetaobjectIterator implements \Iterator
             $name = $rule['name'] ?? '';
             $value = $rule['value'] ?? '';
 
-            if ($name === 'min' || $name === 'max' || $name === 'scale_min' || $name === 'scale_max') {
+            if (in_array($name, ['min', 'max', 'scale_min', 'scale_max'], true)) {
                 $bound = str_ends_with($name, 'min') ? 'min' : 'max';
                 $decoded = json_decode((string) $value, true);
 
@@ -217,7 +217,7 @@ class MetaobjectIterator implements \Iterator
                 $extra['metaobject_definition_id'] = $value;
             } elseif ($name === 'file_type_options') {
                 $decoded = json_decode((string) $value, true) ?: [];
-                $types = array_map('strtoupper', $decoded);
+                $types = array_map(strtoupper(...), $decoded);
 
                 if ($types === ['IMAGE']) {
                     $extra['content_type'] = 'IMAGE';
@@ -245,7 +245,7 @@ class MetaobjectIterator implements \Iterator
         $ordered = [];
         $visited = [];
 
-        $visit = function (string $type) use (&$visit, &$ordered, &$visited, $rows) {
+        $visit = function (string $type) use (&$visit, &$ordered, &$visited, $rows): void {
             if (isset($visited[$type]) || ! isset($rows[$type])) {
                 return;
             }

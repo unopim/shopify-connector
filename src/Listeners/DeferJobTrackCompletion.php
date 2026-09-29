@@ -8,15 +8,6 @@ use Webkul\DataTransfer\Models\JobTrackProxy;
 use Webkul\DataTransfer\Repositories\JobTrackRepository;
 use Webkul\Shopify\Services\PhaseProgressTracker;
 
-/**
- * When Export::completed() fires but Shopify follow-up phase jobs are still in
- * flight, revert state to processing so the tracker UI keeps polling and the
- * timer keeps running. PhaseProgressTracker flips the state back to completed
- * once the last phase work unit finalizes.
- *
- * Counter source of truth lives on ShopifyBulkOperation.meta because Export::completed
- * overwrites JobTrack.summary entirely, which would otherwise blow away our markers.
- */
 class DeferJobTrackCompletion
 {
     public function __construct(
@@ -36,7 +27,7 @@ class DeferJobTrackCompletion
             return;
         }
 
-        DB::transaction(function () use ($jobTrackId) {
+        DB::transaction(function () use ($jobTrackId): void {
             $modelClass = JobTrackProxy::modelClass();
 
             $jobTrack = $modelClass::query()
@@ -48,13 +39,6 @@ class DeferJobTrackCompletion
                 return;
             }
 
-            // Re-check under the JobTrack lock using the same predicate as the outer
-            // guard. totalUnfinishedForJobTrack only inspects the phase-job counter,
-            // which is still 0 in the common case where polls (delayed ~20s) have
-            // not yet dispatched any phase jobs — even though core bulk ops are
-            // still in 'created'/'running' on Shopify and follow-ups are coming.
-            // Bailing on counter alone would leave state=COMPLETED and the tracker
-            // would show completion before phase work has actually run.
             if (! $this->phaseProgressTracker->followUpsScheduled((int) $jobTrackId)) {
                 return;
             }

@@ -5,6 +5,31 @@
     <x-slot:title>
         @lang('shopify::app.shopify.export.setting.title')
     </x-slot>
+
+    <x-slot:pageHeader>
+        <div class="flex min-h-10 items-center justify-between gap-4 max-sm:flex-wrap">
+            <x-admin::page-title :title="trans('shopify::app.shopify.export.setting.title')" />
+
+            @if (request('history') === null)
+                <div class="flex gap-x-2.5 items-center">
+                    <a
+                        href="{{ route('shopify.credentials.index') }}"
+                        class="transparent-button"
+                    >
+                        @lang('shopify::app.shopify.credential.edit.back-btn')
+                    </a>
+
+                    <button
+                        type="submit"
+                        form="shopify-export-settings-form"
+                        class="primary-button"
+                    >
+                        @lang('shopify::app.shopify.credential.edit.save')
+                    </button>
+                </div>
+            @endif
+        </div>
+    </x-slot>
     <v-create-attributes-mappings></v-create-attributes-mappings>
     @pushOnce('scripts')
     <script
@@ -12,31 +37,10 @@
         id="v-create-attributes-mapping-template"
     >
     <x-admin::form
+        id="shopify-export-settings-form"
         :action="route('shopify.export-settings.create', 2)"
         :ajax="true"
     >
-    <div class="flex justify-between items-center">
-        <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
-            @lang('shopify::app.shopify.export.setting.title')
-        </p>
-
-        <div class="flex gap-x-2.5 items-center">
-            <a
-                href="{{ route('shopify.credentials.index') }}"
-                class="transparent-button"
-            >
-                @lang('shopify::app.shopify.credential.edit.back-btn')
-            </a>
-
-            <button 
-                type="submit" 
-                class="primary-button"
-                aria-lebel="Submit"
-            >
-                @lang('shopify::app.shopify.credential.edit.save')
-            </button>
-        </div>
-    </div>
     <div class="flex gap-2.5 mt-3.5 max-xl:flex-wrap">
         <div class="flex flex-col gap-2 flex-1 max-xl:flex-auto">
             <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">

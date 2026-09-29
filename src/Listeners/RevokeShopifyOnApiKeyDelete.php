@@ -8,17 +8,6 @@ use Webkul\Shopify\Http\Client\SaasProxyClient;
 use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 
-/**
- * When an admin integration (api_keys row) is deleted, look up any Shopify
- * SaaS credential whose extras.unopim_client_id matches the integration's
- * oauth_client_id. For each match, ask the SaaS proxy to revoke the Shopify
- * connection and then delete the local credential row.
- *
- * The integration delete itself proceeds regardless; upstream revoke failures
- * are logged but do not block the listener from removing the local row, since
- * leaving an orphaned credential pointing at a now-revoked OAuth client is
- * worse than retrying revoke manually.
- */
 class RevokeShopifyOnApiKeyDelete
 {
     public function __construct(

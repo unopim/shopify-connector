@@ -8,14 +8,6 @@ use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Phases\BasePhaseService;
 use Webkul\Shopify\Services\BulkOperationService;
 
-/**
- * Variant-media phase — links freshly-created product media to the specific variant
- * it belongs to via bulk productVariantAppendMedia (productCreateMedia only attaches
- * media at the product level). Runs after the media phase, reading the productImage
- * mappings it persisted (mediaId + variant SKU + product GID). Uses bulk transport so
- * it also works on SaaS, where the proxy exposes bulkOperationRunMutation but not the
- * single productVariantAppendMedia mutation.
- */
 class VariantMediaPhaseService extends BasePhaseService
 {
     public function __construct(
@@ -61,9 +53,7 @@ class VariantMediaPhaseService extends BasePhaseService
         $lines = [];
         foreach ($byProduct as $productId => $variants) {
             foreach ($variants as $variantGid => $mediaIds) {
-                // A Shopify variant holds a single image and productVariantAppendMedia
-                // fails on a second media ("already has attached media"), so link only
-                // the first mapped media to the variant.
+
                 $mediaId = array_values(array_unique($mediaIds))[0] ?? null;
 
                 if (! $mediaId) {

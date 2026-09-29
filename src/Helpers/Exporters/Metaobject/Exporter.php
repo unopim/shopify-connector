@@ -2,7 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Exporters\Metaobject;
 
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Date;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -70,7 +70,7 @@ class Exporter extends AbstractExporter
         parent::__construct($exportBatchRepository, $exportFileBuffer);
     }
 
-    public function initialize()
+    public function initialize(): void
     {
         $filters = $this->getFilters();
         $credential = $this->shopifyRepository->find($filters['credentials']);
@@ -209,7 +209,7 @@ class Exporter extends AbstractExporter
 
         $definitionInput = $this->definitionAccessCapabilities($localDefinition);
 
-        if (! empty($operations)) {
+        if ($operations !== []) {
             $definitionInput['fieldDefinitions'] = $operations;
         }
 
@@ -280,7 +280,7 @@ class Exporter extends AbstractExporter
                 $validations[] = ['name' => 'metaobject_definition_id', 'value' => $childGids[$field['child']]];
             }
 
-            if (! empty($validations)) {
+            if ($validations !== []) {
                 $entry['validations'] = $validations;
             }
 
@@ -309,8 +309,8 @@ class Exporter extends AbstractExporter
 
             if ($type === 'date' || $type === 'date_time') {
                 try {
-                    $value = Carbon::parse((string) $rules[$bound])->format($type === 'date' ? 'Y-m-d' : 'Y-m-d\TH:i:s');
-                } catch (\Throwable $e) {
+                    $value = Date::parse((string) $rules[$bound])->format($type === 'date' ? 'Y-m-d' : 'Y-m-d\TH:i:s');
+                } catch (\Throwable) {
                     $value = (string) $rules[$bound];
                 }
             } elseif ($unit) {
@@ -333,9 +333,9 @@ class Exporter extends AbstractExporter
         }
 
         if (($rules['choices'] ?? '') !== '') {
-            $choices = array_values(array_filter(array_map('trim', explode(',', (string) $rules['choices']))));
+            $choices = array_values(array_filter(array_map(trim(...), explode(',', (string) $rules['choices']))));
 
-            if (! empty($choices)) {
+            if ($choices !== []) {
                 $out[] = ['name' => 'choices', 'value' => json_encode($choices, JSON_UNESCAPED_SLASHES)];
             }
         }
@@ -348,7 +348,7 @@ class Exporter extends AbstractExporter
                 default => [],
             };
 
-            if (! empty($fileTypes)) {
+            if ($fileTypes !== []) {
                 $out[] = ['name' => 'file_type_options', 'value' => json_encode($fileTypes, JSON_UNESCAPED_SLASHES)];
             }
         }
@@ -385,7 +385,7 @@ class Exporter extends AbstractExporter
 
         $fields = $this->buildEntryFields($definition->fields ?? [], $entry->values ?? [], $visited);
 
-        if (empty($fields)) {
+        if ($fields === []) {
             return null;
         }
 
@@ -395,7 +395,7 @@ class Exporter extends AbstractExporter
         if (! empty($errors)) {
             $filtered = $this->dropInvalidEntryFields($fields, $errors, (string) $entry->code);
 
-            if (! empty($filtered) && count($filtered) < count($fields)) {
+            if ($filtered !== [] && count($filtered) < count($fields)) {
                 $response = $this->sendMetaobjectUpsert($entry, $filtered);
                 $errors = $response['body']['data']['metaobjectUpsert']['userErrors'] ?? [];
             }
@@ -460,7 +460,7 @@ class Exporter extends AbstractExporter
             ]));
         }
 
-        return array_values(array_filter($fields, fn ($index) => ! isset($invalid[$index]), ARRAY_FILTER_USE_KEY));
+        return array_values(array_filter($fields, fn ($index): bool => ! isset($invalid[$index]), ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -483,7 +483,7 @@ class Exporter extends AbstractExporter
             $value = $this->resolveFieldValue($field, $raw, $visited);
 
             if ($value !== null && $value !== '') {
-                $fields[] = ['key' => $key, 'value' => (string) $value];
+                $fields[] = ['key' => $key, 'value' => $value];
             }
         }
 
@@ -509,7 +509,7 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            if (empty($gids)) {
+            if ($gids === []) {
                 return null;
             }
 
@@ -533,7 +533,7 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            if (empty($gids)) {
+            if ($gids === []) {
                 return null;
             }
 
@@ -558,7 +558,7 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            if (empty($gids)) {
+            if ($gids === []) {
                 return null;
             }
 
@@ -592,7 +592,7 @@ class Exporter extends AbstractExporter
                 $values[] = $this->elementValue($type, $field, $element);
             }
 
-            return empty($values) ? null : json_encode(array_values($values), JSON_UNESCAPED_SLASHES);
+            return $values === [] ? null : json_encode(array_values($values), JSON_UNESCAPED_SLASHES);
         }
 
         $value = $this->elementValue($type, $field, $raw);
@@ -608,8 +608,8 @@ class Exporter extends AbstractExporter
     {
         if ($type === 'date' || $type === 'date_time') {
             try {
-                $date = Carbon::parse((string) $raw);
-            } catch (\Throwable $e) {
+                $date = Date::parse((string) $raw);
+            } catch (\Throwable) {
                 return (string) $raw;
             }
 
@@ -668,7 +668,7 @@ class Exporter extends AbstractExporter
             $children[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $block]]];
         }
 
-        if (empty($children)) {
+        if ($children === []) {
             $children[] = ['type' => 'paragraph', 'children' => [['type' => 'text', 'value' => $text]]];
         }
 
@@ -699,7 +699,7 @@ class Exporter extends AbstractExporter
                 }
             }
 
-            if (empty($fileKeys)) {
+            if ($fileKeys === []) {
                 continue;
             }
 
@@ -722,7 +722,7 @@ class Exporter extends AbstractExporter
             }
         }
 
-        if (! empty($fileValues)) {
+        if ($fileValues !== []) {
             $this->fileGidMap = $this->fileReferenceUploader->buildGidMap($fileValues, $this->credentialArray, $this->export->id);
         }
     }

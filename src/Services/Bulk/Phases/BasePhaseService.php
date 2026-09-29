@@ -10,44 +10,18 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
-/**
- * Abstract base class for bulk operation phases.
- *
- * Implements the template method pattern for bulk phase execution:
- *   1. Validate input & fetch credential
- *   2. Build payload via buildPayloadLines()
- *   3. Write JSONL + manifest files
- *   4. Create staged upload target & upload file
- *   5. Run bulk mutation
- *   6. Create phase bulk operation record
- *   7. Dispatch polling job
- *
- * Concrete phases only need to provide:
- *   - getPhaseName(): string
- *   - getMutationKey(): string (config key for bulk_mutations)
- *   - buildPayloadLines(array $operationData): array
- *   - getExtraManifestData(array $operationData): array (optional)
- *   - extractOperationParameters(array $operationData): array (optional, for validation)
- *
- * This eliminates ~100 lines of duplication per phase service.
- */
 abstract class BasePhaseService
 {
     use ShopifyGraphqlRequest;
 
-    /** @var ShopifyCredential|null */
     protected $credential;
 
-    /** @var array */
     protected $credentialArray;
 
-    /** @var array */
     protected $manifest;
 
-    /** @var ShopifyBulkOperation */
     protected $coreBulkOperation;
 
-    /** @var object Payload builder instance (e.g., PublishingBulkPayloadBuilder) */
     protected $payloadBuilder;
 
     public function __construct(
@@ -83,14 +57,12 @@ abstract class BasePhaseService
         $this->manifest = $manifest;
         $this->coreBulkOperation = $coreBulkOperation;
 
-        // Build payload lines (JSONL)
         $lines = $this->buildPayloadLines($operationData);
 
-        if (empty($lines)) {
+        if ($lines === []) {
             return ['processed' => 0, 'errors' => [], 'phase_bulk_operation_id' => null];
         }
 
-        // Write files
         $phase = $this->getPhaseName();
         $dir = sprintf('shopify/bulk/%s/%s_%s_%s', $manifest['job_track_id'], $phase, $coreBulkOperation->id, time());
         $jsonlPath = $dir.'/input.jsonl';
@@ -109,19 +81,17 @@ abstract class BasePhaseService
             'line_count'    => count($lines),
         ];
 
-        // Merge any extra manifest data from concrete class
         $extraData = $this->getExtraManifestData($operationData);
-        if (! empty($extraData)) {
+        if ($extraData !== []) {
             $phaseManifest = array_merge($phaseManifest, $extraData);
         }
 
         $this->bulkOperationService->writeManifest($manifestPath, $phaseManifest);
 
-        // Create staged upload target
         $filename = basename($jsonlPath);
         $target = $this->bulkOperationService->createJsonlUploadTarget($credentialArray, $filename);
 
-        if (empty($target)) {
+        if ($target === []) {
             return [
                 'processed'               => 0,
                 'errors'                  => ['Failed to create Shopify staged upload target.'],
@@ -129,11 +99,9 @@ abstract class BasePhaseService
             ];
         }
 
-        // Upload JSONL file
         $absolutePath = storage_path('app/'.$jsonlPath);
         $stagedUploadPath = $this->bulkOperationService->uploadJsonlFile($target, $absolutePath);
 
-        // Run bulk mutation
         $mutation = config('shopify_bulk_mutations.'.$this->getMutationKey());
 
         $response = $this->bulkOperationService->runMutation(
@@ -147,11 +115,7 @@ abstract class BasePhaseService
         if (! $shopifyBulkOperationId) {
             $message = $response['userErrors'][0]['message'] ?? 'Unknown error';
 
-            // A sibling phase still holds the single bulk-mutation slot. Signal
-            // the calling job to release & retry rather than dropping the phase.
-            if (stripos($message, 'already in progress') !== false) {
-                throw new BulkMutationInProgressException($message);
-            }
+            throw_if(stripos($message, 'already in progress') !== false, BulkMutationInProgressException::class, $message);
 
             return [
                 'processed'               => 0,
@@ -160,7 +124,6 @@ abstract class BasePhaseService
             ];
         }
 
-        // Create phase bulk operation record
         $phaseBulkOperation = $this->bulkOperationRepository->create([
             'job_track_id'              => $manifest['job_track_id'],
             'credential_id'             => $credentialId,
@@ -176,8 +139,7 @@ abstract class BasePhaseService
             ],
         ]);
 
-        // Dispatch poll job
-        PollBulkShopifyOperation::dispatch($phaseBulkOperation->id);
+        dispatch(new PollBulkShopifyOperation($phaseBulkOperation->id));
 
         return [
             'processed'               => count($lines),

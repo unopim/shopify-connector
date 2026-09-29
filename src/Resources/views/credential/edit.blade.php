@@ -1,39 +1,42 @@
-<x-admin::layouts.with-history :history-id="$credential->id">
+<x-admin::layouts.with-history :history-id="$credential->id" :tab-items="$tabItems ?? []">
     <x-slot:entityName>
         shopify_credentials
     </x-slot>
 
     <x-slot:title>
-        @lang('shopify::app.shopify.credential.index.title')
+        @lang('shopify::app.shopify.credential.edit.title')
     </x-slot>
-    
+
+    <x-slot:pageHeader>
+        <div class="flex min-h-10 items-center justify-between gap-4 max-sm:flex-wrap">
+            <div class="flex flex-col gap-1.5">
+                @include('shopify::catalogs._breadcrumbs', [
+                    'crumbs' => [
+                        ['label' => trans('shopify::app.components.layouts.sidebar.shopify'), 'url' => route('shopify.credentials.index')],
+                        ['label' => trans('shopify::app.shopify.credential.index.title'), 'url' => route('shopify.credentials.index')],
+                    ],
+                    'leaf' => trans('shopify::app.shopify.credential.edit.title'),
+                ])
+
+                <x-admin::heading :title="trans('shopify::app.shopify.credential.edit.title')" as="h1" size="xl" />
+            </div>
+
+            {{-- Saving belongs to the unsaved-changes bar core already renders. --}}
+            <a
+                href="{{ route('shopify.credentials.index') }}"
+                class="transparent-button"
+            >
+                @lang('shopify::app.shopify.credential.edit.back-btn')
+            </a>
+        </div>
+    </x-slot>
+
     <x-admin::form
+        id="shopify-credential-form"
         :action="route('shopify.credentials.update', ['id' => $credential->id])"
         method="PUT"
         :ajax="true"
     >
-        <div class="flex justify-between items-center">
-            <p class="text-xl text-gray-800 dark:text-slate-50 font-bold">
-                @lang('shopify::app.shopify.credential.edit.title')
-            </p>
-
-            <div class="flex gap-x-2.5 items-center">
-                <a
-                    href="{{ route('shopify.credentials.index') }}"
-                    class="transparent-button"
-                >
-                    @lang('shopify::app.shopify.credential.edit.back-btn')
-                </a>
-
-                <button 
-                    type="submit" 
-                    class="primary-button"
-                    aria-lebel="Submit"
-                >
-                    @lang('shopify::app.shopify.credential.edit.save')
-                </button>
-            </div>
-        </div>
 
         @if ($isSaas)
             <div class="flex items-center gap-2 mt-3.5 p-4 bg-violet-50 dark:bg-cherry-800 border border-violet-200 dark:border-cherry-700 rounded text-sm text-gray-700 dark:text-gray-300">
@@ -226,13 +229,13 @@
                         </p>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300">
+                    <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300">
                         <p class="break-words font-bold">@lang('shopify::app.shopify.credential.index.locations')</p>
                         <p class="break-words font-bold">@lang('shopify::app.shopify.credential.index.location_inventory_attribute')</p>
                     </div>
 
                     @foreach ($locationAll as $location)
-                        <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                        <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="break-words">{{ $location['name'] }}</p>
                             <x-admin::form.control-group class="!mb-0">
                                 <x-admin::form.control-group.control
@@ -253,7 +256,7 @@
                     <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
                         @lang('shopify::app.shopify.credential.export.locales')
                     </p>
-                    <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                    <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                         <p class="break-words font-bold"> @lang('shopify::app.shopify.credential.shopify.locale')</p>
                         
                         <p class="break-words font-bold">@lang('shopify::app.shopify.credential.unopim.locale')</p>
@@ -284,7 +287,7 @@
                                     $primary = $locale['primary'] ? '(Default)' : '';
                                     $selectedLocale = $storelocaleMapping[$localeCode] ?? null;
                                 @endphp
-                           <div class="grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
+                           <div class="shopify-map-row grid grid-cols-2 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                                 <x-admin::form.control-group.label class="{{ $locale['primary'] ? 'required' : '' }}">
                                     <p class="break-words">{{ $locale['name'].' '.$locale['locale'].' '.$primary }}</p>
                                 </x-admin::form.control-group.label>
@@ -308,6 +311,5 @@
                 </div>
             </div>
         </div>
-    </x-admin::form> 
-    
+    </x-admin::form>
 </x-admin::layouts.with-history>

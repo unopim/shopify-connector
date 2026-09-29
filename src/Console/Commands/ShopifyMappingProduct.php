@@ -2,17 +2,22 @@
 
 namespace Webkul\Shopify\Console\Commands;
 
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Webkul\Shopify\Models\ShopifyCredentialsConfigProxy;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
+#[Description('Mapping products')]
+#[Signature('shopify-mapping:products {shopUrl} {--onlynew=false}')]
 class ShopifyMappingProduct extends Command
 {
     use DataMappingTrait;
@@ -20,22 +25,13 @@ class ShopifyMappingProduct extends Command
 
     public const UNOPIM_ENTITY_NAME = 'product';
 
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'shopify-mapping:products {shopUrl} {--onlynew=false}';
+    private ?ProgressBar $progressBar = null;
 
-    protected $description = 'Mapping products';
-
-    private $progressBar;
-
-    private $page = null;
+    private $page;
 
     private $credentialArray = [];
 
-    public $credential;
+    public ?ShopifyCredentialsConfigProxy $credential = null;
 
     public $imagesAttr = [];
 
@@ -62,7 +58,7 @@ class ShopifyMappingProduct extends Command
 
         $jobTrackHighestId = DB::table('job_track')
             ->select('id')
-            ->orderByDesc('id') // Order by ID in descending order
+            ->orderByDesc('id')
             ->first();
 
         $this->jobinstanceId = $jobTrackHighestId->id + 1;
@@ -73,12 +69,12 @@ class ShopifyMappingProduct extends Command
         $shopUrl = $input->getArgument('shopUrl');
         $onlyNew = filter_var($input->getOption('onlynew'), FILTER_VALIDATE_BOOLEAN);
         $shopUrl = rtrim($shopUrl, '/');
-        $this->credential = DB::table('wk_shopify_credentials_config')
+        $this->credential = ShopifyCredentialsConfigProxy::query()
             ->where('shopUrl', $shopUrl)
             ->first();
         $io = new SymfonyStyle($input, $output);
 
-        if (empty($this->credential)) {
+        if (! $this->credential instanceof ShopifyCredentialsConfigProxy) {
             $io->error([
                 'Whoops! You didn\'t have this shopUrl',
             ]);
@@ -86,7 +82,7 @@ class ShopifyMappingProduct extends Command
             return 0;
         }
         $output->writeln('<info>Mapping migration process start </info>');
-        $this->credentialArray = $this->credential?->toApiArray() ?? [];
+        $this->credentialArray = $this->credential->toApiArray();
 
         $totalProduct = $this->getTotalProduct();
         if (! $totalProduct) {
@@ -96,7 +92,7 @@ class ShopifyMappingProduct extends Command
 
             return 0;
         }
-        $progressBar = new ProgressBar($output, $totalProduct ?? 0);
+        $progressBar = new ProgressBar($output, $totalProduct);
         $progressBar->setBarCharacter('<fg=green>•</>');
         $progressBar->setEmptyBarCharacter('<fg=red>⚬</>');
         $progressBar->setProgressCharacter('<fg=green>➤</>');
@@ -122,7 +118,7 @@ class ShopifyMappingProduct extends Command
         return 1;
     }
 
-    public function getProductsByPage($page, $onlyNew)
+    public function getProductsByPage($page, $onlyNew): string|false|null
     {
         $mutationType = 'productAllvalueGetting';
         $variable = [];
@@ -148,6 +144,8 @@ class ShopifyMappingProduct extends Command
 
             return json_encode($errorsMessage, true);
         }
+
+        return null;
     }
 
     public function getTotalProduct()
@@ -165,7 +163,7 @@ class ShopifyMappingProduct extends Command
             $this->skuStore = array_unique($this->skuStore);
             $count = 0;
             $productId = $product['node']['id'];
-            $count = count(array_filter($product['node']['options'], fn ($option) => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
+            $count = count(array_filter($product['node']['options'], fn (array $option): bool => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
             if ($count > 0) {
                 if (isset($product['node']['variants'])) {
                     $variantSKUs = [];

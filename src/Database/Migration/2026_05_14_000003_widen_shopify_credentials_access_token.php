@@ -14,14 +14,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('wk_shopify_credentials_config', function (Blueprint $table) {
+        Schema::table('wk_shopify_credentials_config', function (Blueprint $table): void {
             $table->text('accessToken')->change();
         });
     }
 
     public function down(): void
     {
-        Schema::table('wk_shopify_credentials_config', function (Blueprint $table) {
+        Schema::table('wk_shopify_credentials_config', function (Blueprint $table): void {
             $table->string('accessToken')->change();
         });
     }

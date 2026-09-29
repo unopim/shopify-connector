@@ -2,11 +2,7 @@
 
 namespace Webkul\Shopify\Jobs;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\PublishingPhaseService;
@@ -16,7 +12,7 @@ use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
 class RunPublishingPhase implements ShouldQueue
 {
-    use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
+    use HandlesPhaseJobFailure, \Illuminate\Foundation\Queue\Queueable;
 
     protected const PHASE = 'publishing';
 
@@ -38,9 +34,7 @@ class RunPublishingPhase implements ShouldQueue
 
         try {
             $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
-        } catch (BulkMutationInProgressException $e) {
-            // A sibling phase still holds Shopify's single bulk-mutation slot.
-            // Release back to the queue and retry once it frees.
+        } catch (BulkMutationInProgressException) {
             $this->release(random_int(20, 60));
 
             return;

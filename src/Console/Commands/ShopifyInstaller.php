@@ -2,32 +2,28 @@
 
 namespace Webkul\Shopify\Console\Commands;
 
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Webkul\Attribute\Repositories\AttributeRepository;
+use Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder;
 
+#[Description('Install the Shopify package')]
+#[Signature('shopify-package:install')]
 class ShopifyInstaller extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'shopify-package:install';
-
-    protected $description = 'Install the Shopify package';
-
     public function __construct(protected AttributeRepository $attributeRepository)
     {
         parent::__construct();
     }
 
-    public function handle()
+    public function handle(): void
     {
         $this->info('Installing Unopim Shopify connector...');
 
         if ($this->confirm('Would you like to run the migrations now?', true)) {
             $this->call('migrate');
-            $this->call('db:seed', ['--class' => 'Webkul\Shopify\Database\Seeders\ShopifySettingConfigurationValuesSeeder']);
+            $this->call('db:seed', ['--class' => ShopifySettingConfigurationValuesSeeder::class]);
         }
 
         $this->call('vendor:publish', [

@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('wk_shopify_metafield_defination', function (Blueprint $table) {
+        Schema::table('wk_shopify_metafield_defination', function (Blueprint $table): void {
             $table->longText('taxonomy_category')->nullable()->after('apiUrl');
         });
     }
 
     public function down(): void
     {
-        Schema::table('wk_shopify_metafield_defination', function (Blueprint $table) {
+        Schema::table('wk_shopify_metafield_defination', function (Blueprint $table): void {
             $table->dropColumn('taxonomy_category');
         });
     }

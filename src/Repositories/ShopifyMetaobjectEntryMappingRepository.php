@@ -34,7 +34,7 @@ class ShopifyMetaobjectEntryMappingRepository extends Repository
      */
     public function deleteForEntries(array $entryIds): void
     {
-        if (! empty($entryIds)) {
+        if ($entryIds !== []) {
             DB::table('wk_shopify_metaobject_entry_mappings')->whereIn('entry_id', $entryIds)->delete();
         }
     }

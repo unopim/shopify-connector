@@ -2,11 +2,7 @@
 
 namespace Webkul\Shopify\Jobs;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\VariantMediaPhaseService;
@@ -14,14 +10,9 @@ use Webkul\Shopify\Services\BulkOperationResultReader;
 use Webkul\Shopify\Services\PhaseProgressTracker;
 use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
-/**
- * Runs the variant-media phase after the media phase has created (and persisted) the
- * product media, linking each image to its variant. Dispatched with the core bulk
- * operation id, mirroring the other follow-up phase jobs.
- */
 class RunVariantMediaPhase implements ShouldQueue
 {
-    use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
+    use HandlesPhaseJobFailure, \Illuminate\Foundation\Queue\Queueable;
 
     protected const PHASE = 'variant_media';
 
@@ -43,9 +34,7 @@ class RunVariantMediaPhase implements ShouldQueue
 
         try {
             $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
-        } catch (BulkMutationInProgressException $e) {
-            // A sibling phase still holds Shopify's single bulk-mutation slot.
-            // Release back to the queue and retry once it frees.
+        } catch (BulkMutationInProgressException) {
             $this->release(random_int(20, 60));
 
             return;

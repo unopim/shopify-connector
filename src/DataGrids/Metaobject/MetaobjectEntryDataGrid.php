@@ -79,8 +79,8 @@ class MetaobjectEntryDataGrid extends DataGrid
 
         $orderedIndexes = $useManaged
             ? array_merge(
-                array_values(array_filter($this->managedColumns, fn ($index) => isset($fieldColumns[$index]))),
-                array_values(array_filter(array_keys($fieldColumns), fn ($index) => ! in_array($index, $this->managedColumns, true)))
+                array_values(array_filter($this->managedColumns, fn ($index): bool => isset($fieldColumns[$index]))),
+                array_values(array_filter(array_keys($fieldColumns), fn (string $index): bool => ! in_array($index, $this->managedColumns, true)))
             )
             : array_keys($fieldColumns);
 
@@ -182,7 +182,7 @@ class MetaobjectEntryDataGrid extends DataGrid
      */
     protected function formatValue(mixed $value): string
     {
-        if ($value === null || $value === '' || $value === []) {
+        if (in_array($value, [null, '', []], true)) {
             return '-';
         }
 
@@ -195,7 +195,7 @@ class MetaobjectEntryDataGrid extends DataGrid
                 return e(Str::limit((string) ($value['text'] ?? $value['url']), 60));
             }
 
-            $scalars = array_filter($value, 'is_scalar');
+            $scalars = array_filter($value, is_scalar(...));
 
             return $scalars === []
                 ? trans('shopify::app.shopify.metaobject.datagrid.complex')

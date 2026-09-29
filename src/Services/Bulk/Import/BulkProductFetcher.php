@@ -4,22 +4,11 @@ namespace Webkul\Shopify\Services\Bulk\Import;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Webkul\Shopify\Services\BulkOperationService;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 
-/**
- * Submits Shopify bulkOperationRunQuery passes for the product import, polls
- * each to completion, and downloads the resulting JSONL files locally.
- *
- * Two passes are needed because Shopify caps bulk queries at 5 connections:
- *   - "core"       — products + variants + nested-under-variant data
- *   - "relations"  — product-level media / metafields / collections / publications
- *
- * The two JSONL files are merged by BulkOperationProductIterator using the
- * product id (and __parentId chain) — children land under the same product
- * regardless of which pass produced them.
- */
 class BulkProductFetcher
 {
     use ShopifyGraphqlRequest;
@@ -30,11 +19,6 @@ class BulkProductFetcher
 
     public const PRODUCT_FILTER_PLACEHOLDER = '%PRODUCT_FILTER%';
 
-    /**
-     * Ordered list of bulk-query template config keys to fetch sequentially.
-     * Only the first uses the locale placeholder — relations pass has no
-     * translations field so the placeholder substitution is a no-op there.
-     */
     protected const QUERY_KEYS = [
         'productImportBulkQueryCore',
         'productImportBulkQueryRelations',
@@ -56,9 +40,7 @@ class BulkProductFetcher
         foreach (self::QUERY_KEYS as $key) {
             $template = (string) config('shopify_bulk_mutations.'.$key, '');
 
-            if ($template === '') {
-                throw new \RuntimeException("Shopify bulk import query template '{$key}' is not configured.");
-            }
+            throw_if($template === '', \RuntimeException::class, "Shopify bulk import query template '{$key}' is not configured.");
 
             $query = $this->resolveQuery($template, $shopifyLocale, $statusFilter);
 
@@ -138,9 +120,7 @@ class BulkProductFetcher
 
         $bulkOperation = $payload['bulkOperation'] ?? null;
 
-        if (empty($bulkOperation['id'])) {
-            throw new \RuntimeException('Shopify bulk import submit returned no operation id.');
-        }
+        throw_if(empty($bulkOperation['id']), \RuntimeException::class, 'Shopify bulk import submit returned no operation id.');
 
         return [
             'id'     => $bulkOperation['id'],
@@ -164,7 +144,7 @@ class BulkProductFetcher
             $status = strtoupper((string) ($state['status'] ?? ''));
 
             if (in_array($status, ['CREATED', 'RUNNING', 'CANCELING'], true)) {
-                sleep($delay);
+                Sleep::sleep($delay);
 
                 continue;
             }
@@ -183,7 +163,7 @@ class BulkProductFetcher
                 ));
             }
 
-            sleep($delay);
+            Sleep::sleep($delay);
         }
 
         $this->cancel($credential, $operationId);

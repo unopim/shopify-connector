@@ -11,20 +11,18 @@ class ExportMappingForm extends FormRequest
 {
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array
      */
-    public function rules()
+    public function rules(): array
     {
         return [
             'title'                      => ['required_without:default_title'],
             'default_taxable'            => ['sometimes', 'nullable', new BooleanString],
             'default_inventoryPolicy'    => ['sometimes', 'nullable', new BooleanString],
             'default_inventoryTracked'   => ['sometimes', 'nullable', new BooleanString],
-            'default_price'              => 'sometimes|nullable|numeric',
-            'default_weight'             => 'sometimes|nullable|numeric',
-            'default_compareAtPrice'     => 'sometimes|nullable|numeric',
-            'default_cost'               => 'sometimes|nullable|numeric',
+            'default_price'              => ['sometimes', 'nullable', 'numeric'],
+            'default_weight'             => ['sometimes', 'nullable', 'numeric'],
+            'default_compareAtPrice'     => ['sometimes', 'nullable', 'numeric'],
+            'default_cost'               => ['sometimes', 'nullable', 'numeric'],
             'status'                     => ['required', Rule::in((new ShopifyFields)->getStatusEnumValues())],
             'unit_price_quantity_value'  => ['sometimes', 'nullable', 'string'],
             'unit_price_quantity_unit'   => ['sometimes', 'nullable', 'string'],

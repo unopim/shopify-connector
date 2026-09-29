@@ -8,9 +8,6 @@ use Webkul\Shopify\Services\Bulk\PayloadBuilders\MediaBulkPayloadBuilder;
 use Webkul\Shopify\Services\Bulk\Phases\BasePhaseService;
 use Webkul\Shopify\Services\BulkOperationService;
 
-/**
- * Media phase service — uploads product images via bulk productCreateMedia.
- */
 class MediaPhaseService extends BasePhaseService
 {
     public function __construct(
@@ -36,8 +33,6 @@ class MediaPhaseService extends BasePhaseService
             $this->credentialArray
         );
 
-        // Persist any in-place image updates found in the same pass so the chained
-        // media_update phase can run them via bulk without recomputing the diff.
         $this->persistPendingUpdate();
 
         return $lines;

@@ -7,7 +7,6 @@ use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
-use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Helpers\Iterator\AttributeIterator;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
@@ -21,37 +20,16 @@ class Importer extends AbstractImporter
 
     public const BATCH_SIZE = 10;
 
-    /**
-     * cursor position
-     */
-    public $cursor = null;
+    public $cursor;
 
-    /**
-     * locales storage
-     */
     protected array $locales = [];
 
-    /**
-     * Shopify job Locale.
-     *
-     * @var mixed
-     */
     protected $locale;
 
     protected array $attrStrore = [];
 
-    /**
-     * Shopify credential.
-     *
-     * @var mixed
-     */
     protected $credential;
 
-    /**
-     * Shopify credential as array for api request.
-     *
-     * @var mixed
-     */
     protected $credentialArray;
 
     public function __construct(
@@ -87,10 +65,8 @@ class Importer extends AbstractImporter
 
     /**
      * Import instance.
-     *
-     * @return Source
      */
-    public function getSource()
+    public function getSource(): AttributeIterator
     {
         $this->initFilters();
 
@@ -215,7 +191,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        $batch = $this->importBatchRepository->update([
+        $this->importBatchRepository->update([
             'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),

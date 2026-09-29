@@ -133,7 +133,12 @@
 
         data() {
             return {
-                typeOptions: Object.entries(this.fieldTypes).map(([id, label]) => ({ id, label })),
+                typeOptions: Object.entries(this.fieldTypes).map(([id, label]) => ({
+                    id,
+                    label,
+                    /** A type the store cannot export stays listed, but cannot be picked. */
+                    $isDisabled: @json(resolve(\Webkul\Shopify\Support\ProFeatures::class)->lockedMetafieldTypes()).includes(id),
+                })),
                 fileModeOptions: [
                     { id: 'any', label: "@lang('shopify::app.shopify.metafield.index.any-file-type')" },
                     { id: 'media', label: "@lang('shopify::app.shopify.metafield.index.media-file-only')" },

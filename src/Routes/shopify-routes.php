@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Webkul\Shopify\Http\Controllers\CatalogController;
 use Webkul\Shopify\Http\Controllers\CollectionMappingController;
 use Webkul\Shopify\Http\Controllers\CredentialController;
 use Webkul\Shopify\Http\Controllers\ImportMappingController;
@@ -9,83 +10,101 @@ use Webkul\Shopify\Http\Controllers\MetaFieldController;
 use Webkul\Shopify\Http\Controllers\MetaobjectController;
 use Webkul\Shopify\Http\Controllers\MetaobjectEntryController;
 use Webkul\Shopify\Http\Controllers\OptionController;
+use Webkul\Shopify\Http\Controllers\ProController;
+use Webkul\Shopify\Http\Controllers\RealtimeController;
 use Webkul\Shopify\Http\Controllers\SaasAutoLoginController;
 use Webkul\Shopify\Http\Controllers\SettingController;
 
-/**
- * Public Shopify-initiated auto-login. Lives outside the admin middleware so
- * Shopify can land users here without an existing UnoPim session; the HMAC
- * itself is what authenticates the request.
- */
 Route::get('shopify/saas/secure-login', [SaasAutoLoginController::class, 'login'])
     ->name('shopify.saas.secure-login');
 
-/**
- * Catalog routes.
- */
-Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], function () {
-    Route::prefix('shopify')->group(function () {
-
-        Route::controller(CredentialController::class)->prefix('credentials')->group(function () {
+Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], function (): void {
+    Route::prefix('shopify')->group(function (): void {
+        Route::controller(CredentialController::class)->prefix('credentials')->group(function (): void {
             Route::get('', 'index')->name('shopify.credentials.index');
 
             Route::post('create', 'store')->name('shopify.credentials.store');
 
-            Route::get('edit/{id}', 'edit')->name('shopify.credentials.edit');
+            Route::get('{id}/edit', 'edit')->name('shopify.credentials.edit')->whereNumber('id');
 
-            Route::put('update/{id}', 'update')->name('shopify.credentials.update');
+            Route::put('{id}', 'update')->name('shopify.credentials.update')->whereNumber('id');
 
-            Route::delete('delete/{id}', 'destroy')->name('shopify.credentials.delete');
+            Route::delete('{id}', 'destroy')->name('shopify.credentials.delete')->whereNumber('id');
 
-            Route::post('sync/{id}', 'sync')->name('shopify.credentials.sync');
+            Route::post('{id}/sync', 'sync')->name('shopify.credentials.sync')->whereNumber('id');
 
-            Route::post('revoke/{id}', 'revoke')->name('shopify.credentials.revoke');
+            Route::post('{id}/revoke', 'revoke')->name('shopify.credentials.revoke')->whereNumber('id');
         });
 
-        Route::controller(MetaFieldController::class)->prefix('metafields')->group(function () {
+        Route::controller(MetaFieldController::class)->prefix('metafields')->group(function (): void {
             Route::get('', 'index')->name('shopify.metafield.index');
 
             Route::post('create', 'store')->name('shopify.metafield.store');
 
-            Route::get('edit/{id}', 'edit')->name('shopify.metafield.edit');
-
-            Route::put('update/{id}', 'update')->name('shopify.metafield.update');
-
-            Route::delete('delete/{id}', 'destroy')->name('shopify.metafield.delete');
-
             Route::post('mass-delete', 'massDestroy')->name('shopify.metafield.mass_delete');
+
+            Route::get('{id}/edit', 'edit')->name('shopify.metafield.edit')->whereNumber('id');
+
+            Route::put('{id}', 'update')->name('shopify.metafield.update')->whereNumber('id');
+
+            Route::delete('{id}', 'destroy')->name('shopify.metafield.delete')->whereNumber('id');
         });
 
-        Route::prefix('export')->group(function () {
-            Route::controller(SettingController::class)->prefix('settings')->group(function () {
-                Route::get('{id}', 'index')->name('admin.shopify.settings');
+        Route::get('upgrade', [ProController::class, 'index'])->name('shopify.upgrade');
 
-                Route::post('create', 'store')->name('shopify.export-settings.create');
-            });
-            Route::controller(MappingController::class)->prefix('mapping')->group(function () {
-                Route::get('{id}', 'index')->name('admin.shopify.export-mappings');
+        /**
+         * The real-time screens and the catalogs they belong to sit under the
+         * credential they configure, so the sidebar marks Credentials active
+         * without a rule of its own.
+         */
+        Route::prefix('credentials')->group(function (): void {
+            Route::get('{credentialId}/realtime', [RealtimeController::class, 'credential'])
+                ->whereNumber('credentialId')
+                ->name('shopify.credentials.realtime.index');
 
-                Route::post('create', 'store')->name('shopify.export-mappings.create');
-            });
-
-            Route::controller(CollectionMappingController::class)->prefix('collection-mapping')->group(function () {
-                Route::get('{id}', 'index')->name('admin.shopify.collection-mappings');
-
-                Route::post('create', 'store')->name('shopify.collection-mappings.create');
-            });
-
+            /**
+             * Only the screen itself, because the tab that leads to it is the
+             * connector's. What a catalog is then read from or written to is
+             * Pro's, and ships with Pro.
+             */
+            Route::get('{credentialId}/catalogs', [CatalogController::class, 'index'])
+                ->whereNumber('credentialId')
+                ->name('shopify.credentials.catalogs.index');
         });
 
-        Route::prefix('import')->group(function () {
-            Route::controller(ImportMappingController::class)->prefix('mapping')->group(function () {
-                Route::get('{id}', 'index')->name('admin.shopify.import-mappings');
+        Route::controller(SettingController::class)->prefix('export-settings')->group(function (): void {
+            Route::post('create', 'store')->name('shopify.export-settings.create');
 
-                Route::post('create', 'store')->name('shopify.import-mappings.create');
-            });
+            Route::get('{id}', 'index')->name('admin.shopify.settings')->whereNumber('id');
         });
 
-        Route::controller(OptionController::class)->group(function () {
+        Route::controller(MappingController::class)->prefix('export-mapping')->group(function (): void {
+            Route::post('create', 'store')->name('shopify.export-mappings.create');
 
+            Route::get('{id}', 'index')->name('admin.shopify.export-mappings')->whereNumber('id');
+        });
+
+        /**
+         * Real-time sync is a tab of the export mapping screen, so it is served
+         * from under it and the sidebar keeps Export Mappings active.
+         */
+        Route::prefix('export-mapping/{id}')->whereNumber('id')->group(function (): void {
+            Route::get('realtime', [RealtimeController::class, 'index'])->name('shopify.realtime.index');
+        });
+
+        Route::controller(CollectionMappingController::class)->prefix('collection-mapping')->group(function (): void {
+            Route::post('create', 'store')->name('shopify.collection-mappings.create');
+
+            Route::get('{id}', 'index')->name('admin.shopify.collection-mappings')->whereNumber('id');
+        });
+
+        Route::controller(ImportMappingController::class)->prefix('import-mapping')->group(function (): void {
+            Route::post('create', 'store')->name('shopify.import-mappings.create');
+
+            Route::get('{id}', 'index')->name('admin.shopify.import-mappings')->whereNumber('id');
+        });
+
+        Route::controller(OptionController::class)->group(function (): void {
             Route::get('get-attribute', 'listAttributes')->name('admin.shopify.get-attribute');
 
             Route::get('get-category-field', 'listCategoryFields')->name('admin.shopify.get-category-field');
@@ -116,55 +135,56 @@ Route::group(['middleware' => ['admin'], 'prefix' => config('app.admin_url')], f
 
             Route::get('get-shopify-family', 'listShopifyFamily')->name('admin.shopify.get-all-family-variants');
 
-            Route::get('metaobject/reference-options', 'referenceOptions')->name('shopify.metaobject.reference-options');
+            Route::get('metaobjects/reference-options', 'referenceOptions')->name('shopify.metaobject.reference-options');
         });
 
-        Route::controller(MetaobjectController::class)->group(function () {
-            Route::get('metaobject', 'index')->name('shopify.metaobject.index');
+        Route::controller(MetaobjectController::class)->prefix('metaobjects')->group(function (): void {
+            Route::get('', 'index')->name('shopify.metaobject.index');
 
-            Route::post('metaobject', 'store')->name('shopify.metaobject.store');
+            Route::post('', 'store')->name('shopify.metaobject.store');
 
-            Route::get('metaobject/create', 'create')->name('shopify.metaobject.create');
+            Route::get('create', 'create')->name('shopify.metaobject.create');
 
-            Route::get('metaobject/definitions', 'definitions')->name('shopify.metaobject.local-definitions');
+            Route::get('definitions', 'definitions')->name('shopify.metaobject.local-definitions');
 
-            Route::get('metaobject/for-attribute', 'forAttribute')->name('shopify.metaobject.for-attribute');
+            Route::get('for-attribute', 'forAttribute')->name('shopify.metaobject.for-attribute');
 
-            Route::post('metaobject/mass-delete', 'massDestroy')->name('shopify.metaobject.mass_delete');
+            Route::post('mass-delete', 'massDestroy')->name('shopify.metaobject.mass_delete');
 
-            Route::get('metaobject/{id}/edit', 'edit')->name('shopify.metaobject.edit');
+            Route::get('{id}/edit', 'edit')->name('shopify.metaobject.edit')->whereNumber('id');
 
-            Route::get('metaobject/{id}/fields', 'fields')->name('shopify.metaobject.fields');
+            Route::put('{id}', 'update')->name('shopify.metaobject.update')->whereNumber('id');
 
-            Route::put('metaobject/{id}', 'update')->name('shopify.metaobject.update');
+            Route::delete('{id}', 'destroy')->name('shopify.metaobject.destroy')->whereNumber('id');
 
-            Route::delete('metaobject/{id}', 'destroy')->name('shopify.metaobject.destroy');
+            Route::patch('{id}/general', 'updateGeneral')->name('shopify.metaobject.general')->whereNumber('id');
 
-            Route::patch('metaobject/{id}/general', 'updateGeneral')->name('shopify.metaobject.general');
+            /** The datagrid shares the fields path, so it is matched before the key. */
+            Route::get('{id}/fields/datagrid', 'fieldDatagrid')->name('shopify.metaobject.field.datagrid')->whereNumber('id');
 
-            Route::get('metaobject-field/datagrid/{id}', 'fieldDatagrid')->name('shopify.metaobject.field.datagrid');
+            Route::get('{id}/fields', 'fields')->name('shopify.metaobject.fields')->whereNumber('id');
 
-            Route::post('metaobject-field/{id}', 'fieldStore')->name('shopify.metaobject.field.store');
+            Route::post('{id}/fields', 'fieldStore')->name('shopify.metaobject.field.store')->whereNumber('id');
 
-            Route::get('metaobject-field/{id}/{key}', 'fieldGet')->name('shopify.metaobject.field.get');
+            Route::get('{id}/fields/{key}', 'fieldGet')->name('shopify.metaobject.field.get')->whereNumber('id');
 
-            Route::put('metaobject-field/{id}/{key}', 'fieldUpdate')->name('shopify.metaobject.field.update');
+            Route::put('{id}/fields/{key}', 'fieldUpdate')->name('shopify.metaobject.field.update')->whereNumber('id');
 
-            Route::delete('metaobject-field/{id}/{key}', 'fieldDestroy')->name('shopify.metaobject.field.destroy');
+            Route::delete('{id}/fields/{key}', 'fieldDestroy')->name('shopify.metaobject.field.destroy')->whereNumber('id');
         });
 
-        Route::controller(MetaobjectEntryController::class)->group(function () {
-            Route::get('metaobject-entry/list', 'list')->name('shopify.metaobject.entry.list');
+        Route::controller(MetaobjectEntryController::class)->prefix('metaobject-entries')->group(function (): void {
+            Route::get('list', 'list')->name('shopify.metaobject.entry.list');
 
-            Route::get('metaobject-entry/datagrid/{type}', 'datagrid')->name('shopify.metaobject.entry.datagrid');
+            Route::get('datagrid/{type}', 'datagrid')->name('shopify.metaobject.entry.datagrid');
 
-            Route::get('metaobject-entry/columns/{type}', 'columns')->name('shopify.metaobject.entry.columns');
+            Route::get('columns/{type}', 'columns')->name('shopify.metaobject.entry.columns');
 
-            Route::post('metaobject-entry', 'store')->name('shopify.metaobject.entry.store');
+            Route::post('', 'store')->name('shopify.metaobject.entry.store');
 
-            Route::get('metaobject-entry/{id}', 'get')->name('shopify.metaobject.entry.get');
+            Route::get('{id}', 'get')->name('shopify.metaobject.entry.get')->whereNumber('id');
 
-            Route::delete('metaobject-entry/{id}', 'delete')->name('shopify.metaobject.entry.delete');
+            Route::delete('{id}', 'delete')->name('shopify.metaobject.entry.delete')->whereNumber('id');
         });
 
     });

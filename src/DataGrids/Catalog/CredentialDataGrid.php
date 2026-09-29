@@ -24,7 +24,7 @@ class CredentialDataGrid extends DataGrid
      */
     public function prepareQueryBuilder()
     {
-        $queryBuilder = DB::table('wk_shopify_credentials_config')
+        return DB::table('wk_shopify_credentials_config')
             ->select(
                 'id',
                 'shopUrl',
@@ -32,16 +32,12 @@ class CredentialDataGrid extends DataGrid
                 'active',
                 'extras'
             );
-
-        return $queryBuilder;
     }
 
     /**
      * Add columns.
-     *
-     * @return void
      */
-    public function prepareColumns()
+    public function prepareColumns(): void
     {
         $this->addColumn([
             'index'      => 'shopUrl',
@@ -70,16 +66,14 @@ class CredentialDataGrid extends DataGrid
             'searchable' => true,
             'filterable' => true,
             'sortable'   => true,
-            'closure'    => fn ($row) => $row->active ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
+            'closure'    => fn ($row): string => $row->active ? '<span class="label-active">'.trans('admin::app.common.yes').'</span>' : '<span class="label-info">'.trans('admin::app.common.no').'</span>',
         ]);
     }
 
     /**
      * Prepare actions.
-     *
-     * @return void
      */
-    public function prepareActions()
+    public function prepareActions(): void
     {
         if (bouncer()->hasPermission('shopify.credentials.edit')) {
             $this->addAction([
@@ -87,7 +81,7 @@ class CredentialDataGrid extends DataGrid
                 'icon'   => 'icon-edit',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.edit'),
                 'method' => 'GET',
-                'url'    => fn ($row) => route('shopify.credentials.edit', $row->id),
+                'url'    => fn ($row): string => route('shopify.credentials.edit', $row->id),
             ]);
         }
 
@@ -96,7 +90,7 @@ class CredentialDataGrid extends DataGrid
             'icon'   => 'icon-data-transfer',
             'title'  => trans('shopify::app.shopify.credential.datagrid.sync'),
             'method' => 'POST',
-            'url'    => fn ($row) => route('shopify.credentials.sync', $row->id),
+            'url'    => fn ($row): string => route('shopify.credentials.sync', $row->id),
         ]);
 
         $this->addAction([
@@ -104,7 +98,7 @@ class CredentialDataGrid extends DataGrid
             'icon'   => 'icon-cancel',
             'title'  => trans('shopify::app.shopify.credential.datagrid.revoke'),
             'method' => 'POST',
-            'url'    => fn ($row) => route('shopify.credentials.revoke', $row->id),
+            'url'    => fn ($row): string => route('shopify.credentials.revoke', $row->id),
         ]);
 
         if (bouncer()->hasPermission('shopify.credentials.delete')) {
@@ -113,7 +107,7 @@ class CredentialDataGrid extends DataGrid
                 'icon'   => 'icon-delete',
                 'title'  => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'method' => 'DELETE',
-                'url'    => fn ($row) => route('shopify.credentials.delete', $row->id),
+                'url'    => fn ($row): string => route('shopify.credentials.delete', $row->id),
             ]);
         }
     }
@@ -136,7 +130,7 @@ class CredentialDataGrid extends DataGrid
 
             $record->actions = array_values(array_filter(
                 $record->actions,
-                function ($action) use ($isSaasRow) {
+                function (array $action) use ($isSaasRow): bool {
                     $index = $action['index'] ?? '';
 
                     if ($isSaasRow) {

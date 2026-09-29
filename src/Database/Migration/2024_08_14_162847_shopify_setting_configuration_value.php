@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('shopify_setting_configuration_values', function (Blueprint $table) {
+        Schema::create('shopify_setting_configuration_values', function (Blueprint $table): void {
             $table->id();
             $table->json('mapping')->nullable();
             $table->json('extras')->nullable();

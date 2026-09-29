@@ -28,6 +28,12 @@ module.exports = defineConfig({
     timeout: 15000,
   },
 
+  /* Per-test timeout. A run against a remote host pays for a full admin page
+   * load in the hook and again in the test itself, which does not fit in
+   * Playwright's 30s default. Assertions keep their own 15s bound, so a real
+   * failure still reports quickly; this only covers the navigations. */
+  timeout: 90_000,
+
   /* Shared settings for all projects */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -36,6 +42,12 @@ module.exports = defineConfig({
 
     /* Load saved authentication state */
     storageState: 'storage/auth.json',
+
+    /* An admin page served through a tunnel, with the debug bar collecting on
+     * every request, has been measured taking over 30s cold; actions on the
+     * loaded page stay on the root suite's 15s. */
+    navigationTimeout: 45_000,
+    actionTimeout: 15_000,
 
     /* Collect trace when retrying a failed test */
     trace: 'on-first-retry',

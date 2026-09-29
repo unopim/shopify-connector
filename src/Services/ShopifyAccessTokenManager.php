@@ -2,15 +2,12 @@
 
 namespace Webkul\Shopify\Services;
 
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 
 class ShopifyAccessTokenManager
 {
-    /**
-     * In-memory credential cache to avoid repeated DB hits in a single process.
-     */
     protected static array $credentialCache = [];
 
     public function __construct(
@@ -78,7 +75,7 @@ class ShopifyAccessTokenManager
 
         $expiresIn = (int) ($response->json('expires_in') ?? 0);
         $accessTokenExpiresAt = $expiresIn > 0
-            ? Carbon::now()->addSeconds($expiresIn)->toDateTimeString()
+            ? Date::now()->addSeconds($expiresIn)->toDateTimeString()
             : null;
 
         $credential['accessToken'] = $accessToken;
@@ -137,7 +134,7 @@ class ShopifyAccessTokenManager
             return false;
         }
 
-        return Carbon::parse($expiresAt)->subMinutes(5)->isPast();
+        return Date::parse($expiresAt)->subMinutes(5)->isPast();
     }
 
     protected function tokenEndpoint(string $shopUrl): string

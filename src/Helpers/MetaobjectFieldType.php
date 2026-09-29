@@ -2,12 +2,10 @@
 
 namespace Webkul\Shopify\Helpers;
 
+use Webkul\Shopify\Services\Measurement\MeasurementTypeRegistry;
+
 class MetaobjectFieldType
 {
-    /**
-     * Shopify has no email type; email is a single_line_text_field carrying this
-     * RE2 regex validation. Used to round-trip the email preset on import/export.
-     */
     public const EMAIL_REGEX = '^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$';
 
     /**
@@ -29,6 +27,6 @@ class MetaobjectFieldType
             $types[$key] = trans('shopify::app.shopify.metaobject.types.'.$key);
         }
 
-        return $types;
+        return $types + (new MeasurementTypeRegistry)->metaobjectTypes();
     }
 }

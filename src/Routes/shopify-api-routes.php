@@ -10,7 +10,7 @@ Route::group([
         'api.scope',
         'accept.json',
     ],
-], function () {
+], function (): void {
     Route::post('credentials', [SaasCredentialController::class, 'store'])
         ->name('shopify.api.saas.credentials.store');
 

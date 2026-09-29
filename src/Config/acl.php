@@ -96,5 +96,10 @@ return [
         'name'  => 'shopify::app.components.layouts.sidebar.settings',
         'route' => 'admin.shopify.settings',
         'sort'  => 6,
+    ], [
+        'key'   => 'shopify.credentials.catalogs',
+        'name'  => 'shopify::app.shopify.catalogs.title',
+        'route' => 'shopify.credentials.catalogs.index',
+        'sort'  => 9,
     ],
 ];

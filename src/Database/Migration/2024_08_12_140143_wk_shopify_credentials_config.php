@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('wk_shopify_credentials_config', function (Blueprint $table) {
+        Schema::create('wk_shopify_credentials_config', function (Blueprint $table): void {
             $table->id()->autoIncrement();
             $table->string('shopUrl')->unique();
             $table->string('accessToken');

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('wk_shopify_credentials_config', function (Blueprint $table) {
+        Schema::table('wk_shopify_credentials_config', function (Blueprint $table): void {
             $table->string('clientId')->nullable()->after('accessToken');
             $table->string('clientSecret')->nullable()->after('clientId');
             $table->timestamp('accessTokenExpiresAt')->nullable()->after('clientSecret');
@@ -23,7 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('wk_shopify_credentials_config', function (Blueprint $table) {
+        Schema::table('wk_shopify_credentials_config', function (Blueprint $table): void {
             $table->dropColumn([
                 'clientId',
                 'clientSecret',

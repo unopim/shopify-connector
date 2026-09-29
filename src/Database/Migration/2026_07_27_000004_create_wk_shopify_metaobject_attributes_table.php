@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('wk_shopify_metaobject_attributes', function (Blueprint $table) {
+        Schema::create('wk_shopify_metaobject_attributes', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('attribute_id')->unique();
             $table->unsignedBigInteger('definition_id');

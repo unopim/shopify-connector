@@ -24,8 +24,6 @@ class OptionController extends Controller
 
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct(
         protected ShopifyCredentialRepository $shopifyRepository,
@@ -47,7 +45,7 @@ class OptionController extends Controller
     public function listShopifyCredential(): JsonResponse
     {
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
-        $query = request()->get('query') ?? null;
+        $query = request()->input('query') ?? null;
         $shopifyRepo = $this->shopifyRepository;
         if ($query) {
             $shopifyRepo = $shopifyRepo->where('shopUrl', 'LIKE', '%'.$query.'%');
@@ -124,14 +122,14 @@ class OptionController extends Controller
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
 
         $searchIdentifiers = isset($queryParams['identifiers']['columnName']) ? $queryParams['identifiers'] : [];
-        $selectedChannel = request()->get('channel');
+        $selectedChannel = request()->input('channel');
 
         $currencyRepository = $this->currencyRepository->where('status', 1);
 
         if (! is_null($selectedChannel) && $selectedChannel !== '') {
             $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
 
-            $currencyRepository = $currencyRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+            $currencyRepository = $currencyRepository->whereHas('channel', function ($query) use ($selectedChannels): void {
                 $query->whereIn('code', $selectedChannels);
             });
         }
@@ -145,12 +143,10 @@ class OptionController extends Controller
             );
         }
 
-        $allCurrency = $currencyRepository->get()->map(function ($item) {
-            return [
-                'id'    => $item->code,
-                'label' => $item->name,
-            ];
-        });
+        $allCurrency = $currencyRepository->get()->map(fn ($item): array => [
+            'id'    => $item->code,
+            'label' => $item->name,
+        ]);
 
         return new JsonResponse([
             'options' => $allCurrency,
@@ -164,9 +160,9 @@ class OptionController extends Controller
     {
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
         $localeRepository = $this->localeRepository;
-        $query = request()->get('query');
-        $credentialId = request()->get('credentials');
-        $selectedChannel = request()->get('channel');
+        $query = request()->input('query');
+        $credentialId = request()->input('credentials');
+        $selectedChannel = request()->input('channel');
 
         $credential = null;
 
@@ -176,7 +172,7 @@ class OptionController extends Controller
 
         $mappedLocales = array_values(array_filter((array) ($credential?->storelocaleMapping ?? [])));
 
-        if (! empty($mappedLocales)) {
+        if ($mappedLocales !== []) {
             $localeRepository = $localeRepository->whereIn('code', $mappedLocales);
         }
 
@@ -189,14 +185,14 @@ class OptionController extends Controller
         if (! empty($selectedChannel)) {
             $selectedChannels = is_array($selectedChannel) ? $selectedChannel : [$selectedChannel];
 
-            $localeRepository = $localeRepository->whereHas('channel', function ($query) use ($selectedChannels) {
+            $localeRepository = $localeRepository->whereHas('channel', function ($query) use ($selectedChannels): void {
                 $query->whereIn('code', $selectedChannels);
             });
         }
 
         if ($query) {
             $localeRepository = $localeRepository
-                ->where(function ($builder) use ($query) {
+                ->where(function ($builder) use ($query): void {
                     $builder->where('code', 'LIKE', '%'.$query.'%')
                         ->orWhere('name', 'LIKE', '%'.$query.'%');
                 });
@@ -217,12 +213,10 @@ class OptionController extends Controller
 
         $allActivateLocale = $localeRepository->get()->toArray();
 
-        $allLocale = array_map(function ($item) {
-            return [
-                'id'    => $item['code'],
-                'label' => $item['name'],
-            ];
-        }, $allActivateLocale);
+        $allLocale = array_map(fn (array $item): array => [
+            'id'    => $item['code'],
+            'label' => $item['name'],
+        ], $allActivateLocale);
 
         return new JsonResponse([
             'options' => $allLocale,
@@ -234,18 +228,18 @@ class OptionController extends Controller
      */
     public function listAttributes(): JsonResponse
     {
-        $entityName = request()->get('entityName');
-        $notInclude = request()->get(0) ?? '';
-        $fieldName = request()->get(1) ?? '';
-        $page = request()->get('page');
-        $query = request()->get('query') ?? '';
+        $entityName = request()->input('entityName');
+        $notInclude = request()->input(0) ?? '';
+        $fieldName = request()->input(1) ?? '';
+        $page = request()->input('page');
+        $query = request()->input('query') ?? '';
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId', 'notInclude']);
         $attributeRepository = $this->attributeRepository;
         if (! empty($entityName)) {
             $entityName = json_decode($entityName);
 
             if (in_array('number', $entityName)) {
-                $attributeRepository = $attributeRepository->where(function ($query) use ($entityName) {
+                $attributeRepository = $attributeRepository->where(function ($query) use ($entityName): void {
                     $query->where(fn ($q) => $q->whereIn('validation', $entityName)->where('type', '!=', 'price'));
 
                     if (in_array('measurement', $entityName, true)) {
@@ -272,7 +266,7 @@ class OptionController extends Controller
             if (! empty($notInclude)) {
                 $notIncludeValues = array_values(array_filter(
                     array_diff(array_values($notInclude), is_array($values) ? $values : [$values]),
-                    fn ($value) => $value !== null && $value !== ''
+                    fn ($value): bool => $value !== null && $value !== ''
                 ));
 
                 $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
@@ -282,7 +276,7 @@ class OptionController extends Controller
                 unset($notInclude[$fieldName]);
                 $notIncludeValues = array_values(array_filter(
                     array_values($notInclude),
-                    fn ($value) => $value !== null && $value !== ''
+                    fn ($value): bool => $value !== null && $value !== ''
                 ));
 
                 $attributeRepository = $attributeRepository->whereNotIn('code', $notIncludeValues);
@@ -319,9 +313,9 @@ class OptionController extends Controller
      */
     public function listCategoryFields(): JsonResponse
     {
-        $entityName = request()->get('entityName');
-        $query = request()->get('query') ?? '';
-        $page = request()->get('page');
+        $entityName = request()->input('entityName');
+        $query = request()->input('query') ?? '';
+        $page = request()->input('page');
         $identifiers = request()->input('identifiers');
 
         $repository = $this->categoryFieldRepository->where('status', 1);
@@ -365,7 +359,7 @@ class OptionController extends Controller
      */
     public function listImageAttributes(): JsonResponse
     {
-        $query = request()->get('query') ?? '';
+        $query = request()->input('query') ?? '';
         $queryParams = request()->except(['page', 'query', 'attributeId']);
         $formattedoptions = [];
         if (isset($queryParams['entityName'])) {
@@ -413,7 +407,7 @@ class OptionController extends Controller
      */
     public function listGalleryAttributes(): JsonResponse
     {
-        $query = request()->get('query') ?? '';
+        $query = request()->input('query') ?? '';
 
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
 
@@ -458,7 +452,7 @@ class OptionController extends Controller
     {
         $queryParams = request()->except(['page', 'query', 'attributeId']);
 
-        $query = request()->get('query') ?? '';
+        $query = request()->input('query') ?? '';
         $credentialData = $this->shopifyRepository->find($queryParams[0]);
         $metaFieldAttr = array_merge($credentialData?->extras['productMetafield'] ?? [], $credentialData?->extras['productVariantMetafield'] ?? []);
 
@@ -507,7 +501,7 @@ class OptionController extends Controller
 
     public function selectedMetafieldAttributes(): JsonResponse
     {
-        $id = request()->get('id');
+        request()->input('id');
         $shopifyMapping = $this->shopifyExportMappingRepository->find(3);
         $formattedoptions = [];
 
@@ -548,14 +542,10 @@ class OptionController extends Controller
         }
         $allAttributegroup = $attributeGroupRepository->get()->toArray();
 
-        $attrGroupList = [];
-
-        $attrGroupList = array_map(function ($item) {
-            return [
-                'id'    => $item['id'],
-                'label' => $item['name'] ?? $item['code'],
-            ];
-        }, $allAttributegroup);
+        $attrGroupList = array_map(fn (array $item): array => [
+            'id'    => $item['id'],
+            'label' => $item['name'] ?? $item['code'],
+        ], $allAttributegroup);
 
         return new JsonResponse([
             'options' => $attrGroupList,
@@ -567,7 +557,7 @@ class OptionController extends Controller
      */
     public function listShopifyFamily(): JsonResponse
     {
-        $query = request()->get('query') ?? '';
+        $query = request()->input('query') ?? '';
 
         $queryParams = request()->except(['page', 'query', 'entityName', 'attributeId']);
 
@@ -610,23 +600,23 @@ class OptionController extends Controller
 
     public function listTaxonomyTree(ShopifyTaxonomyLoader $loader): JsonResponse
     {
-        $query = trim((string) (request()->get('query') ?? ''));
+        $query = trim((string) (request()->input('query') ?? ''));
 
         if ($query !== '') {
             $options = array_map(
-                fn ($e) => ['id' => $e['id'], 'name' => $e['path'], 'path' => $e['path'], 'hasChildren' => false],
+                fn (array $e): array => ['id' => $e['id'], 'name' => $e['path'], 'path' => $e['path'], 'hasChildren' => false],
                 $loader->search($query)
             );
 
             return new JsonResponse(['options' => $options]);
         }
 
-        $parent = (string) (request()->get('parent') ?? '');
+        $parent = (string) (request()->input('parent') ?? '');
 
         $rows = $parent === '' ? $loader->topLevel() : $loader->children($parent);
 
         $options = array_map(
-            fn ($r) => ['id' => $r['id'], 'name' => $r['name'], 'path' => $r['name'], 'hasChildren' => $r['hasChildren']],
+            fn (array $r): array => ['id' => $r['id'], 'name' => $r['name'], 'path' => $r['name'], 'hasChildren' => $r['hasChildren']],
             $rows
         );
 
@@ -635,14 +625,14 @@ class OptionController extends Controller
 
     public function listTaxonomyDescendants(ShopifyTaxonomyLoader $loader): JsonResponse
     {
-        $id = (string) (request()->get('id') ?? '');
+        $id = (string) (request()->input('id') ?? '');
 
         return new JsonResponse(['ids' => $id === '' ? [] : $loader->descendants($id)]);
     }
 
     public function listTaxonomyNames(ShopifyTaxonomyLoader $loader): JsonResponse
     {
-        $ids = (array) request()->get('ids', []);
+        $ids = (array) request()->input('ids', []);
 
         return new JsonResponse(['names' => $loader->namesFor($ids)]);
     }
@@ -652,9 +642,9 @@ class OptionController extends Controller
      */
     public function referenceOptions(): JsonResponse
     {
-        $refType = request()->get('refType');
-        $query = request()->get('query') ?? '';
-        $page = request()->get('page');
+        $refType = request()->input('refType');
+        $query = request()->input('query') ?? '';
+        $page = request()->input('page');
 
         if ($refType === 'collection_reference') {
             $repository = $this->categoryRepository;
@@ -665,7 +655,7 @@ class OptionController extends Controller
 
             $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
 
-            $options = array_map(fn ($category) => [
+            $options = array_map(fn ($category): array => [
                 'id'    => $category->code,
                 'label' => $category->code,
             ], $records->items());
@@ -687,7 +677,7 @@ class OptionController extends Controller
 
         $records = $repository->orderBy('id')->paginate(20, ['*'], 'paginate', $page);
 
-        $options = array_map(fn ($product) => [
+        $options = array_map(fn ($product): array => [
             'id'    => $product->sku,
             'label' => $product->sku,
         ], $records->items());

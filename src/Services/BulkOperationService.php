@@ -63,9 +63,7 @@ class BulkOperationService
 
         $response = Http::asMultipart()->timeout(300)->post($target['url'], $multipart);
 
-        if ($response->failed()) {
-            throw new \RuntimeException('Shopify staged upload failed.');
-        }
+        throw_if($response->failed(), \RuntimeException::class, 'Shopify staged upload failed.');
 
         return $this->extractStagedUploadPath($target['parameters'] ?? []);
     }
@@ -104,9 +102,7 @@ class BulkOperationService
             ->retry(3, 2000, throw: false)
             ->get($url);
 
-        if ($response->failed()) {
-            throw new \RuntimeException('Unable to download Shopify bulk operation result file.');
-        }
+        throw_if($response->failed(), \RuntimeException::class, 'Unable to download Shopify bulk operation result file.');
 
         Storage::disk('local')->put($targetPath, $response->body());
 

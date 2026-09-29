@@ -2,7 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Metaobject;
 
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Date;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
@@ -56,7 +56,7 @@ class Importer extends AbstractImporter
         $this->shopUrl = (string) ($this->credential?->shopUrl ?? '');
     }
 
-    public function getSource()
+    public function getSource(): MetaobjectIterator
     {
         $this->initFilters();
 
@@ -155,7 +155,7 @@ class Importer extends AbstractImporter
             return $imported;
         }
 
-        return array_map(function ($field) use ($emailKeys) {
+        return array_map(function (array $field) use ($emailKeys): array {
             if (($field['type'] ?? '') === 'single_line_text_field'
                 && empty($field['preset'])
                 && ! empty($emailKeys[$field['key'] ?? ''])) {
@@ -233,7 +233,7 @@ class Importer extends AbstractImporter
             if ($type === 'file_reference') {
                 $paths = $this->importFiles($raw, $list);
 
-                if (! empty($paths)) {
+                if ($paths !== []) {
                     $values[$key] = $list ? $paths : $paths[0];
                 }
 
@@ -243,7 +243,7 @@ class Importer extends AbstractImporter
             if ($type === 'metaobject_reference') {
                 $codes = $this->resolveReferenceCodes($raw, $list);
 
-                if (! empty($codes)) {
+                if ($codes !== []) {
                     $values[$key] = $list ? $codes : $codes[0];
                 }
 
@@ -253,7 +253,7 @@ class Importer extends AbstractImporter
             if (in_array($type, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
                 $identifiers = $this->resolveReferenceIdentifiers($raw, $list);
 
-                if (! empty($identifiers)) {
+                if ($identifiers !== []) {
                     $values[$key] = $list ? $identifiers : $identifiers[0];
                 }
 
@@ -261,7 +261,7 @@ class Importer extends AbstractImporter
             }
 
             if ($type === 'boolean') {
-                $values[$key] = $raw === 'true' || $raw === '1' || $raw === true;
+                $values[$key] = in_array($raw, ['true', '1', true], true);
 
                 continue;
             }
@@ -277,7 +277,7 @@ class Importer extends AbstractImporter
                 $elements = is_array($decoded) ? $decoded : [];
 
                 $values[$key] = array_values(array_map(
-                    fn ($element) => $this->normalizeImportedScalar($type, $element),
+                    fn ($element): mixed => $this->normalizeImportedScalar($type, $element),
                     $elements
                 ));
 
@@ -307,7 +307,7 @@ class Importer extends AbstractImporter
         $gids = $list ? (json_decode((string) $raw, true) ?: []) : [$raw];
         $gids = array_values(array_filter((array) $gids));
 
-        if (empty($gids)) {
+        if ($gids === []) {
             return [];
         }
 
@@ -370,9 +370,6 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * @return array<int, string>
-     */
-    /**
      * Reverse a Shopify scalar element to the plain value the entry UI edits:
      * measurement/rating objects collapse to their value, money to "amount CUR".
      */
@@ -392,8 +389,8 @@ class Importer extends AbstractImporter
 
         if ($type === 'date' || $type === 'date_time') {
             try {
-                $date = Carbon::parse((string) $element);
-            } catch (\Throwable $e) {
+                $date = Date::parse((string) $element);
+            } catch (\Throwable) {
                 return $element;
             }
 

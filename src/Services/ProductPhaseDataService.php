@@ -43,9 +43,7 @@ class ProductPhaseDataService
             return null;
         }
 
-        $defaultLanguage = array_values(array_filter($credential->storeLocales ?? [], function ($language) {
-            return isset($language['defaultlocale']) && $language['defaultlocale'] === true;
-        }))[0] ?? null;
+        $defaultLanguage = array_values(array_filter($credential->storeLocales ?? [], fn (array $language): bool => isset($language['defaultlocale']) && $language['defaultlocale'] === true))[0] ?? null;
 
         $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
 

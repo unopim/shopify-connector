@@ -1,11 +1,19 @@
 <?php
 
+use Webkul\Category\Repositories\CategoryRepository;
+use Webkul\Product\Repositories\ProductRepository;
+use Webkul\Shopify\Helpers\Exporters\Product\Exporter;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
+use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
+use Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator;
+use Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator;
+
 return [
     'shopifyProduct' => [
         'title'     => 'shopify::app.exporters.shopify.product',
-        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\Product\Exporter',
-        'source'    => 'Webkul\Product\Repositories\ProductRepository',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyProductValidator',
+        'exporter'  => Exporter::class,
+        'source'    => ProductRepository::class,
+        'validator' => ShopifyProductValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -19,7 +27,8 @@ return [
                     'label_by'   => 'label',
                     'list_route' => 'shopify.credential.fetch-all',
                 ], [
-                    'name'       => 'channel',
+
+                    'name'       => 'channels',
                     'title'      => 'shopify::app.shopify.job.channel',
                     'required'   => true,
                     'validation' => 'required',
@@ -29,7 +38,7 @@ return [
                     'label_by'   => 'label',
                     'list_route' => 'shopify.channel.fetch-all',
                 ], [
-                    'name'       => 'currency',
+                    'name'       => 'currencies',
                     'title'      => 'shopify::app.shopify.job.currency',
                     'required'   => true,
                     'type'       => 'select',
@@ -38,20 +47,24 @@ return [
                     'track_by'   => 'id',
                     'label_by'   => 'label',
                     'list_route' => 'shopify.currency.fetch-all',
-                    'dependent'  => ['channel'],
+                    'depends_on' => ['field' => 'channels', 'as' => 'channel'],
                 ], [
-                    'name'     => 'productfilter',
-                    'title'    => 'shopify::app.shopify.job.productfilter',
-                    'required' => false,
-                    'type'     => 'textarea',
+                    'name'       => 'sku',
+                    'title'      => 'data_transfer::app.exporters.products.filters.identifiers',
+                    'info'       => 'data_transfer::app.exporters.products.filters.identifiers-info',
+                    'required'   => false,
+                    'type'       => 'tags',
+                    'full_width' => true,
                 ], [
-                    'name'     => 'productstatus',
-                    'title'    => 'shopify::app.shopify.job.status',
-                    'required' => false,
-                    'type'     => 'select',
-                    'options'  => [
-                        ['label' => 'shopify::app.shopify.job.enable', 'value' => 'enable'],
-                        ['label' => 'shopify::app.shopify.job.disable', 'value' => 'disable'],
+                    'name'       => 'status',
+                    'title'      => 'data_transfer::app.exporters.products.filters.status',
+                    'required'   => false,
+                    'type'       => 'select',
+                    'full_width' => true,
+                    'options'    => [
+                        ['label' => 'data_transfer::app.exporters.products.filters.status-options.enable', 'value' => 'enable'],
+                        ['label' => 'data_transfer::app.exporters.products.filters.status-options.disable', 'value' => 'disable'],
+                        ['label' => 'data_transfer::app.exporters.products.filters.status-options.all', 'value' => 'all'],
                     ],
                 ],
             ],
@@ -60,9 +73,9 @@ return [
 
     'shopifyCategories' => [
         'title'     => 'shopify::app.exporters.shopify.category',
-        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\Category\Exporter',
-        'source'    => 'Webkul\Category\Repositories\CategoryRepository',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'exporter'  => Webkul\Shopify\Helpers\Exporters\Category\Exporter::class,
+        'source'    => CategoryRepository::class,
+        'validator' => ShopifyCategoryAndMetafieldValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -82,9 +95,9 @@ return [
 
     'shopifyMetafield' => [
         'title'     => 'shopify::app.exporters.shopify.metafields',
-        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\MetaField\Exporter',
-        'source'    => 'Webkul\Shopify\Repositories\ShopifyMetaFieldRepository',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'exporter'  => Webkul\Shopify\Helpers\Exporters\MetaField\Exporter::class,
+        'source'    => ShopifyMetaFieldRepository::class,
+        'validator' => ShopifyCategoryAndMetafieldValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -104,9 +117,9 @@ return [
 
     'shopifyMetaobject' => [
         'title'     => 'shopify::app.exporters.shopify.metaobjects',
-        'exporter'  => 'Webkul\Shopify\Helpers\Exporters\Metaobject\Exporter',
-        'source'    => 'Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Export\ShopifyCategoryAndMetafieldValidator',
+        'exporter'  => Webkul\Shopify\Helpers\Exporters\Metaobject\Exporter::class,
+        'source'    => ShopifyMetaobjectDefinitionRepository::class,
+        'validator' => ShopifyCategoryAndMetafieldValidator::class,
         'filters'   => [
             'fields' => [
                 [

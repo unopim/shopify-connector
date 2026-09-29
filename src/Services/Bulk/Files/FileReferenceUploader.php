@@ -4,6 +4,7 @@ namespace Webkul\Shopify\Services\Bulk\Files;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\BulkOperationService;
@@ -11,28 +12,16 @@ use Webkul\Shopify\Services\ShopifyClientFactory;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\StagesShopifyAsset;
 
-/**
- * Uploads UnoPim file/image/video metafield values to Shopify and returns a
- * `assetPath => File GID` map for the product exporter to inject.
- *
- * Manual credentials create each file directly via `fileCreate`. SaaS routes
- * through the proxy (which does not expose `fileCreate`), so its files are
- * created with one `bulkOperationRunMutation` over a staged JSONL — the same
- * bulk pieces the proxy already exposes for product export.
- *
- * Both paths dedupe within a run and cache GIDs in wk_shopify_data_mapping
- * (entityType `shopify_file`) so the same asset is never re-uploaded.
- */
 class FileReferenceUploader
 {
     use ShopifyGraphqlRequest;
     use StagesShopifyAsset;
 
-    private const ENTITY_TYPE = 'shopify_file';
+    private const string ENTITY_TYPE = 'shopify_file';
 
-    private const POLL_ATTEMPTS = 30;
+    private const int POLL_ATTEMPTS = 30;
 
-    private const POLL_SLEEP_SECONDS = 2;
+    private const int POLL_SLEEP_SECONDS = 2;
 
     public function __construct(
         protected ShopifyClientFactory $clientFactory,
@@ -48,7 +37,7 @@ class FileReferenceUploader
      */
     public function buildGidMap(array $fileValues, array $credential, int $jobInstanceId): array
     {
-        if (empty($fileValues)) {
+        if ($fileValues === []) {
             return [];
         }
 
@@ -76,7 +65,7 @@ class FileReferenceUploader
             ];
         }
 
-        if (! empty($toUpload)) {
+        if ($toUpload !== []) {
             $created = $this->clientFactory->isSaas($credential)
                 ? $this->createFilesViaBulk($toUpload, $credential)
                 : $this->createFilesSync($toUpload, $credential);
@@ -144,8 +133,6 @@ class FileReferenceUploader
                 continue;
             }
 
-            // Shopify rejects video external URLs; each video must be staged
-            // uploaded on its own so one bad video never fails the image batch.
             if (($meta['content_type'] ?? '') === 'VIDEO') {
                 $gid = $this->createVideoViaStaged($path, $credential);
                 if ($gid) {
@@ -311,7 +298,7 @@ class FileReferenceUploader
             ]]]);
         }
 
-        if (empty($lines)) {
+        if ($lines === []) {
             return [];
         }
 
@@ -363,7 +350,7 @@ class FileReferenceUploader
             if (in_array($op['status'] ?? '', ['COMPLETED', 'FAILED', 'CANCELED'], true)) {
                 return $op;
             }
-            sleep(self::POLL_SLEEP_SECONDS);
+            Sleep::sleep(self::POLL_SLEEP_SECONDS);
         }
 
         return [];
@@ -397,7 +384,7 @@ class FileReferenceUploader
      */
     private function waitUntilReady(array $gids, array $credential): void
     {
-        if (empty($gids)) {
+        if ($gids === []) {
             return;
         }
 
@@ -417,7 +404,7 @@ class FileReferenceUploader
                 return;
             }
 
-            sleep(self::POLL_SLEEP_SECONDS);
+            Sleep::sleep(self::POLL_SLEEP_SECONDS);
         }
     }
 }

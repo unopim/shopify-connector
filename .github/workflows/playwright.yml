@@ -45,7 +45,7 @@ jobs:
 
       - name: Install UnoPIM
         run: |
-          git clone --branch 3.0 --single-branch https://github.com/unopim/unopim.git
+          git clone --branch 3.x --single-branch https://github.com/unopim/unopim.git
           cd unopim
           composer install --no-interaction --prefer-dist
           cp .env.example .env

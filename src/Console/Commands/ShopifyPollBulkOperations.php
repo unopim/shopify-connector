@@ -2,21 +2,16 @@
 
 namespace Webkul\Shopify\Console\Commands;
 
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Webkul\Shopify\Jobs\PollBulkShopifyOperation;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 
+#[Description('Poll Shopify bulk operations and finalize completed core product syncs.')]
+#[Signature('shopify:bulk-operations:poll {operationId?}')]
 class ShopifyPollBulkOperations extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'shopify:bulk-operations:poll {operationId?}';
-
-    protected $description = 'Poll Shopify bulk operations and finalize completed core product syncs.';
-
     public function __construct(protected ShopifyBulkOperationRepository $bulkOperationRepository)
     {
         parent::__construct();
@@ -40,7 +35,7 @@ class ShopifyPollBulkOperations extends Command
         }
 
         foreach ($operations as $operation) {
-            PollBulkShopifyOperation::dispatchSync($operation->id);
+            dispatch_sync(new PollBulkShopifyOperation($operation->id));
         }
 
         $this->info('Shopify bulk operation polling completed.');

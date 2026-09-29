@@ -2,7 +2,7 @@
 
 namespace Webkul\Shopify\Helpers\Importers\Product;
 
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage as StorageFacade;
@@ -18,9 +18,9 @@ use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\FieldProcessor;
 use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
-use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
+use Webkul\Product\Contracts\VariantStructurePlanner as VariantStructurePlannerContract;
 use Webkul\Product\Models\VariantStructure;
 use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Product\Repositories\ProductRepository;
@@ -53,96 +53,44 @@ class Importer extends AbstractImporter
 
     public const UNOPIM_ENTITY_NAME = 'product';
 
-    /**
-     * Cached attribute families
-     */
     protected mixed $attributeFamilies = [];
 
-    /**
-     * Cached attributes
-     */
     protected mixed $attributes = [];
 
-    /**
-     * Cached categories
-     */
     protected array $categories = [];
 
-    /**
-     * All channels selected currency codes
-     */
     protected array $currencies = [];
 
-    /**
-     * Channel code as key and locale codes in array as value
-     */
     protected array $channelsAndLocales = [];
 
-    /**
-     * all child in unopim
-     */
     protected array $allChildInUnopim = [];
 
-    /**
-     * Shopify credential.
-     *
-     * @var mixed
-     */
     protected $credential;
 
-    /**
-     * job locale
-     */
     private $locale;
 
-    /**
-     * Shopify locale mapped for selected UnoPIM locale.
-     */
     private ?string $shopifyLocale = null;
 
-    /**
-     * job status
-     */
-    private $update = false;
+    private bool $update = false;
 
-    private $updateVarint;
+    private ?bool $updateVarint = null;
 
-    /**
-     * job channel code
-     */
     private $channel;
 
-    /**
-     * job currency code
-     */
     private $currency;
 
-    /**
-     * Optional Shopify product-status import filter: 'enable', 'disable', or null (all).
-     */
     private ?string $statusFilter = null;
 
     protected $importMapping;
 
     protected $defintiionMapping;
 
-    /**
-     * Shopify credential as array for api request.
-     *
-     * @var mixed
-     */
     protected $credentialArray;
 
     protected $exportMapping;
 
-    /**
-     * Shopify metafield type data.
-     */
     protected $shoifyMetaFieldTypeData;
 
-    /**
-     * Valid csv columns
-     */
     protected array $validColumnNames = [
         'locale',
         'channel',
@@ -165,9 +113,6 @@ class Importer extends AbstractImporter
 
     protected $variantIndexes = ['inventoryPolicy', 'barcode', 'taxable', 'compareAtPrice', 'sku', 'inventoryTracked', 'cost', 'weight', 'price', 'inventoryQuantity'];
 
-    /**
-     * Track processed SKU & Barcode
-     */
     protected array $processedProducts = [];
 
     /**
@@ -177,37 +122,18 @@ class Importer extends AbstractImporter
      */
     protected array $swatchCodeCache = [];
 
-    /**
-     * Per-batch lookup cache (categories, products, mappings, attribute options).
-     */
     protected ?BatchImportCache $batchCache = null;
 
-    /**
-     * Buffered writer for wk_shopify_data_mapping inserts during the batch.
-     */
     protected ?MappingBatchWriter $mappingWriter = null;
 
-    /**
-     * IDs of products created/updated in the current batch — used to fan out
-     * post-batch completeness + indexing in a single RefreshImportedProducts job.
-     */
     protected array $touchedProductIds = [];
 
-    /**
-     * Was the Completeness observer disabled by this importer? Tracked so we
-     * always re-enable it in a finally{} even if the batch throws.
-     */
     protected bool $disabledCompletenessObserver = false;
 
-    /**
-     * Was the ElasticSearch indexing observer disabled by this importer?
-     */
     protected bool $disabledIndexingObserver = false;
 
     /**
      * Create a new helper instance.
-     *
-     * @return void
      */
     public function __construct(
         protected JobTrackBatchRepository $importBatchRepository,
@@ -249,10 +175,10 @@ class Importer extends AbstractImporter
 
         $this->validColumnNames = array_merge(
             $this->validColumnNames,
-            app(AssociationTypeRepository::class)->getActiveTypes()->pluck('code')->all()
+            resolve(AssociationTypeRepository::class)->getActiveTypes()->pluck('code')->all()
         );
 
-        foreach ($this->attributes as $key => $attribute) {
+        foreach ($this->attributes as $attribute) {
             if ($attribute->type === 'price') {
                 $this->addPriceAttributesColumns($attribute->code);
 
@@ -331,12 +257,9 @@ class Importer extends AbstractImporter
 
     /**
      * Import instance.
-     *
-     * @return Source
      */
-    public function getSource()
+    public function getSource(): BulkOperationProductIterator|ProductIterator
     {
-
         $this->initFilters();
         if (! $this->credential?->active) {
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.disabled-credential'));
@@ -347,7 +270,7 @@ class Importer extends AbstractImporter
         if (config('shopify-bulk-operations.import_use_bulk_operation', true)) {
             try {
                 return new BulkOperationProductIterator(
-                    app(BulkProductFetcher::class),
+                    resolve(BulkProductFetcher::class),
                     $this->credentialArray,
                     $this->shopifyLocale,
                     $this->statusFilter,
@@ -439,15 +362,12 @@ class Importer extends AbstractImporter
 
             $unopimCategory = $this->getCollectionFromShopify($rowData['node']['collections']['edges'] ?? []);
             $productMedias = $rowData['node']['media']['nodes'];
-            $mediaData = array_filter($productMedias, fn ($item) => $item['__typename'] === 'MediaImage');
+            $mediaData = array_filter($productMedias, fn (array $item): bool => $item['__typename'] === 'MediaImage');
             $imageMediaids = array_column($mediaData, 'id') ?? [];
-            $image = [];
-            $image = array_map(function ($item) {
-                return $item['image']['url'] ?? null;
-            }, $mediaData);
+            $image = array_map(fn (array $item) => $item['image']['url'] ?? null, $mediaData);
             $count = 0;
             $image = array_filter($image);
-            $count = count(array_filter($rowData['node']['options'], fn ($option) => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
+            $count = count(array_filter($rowData['node']['options'], fn (array $option): bool => $option['name'] !== 'Title' || ! in_array('Default Title', $option['values'])));
 
             $mappingAttr = $this->importMapping->mapping['shopify_connector_settings'] ?? [];
             $mediaMapping = $this->importMapping->mapping['mediaMapping'] ?? [];
@@ -560,18 +480,18 @@ class Importer extends AbstractImporter
         $rowData,
         $simpleProductFamilyId,
         $unopimCategory,
-        $variants,
-        $image,
+        array $variants,
+        array $image,
         $imageMediaids,
         $common,
         $localeSpecific,
         $channelSpecific,
         $channelAndLocaleSpecific,
         $mediaMapping,
-        $extractVariantAttr,
-        $metaFieldAllAttr,
+        array $extractVariantAttr,
+        array $metaFieldAllAttr,
         $associations = []
-    ) {
+    ): ?bool {
         $attributes = [];
         $storeForVariant = [];
         $attributes = $this->validateAttributes($rowData['node']['options']);
@@ -580,7 +500,7 @@ class Importer extends AbstractImporter
         }
         $family_code = $simpleProductFamilyId;
 
-        $familyModel = $this->batchCache
+        $familyModel = $this->batchCache instanceof BatchImportCache
             ? $this->batchCache->getFamilyById((int) $family_code)
             : $this->attributeFamilyRepository->where('id', $family_code)->first();
 
@@ -600,7 +520,7 @@ class Importer extends AbstractImporter
             ];
         }
 
-        if (empty($configurableAttributes)) {
+        if ($configurableAttributes === []) {
             return null;
         }
 
@@ -669,7 +589,7 @@ class Importer extends AbstractImporter
             $id = $rowData['node']['id'] ?? null;
 
             if ($mediaMapping['mediaType'] === 'image') {
-                $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
+                $mappedImageAttr = $this->processMappedImages($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id);
             } elseif ($mediaMapping['mediaType'] === 'gallery') {
                 $mappedImageAttr = $this->processMappedGallery($mediaMapping, $image, $configId, $storeForVariant, $title, $imageMediaids, $handle, $id, $allMediaIdVariants);
             } elseif ($mediaMapping['mediaType'] === 'asset') {
@@ -742,7 +662,7 @@ class Importer extends AbstractImporter
                     $this->trackTouchedProduct((int) $leaf->id);
 
                     if (isset($leafDataBySku[$leaf->sku])) {
-                        $this->productRepository->update($leafDataBySku[$leaf->sku], $leaf->id);
+                        $this->productRepository->update($this->keepOwnedCommonValues($leafDataBySku[$leaf->sku], $leaf), $leaf->id);
                     }
                 }
             }
@@ -758,6 +678,10 @@ class Importer extends AbstractImporter
         $skus = array_column($allVariant, 'sku');
         $formattedArray = array_combine($skus, $ids);
         $variantProductData = array_values($variantProductData);
+
+        /** The loop rebinds $product, so the parent's variants are kept first. */
+        $variantModels = $product->variants->keyBy('id');
+
         foreach ($product->variants->toArray() as $key => $svariant) {
             $variantData = $variantProductData[$key] ?? $variantProductData[$svariant['id']] ?? null;
             if (! $variantData) {
@@ -771,6 +695,8 @@ class Importer extends AbstractImporter
                 continue;
             }
 
+            $variantData = $this->keepOwnedCommonValues($variantData, $variantModels->get($formattedArray[$sku]));
+
             $product = $this->productRepository->update($variantData, $formattedArray[$sku]);
             $this->trackTouchedProduct($formattedArray[$sku]);
         }
@@ -778,6 +704,9 @@ class Importer extends AbstractImporter
         return true;
     }
 
+    /**
+     * @return mixed[]
+     */
     private function processVariants(
         array $variants,
         array $rowData,
@@ -786,9 +715,9 @@ class Importer extends AbstractImporter
         array $extractVariantAttr,
         array $mediaMapping,
         array $metaFieldAllAttr,
-        &$allMediaIdVariants,
+        array &$allMediaIdVariants,
         array $configurableAttributes = [],
-    ) {
+    ): array {
         $variantSkus = [];
         $variantProductData = [];
         $mcommon = [];
@@ -956,7 +885,6 @@ class Importer extends AbstractImporter
             }
 
             if ($variantImageAttr) {
-
                 $vImageAttribute = $this->attributes[$variantImageAttr] ?? null;
                 if ($vImageAttribute->toArray()['type'] === 'gallery' && $imageValue) {
                     $imageValue = explode(',', $imageValue);
@@ -986,11 +914,11 @@ class Importer extends AbstractImporter
 
             [$vMdcommon, $vMdlocale_specific, $vMdchannel_specific, $vMdchannelAndLocaleSpecific] = $this->mapMetafieldsAttribute($productVariant['node']['metafields']['edges'] ?? [], $metaFieldAllAttr);
 
-            $existingAttributes = array_column($configurableAttributes ?? [], 'code');
+            $existingAttributes = array_column($configurableAttributes, 'code');
 
             $missingAttributes = array_diff($requiredAttrForVariant, $existingAttributes);
 
-            if (! empty($missingAttributes)) {
+            if ($missingAttributes !== []) {
                 $this->jobLogger->warning(sprintf(
                     'Variant %s skipped — required super attribute(s) [%s] do not exist in the attribute family.',
                     $vsku,
@@ -1028,16 +956,16 @@ class Importer extends AbstractImporter
         }
 
         $leftChildProduct = array_diff(array_column($this->allChildInUnopim, 'id'), array_keys($variantProductData));
-        if (! empty($leftChildProduct)) {
+        if ($leftChildProduct !== []) {
             $this->addExistingVariantProduct($leftChildProduct, $variantProductData);
         }
 
         return $variantProductData;
     }
 
-    private function addExistingVariantProduct($leftChildProduct, &$variantProductData): void
+    private function addExistingVariantProduct(array $leftChildProduct, array &$variantProductData): void
     {
-        foreach ($leftChildProduct ?? [] as $key => $productIds) {
+        foreach ($leftChildProduct as $key => $productIds) {
             $variantProductData[$productIds] = [
                 'sku'    => $this->allChildInUnopim[$key]['sku'],
                 'status' => $this->allChildInUnopim[$key]['status'],
@@ -1046,13 +974,15 @@ class Importer extends AbstractImporter
         }
     }
 
-    private function processConfigurableProductData($rowData, $familyModel, $attributes, &$parentSkuFromUnopim, $variantStructureId = null)
+    private function processConfigurableProductData($rowData, $familyModel, array $attributes, &$parentSkuFromUnopim, ?int $variantStructureId = null)
     {
         $variantSku = $rowData['node']['variants']['edges'][0]['node']['sku'];
         $variantData = $this->findProductBySkuCached($variantSku);
-        if ($variantData?->parent?->sku) {
-            $parentSkuFromUnopim = $variantData?->parent?->sku;
-            $configProductExist = $this->findProductBySkuCached($variantData?->parent?->sku);
+        $rootFromVariant = $this->rootProductOf($variantData);
+
+        if ($rootFromVariant) {
+            $parentSkuFromUnopim = $rootFromVariant->sku;
+            $configProductExist = $rootFromVariant;
         } else {
             $parentSkuFromUnopim = $rowData['node']['handle'];
             $configProductExist = $this->findProductBySkuCached($rowData['node']['handle']);
@@ -1083,7 +1013,6 @@ class Importer extends AbstractImporter
             $this->allChildInUnopim = $configProductExist?->variants?->toArray() ?? [];
         }
         if (! $configProductExist) {
-
             if (! $familyModel) {
                 $this->jobLogger->warning('family not mapping for the title:- ['.$rowData['node']['title'].']');
 
@@ -1107,6 +1036,22 @@ class Importer extends AbstractImporter
         }
 
         return $configId;
+    }
+
+    /**
+     * The configurable a variant belongs to. A two-level structure puts a
+     * variant_group between the leaf and the root, and only the root may carry
+     * the product level values, so the walk continues to the top.
+     */
+    public function rootProductOf(mixed $product): mixed
+    {
+        $root = $product?->parent;
+
+        while ($root?->parent) {
+            $root = $root->parent;
+        }
+
+        return $root;
     }
 
     /**
@@ -1199,7 +1144,11 @@ class Importer extends AbstractImporter
             $variantKey = $existingIdBySku[$leafSku] ?? 'variant_'.count($groups[$groupKey]['variants']);
 
             unset($variant['values']['common'][$level1Code]);
-            $groups[$groupKey]['variants'][$variantKey] = $variant;
+
+            $groups[$groupKey]['variants'][$variantKey] = $this->keepOwnedCommonValues(
+                $variant,
+                $this->findProductBySkuCached($leafSku)
+            );
         }
 
         return $groups;
@@ -1208,7 +1157,7 @@ class Importer extends AbstractImporter
     /**
      * check attributes exist in unopim
      */
-    private function validateAttributes($options)
+    private function validateAttributes($options): ?array
     {
         $attributes = [];
         $attrNotExist = [];
@@ -1224,7 +1173,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        if (! empty($attrNotExist)) {
+        if ($attrNotExist !== []) {
             $this->jobLogger->warning(json_encode($attrNotExist).' Attributes not exist for product.');
 
             return null;
@@ -1241,7 +1190,7 @@ class Importer extends AbstractImporter
         $simpleProductFamilyId,
         $unopimCategory,
         $variants,
-        $image,
+        array $image,
         $imageMediaids,
         $common,
         $localeSpecific,
@@ -1258,7 +1207,7 @@ class Importer extends AbstractImporter
         $shopifyProductId = $rowData['node']['id'];
         $storeForVariant = [];
         $variantData = null;
-        foreach ($variants as $key => $productVariant) {
+        foreach ($variants as $productVariant) {
             $variantData = $this->formatVariantData($productVariant, $extractVariantAttr);
             if (empty($productVariant['node']['sku'])) {
                 $this->jobLogger->warning('SKU not found in product '.$shopifyProductId);
@@ -1310,7 +1259,7 @@ class Importer extends AbstractImporter
                 return false;
             }
 
-            $familyModel = $this->batchCache
+            $familyModel = $this->batchCache instanceof BatchImportCache
                 ? $this->batchCache->getFamilyById((int) $simpleProductFamilyId)
                 : $this->attributeFamilyRepository->where('id', $simpleProductFamilyId)->first();
 
@@ -1384,6 +1333,8 @@ class Importer extends AbstractImporter
             $dataToUpdate[$assocKey] = $assocSkus;
         }
 
+        $dataToUpdate = $this->keepOwnedCommonValues($dataToUpdate, $this->findProductBySkuCached($vcommon['sku']));
+
         $product = $this->productRepository->update($dataToUpdate, $simpleId);
         $this->trackTouchedProduct($simpleId);
 
@@ -1392,7 +1343,7 @@ class Importer extends AbstractImporter
         return $product;
     }
 
-    public function requestJobLocaleAndChannel()
+    public function requestJobLocaleAndChannel(): void
     {
         request()->merge([
             'locale'  => $this->locale,
@@ -1492,7 +1443,7 @@ class Importer extends AbstractImporter
 
             if (in_array($definition->type, ['product_reference', 'variant_reference'], true)) {
                 $skus = $this->resolveReferenceSkus((string) ($node['value'] ?? ''));
-                if (! empty($skus)) {
+                if ($skus !== []) {
                     $section = $cfg['association_type'] ?? 'related_products';
                     $associations[$section] = array_values(array_unique(
                         array_merge($associations[$section] ?? [], $skus)
@@ -1520,7 +1471,7 @@ class Importer extends AbstractImporter
     {
         $decoded = json_decode($value, true);
         $gids = array_values(array_filter(is_array($decoded) ? $decoded : [$value]));
-        if (empty($gids)) {
+        if ($gids === []) {
             return [];
         }
 
@@ -1536,7 +1487,6 @@ class Importer extends AbstractImporter
 
     public function mapMetafieldsAttribute($shopifyMetaFiled, $metaFieldAllAttr): array
     {
-
         $common = [];
         $localeSpecific = [];
         $channelSpecific = [];
@@ -1565,7 +1515,7 @@ class Importer extends AbstractImporter
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
                 if ($attribute->type === 'asset') {
                     $ids = $this->resolveFileReferenceAssetIds($metaData['node']);
-                    if (empty($ids)) {
+                    if ($ids === []) {
                         continue;
                     }
                     $source = implode(',', $ids);
@@ -1579,7 +1529,7 @@ class Importer extends AbstractImporter
             }
 
             if ($metaData['node']['type'] === 'date_time' && ! empty($source)) {
-                $source = Carbon::parse($source)->format('Y-m-d H:i:s');
+                $source = Date::parse($source)->format('Y-m-d H:i:s');
             }
 
             if (str_contains((string) $metaData['node']['type'], 'color') && ! empty($source)) {
@@ -1638,7 +1588,7 @@ class Importer extends AbstractImporter
             }
 
             if (! empty($node['italic'])) {
-                $text = '<em>'.$text.'</em>';
+                return '<em>'.$text.'</em>';
             }
 
             return $text;
@@ -1669,7 +1619,7 @@ class Importer extends AbstractImporter
      */
     protected function resolveMeasurementMetafield(object $attribute, string $type, array $unitValue): array|string
     {
-        $family = app(AttributeMeasurementRepository::class)->getByAttributeId($attribute->id)?->family_code;
+        $family = resolve(AttributeMeasurementRepository::class)->getByAttributeId($attribute->id)?->family_code;
 
         $code = $family
             ? (new MeasurementUnitMapper)->toUnopim($type, $family, strtoupper((string) ($unitValue['unit'] ?? '')))
@@ -1738,11 +1688,11 @@ class Importer extends AbstractImporter
     {
         $urls = $this->fileReferenceUrlsInline($metaNode);
 
-        if (empty($urls)) {
+        if ($urls === []) {
             $urls = $this->fileReferenceUrlsByIds((string) ($metaNode['value'] ?? ''));
         }
 
-        if (empty($urls)) {
+        if ($urls === []) {
             return null;
         }
 
@@ -1757,7 +1707,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        return empty($stored) ? null : $stored;
+        return $stored === [] ? null : $stored;
     }
 
     /**
@@ -1770,15 +1720,15 @@ class Importer extends AbstractImporter
     {
         $urls = $this->fileReferenceUrlsInline($metaNode);
 
-        if (empty($urls)) {
+        if ($urls === []) {
             $urls = $this->fileReferenceUrlsByIds((string) ($metaNode['value'] ?? ''));
         }
 
-        if (empty($urls)) {
+        if ($urls === []) {
             return [];
         }
 
-        $damAssetImporter = app(DamAssetImporter::class);
+        $damAssetImporter = resolve(DamAssetImporter::class);
         $assetIds = [];
 
         foreach ($urls as $url) {
@@ -1824,7 +1774,7 @@ class Importer extends AbstractImporter
         $decoded = json_decode($value, true);
         $ids = array_values(array_filter(is_array($decoded) ? $decoded : [$value]));
 
-        if (empty($ids)) {
+        if ($ids === []) {
             return [];
         }
 
@@ -1880,7 +1830,7 @@ class Importer extends AbstractImporter
     /*
     * process image attributes
     */
-    public function processMappedImages(array $mediaMapping, array $image, string $configId, array &$storeForVariant, string $title, $imageMediaids, $mappingSku, $productId): ?array
+    public function processMappedImages(array $mediaMapping, array $image, string $configId, array &$storeForVariant, string $title, $imageMediaids, string $mappingSku, string $productId): ?array
     {
         $common = [];
         $localeSpecific = [];
@@ -1937,7 +1887,7 @@ class Importer extends AbstractImporter
     /*
     * process image attributes
     */
-    public function processMappedGallery(array $mediaMapping, array $image, string $configId, array &$storeForVariant, string $title, $imageMediaids, $mappingSku, $productId, $allMediaIdVariants = []): ?array
+    public function processMappedGallery(array $mediaMapping, array $image, string $configId, array &$storeForVariant, string $title, $imageMediaids, string $mappingSku, string $productId, $allMediaIdVariants = []): ?array
     {
         $common = [];
         $localeSpecific = [];
@@ -1948,20 +1898,20 @@ class Importer extends AbstractImporter
             $allMediaAttributes = explode(',', $allMediaAttributes);
         }
 
-        foreach ($allMediaAttributes as $index => $mappedImageAttr) {
+        foreach ($allMediaAttributes as $mappedImageAttr) {
             $imgStore = [];
             if (! isset($this->attributes[$mappedImageAttr])) {
                 continue;
             }
             $attribute = $this->attributes[$mappedImageAttr];
 
-            if ($attribute?->is_required && empty($image)) {
+            if ($attribute?->is_required && $image === []) {
                 $this->jobLogger->warning($mappedImageAttr.':- Field Is required '.$title);
 
                 return null;
             }
 
-            if (! empty($image)) {
+            if ($image !== []) {
                 $init = 0;
                 foreach ($image as $imageUrl) {
                     if (in_array($imageMediaids[$init], array_unique($allMediaIdVariants))) {
@@ -2018,7 +1968,7 @@ class Importer extends AbstractImporter
             $allMediaAttributes = explode(',', $allMediaAttributes);
         }
 
-        $damAssetImporter = app(DamAssetImporter::class);
+        $damAssetImporter = resolve(DamAssetImporter::class);
 
         foreach ($allMediaAttributes as $mappedImageAttr) {
             if (! isset($this->attributes[$mappedImageAttr])) {
@@ -2026,7 +1976,7 @@ class Importer extends AbstractImporter
             }
             $attribute = $this->attributes[$mappedImageAttr];
 
-            if ($attribute?->is_required && empty($image)) {
+            if ($attribute?->is_required && $image === []) {
                 $this->jobLogger->warning($mappedImageAttr.':- Field Is required '.$title);
 
                 return null;
@@ -2034,7 +1984,7 @@ class Importer extends AbstractImporter
 
             $assetIds = [];
 
-            if (! empty($image)) {
+            if ($image !== []) {
                 $init = 0;
                 foreach ($image as $imageUrl) {
                     if (in_array($imageMediaids[$init], array_unique($allMediaIdVariants))) {
@@ -2097,18 +2047,18 @@ class Importer extends AbstractImporter
             throw new \Exception(sprintf('%s must writable !!! ', dirname($localpath)));
         }
 
-        $check = file_put_contents($localpath, $this->grabImage($imageUrl));
+        file_put_contents($localpath, $this->grabImage($imageUrl));
 
         return $localpath;
     }
 
-    public function grabImage($url)
+    public function grabImage(string $url)
     {
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.1 Safari/537.11',
         ])->withoutVerifying()
             ->timeout(30)
-            ->retry(3, 1000) // Retry up to 3 times with 1-second intervals
+            ->retry(3, 1000)
             ->get($url);
 
         if ($response->successful()) {
@@ -2185,12 +2135,11 @@ class Importer extends AbstractImporter
      */
     public function formatVariantData($variantData, $extractVariantAttr, &$variantCreationAttr = []): ?array
     {
-        // Initialize arrays to store different types of attributes
+
         $Opcommon = $Oplocale_specific = $Opchannel_specific = $OpchannelAndLocaleSpecific = [];
         $vcommon = $vlocale_specific = $vchannel_specific = $vchannelAndLocaleSpecific = [];
 
-        // Helper function to classify attributes
-        $classifyAttribute = function ($attribute, $name, $value, &$common, &$localeSpecific, &$channelSpecific, &$channelAndLocaleSpecific) {
+        $classifyAttribute = function ($attribute, $name, $value, &$common, &$localeSpecific, &$channelSpecific, &$channelAndLocaleSpecific): void {
             if (! $attribute?->value_per_locale && ! $attribute?->value_per_channel) {
                 $common[$name] = $value;
             } elseif ($attribute?->value_per_locale && ! $attribute?->value_per_channel) {
@@ -2202,7 +2151,6 @@ class Importer extends AbstractImporter
             }
         };
 
-        // Process selected options
         foreach ($variantData['node']['selectedOptions'] ?? [] as $option) {
             if ($option['name'] == 'Title' && $option['value'] == 'Default Title') {
                 continue;
@@ -2218,7 +2166,6 @@ class Importer extends AbstractImporter
             $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
 
             if (! $optionForShopify) {
-
                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
 
                 return null;
@@ -2227,7 +2174,6 @@ class Importer extends AbstractImporter
             $classifyAttribute($attribute, $name, $optionForShopify?->code, $Opcommon, $Oplocale_specific, $Opchannel_specific, $OpchannelAndLocaleSpecific);
         }
 
-        // Process extracted variant attributes
         foreach ($extractVariantAttr as $shopifyAttr => $unoAttr) {
             $value = null;
             if (! isset($this->attributes[$unoAttr])) {
@@ -2248,7 +2194,7 @@ class Importer extends AbstractImporter
                     $weightNode = $variantData['node']['inventoryItem']['measurement']['weight'] ?? [];
 
                     if ($attribute->type === 'measurement') {
-                        $family = app(AttributeMeasurementRepository::class)->getByAttributeId($attribute->id)?->family_code;
+                        $family = resolve(AttributeMeasurementRepository::class)->getByAttributeId($attribute->id)?->family_code;
                         $code = $family
                             ? (new MeasurementUnitMapper)->toUnopim(MeasurementUnitMapper::WEIGHT, $family, strtoupper((string) ($weightNode['unit'] ?? '')))
                             : null;
@@ -2299,7 +2245,6 @@ class Importer extends AbstractImporter
             $classifyAttribute($attribute, $unoAttr, $value, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
         }
 
-        // Per-location inventory → mapped UnoPim attributes (reverse of export locationAttributeMappings).
         $locationAttributeMappings = $this->credential?->extras['locationAttributeMappings'] ?? [];
         foreach ($variantData['node']['inventoryItem']['inventoryLevels']['edges'] ?? [] as $levelEdge) {
             $level = $levelEdge['node'] ?? [];
@@ -2321,13 +2266,12 @@ class Importer extends AbstractImporter
             $classifyAttribute($this->attributes[$attrCode], $attrCode, (string) $available, $vcommon, $vlocale_specific, $vchannel_specific, $vchannelAndLocaleSpecific);
         }
 
-        // Unit price (Shopify unitPriceMeasurement) → mapped UnoPim attributes (reverse of export).
         $unitCfg = $this->importMapping->mapping['unit_price'] ?? [];
         $unitValueAttr = $unitCfg['quantityValueAttr'] ?? null;
         $measurement = $variantData['node']['unitPriceMeasurement'] ?? null;
 
         if ($unitValueAttr && isset($this->attributes[$unitValueAttr]) && $this->attributes[$unitValueAttr]->type === 'measurement' && ! empty($measurement)) {
-            $family = app(AttributeMeasurementRepository::class)->getByAttributeId($this->attributes[$unitValueAttr]->id)?->family_code;
+            $family = resolve(AttributeMeasurementRepository::class)->getByAttributeId($this->attributes[$unitValueAttr]->id)?->family_code;
             $code = $family
                 ? (new MeasurementUnitMapper)->toUnopim(MeasurementUnitMapper::UNIT_PRICE, $family, strtoupper(trim((string) ($measurement['quantityUnit'] ?? ''))))
                 : null;
@@ -2348,7 +2292,6 @@ class Importer extends AbstractImporter
 
         $vcommon['sku'] = preg_replace('/[^A-Za-z0-9_-]/', '', $variantData['node']['sku']);
 
-        // Return merged results
         return [
             array_merge($vcommon, $Opcommon),
             array_merge($vlocale_specific, $Oplocale_specific),
@@ -2380,24 +2323,16 @@ class Importer extends AbstractImporter
 
     protected function isProductNumberProcessed(string $barcode): bool
     {
-        $barcode = $barcode ?? '';
-
         $keys = [
             'barcode:'.$barcode,
         ];
 
-        foreach ($keys as $key) {
-            if (isset($this->processedProducts[$key])) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($keys, fn (string $key): bool => isset($this->processedProducts[$key]));
     }
 
     protected function shouldSkipProduct(string $sku, ?string $barcode): bool
     {
-        $barcode = $barcode ?? '';
+        $barcode ??= '';
 
         $keys = [
             'sku:'.$sku,
@@ -2420,7 +2355,7 @@ class Importer extends AbstractImporter
 
     protected function markProductProcessed(string $sku, ?string $barcode): void
     {
-        $barcode = $barcode ?? '';
+        $barcode ??= '';
 
         $this->processedProducts['sku:'.$sku] = true;
 
@@ -2514,9 +2449,9 @@ class Importer extends AbstractImporter
         $recompute = (bool) config('shopify-bulk-operations.import_post_batch_completeness', true);
         $reindex = (bool) config('shopify-bulk-operations.import_post_batch_index', true);
 
-        if (! empty($ids) && ($recompute || $reindex)) {
+        if ($ids !== [] && ($recompute || $reindex)) {
             try {
-                RefreshImportedProducts::dispatch($ids, $recompute, $reindex);
+                dispatch(new RefreshImportedProducts($ids, $recompute, $reindex));
             } catch (\Throwable $e) {
                 Log::warning('Shopify import: RefreshImportedProducts dispatch failed', [
                     'message' => $e->getMessage(),
@@ -2544,13 +2479,54 @@ class Importer extends AbstractImporter
      * Accepts null/empty so callers do not need to gate before calling — the
      * underlying $productRepository->findOneByField is similarly forgiving.
      */
+    /**
+     * Core pins every attribute of a variant structure to a level and refuses a
+     * write that changes one the product does not own. Shopify carries a single
+     * product level, so a value belonging higher up is dropped here and named in
+     * the job log instead of failing the whole batch.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function keepOwnedCommonValues(array $data, mixed $product): array
+    {
+        $common = $data['values']['common'] ?? [];
+
+        if ($common === [] || ! $product?->parent_id) {
+            return $data;
+        }
+
+        $planner = resolve(VariantStructurePlannerContract::class);
+
+        $skipped = [];
+
+        foreach (array_keys($common) as $code) {
+            if ($code === 'sku' || $planner->ownsAtOwnLevel($product, $code)) {
+                continue;
+            }
+
+            unset($data['values']['common'][$code]);
+
+            $skipped[] = $code;
+        }
+
+        if ($skipped !== []) {
+            $this->jobLogger->warning(trans('shopify::app.shopify.import.variant-level-skipped', [
+                'sku'    => $product->sku,
+                'fields' => implode(', ', $skipped),
+            ]));
+        }
+
+        return $data;
+    }
+
     protected function findProductBySkuCached(?string $sku): mixed
     {
         if ($sku === null || $sku === '') {
             return null;
         }
 
-        if ($this->batchCache) {
+        if ($this->batchCache instanceof BatchImportCache) {
             return $this->batchCache->getProductBySku($sku);
         }
 
@@ -2562,7 +2538,7 @@ class Importer extends AbstractImporter
      */
     protected function categoryCodeExistsCached(string $code): bool
     {
-        if ($this->batchCache) {
+        if ($this->batchCache instanceof BatchImportCache) {
             return $this->batchCache->hasCategoryCode($code);
         }
 
@@ -2575,7 +2551,7 @@ class Importer extends AbstractImporter
      */
     protected function findMappingByCodeCached(string $code, string $entityType): array
     {
-        if ($this->batchCache) {
+        if ($this->batchCache instanceof BatchImportCache) {
             return $this->batchCache->getMappingsByCode($code, $entityType);
         }
 
@@ -2596,14 +2572,12 @@ class Importer extends AbstractImporter
             return null;
         }
 
-        if ($this->batchCache) {
-            $cached = $this->batchCache->getAttributeOption(
+        if ($this->batchCache instanceof BatchImportCache) {
+            return $this->batchCache->getAttributeOption(
                 (int) $attribute->id,
                 $optionCode,
                 fn () => $attribute->options()->where('code', $optionCode)->first(),
             );
-
-            return $cached;
         }
 
         return $attribute->options()->where('code', $optionCode)->first();
@@ -2630,11 +2604,7 @@ class Importer extends AbstractImporter
             $storagePath = $imagePath.$fileName;
 
             if (! StorageFacade::disk('public')->exists($storagePath)) {
-                DownloadShopifyImage::dispatch(
-                    $imageUrl,
-                    $storagePath,
-                    'public',
-                )->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
+                dispatch(new DownloadShopifyImage($imageUrl, $storagePath, 'public'))->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
             }
 
             return $storagePath;
@@ -2677,13 +2647,8 @@ class Importer extends AbstractImporter
             'apiUrl'        => $this->credential->shopUrl,
         ];
 
-        if ($this->mappingWriter) {
-            // Intentionally do NOT call $this->batchCache->rememberMapping():
-            // a buffered row has no DB id yet, and the variant-upgrade path
-            // around `$variantMappingRow['id']` would crash on the missing id.
-            // The downside is purely additive: if the same SKU is processed
-            // twice in one batch, both iterations will buffer + insert (one
-            // duplicate row in wk_shopify_data_mapping, schema-allowed).
+        if ($this->mappingWriter instanceof MappingBatchWriter) {
+
             $this->mappingWriter->queue($row);
 
             return;
@@ -2735,7 +2700,7 @@ class Importer extends AbstractImporter
             return null;
         }
 
-        if ($this->batchCache) {
+        if ($this->batchCache instanceof BatchImportCache) {
             return $this->findMappingByCodeCached($code, $entity);
         }
 
@@ -2748,8 +2713,11 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Buffered alternative to imageMapping(). Falls back to the original
-     * repository->create() path when the mapping writer is not initialized.
+     * Buffer an image mapping row for the batch writer.
+     *
+     * The batch cache is deliberately not updated here: a buffered row has no database id
+     * yet, and the variant upgrade path would crash on the missing id. The cost is only a
+     * duplicate mapping row when one SKU appears twice in a batch, which the schema allows.
      */
     protected function bufferedImageMapping(
         string $entityType,
@@ -2769,9 +2737,7 @@ class Importer extends AbstractImporter
             'apiUrl'        => $this->credential->shopUrl,
         ];
 
-        if ($this->mappingWriter) {
-            // See note in bufferedParentMapping() about not caching the row —
-            // same reasoning applies for image mappings.
+        if ($this->mappingWriter instanceof MappingBatchWriter) {
             $this->mappingWriter->queue($row);
 
             return;

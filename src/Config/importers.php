@@ -1,10 +1,16 @@
 <?php
 
+use Webkul\Shopify\Helpers\Importers\Category\Importer;
+use Webkul\Shopify\Validators\JobInstances\Import\ShopifyCategoryAndAttrValidator;
+use Webkul\Shopify\Validators\JobInstances\Import\ShopifyFamilyValidator;
+use Webkul\Shopify\Validators\JobInstances\Import\ShopifyMetaobjectValidator;
+use Webkul\Shopify\Validators\JobInstances\Import\ShopifyProductValidator;
+
 return [
     'shopifyCategories' => [
         'title'     => 'shopify::app.importers.shopify.category',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Category\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyCategoryAndAttrValidator',
+        'importer'  => Importer::class,
+        'validator' => ShopifyCategoryAndAttrValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -36,8 +42,8 @@ return [
 
     'shopifyAttribute' => [
         'title'     => 'shopify::app.importers.shopify.attribute',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Attribute\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyCategoryAndAttrValidator',
+        'importer'  => Webkul\Shopify\Helpers\Importers\Attribute\Importer::class,
+        'validator' => ShopifyCategoryAndAttrValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -68,8 +74,8 @@ return [
 
     'shopifyfamily' => [
         'title'     => 'shopify::app.importers.shopify.family',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Family\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyFamilyValidator',
+        'importer'  => Webkul\Shopify\Helpers\Importers\Family\Importer::class,
+        'validator' => ShopifyFamilyValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -111,8 +117,8 @@ return [
 
     'shopifyProduct' => [
         'title'     => 'shopify::app.importers.shopify.product',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Product\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyProductValidator',
+        'importer'  => Webkul\Shopify\Helpers\Importers\Product\Importer::class,
+        'validator' => ShopifyProductValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -175,8 +181,8 @@ return [
 
     'shopifyMetaField' => [
         'title'     => 'shopify::app.importers.shopify.metafield',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Metafield\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyCategoryAndAttrValidator',
+        'importer'  => Webkul\Shopify\Helpers\Importers\Metafield\Importer::class,
+        'validator' => ShopifyCategoryAndAttrValidator::class,
         'filters'   => [
             'fields' => [
                 [
@@ -207,8 +213,8 @@ return [
 
     'shopifyMetaobject' => [
         'title'     => 'shopify::app.importers.shopify.metaobject',
-        'importer'  => 'Webkul\Shopify\Helpers\Importers\Metaobject\Importer',
-        'validator' => 'Webkul\Shopify\Validators\JobInstances\Import\ShopifyMetaobjectValidator',
+        'importer'  => Webkul\Shopify\Helpers\Importers\Metaobject\Importer::class,
+        'validator' => ShopifyMetaobjectValidator::class,
         'filters'   => [
             'fields' => [
                 [

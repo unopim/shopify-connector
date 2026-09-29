@@ -12,7 +12,6 @@ use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
-use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
@@ -28,37 +27,18 @@ class Importer extends AbstractImporter
 
     public const UNOPIM_ENTITY_NAME = 'familyCount';
 
-    /**
-     * cursor position
-     */
-    public $cursor = null;
+    public $cursor;
 
-    /**
-     * locales storage
-     */
     protected array $locales = [];
 
-    /**
-     * job locale
-     */
     private $locale;
 
     protected array $familyCode = [];
 
-    /**
-     * Shopify credential.
-     *
-     * @var mixed
-     */
     protected $credential;
 
     protected $defintiionMapping;
 
-    /**
-     * Shopify credential as array for api request.
-     *
-     * @var mixed
-     */
     protected $credentialArray;
 
     protected $importMapping;
@@ -111,10 +91,8 @@ class Importer extends AbstractImporter
 
     /**
      * Import instance.
-     *
-     * @return Source
      */
-    public function getSource()
+    public function getSource(): \ArrayIterator
     {
         $this->initFilters();
         if (! $this->credential?->active) {
@@ -123,9 +101,7 @@ class Importer extends AbstractImporter
 
         $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
-        $attributeAndOption = new \ArrayIterator($this->productOptionByCursor());
-
-        return $attributeAndOption;
+        return new \ArrayIterator($this->productOptionByCursor());
     }
 
     /**
@@ -166,12 +142,12 @@ class Importer extends AbstractImporter
             $cursor = $lastCursor;
 
         } while (! empty($graphqlOption));
-        $simpleproductFamily = $this->familymodifyforsimpleProduct($allFamily, $optionWithVariant);
+        $this->familymodifyforsimpleProduct($allFamily, $optionWithVariant);
 
         return $allFamily;
     }
 
-    public function familymodifyforsimpleProduct($family, $optionWithVariant)
+    public function familymodifyforsimpleProduct($family, $optionWithVariant): void
     {
         $importMapping = $this->importMapping->mapping ? $this->importMapping->mapping['shopify_connector_settings'] : [];
         $imagesAttr = $this->importMapping->mapping['mediaMapping'] ?? null;
@@ -189,9 +165,7 @@ class Importer extends AbstractImporter
         $metaFieldAttrIds = $this->attributeRepository->whereIn('code', $metaFieldAllAttr)->pluck('id')->toArray();
         if ($simpleProductFamilyId) {
             $familyModel = $this->attributeFamilyRepository->find($simpleProductFamilyId);
-            if (! $familyModel) {
-                throw new \Exception('Product family mapping not found.');
-            }
+            throw_unless($familyModel, \Exception::class, 'Product family mapping not found.');
             $familyModel = $familyModel->first();
 
             $allIds = $this->attributeFamilyGroupMappingRepository->whereIn('attribute_family_id', [$simpleProductFamilyId])->pluck('id')->toArray();
@@ -204,7 +178,6 @@ class Importer extends AbstractImporter
             $allIdss = [];
 
             foreach ($allIds as $groupId) {
-
                 $attributeIdss = DB::table('attribute_group_mappings')
                     ->whereIn('attribute_family_group_id', [$groupId])
                     ->pluck('attribute_id')->toArray();
@@ -213,7 +186,7 @@ class Importer extends AbstractImporter
             }
 
             $notInMetafields = array_diff($metaFieldAttrIds, $allIdss);
-            if (! empty($notInMetafields)) {
+            if ($notInMetafields !== []) {
                 if (! $groupMappingId) {
                     $groupMappingId = $this->attributeFamilyGroupMappingRepository->insertGetId([
                         'attribute_group_id'  => $this->attributeGroupId,
@@ -221,12 +194,10 @@ class Importer extends AbstractImporter
                     ]);
                     $this->updatedItemsCount++;
                 }
-                $data = array_map(function ($notInMetafield) use ($groupMappingId) {
-                    return [
-                        'attribute_id'              => $notInMetafield,
-                        'attribute_family_group_id' => $groupMappingId,
-                    ];
-                }, $notInMetafields);
+                $data = array_map(fn ($notInMetafield): array => [
+                    'attribute_id'              => $notInMetafield,
+                    'attribute_family_group_id' => $groupMappingId,
+                ], $notInMetafields);
 
                 $inserted = DB::table('attribute_group_mappings')->insertOrIgnore($data);
                 $this->updatedItemsCount += (int) $inserted;
@@ -244,12 +215,8 @@ class Importer extends AbstractImporter
         foreach ($options as $option) {
             $productOptions = $option['node']['options'] ?? [];
             $optionName = array_column($productOptions, 'name');
-            $optionName = array_map(function ($value) {
-                return trim(preg_replace('/[^A-Za-z0-9]+/', '_', $value), '_');
-            }, $optionName);
+            $optionName = array_map(fn ($value): string => trim(preg_replace('/[^A-Za-z0-9]+/', '_', $value), '_'), $optionName);
 
-            // Shopify exposes option values as `values`; the SaaS proxy's
-            // product list returns them only under `optionValues`.
             $optionValues = [];
             foreach ($productOptions as $productOption) {
                 $optionValues = array_merge(
@@ -260,7 +227,7 @@ class Importer extends AbstractImporter
             if (in_array('Title', $optionName) && in_array('Default Title', $optionValues)) {
                 continue;
             }
-            $lowercaseArray = array_map('strtolower', $optionName);
+            $lowercaseArray = array_map(strtolower(...), $optionName);
             $optionWithVariant = array_merge($lowercaseArray, $optionWithVariant);
             $importMappingAttr = $this->importMapping->mapping ? $this->importMapping->mapping['shopify_connector_settings'] : [];
 
@@ -322,9 +289,7 @@ class Importer extends AbstractImporter
         $batchRows = [];
 
         $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
+
         $this->importBatchRepository->deleteWhere([
             'job_track_id' => $this->import->id,
         ]);
@@ -334,7 +299,7 @@ class Importer extends AbstractImporter
             || count($batchRows)
         ) {
             if (
-                count($batchRows) == self::BATCH_SIZE
+                count($batchRows) === self::BATCH_SIZE
                 || ! $source->valid()
             ) {
                 $this->importBatchRepository->create([
@@ -380,7 +345,7 @@ class Importer extends AbstractImporter
      */
     public function saveFamilyData(JobTrackBatchContract $batch): bool
     {
-        $batch = $this->importBatchRepository->update([
+        $this->importBatchRepository->update([
             'state' => Import::STATE_PROCESSED,
         ], $batch->id);
 

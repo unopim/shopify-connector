@@ -5,13 +5,11 @@ namespace Webkul\Shopify\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Webkul\Shopify\Models\ShopifyCredentialsConfig;
 
+/**
+ * @extends Factory<ShopifyCredentialsConfig>
+ */
 class ShopifyCredentialFactory extends Factory
 {
-    /**
-     * The name of the factory's corresponding model.
-     *
-     * @var string
-     */
     protected $model = ShopifyCredentialsConfig::class;
 
     /**

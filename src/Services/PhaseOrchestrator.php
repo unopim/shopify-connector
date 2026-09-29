@@ -33,6 +33,21 @@ class PhaseOrchestrator
         }
 
         $meta = $bulkOperation->meta ?? [];
+        $phaseContext = $meta['follow_up_phases'] ?? [];
+        $pendingPhases = [
+            'publishing'   => ! empty($phaseContext['publishing']),
+            'translations' => ! empty($phaseContext['translations']),
+            'media'        => ! empty($phaseContext['media']),
+        ];
+
+        $pendingPhaseCount = count(array_filter($pendingPhases));
+
+        if ($pendingPhaseCount === 0) {
+            $this->settleWithoutPhases($bulkOperation);
+
+            return;
+        }
+
         $meta['follow_up_phases_enabled'] = true;
 
         $bulkOperation->meta = $meta;
@@ -40,11 +55,45 @@ class PhaseOrchestrator
 
         $this->phaseProgressTracker->registerPhaseJobsForCore(
             (int) $bulkOperation->id,
-            PhaseProgressTracker::PHASES_PER_BATCH,
+            $pendingPhaseCount,
         );
 
-        RunPublishingPhase::dispatch($bulkOperation->id);
-        RunTranslationPhase::dispatch($bulkOperation->id);
-        RunMediaPhase::dispatch($bulkOperation->id);
+        if ($pendingPhases['publishing']) {
+            dispatch(new RunPublishingPhase($bulkOperation->id));
+        }
+
+        if ($pendingPhases['translations']) {
+            dispatch(new RunTranslationPhase($bulkOperation->id));
+        }
+
+        if ($pendingPhases['media']) {
+            dispatch(new RunMediaPhase($bulkOperation->id));
+        }
+    }
+
+    /**
+     * Close out a core op that needs no follow-up phase.
+     *
+     * DeferJobTrackCompletion may already have reverted the JobTrack to
+     * processing while the bulk op was in flight. Nothing would ever flip it
+     * back if no phase job runs, so settle a zero-length phase run here: the
+     * tracker's own logic then completes the JobTrack once every core op for it
+     * has finished.
+     */
+    protected function settleWithoutPhases(ShopifyBulkOperation $bulkOperation): void
+    {
+        $jobTrackId = $bulkOperation->job_track_id;
+
+        if (! $jobTrackId) {
+            return;
+        }
+
+        $this->phaseProgressTracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
+
+        $this->phaseProgressTracker->markFinishedForCore(
+            (int) $bulkOperation->id,
+            (int) $jobTrackId,
+            'none',
+        );
     }
 }

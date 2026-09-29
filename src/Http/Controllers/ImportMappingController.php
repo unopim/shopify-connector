@@ -13,8 +13,6 @@ class ImportMappingController extends Controller
 {
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct(
         protected ShopifyExportMappingRepository $shopifyExportMappingRepository,
@@ -31,14 +29,12 @@ class ImportMappingController extends Controller
         $shopifyCredentials = $this->shopifyCredentialRepository->all()->toArray();
 
         $attribute = [];
-        $metafieldattrs = [];
 
         foreach ($shopifyMapping->mapping['shopify_connector_settings'] ?? [] as $row => $value) {
             $attribute[$row] = $value;
         }
 
         $formattedShopifyMapping = $attribute;
-        $metafieldattr = [];
 
         $mediaMapping = [];
         foreach ($shopifyMapping->mapping['mediaMapping'] ?? [] as $row => $value) {
@@ -47,7 +43,7 @@ class ImportMappingController extends Controller
 
         $unitPriceMapping = $shopifyMapping->mapping['unit_price'] ?? [];
 
-        return view('shopify::import.mapping.index', compact('mappingFields', 'formattedShopifyMapping', 'shopifyMapping', 'shopifyCredentials', 'mediaMapping', 'unitPriceMapping'));
+        return view('shopify::import.mapping.index', ['mappingFields' => $mappingFields, 'formattedShopifyMapping' => $formattedShopifyMapping, 'shopifyMapping' => $shopifyMapping, 'shopifyCredentials' => $shopifyCredentials, 'mediaMapping' => $mediaMapping, 'unitPriceMapping' => $unitPriceMapping]);
     }
 
     /**
@@ -57,17 +53,15 @@ class ImportMappingController extends Controller
     {
         $filteredData = array_filter($request->except(['_token', '_method']));
         $mappingFields = [];
-        $filteredData = array_filter($filteredData, fn ($key) => ! str_starts_with($key, 'default_'), ARRAY_FILTER_USE_KEY);
+        $filteredData = array_filter($filteredData, fn ($key): bool => ! str_starts_with($key, 'default_'), ARRAY_FILTER_USE_KEY);
         $mappingFieldss['mapping'] = [];
         $this->formatMediaMapping($filteredData, $mappingFields);
         $this->formatUnitPriceMapping($filteredData, $mappingFields);
-        $duplicates = array_filter(array_count_values($filteredData), fn ($count) => $count > 1);
-        $duplicateKeys = array_keys(array_filter($filteredData, fn ($value) => isset($duplicates[$value])));
+        $duplicates = array_filter(array_count_values($filteredData), fn (int $count): bool => $count > 1);
+        $duplicateKeys = array_keys(array_filter($filteredData, fn ($value): bool => isset($duplicates[$value])));
 
-        if (! empty($duplicateKeys)) {
-            $duplicateKeys = array_map(function ($value) {
-                return 'default_'.$value;
-            }, $duplicateKeys);
+        if ($duplicateKeys !== []) {
+            $duplicateKeys = array_map(fn ($value): string => 'default_'.$value, $duplicateKeys);
 
             $keysAsArray = array_fill_keys($duplicateKeys, 'Duplicate attribute mapping');
 
@@ -82,7 +76,7 @@ class ImportMappingController extends Controller
                 return response()->json(['message' => trans('shopify::app.shopify.import.mapping.save_failed'), 'errors' => $keysAsArray], 422);
             }
 
-            return redirect()->route('admin.shopify.import-mappings', 3)
+            return to_route('admin.shopify.import-mappings', 3)
                 ->withErrors($keysAsArray)
                 ->withInput($input);
         }
@@ -102,7 +96,7 @@ class ImportMappingController extends Controller
 
             session()->flash('error', trans('shopify::app.shopify.import.mapping.save_failed'));
 
-            return redirect()->back();
+            return back();
         }
 
         if ($shopifyMapping && $shopifyMapping->toArray()['mapping'] != $mappingFieldss['mapping']) {
@@ -115,10 +109,10 @@ class ImportMappingController extends Controller
 
         session()->flash('success', trans('shopify::app.shopify.import.mapping.created'));
 
-        return redirect()->route('admin.shopify.import-mappings', 3);
+        return to_route('admin.shopify.import-mappings', 3);
     }
 
-    public function formatMediaMapping(array &$filteredData, array &$mappingFields)
+    public function formatMediaMapping(array &$filteredData, array &$mappingFields): void
     {
         $type = 'mediaType';
         $attributes = 'mediaAttributes';
@@ -138,7 +132,7 @@ class ImportMappingController extends Controller
      * mapping['unit_price'] and drop the fields so they never leak into the generic
      * attribute loop. Reference value/unit are export-only and intentionally skipped.
      */
-    public function formatUnitPriceMapping(array &$filteredData, array &$mappingFields)
+    public function formatUnitPriceMapping(array &$filteredData, array &$mappingFields): void
     {
         $unitPrice = (new ShopifyFields)->buildUnitPriceMapping($filteredData, false);
 

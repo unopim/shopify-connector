@@ -24,14 +24,14 @@ class MetaobjectEntryController extends Controller
 
     public function list(): JsonResponse
     {
-        $type = (string) request()->get('type');
+        $type = (string) request()->input('type');
 
         if ($type === '') {
             return new JsonResponse(['entries' => []]);
         }
 
         $entries = $this->entryRepository->findWhere(['type' => $type])
-            ->map(fn ($entry) => ['id' => $entry->id, 'code' => $entry->code, 'values' => $entry->values ?? []])
+            ->map(fn ($entry): array => ['id' => $entry->id, 'code' => $entry->code, 'values' => $entry->values ?? []])
             ->values()
             ->all();
 
@@ -49,7 +49,7 @@ class MetaobjectEntryController extends Controller
     public function columns(string $type): JsonResponse
     {
         $definition = $this->definitionRepository->findOneByField('code', $type);
-        $query = strtolower((string) request()->get('query', ''));
+        $query = strtolower((string) request()->input('query', ''));
 
         $options = [];
 
@@ -74,24 +74,20 @@ class MetaobjectEntryController extends Controller
     {
         $entry = $this->entryRepository->find($id);
 
-        if (! $entry) {
-            abort(404);
-        }
+        abort_unless($entry, 404);
 
         return new JsonResponse(['id' => $entry->id, 'code' => $entry->code, 'values' => $entry->values ?? []]);
     }
 
     public function store(): JsonResponse
     {
-        if (! bouncer()->hasPermission('shopify.metaobjects.entry-save')) {
-            abort(403);
-        }
+        abort_unless(bouncer()->hasPermission('shopify.metaobjects.entry-save'), 403);
 
         $data = request()->validate([
-            'id'     => 'nullable|integer',
-            'type'   => 'required|string',
-            'code'   => 'required|string',
-            'values' => 'nullable|string',
+            'id'     => ['nullable', 'integer'],
+            'type'   => ['required', 'string'],
+            'code'   => ['required', 'string'],
+            'values' => ['nullable', 'string'],
         ]);
 
         $values = json_decode($data['values'] ?? '[]', true);
@@ -122,9 +118,7 @@ class MetaobjectEntryController extends Controller
 
     public function delete(int $id): JsonResponse
     {
-        if (! bouncer()->hasPermission('shopify.metaobjects.entry-delete')) {
-            abort(403);
-        }
+        abort_unless(bouncer()->hasPermission('shopify.metaobjects.entry-delete'), 403);
 
         $this->entryRepository->delete($id);
 

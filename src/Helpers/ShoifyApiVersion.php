@@ -4,9 +4,6 @@ namespace Webkul\Shopify\Helpers;
 
 class ShoifyApiVersion
 {
-    /**
-     * Shopify API Versions.
-     */
     public array $apiVersion = [
         [
             'id'   => '2026-07',

@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { dismissPromos } from '../../../helpers/ui.js';
+import { dismissPromos, openDataGridFilters, gotoAdmin } from '../../../helpers/ui.js';
 
 test.use({ storageState: 'storage/auth.json' });
 
 test.describe('Shopify Metaobject definitions Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('admin/shopify/metaobject');
+    await gotoAdmin(page, 'admin/shopify/metaobjects');
     await dismissPromos(page);
   });
 
@@ -30,7 +30,7 @@ test.describe('Shopify Metaobject definitions Page', () => {
   });
 
   test('Click on Filter button', async ({ page }) => {
-    await page.getByText('Filter', { exact: true }).click();
+    await openDataGridFilters(page);
   });
 
   test('Verify pagination dropdown', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Shopify Metaobject definitions Page', () => {
 
 test.describe('Shopify Create Metaobject Page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('admin/shopify/metaobject/create');
+    await gotoAdmin(page, 'admin/shopify/metaobjects/create');
     await dismissPromos(page);
   });
 

@@ -2,11 +2,13 @@
 
 namespace Webkul\Shopify\Helpers;
 
+use Webkul\Shopify\Services\Measurement\MeasurementTypeRegistry;
+use Webkul\Shopify\Support\ProFeatures;
+
 class ShoifyMetaFieldType
 {
-    /**
-     * Shopify MetaField Type.
-     */
+    public const MONEY = 'money';
+
     public array $metaFieldType = [
         'text' => [
             [
@@ -405,7 +407,7 @@ class ShoifyMetaFieldType
      */
     public function getMetaFieldType(): array
     {
-        return [
+        return $this->withProTypes([
             'text' => [
                 [
                     'id'   => 'single_line_text_field',
@@ -705,7 +707,7 @@ class ShoifyMetaFieldType
                     'content_type' => 'VIDEO',
                 ],
             ],
-        ];
+        ]);
     }
 
     /**
@@ -715,6 +717,42 @@ class ShoifyMetaFieldType
      */
     public function getMetaFieldTypeInShopify(): array
     {
-        return $this->metaFieldValidation;
+        $types = $this->metaFieldValidation;
+
+        $types[self::MONEY] ??= [
+            'list'       => false,
+            'validation' => [],
+        ];
+
+        foreach ((new MeasurementTypeRegistry)->definitionMetadata() as $type => $metadata) {
+            $types[$type] ??= $metadata;
+        }
+
+        return $types;
+    }
+
+    /**
+     * The money and measurement types, which only the Pro package can export.
+     * They are listed here so the definition screens name them either way.
+     *
+     * @param  array<string, array<int, array{id: string, name: string}>>  $types
+     * @return array<string, array<int, array{id: string, name: string}>>
+     */
+    protected function withProTypes(array $types): array
+    {
+        $money = [
+            'id'   => self::MONEY,
+            'name' => resolve(ProFeatures::class)->optionLabel(trans('shopify::app.metafield.type.money')),
+        ];
+
+        if (! resolve(ProFeatures::class)->isInstalled()) {
+            $money['$isDisabled'] = true;
+        }
+
+        $types['price'] = [$money];
+
+        $types['measurement'] = (new MeasurementTypeRegistry)->metafieldOptions();
+
+        return $types;
     }
 }

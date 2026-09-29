@@ -8,8 +8,6 @@ use Webkul\Core\Repositories\LocaleRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
-use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
-use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Helpers\MetaobjectFieldType;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
@@ -24,21 +22,10 @@ class Importer extends AbstractImporter
 
     public const BATCH_SIZE = 10;
 
-    /**
-     * cursor position
-     */
-    public $cursor = null;
+    public $cursor;
 
-    /**
-     * locales storage
-     */
     protected array $locales = [];
 
-    /**
-     * Shopify job Locale.
-     *
-     * @var mixed
-     */
     protected $locale;
 
     protected array $attrStrore = [];
@@ -69,18 +56,8 @@ class Importer extends AbstractImporter
 
     protected $decimalType = ['number_decimal'];
 
-    /**
-     * Shopify credential.
-     *
-     * @var mixed
-     */
     protected $credential;
 
-    /**
-     * Shopify credential as array for api request.
-     *
-     * @var mixed
-     */
     protected $credentialArray;
 
     protected ?array $metaobjectTypeByGid = null;
@@ -121,10 +98,8 @@ class Importer extends AbstractImporter
 
     /**
      * Import instance.
-     *
-     * @return Source
      */
-    public function getSource()
+    public function getSource(): \ArrayIterator
     {
         $this->initFilters();
         if (! $this->credential?->active) {
@@ -144,9 +119,7 @@ class Importer extends AbstractImporter
 
         $mergeMetafield = array_merge($productVariantMetaField, $productMetafieldDefinition);
 
-        $metafieldProductAttr = new \ArrayIterator($mergeMetafield);
-
-        return $metafieldProductAttr;
+        return new \ArrayIterator($mergeMetafield);
     }
 
     /**
@@ -314,7 +287,7 @@ class Importer extends AbstractImporter
                     'reference_source'         => 'metaobject',
                     'metaobject_definition_id' => $definitionGid,
                     'metaobject_type'          => $metaobjectType,
-                ], fn ($value) => $value !== null && $value !== '')),
+                ], fn (?string $value): bool => $value !== null && $value !== '')),
             ],
         ];
     }
@@ -430,7 +403,6 @@ class Importer extends AbstractImporter
             'apiUrl'          => json_encode([$this->credentialArray['shopUrl'] => $node['id']]),
         ];
 
-        // Handle rating validations efficiently
         if ($typeName === 'rating') {
             $validations = collect($node['validations']);
             $scaleMin = $validations->firstWhere('name', 'scale_min')['value'] ?? 0;
@@ -448,7 +420,7 @@ class Importer extends AbstractImporter
                 'min'   => $validations->firstWhere('name', 'min')['value'] ?? null,
                 'max'   => $validations->firstWhere('name', 'max')['value'] ?? null,
                 'regex' => $validations->firstWhere('name', 'regex')['value'] ?? null,
-            ], fn ($value) => $value !== null && $value !== ''));
+            ], fn ($value): bool => $value !== null && $value !== ''));
         }
 
         if (in_array($typeName, ['single_line_text_field', 'list.single_line_text_field'], true)
@@ -463,8 +435,6 @@ class Importer extends AbstractImporter
             $hasImage = str_contains($fileTypesRaw, 'Image');
             $hasVideo = str_contains($fileTypesRaw, 'Video');
 
-            // Image+video restriction is a generic File type limited to media;
-            // a single kind maps to that content type; none means any file type.
             if ($hasImage && $hasVideo) {
                 $validations = ['content_type' => 'FILE', 'file_types' => ['Image', 'Video']];
             } elseif ($hasImage) {
@@ -495,13 +465,13 @@ class Importer extends AbstractImporter
                 'reference_source'         => 'metaobject',
                 'metaobject_definition_id' => $definitionGid,
                 'metaobject_type'          => $this->metaobjectTypeByGid()[$definitionGid] ?? null,
-            ], fn ($value) => $value !== null && $value !== ''));
+            ], fn (?string $value): bool => $value !== null && $value !== ''));
         }
 
         if (array_key_exists('constraints', $node)) {
             $data['taxonomy_category'] = (($node['constraints']['key'] ?? null) === 'category')
                 ? array_map(
-                    fn ($value) => 'gid://shopify/TaxonomyCategory/'.$value['value'],
+                    fn (array $value): string => 'gid://shopify/TaxonomyCategory/'.$value['value'],
                     $node['constraints']['values']['nodes'] ?? []
                 )
                 : [];
@@ -568,9 +538,7 @@ class Importer extends AbstractImporter
         $batchRows = [];
 
         $source->rewind();
-        /**
-         * Clean previous saved batches
-         */
+
         $this->importBatchRepository->deleteWhere([
             'job_track_id' => $this->import->id,
         ]);
@@ -580,7 +548,7 @@ class Importer extends AbstractImporter
             || count($batchRows)
         ) {
             if (
-                count($batchRows) == self::BATCH_SIZE
+                count($batchRows) === self::BATCH_SIZE
                 || ! $source->valid()
             ) {
                 $this->importBatchRepository->create([
@@ -623,7 +591,6 @@ class Importer extends AbstractImporter
     public function saveAttributeData(JobTrackBatchContract $batch): bool
     {
         $this->initFilters();
-        $attributes = [];
 
         foreach ($batch->data as $rowData) {
             if (isset($rowData['metaobject'])) {
@@ -642,7 +609,7 @@ class Importer extends AbstractImporter
             }
         }
 
-        $batch = $this->importBatchRepository->update([
+        $this->importBatchRepository->update([
             'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),

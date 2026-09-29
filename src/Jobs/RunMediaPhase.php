@@ -2,11 +2,7 @@
 
 namespace Webkul\Shopify\Jobs;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\MediaPhaseService;
@@ -16,7 +12,7 @@ use Webkul\Shopify\Traits\HandlesPhaseJobFailure;
 
 class RunMediaPhase implements ShouldQueue
 {
-    use Dispatchable, HandlesPhaseJobFailure, InteractsWithQueue, Queueable, SerializesModels;
+    use HandlesPhaseJobFailure, \Illuminate\Foundation\Queue\Queueable;
 
     protected const PHASE = 'media';
 
@@ -40,9 +36,7 @@ class RunMediaPhase implements ShouldQueue
 
         try {
             $result = $phaseService->handle($bulkOperation, $operationData);
-        } catch (BulkMutationInProgressException $e) {
-            // A sibling phase still holds Shopify's single bulk-mutation slot.
-            // Release back to the queue and retry once it frees.
+        } catch (BulkMutationInProgressException) {
             $this->release(random_int(20, 60));
 
             return;
@@ -50,20 +44,14 @@ class RunMediaPhase implements ShouldQueue
 
         $this->storeResult($bulkOperation, $result);
 
-        // Chain the media_update phase only when build() actually found images to
-        // update. Register it (+1) BEFORE this media phase decrements below so the
-        // core op does not flip to completed before the updates run.
         if ($phaseService->hasPendingUpdate()) {
             $tracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
-            RunMediaUpdatePhase::dispatch((int) $bulkOperation->id);
+            dispatch(new RunMediaUpdatePhase((int) $bulkOperation->id));
         }
 
-        // When media was created inline by the core productSet (no productCreateMedia
-        // op here), the variant-media phase is chained from this point; otherwise it
-        // is chained when the productCreateMedia op finalizes.
         if (empty($result['phase_bulk_operation_id']) && ! empty($operationData['manifest']['media_created'])) {
             $tracker->registerPhaseJobsForCore((int) $bulkOperation->id, 1);
-            RunVariantMediaPhase::dispatch((int) $bulkOperation->id);
+            dispatch(new RunVariantMediaPhase((int) $bulkOperation->id));
         }
 
         if (empty($result['phase_bulk_operation_id'])) {

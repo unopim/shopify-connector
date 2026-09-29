@@ -2,6 +2,7 @@
 
 namespace Webkul\Shopify\Http\Controllers;
 
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,8 +23,6 @@ class CredentialController extends Controller
 
     /**
      * Create a new controller instance.
-     *
-     * @return void
      */
     public function __construct(
         protected ShopifyCredentialRepository $shopifyRepository,
@@ -38,7 +37,7 @@ class CredentialController extends Controller
     public function index()
     {
         if (request()->ajax()) {
-            return app(CredentialDataGrid::class)->toJson();
+            return resolve(CredentialDataGrid::class)->toJson();
         }
 
         $apiVersion = (new ShoifyApiVersion)->getApiVersion();
@@ -47,7 +46,7 @@ class CredentialController extends Controller
             ->whereJsonContains('extras->saas', true)
             ->exists();
 
-        return view('shopify::credential.index', compact('apiVersion', 'hasSaas'));
+        return view('shopify::credential.index', ['apiVersion' => $apiVersion, 'hasSaas' => $hasSaas]);
     }
 
     /**
@@ -70,7 +69,7 @@ class CredentialController extends Controller
         $url = $data['shopUrl'];
         $url = $data['shopUrl'] = rtrim($url, '/');
 
-        if (strpos($url, 'http') !== 0) {
+        if (! str_starts_with($url, 'http')) {
             return new JsonResponse([
                 'errors' => [
                     'shopUrl' => [trans('shopify::app.shopify.credential.invalidurl')],
@@ -92,7 +91,7 @@ class CredentialController extends Controller
 
         try {
             $data = $this->prepareCredentialToken($data);
-        } catch (\RuntimeException $exception) {
+        } catch (\RuntimeException) {
             return new JsonResponse([
                 'errors' => [
                     'clientId'     => [trans('shopify::app.shopify.credential.token_refresh_failed')],
@@ -283,9 +282,7 @@ class CredentialController extends Controller
     {
         $credential = $this->shopifyRepository->find($id);
 
-        if (! $credential || empty($credential->extras['saas'])) {
-            abort(404);
-        }
+        abort_if(! $credential || empty($credential->extras['saas']), 404);
 
         return $credential;
     }
@@ -295,13 +292,11 @@ class CredentialController extends Controller
      *
      * @return View
      */
-    public function edit(int $id)
+    public function edit(int $id): Factory|\Illuminate\Contracts\View\View
     {
         $credential = $this->shopifyRepository->find($id);
 
-        if (! $credential) {
-            abort(404);
-        }
+        abort_unless($credential, 404);
 
         $credentialData = $credential->getAttributes();
         $credentialData['credentialId'] = $credential->id;
@@ -333,7 +328,7 @@ class CredentialController extends Controller
         $credential->accessToken = str_repeat('*', strlen($credential->accessToken));
         $credential->clientSecret = str_repeat('*', strlen($credential->clientSecret ?? ''));
 
-        return view('shopify::credential.edit', compact('credential', 'shopLocales', 'publishingChannel', 'locationAll', 'apiVersion', 'isSaas'));
+        return view('shopify::credential.edit', ['credential' => $credential, 'shopLocales' => $shopLocales, 'publishingChannel' => $publishingChannel, 'locationAll' => $locationAll, 'apiVersion' => $apiVersion, 'isSaas' => $isSaas]);
     }
 
     /**
@@ -358,20 +353,12 @@ class CredentialController extends Controller
 
         $credential = $this->shopifyRepository->find($id);
 
-        if (! $credential) {
-            abort(404);
-        }
+        abort_unless($credential, 404);
 
         $isSaas = ! empty($credential->extras['saas']);
 
         if ($isSaas) {
-            /**
-             * SaaS credentials authenticate through the Shopify proxy, so the
-             * connection fields are shown read-only on the edit screen. Ignore
-             * whatever the form posts for them and keep the stored values —
-             * only the publishing channel, location and locale mapping (the
-             * three configurable APIs) may be reconfigured here.
-             */
+
             $requestData['shopUrl'] = $credential->shopUrl;
             $requestData['clientId'] = $credential->clientId;
             $requestData['clientSecret'] = $credential->clientSecret;
@@ -386,7 +373,7 @@ class CredentialController extends Controller
                 return response()->json(['errors' => ['accessToken' => [trans('shopify::app.shopify.credential.token_refresh_failed')]]], 422);
             }
 
-            return redirect()->route('shopify.credentials.edit', $id)
+            return to_route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'accessToken' => trans('shopify::app.shopify.credential.token_refresh_failed'),
                 ])
@@ -398,7 +385,7 @@ class CredentialController extends Controller
                 return response()->json(['errors' => ['accessToken' => [trans('shopify::app.shopify.credential.token_required_or_oauth')]]], 422);
             }
 
-            return redirect()->route('shopify.credentials.edit', $id)
+            return to_route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'accessToken' => trans('shopify::app.shopify.credential.token_required_or_oauth'),
                 ])
@@ -425,7 +412,7 @@ class CredentialController extends Controller
                 ]], 422);
             }
 
-            return redirect()->route('shopify.credentials.edit', $id)
+            return to_route('shopify.credentials.edit', $id)
                 ->withErrors([
                     'shopUrl'     => trans('shopify::app.shopify.credential.invalid'),
                     'accessToken' => trans('shopify::app.shopify.credential.invalid'),
@@ -437,11 +424,9 @@ class CredentialController extends Controller
 
         $languages = json_decode($requestData['storeLocales'], true);
 
-        $languages = array_map(function ($item) use ($keyOrder) {
-            return array_merge(array_flip($keyOrder), $item);
-        }, $languages);
+        $languages = array_map(fn ($item): array => array_merge(array_flip($keyOrder), $item), $languages);
 
-        $languages = array_map(function ($language) {
+        $languages = array_map(function (array $language): array {
             if ($language['primary']) {
                 $language['defaultlocale'] = true;
             }
@@ -469,7 +454,7 @@ class CredentialController extends Controller
 
         session()->flash('success', trans('shopify::app.shopify.credential.update-success'));
 
-        return redirect()->route('shopify.credentials.edit', $id);
+        return to_route('shopify.credentials.edit', $id);
     }
 
     protected function prepareCredentialToken(array $requestData, ?ShopifyCredentialsConfig $credential = null): array
@@ -493,7 +478,7 @@ class CredentialController extends Controller
         }
 
         if ($this->shopifyAccessTokenManager->canAutoGenerateAccessToken($requestData)) {
-            $requestData = $this->shopifyAccessTokenManager->ensureValidAccessToken($requestData);
+            return $this->shopifyAccessTokenManager->ensureValidAccessToken($requestData);
         }
 
         return $requestData;

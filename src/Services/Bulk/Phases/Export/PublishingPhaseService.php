@@ -8,11 +8,6 @@ use Webkul\Shopify\Services\Bulk\PayloadBuilders\PublishingBulkPayloadBuilder;
 use Webkul\Shopify\Services\Bulk\Phases\BasePhaseService;
 use Webkul\Shopify\Services\BulkOperationService;
 
-/**
- * Publishing phase service — publishes products to sales channels using bulk publishablePublish.
- *
- * Extends BasePhaseService to reuse the standard bulk operation workflow.
- */
 class PublishingPhaseService extends BasePhaseService
 {
     public function __construct(

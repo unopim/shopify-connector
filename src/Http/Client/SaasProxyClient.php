@@ -6,19 +6,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Webkul\Shopify\Contracts\ShopifyClient;
 
-/**
- * Client for the published Shopify SaaS proxy app.
- *
- * Calls to Shopify for SaaS-installed credentials go through this proxy
- * (which holds the real shpca_/shpat_ token on its side and forwards to
- * Shopify on the merchant's behalf). The proxy authenticates UnoPim using
- * the JWT it issued at install time.
- *
- * As the SaaS implementation of the ShopifyClient contract, request() routes
- * export operations and returns the Shopify GraphQL-shaped envelope. The
- * remaining methods serve the credential page (shop locales, publications,
- * locations, revoke, sync) and return data shaped for the views.
- */
 class SaasProxyClient implements ShopifyClient
 {
     /**
@@ -64,7 +51,6 @@ class SaasProxyClient implements ShopifyClient
             'rename' => ['input' => 'definition'],
         ],
 
-        // --- Product (bulk) export -----------------------------------------
         'stagedUploadsCreate' => [
             'path'   => '/graphql/api/stagedUploadsCreate.json',
             'method' => 'POST',
@@ -101,7 +87,6 @@ class SaasProxyClient implements ShopifyClient
             'rename' => ['input' => 'productSet'],
         ],
 
-        // --- Translations --------------------------------------------------
         'createTranslation' => [
             'path'         => '/graphql/api/translationsRegister.json',
             'method'       => 'POST',
@@ -247,16 +232,14 @@ class SaasProxyClient implements ShopifyClient
             $locales = [$locales];
         }
 
-        $locales = array_values(array_filter($locales, fn ($l) => is_array($l) && ! empty($l['locale'])));
+        $locales = array_values(array_filter($locales, fn ($l): bool => is_array($l) && ! empty($l['locale'])));
 
-        return array_map(function ($locale) {
-            return [
-                'locale'    => $locale['locale'],
-                'name'      => $locale['name'] ?? $locale['locale'],
-                'primary'   => (bool) ($locale['primary'] ?? false),
-                'published' => (bool) ($locale['published'] ?? true),
-            ];
-        }, $locales);
+        return array_map(fn (array $locale): array => [
+            'locale'    => $locale['locale'],
+            'name'      => $locale['name'] ?? $locale['locale'],
+            'primary'   => (bool) ($locale['primary'] ?? false),
+            'published' => (bool) ($locale['published'] ?? true),
+        ], $locales);
     }
 
     /**
@@ -318,12 +301,7 @@ class SaasProxyClient implements ShopifyClient
                 ->timeout($this->timeout)
                 ->post($url, ['domain' => $domain]);
 
-            if ($response->successful()) {
-
-                return true;
-            }
-
-            return false;
+            return $response->successful();
         } catch (\Throwable $e) {
             Log::warning('Shopify SaaS proxy revoke failed', [
                 'url'     => $url,
@@ -392,7 +370,7 @@ class SaasProxyClient implements ShopifyClient
 
         $definition = $this->proxyEndpoints[$operation];
 
-        $path = preg_replace_callback('/\{(\w+)\}/', function ($matches) use (&$variables) {
+        $path = preg_replace_callback('/\{(\w+)\}/', function ($matches) use (&$variables): string {
             $value = rawurlencode((string) ($variables[$matches[1]] ?? ''));
             unset($variables[$matches[1]]);
 
@@ -430,8 +408,6 @@ class SaasProxyClient implements ShopifyClient
                 );
             }
 
-            // Paginated list reads (import iterators) are reshaped into the
-            // Shopify GraphQL connection envelope; single results pass through.
             if (isset($definition['connection'])) {
                 return [
                     'code' => $response->status(),
@@ -483,7 +459,7 @@ class SaasProxyClient implements ShopifyClient
             }
         }
 
-        $query = array_filter($query, fn ($value) => $value !== null && $value !== '');
+        $query = array_filter($query, fn ($value): bool => $value !== null && $value !== '');
 
         foreach ($definition['defaults'] ?? [] as $key => $value) {
             if (! array_key_exists($key, $query)) {
@@ -518,8 +494,8 @@ class SaasProxyClient implements ShopifyClient
             : [];
 
         if (isset($container['edges']) && is_array($container['edges'])) {
-            // Already edge-shaped — keep any proxy-supplied per-edge cursor.
-            $edges = array_values(array_map(function ($edge) {
+
+            $edges = array_values(array_map(function ($edge): array {
                 if (is_array($edge) && array_key_exists('node', $edge)) {
                     return ['cursor' => $edge['cursor'] ?? null, 'node' => $edge['node']];
                 }
@@ -527,7 +503,7 @@ class SaasProxyClient implements ShopifyClient
                 return ['cursor' => null, 'node' => $edge];
             }, $container['edges']));
         } else {
-            // {nodes:[...]}, a bare list, or a single object.
+
             $nodes = $container['nodes'] ?? $container;
 
             if ($this->isAssoc($nodes)) {
@@ -535,12 +511,12 @@ class SaasProxyClient implements ShopifyClient
             }
 
             $edges = array_values(array_map(
-                fn ($node) => ['cursor' => null, 'node' => $node],
+                fn ($node): array => ['cursor' => null, 'node' => $node],
                 is_array($nodes) ? $nodes : []
             ));
         }
 
-        if (! empty($edges)) {
+        if ($edges !== []) {
             $lastIndex = count($edges) - 1;
 
             if (empty($edges[$lastIndex]['cursor']) && ! empty($pageInfo['endCursor'])) {
@@ -599,13 +575,13 @@ class SaasProxyClient implements ShopifyClient
             unset($body['id']);
             $body['resourceId'] = $resourceId;
             $body['translations'] = array_map(
-                fn ($translation) => $translation + ['target' => $resourceId],
+                fn ($translation): array => $translation + ['target' => $resourceId],
                 $body['translations'] ?? []
             );
         }
 
         if (! empty($definition['wrap'])) {
-            $body = [$definition['wrap'] => $body];
+            return [$definition['wrap'] => $body];
         }
 
         return $body;
@@ -633,11 +609,11 @@ class SaasProxyClient implements ShopifyClient
      */
     protected function toEdges(array $list): array
     {
-        if (empty($list)) {
+        if ($list === []) {
             return [];
         }
 
-        return array_map(function ($item) {
+        return array_map(function (array $item) {
             if (isset($item['node'])) {
                 return $item;
             }
@@ -650,7 +626,7 @@ class SaasProxyClient implements ShopifyClient
     {
         $ids = array_values(array_filter($ids));
 
-        if (empty($ids)) {
+        if ($ids === []) {
             return ['code' => 200, 'body' => ['data' => ['nodes' => []]]];
         }
 

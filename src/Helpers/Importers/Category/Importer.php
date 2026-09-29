@@ -11,12 +11,12 @@ use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Import;
 use Webkul\DataTransfer\Helpers\Importers\AbstractImporter;
 use Webkul\DataTransfer\Helpers\Importers\Category\Storage;
-use Webkul\DataTransfer\Helpers\Source;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Shopify\Helpers\Iterator\CategoryIterator;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
+use Webkul\Shopify\Services\Import\DamAssetImporter;
 use Webkul\Shopify\Traits\DataMappingTrait;
 use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\ValidatedBatched;
@@ -31,37 +31,18 @@ class Importer extends AbstractImporter
 
     public const UNOPIM_ENTITY_NAME = 'category';
 
-    /**
-     * cursor position
-     */
-    public $cursor = null;
+    public const MEDIA_FIELD_TYPES = ['image', 'file', 'asset'];
+
+    public $cursor;
 
     protected array $categoryFields;
 
-    /**
-     * locales storage
-     */
     protected array $locales = [];
 
-    /**
-     * Shopify credential.
-     *
-     * @var mixed
-     */
     protected $credential;
 
-    /**
-     * Shopify job Locale.
-     *
-     * @var mixed
-     */
     protected $locale;
 
-    /**
-     * Shopify credential as array for api request.
-     *
-     * @var mixed
-     */
     protected $credentialArray;
 
     protected $cachedCategoryFields = [];
@@ -114,7 +95,7 @@ class Importer extends AbstractImporter
         if (! $this->rootCategoryId) {
             $channelWithRoot = $this->channelRepository
                 ->all()
-                ->first(fn ($channel) => ! empty($channel->root_category_id));
+                ->first(fn ($channel): bool => ! empty($channel->root_category_id));
 
             $this->rootCategoryId = $channelWithRoot?->root_category_id;
         }
@@ -128,10 +109,8 @@ class Importer extends AbstractImporter
 
     /**
      * Import instance.
-     *
-     * @return Source
      */
-    public function getSource()
+    public function getSource(): CategoryIterator
     {
         $this->categoryStorage->init();
         $this->initFilters();
@@ -139,9 +118,7 @@ class Importer extends AbstractImporter
             throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credential'));
         }
 
-        $collections = new CategoryIterator($this->credentialArray);
-
-        return $collections;
+        return new CategoryIterator($this->credentialArray);
     }
 
     /**
@@ -149,7 +126,7 @@ class Importer extends AbstractImporter
      */
     public function saveCategories(array $categories): void
     {
-        /** single insert/update in the db because of parent  */
+
         if (! empty($categories['update'])) {
             $this->updatedItemsCount += count($categories['update']);
             foreach ($categories['update'] as $code => $category) {
@@ -211,10 +188,8 @@ class Importer extends AbstractImporter
             }
             $this->saveCategories($categories);
         }
-        /**
-         * Update import batch summary
-         */
-        $batch = $this->importBatchRepository->update([
+
+        $this->importBatchRepository->update([
             'state'   => Import::STATE_PROCESSED,
             'summary' => [
                 'created' => $this->getCreatedItemsCount(),
@@ -229,7 +204,7 @@ class Importer extends AbstractImporter
     /**
      * Prepare categories for import (mapping-driven from the id=4 collection mapping).
      */
-    public function prepareCategories(array $collection, &$category)
+    public function prepareCategories(array $collection, &$category): void
     {
         $node = $collection['node'];
         $fieldMap = $this->collectionMapping?->mapping['collection_mapping'] ?? [];
@@ -246,10 +221,6 @@ class Importer extends AbstractImporter
             $fieldMap['title'] => $node['title'] ?? '',
         ];
 
-        /**
-         * Direct mapping key => Shopify node value. Each is written only when
-         * the field is mapped, preserving the original insertion order.
-         */
         $directFields = [
             'descriptionHtml' => $node['descriptionHtml'] ?? '',
             'seoTitle'        => $node['seo']['title'] ?? '',
@@ -308,9 +279,7 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Override mapped text values with the current locale's Shopify translations.
-     * For a non-default Shopify locale with no translation, the value is cleared
-     * so the default-locale text is not copied across locales.
+     * Apply the collection translations, keeping the default locale values when the fetch fails.
      */
     protected function applyCollectionTranslations(array $node, array $fieldMap, array &$values): void
     {
@@ -348,8 +317,7 @@ class Importer extends AbstractImporter
                     $values[$code] = '';
                 }
             }
-        } catch (\Throwable $e) {
-            // Keep default-locale values on translation fetch failure.
+        } catch (\Throwable) {
         }
     }
 
@@ -377,7 +345,7 @@ class Importer extends AbstractImporter
         return array_filter($newValues);
     }
 
-    public function getCategoryFields()
+    public function getCategoryFields(): array
     {
         if (! isset($this->categoryFields)) {
             $this->cachedCategoryFields = $this->categoryFieldRepository->where('status', 1)->get();
@@ -397,7 +365,7 @@ class Importer extends AbstractImporter
 
         $targetFields = $this->resolveCategoryMediaFields();
 
-        if (empty($targetFields)) {
+        if ($targetFields === []) {
             return;
         }
 
@@ -410,12 +378,11 @@ class Importer extends AbstractImporter
         foreach ($targetFields as $fieldCode) {
             $field = $this->getCategoryFieldByCode($fieldCode);
 
-            if (! $field || ! in_array($field->type, ['image', 'file'], true)) {
+            if (! $field || ! in_array($field->type, self::MEDIA_FIELD_TYPES, true)) {
                 continue;
             }
 
-            $imagePath = 'category'.DIRECTORY_SEPARATOR.($collection['node']['handle'] ?? 'shopify').DIRECTORY_SEPARATOR.$fieldCode.DIRECTORY_SEPARATOR;
-            $storedPath = $this->handleUrlField($imageUrl, $imagePath);
+            $storedPath = $this->storeCollectionImage($field->type, $imageUrl, $fieldCode, $collection['node']['handle'] ?? 'shopify');
 
             if (! $storedPath) {
                 continue;
@@ -432,6 +399,23 @@ class Importer extends AbstractImporter
     }
 
     /**
+     * Store the Shopify collection image for the mapped field's type and return the
+     * value UnoPim keeps: a DAM asset id for an asset field, a storage path otherwise.
+     */
+    protected function storeCollectionImage(string $type, string $imageUrl, string $fieldCode, string $handle): ?string
+    {
+        if ($type === 'asset') {
+            $assetId = resolve(DamAssetImporter::class)->importFromUrl($imageUrl, $this->credential->shopUrl ?? '');
+
+            return $assetId ? (string) $assetId : null;
+        }
+
+        $imagePath = 'category'.DIRECTORY_SEPARATOR.$handle.DIRECTORY_SEPARATOR.$fieldCode.DIRECTORY_SEPARATOR;
+
+        return $this->handleUrlField($imageUrl, $imagePath) ?: null;
+    }
+
+    /**
      * Clear mapped category image fields when Shopify collection has no image.
      */
     protected function clearMappedCollectionImage(array &$data, array $targetFields): void
@@ -439,7 +423,7 @@ class Importer extends AbstractImporter
         foreach ($targetFields as $fieldCode) {
             $field = $this->getCategoryFieldByCode($fieldCode);
 
-            if (! $field || ! in_array($field->type, ['image', 'file'], true)) {
+            if (! $field || ! in_array($field->type, self::MEDIA_FIELD_TYPES, true)) {
                 continue;
             }
 
@@ -488,7 +472,7 @@ class Importer extends AbstractImporter
         }
         $mediaAttributes = array_merge($mediaAttributes, $legacyMapping);
 
-        $mediaAttributes = array_values(array_filter(array_map('trim', $mediaAttributes)));
+        $mediaAttributes = array_values(array_filter(array_map(trim(...), $mediaAttributes)));
 
         return array_values(array_unique($mediaAttributes));
     }

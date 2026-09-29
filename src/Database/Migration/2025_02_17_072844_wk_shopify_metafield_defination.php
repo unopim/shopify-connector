@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('wk_shopify_metafield_defination', function (Blueprint $table) {
+        Schema::create('wk_shopify_metafield_defination', function (Blueprint $table): void {
             $table->id()->autoIncrement();
             $table->string('code', 255);
             $table->string('attribute', 255);

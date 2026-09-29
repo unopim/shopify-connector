@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,38 +14,29 @@ use Webkul\Shopify\Contracts\ShopifyCredentialsConfig as ShopifyCredentialsContr
 use Webkul\Shopify\Database\Factories\ShopifyCredentialFactory;
 use Webkul\Shopify\Presenters\JsonDataPresenter;
 
+#[Fillable([
+    'shopUrl',
+    'accessToken',
+    'clientId',
+    'clientSecret',
+    'accessTokenExpiresAt',
+    'active',
+    'apiVersion',
+    'storelocaleMapping',
+    'storeLocales',
+    'defaultSet',
+    'resources',
+    'extras',
+    'salesChannel',
+])]
+#[Table(name: 'wk_shopify_credentials_config')]
 class ShopifyCredentialsConfig extends Model implements HistoryContract, PresentableHistoryInterface, ShopifyCredentialsContract
 {
     use HasFactory, HistoryTrait;
 
-    protected $table = 'wk_shopify_credentials_config';
-
     protected $historyTags = ['shopify_credentials'];
 
     protected $auditExclude = ['storeLocales', 'accessToken', 'clientSecret'];
-
-    protected $fillable = [
-        'shopUrl',
-        'accessToken',
-        'clientId',
-        'clientSecret',
-        'accessTokenExpiresAt',
-        'active',
-        'apiVersion',
-        'storelocaleMapping',
-        'storeLocales',
-        'defaultSet',
-        'resources',
-        'extras',
-        'salesChannel',
-    ];
-
-    protected $casts = [
-        'storelocaleMapping'   => 'array',
-        'storeLocales'         => 'array',
-        'extras'               => 'array',
-        'accessTokenExpiresAt' => 'datetime',
-    ];
 
     /**
      * custom history presenters to be used while displaying the history for that column
@@ -85,5 +78,15 @@ class ShopifyCredentialsConfig extends Model implements HistoryContract, Present
     protected static function newFactory(): Factory
     {
         return ShopifyCredentialFactory::new();
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'storelocaleMapping'   => 'array',
+            'storeLocales'         => 'array',
+            'extras'               => 'array',
+            'accessTokenExpiresAt' => 'datetime',
+        ];
     }
 }

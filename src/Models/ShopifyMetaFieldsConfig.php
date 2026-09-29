@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,39 +14,31 @@ use Webkul\Shopify\Contracts\ShopifyMetaFieldsConfig as ShopifyMetaFieldsContrac
 use Webkul\Shopify\Database\Factories\ShopifyMetaFieldFactory;
 use Webkul\Shopify\Presenters\JsonDataPresenter;
 
+#[Fillable([
+    'ownerType',
+    'ownerTypeName',
+    'code',
+    'type',
+    'attribute',
+    'attributeLabel',
+    'name_space',
+    'name_space_key',
+    'description',
+    'validations',
+    'listvalue',
+    'pin',
+    'options',
+    'storefronts',
+    'ContentTypeName',
+    'apiUrl',
+    'taxonomy_category',
+])]
+#[Table(name: 'wk_shopify_metafield_defination')]
 class ShopifyMetaFieldsConfig extends Model implements HistoryContract, PresentableHistoryInterface, ShopifyMetaFieldsContract
 {
     use HasFactory, HistoryTrait;
 
-    protected $table = 'wk_shopify_metafield_defination';
-
     protected $historyTags = ['shopify_meta_fields'];
-
-    protected $fillable = [
-        'ownerType',
-        'ownerTypeName',
-        'code',
-        'type',
-        'attribute',
-        'attributeLabel',
-        'name_space',
-        'name_space_key',
-        'description',
-        'validations',
-        'listvalue',
-        'pin',
-        'options',
-        'storefronts',
-        'ContentTypeName',
-        'apiUrl',
-        'taxonomy_category',
-    ];
-
-    protected $casts = [
-        'validations'       => 'string',
-        'options'           => 'string',
-        'taxonomy_category' => 'array',
-    ];
 
     /**
      * custom history presenters to be used while displaying the history for that column
@@ -64,5 +58,14 @@ class ShopifyMetaFieldsConfig extends Model implements HistoryContract, Presenta
     protected static function newFactory(): Factory
     {
         return ShopifyMetaFieldFactory::new();
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'validations'       => 'string',
+            'options'           => 'string',
+            'taxonomy_category' => 'array',
+        ];
     }
 }

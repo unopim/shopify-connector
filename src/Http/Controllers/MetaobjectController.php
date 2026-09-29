@@ -17,6 +17,7 @@ use Webkul\Shopify\Repositories\ShopifyMetaobjectAttributeRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectDefinitionRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaobjectEntryRepository;
+use Webkul\Shopify\Support\ProFeatures;
 
 class MetaobjectController extends Controller
 {
@@ -31,7 +32,7 @@ class MetaobjectController extends Controller
 
     public function forAttribute(): JsonResponse
     {
-        $binding = $this->attributeBindingRepository->bindingFor((int) request()->get('attribute_id'));
+        $binding = $this->attributeBindingRepository->bindingFor((int) request()->input('attribute_id'));
 
         if (! $binding) {
             return new JsonResponse(['entries' => []]);
@@ -41,7 +42,7 @@ class MetaobjectController extends Controller
 
         $entries = $definition
             ? $this->entryRepository->findWhere(['type' => $definition->code])
-                ->map(fn ($entry) => ['code' => $entry->code])
+                ->map(fn ($entry): array => ['code' => $entry->code])
                 ->values()
                 ->all()
             : [];
@@ -61,7 +62,7 @@ class MetaobjectController extends Controller
     public function index(): View|JsonResponse
     {
         if (request()->ajax()) {
-            return app(MetaobjectDataGrid::class)->toJson();
+            return resolve(MetaobjectDataGrid::class)->toJson();
         }
 
         return view('shopify::metaobject.index', [
@@ -79,13 +80,13 @@ class MetaobjectController extends Controller
     public function store(): JsonResponse
     {
         $data = request()->validate([
-            'name'   => 'required|string',
-            'fields' => 'nullable|array',
+            'name'   => ['required', 'string'],
+            'fields' => ['nullable', 'array'],
         ]);
 
         $fields = $this->buildFields($data['fields'] ?? []);
 
-        if (empty($fields)) {
+        if ($fields === []) {
             return new JsonResponse([
                 'errors' => ['fields' => [trans('shopify::app.shopify.metaobject.fields-required')]],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -120,13 +121,13 @@ class MetaobjectController extends Controller
     public function update(int $id): JsonResponse|RedirectResponse
     {
         $data = request()->validate([
-            'name'   => 'required|string',
-            'fields' => 'nullable|array',
+            'name'   => ['required', 'string'],
+            'fields' => ['nullable', 'array'],
         ]);
 
         $fields = $this->buildFields($data['fields'] ?? []);
 
-        if (empty($fields)) {
+        if ($fields === []) {
             return new JsonResponse([
                 'errors' => ['fields' => [trans('shopify::app.shopify.metaobject.fields-required')]],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -143,7 +144,7 @@ class MetaobjectController extends Controller
 
         session()->flash('success', trans('shopify::app.shopify.metaobject.saved'));
 
-        return redirect()->route('shopify.metaobject.edit', $id);
+        return to_route('shopify.metaobject.edit', $id);
     }
 
     public function updateGeneral(int $id): JsonResponse
@@ -192,7 +193,7 @@ class MetaobjectController extends Controller
 
     public function fieldDatagrid(int $id): JsonResponse
     {
-        $datagrid = app(MetaobjectFieldDataGrid::class);
+        $datagrid = resolve(MetaobjectFieldDataGrid::class);
         $datagrid->setDefinition($id);
 
         return $datagrid->toJson();
@@ -216,7 +217,7 @@ class MetaobjectController extends Controller
 
         $built = $this->buildFields([request()->all()]);
 
-        if (empty($built)) {
+        if ($built === []) {
             return new JsonResponse([
                 'errors' => ['name' => [trans('shopify::app.shopify.metaobject.fields-required')]],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -242,7 +243,7 @@ class MetaobjectController extends Controller
 
         $built = $this->buildFields([request()->all()]);
 
-        if (empty($built)) {
+        if ($built === []) {
             return new JsonResponse([
                 'errors' => ['name' => [trans('shopify::app.shopify.metaobject.fields-required')]],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
@@ -268,7 +269,7 @@ class MetaobjectController extends Controller
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $fields = array_values(array_filter($fields, fn ($field): bool => ($field['key'] ?? '') !== $key));
+        $fields = array_values(array_filter($fields, fn (array $field): bool => ($field['key'] ?? '') !== $key));
 
         $this->definitionRepository->update(['fields' => $fields], $id);
 
@@ -330,11 +331,11 @@ class MetaobjectController extends Controller
 
     public function definitions(): JsonResponse
     {
-        $exclude = (int) request()->get('exclude');
+        $exclude = (int) request()->input('exclude');
 
         $options = $this->definitionRepository->all(['id', 'name', 'code'])
-            ->filter(fn ($definition) => $definition->id !== $exclude)
-            ->map(fn ($definition) => ['id' => $definition->id, 'code' => $definition->code, 'name' => $definition->name])
+            ->filter(fn ($definition): bool => $definition->id !== $exclude)
+            ->map(fn ($definition): array => ['id' => $definition->id, 'code' => $definition->code, 'name' => $definition->name])
             ->values()
             ->all();
 
@@ -362,12 +363,13 @@ class MetaobjectController extends Controller
     {
         $built = [];
         $usedKeys = [];
+        $locked = resolve(ProFeatures::class)->lockedMetafieldTypes();
 
         foreach ($fields as $field) {
             $name = trim($field['name'] ?? '');
             $type = $field['type'] ?? '';
 
-            if ($name === '' || $type === '') {
+            if ($name === '' || $type === '' || in_array($type, $locked, true)) {
                 continue;
             }
 
@@ -405,7 +407,7 @@ class MetaobjectController extends Controller
                 'preset'       => $preset,
                 'content_type' => $type === 'file_reference' ? $contentType : '',
                 'validations'  => $this->cleanValidations($field['validations'] ?? []),
-            ], fn ($value) => $value !== '' && $value !== null && $value !== []);
+            ], fn ($value): bool => ! in_array($value, ['', null, []], true));
         }
 
         return $built;
@@ -447,7 +449,7 @@ class MetaobjectController extends Controller
      */
     protected function normalizeFields(array $fields): array
     {
-        return array_map(fn ($field) => [
+        return array_map(fn (array $field): array => [
             'key'          => $field['key'] ?? '',
             'name'         => $field['name'] ?? '',
             'shopify_type' => $field['type'] ?? '',

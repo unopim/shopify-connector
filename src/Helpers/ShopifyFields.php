@@ -4,11 +4,6 @@ namespace Webkul\Shopify\Helpers;
 
 class ShopifyFields
 {
-    /**
-     * Shopify Mapping Fields.
-     *
-     * @var array
-     */
     public $mappingFields = [
         [
             'name'  => 'title',
@@ -144,11 +139,6 @@ class ShopifyFields
         return $this->mappingFields;
     }
 
-    /**
-     * Shopify collection mapping fields (category field -> collection field).
-     *
-     * @var array
-     */
     public $collectionMappingFields = [
         [
             'name'    => 'title',
@@ -292,10 +282,6 @@ class ShopifyFields
         'ITEM' => 'COUNT',
     ];
 
-    /**
-     * Mapping-form field names that carry unit-price config (stripped before the
-     * generic attribute loop so they never leak into shopify_connector_settings).
-     */
     public const UNIT_PRICE_FORM_FIELDS = [
         'unit_price_quantity_value',
         'unit_price_quantity_unit',
@@ -357,8 +343,6 @@ class ShopifyFields
         ];
 
         if ($withReference) {
-            // Store the reference value/unit as entered (null when cleared) so they can be
-            // removed. The export payload and the mapping form both fall back to 100/AUTO.
             $referenceValue = $input['unit_price_reference_value'] ?? null;
             $referenceUnit = $input['unit_price_reference_unit'] ?? null;
 

@@ -2,13 +2,9 @@
 
 namespace Webkul\Shopify\Helpers;
 
-/**
- * Maps metaobject measurement units between the UnoPim field-form symbols
- * (mm, kg, fl_oz …) and the enum names Shopify requires (CENTIMETERS …).
- */
 class MetaobjectMeasurementUnit
 {
-    private const MAP = [
+    private const array MAP = [
         'dimension' => [
             'mm' => 'MILLIMETERS',
             'cm' => 'CENTIMETERS',

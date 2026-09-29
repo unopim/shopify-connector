@@ -4,9 +4,6 @@ namespace Webkul\Shopify\Traits;
 
 use Webkul\Shopify\Contracts\ShopifyCredentialsConfig;
 
-/**
- * Trait for handling Shopify translation requests.
- */
 trait TranslationTrait
 {
     protected $translationShopifyFields = [
@@ -34,8 +31,7 @@ trait TranslationTrait
         $storeloacleMapping = $credential->storelocaleMapping;
         if ($storeloacleMapping) {
             $commonFields = $this->getCommonFields($rowData);
-            foreach ($addedmetafields as $keydMeta => $addedMetaField) {
-
+            foreach ($addedmetafields as $addedMetaField) {
                 $formatedVariable = [
                     'id'           => $addedMetaField['node']['id'],
                     'translations' => [],
@@ -70,7 +66,7 @@ trait TranslationTrait
                     ];
                 }
 
-                if ($formatedVariable) {
+                if ($formatedVariable !== []) {
                     $response = $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
                 }
             }
@@ -137,7 +133,7 @@ trait TranslationTrait
                 }
             }
 
-            if ($formatedVariable) {
+            if ($formatedVariable !== []) {
                 $response = $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
             }
         }
@@ -156,7 +152,6 @@ trait TranslationTrait
         $storeloacleMapping = $credential->storelocaleMapping;
         if ($storeloacleMapping && $optionResult) {
             foreach ($optionResult as $key => $option) {
-
                 $formatedVariable = [
                     'id'           => $option['id'],
                     'translations' => [],
@@ -169,11 +164,9 @@ trait TranslationTrait
                         continue;
                     }
 
-                    $filtered = array_filter($superAttribute[$key]['translations'], function ($item) use ($unopimLocaleCode) {
-                        return $item['locale'] == $unopimLocaleCode;
-                    });
+                    $filtered = array_filter($superAttribute[$key]['translations'], fn (array $item): bool => $item['locale'] == $unopimLocaleCode);
 
-                    if (empty($filtered)) {
+                    if ($filtered === []) {
                         continue;
                     }
                     $attrLabel = reset($filtered)['name'];
@@ -186,7 +179,7 @@ trait TranslationTrait
                     ];
                 }
 
-                if ($formatedVariable) {
+                if ($formatedVariable !== []) {
                     $response = $this->requestGraphQlApiAction('createTranslation', $credentialAsArray, $formatedVariable);
                 }
             }
@@ -223,16 +216,14 @@ trait TranslationTrait
                         continue;
                     }
 
-                    $result = array_filter($allData, function ($item) use ($unopimLocaleCode) {
-                        return $item['locale'] === $unopimLocaleCode;
-                    });
-                    if (empty($result)) {
+                    $result = array_filter($allData, fn (array $item): bool => $item['locale'] === $unopimLocaleCode);
+                    if ($result === []) {
                         continue;
                     }
                     $label = reset($result)['label'] ?? '';
                     $formatedVariable['translations'][] = [
                         'key'                       => 'name',
-                        'value'                     => $label ?? '',
+                        'value'                     => $label,
                         'locale'                    => $shopifyLocaleCode,
                         'translatableContentDigest' => hash('sha256', $defaultValue),
                     ];
@@ -254,18 +245,13 @@ trait TranslationTrait
         array $collectionResult,
         array $fieldMap = []
     ): void {
-        if (! empty($collectionResult)) {
+        if ($collectionResult !== []) {
             $storeloacleMapping = $credential->storelocaleMapping;
             $formatedVariable = [
                 'id'           => $collectionResult['id'],
                 'translations' => [],
             ];
 
-            /**
-             * Map of collection mapping key => Shopify translation key and the
-             * digest source. Digests are computed once since $collectionResult
-             * is constant across locales.
-             */
             $translatableFields = [
                 'title'           => ['key' => 'title', 'digest' => hash('sha256', $collectionResult['title'] ?? '')],
                 'descriptionHtml' => ['key' => 'body_html', 'digest' => hash('sha256', $collectionResult['descriptionHtml'] ?? '')],

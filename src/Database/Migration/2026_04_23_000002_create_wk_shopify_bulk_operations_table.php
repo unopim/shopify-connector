@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('wk_shopify_bulk_operations', function (Blueprint $table) {
+        Schema::create('wk_shopify_bulk_operations', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('job_track_id');
             $table->unsignedBigInteger('job_track_batch_id')->nullable();

@@ -8,20 +8,17 @@ class CategoryIterator implements \Iterator
 {
     use ShopifyGraphqlRequest;
 
-    private $cursor;                // Tracks the current cursor for pagination
+    private $cursor;
 
-    private $currentPageData;       // Holds data for the current page
+    private array $currentPageData;
 
-    private $currentKey;            // Tracks the current index within the current page
-
-    private $credential;            // Credentials for Shopify API
+    private int $currentKey;
 
     private $mergedOptions;
 
-    public function __construct($credential)
+    public function __construct(private $credential)
     {
-        $this->credential = $credential;
-        $this->cursor = null;       // Start with no cursor (first page)
+        $this->cursor = null;
         $this->currentPageData = [];
         $this->currentKey = 0;
         $this->fetchByCursor();
@@ -48,24 +45,24 @@ class CategoryIterator implements \Iterator
 
     public function rewind(): void
     {
-        if ($this->currentKey == 0) {
+        if ($this->currentKey === 0) {
             return;
         }
-        $this->cursor = null;       // Reset to the first page
+        $this->cursor = null;
         $this->currentPageData = [];
         $this->currentKey = 0;
-        $this->fetchByCursor();     // Fetch the first page again
+        $this->fetchByCursor();
     }
 
     public function valid(): bool
     {
-        return ! empty($this->currentPageData);
+        return $this->currentPageData !== [];
     }
 
     public function setCursor($cursor): void
     {
         $this->cursor = $cursor;
-        $this->fetchByCursor();     // Fetch data based on the provided cursor
+        $this->fetchByCursor();
     }
 
     public function getCursor(): ?string
@@ -94,7 +91,7 @@ class CategoryIterator implements \Iterator
             $edges = $graphResponse['body']['data']['collections']['edges'] ?? [];
 
             $this->currentPageData = $edges;
-            // Update the cursor for the next page
+
             $this->cursor = ! empty($edges) ? end($edges)['cursor'] : null;
 
         } catch (\Exception $e) {

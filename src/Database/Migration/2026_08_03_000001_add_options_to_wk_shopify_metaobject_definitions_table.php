@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('wk_shopify_metaobject_definitions', function (Blueprint $table) {
+        Schema::table('wk_shopify_metaobject_definitions', function (Blueprint $table): void {
             $table->json('options')->nullable()->after('fields');
         });
     }
 
     public function down(): void
     {
-        Schema::table('wk_shopify_metaobject_definitions', function (Blueprint $table) {
+        Schema::table('wk_shopify_metaobject_definitions', function (Blueprint $table): void {
             $table->dropColumn('options');
         });
     }

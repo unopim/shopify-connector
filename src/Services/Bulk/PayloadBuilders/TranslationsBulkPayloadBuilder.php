@@ -56,15 +56,7 @@ class TranslationsBulkPayloadBuilder
         if (count($storeLocaleMapping) < 2) {
             return [];
         }
-
-        // Determine default shopify locale
-        $defaultLanguage = null;
-        foreach ($storeLocales as $language) {
-            if (! empty($language['defaultlocale'])) {
-                $defaultLanguage = $language;
-                break;
-            }
-        }
+        $defaultLanguage = array_find($storeLocales, fn ($language): bool => ! empty($language['defaultlocale']));
 
         $shopifyDefaultLocale = $defaultLanguage
             ? ($storeLocaleMapping[$defaultLanguage['locale']] ?? null)
@@ -91,9 +83,6 @@ class TranslationsBulkPayloadBuilder
 
             $productIdBySku[$sku] = $product['id'];
 
-            // Metafield instance GIDs return inline in the core result under the aliases
-            // injected into productSetBulk — works for manual and SaaS alike, so no
-            // separate metafield read is needed.
             foreach ($metafieldAliases as $alias => $nameSpaceKey) {
                 $gid = $product[$alias]['id'] ?? null;
 
@@ -103,12 +92,9 @@ class TranslationsBulkPayloadBuilder
             }
         }
 
-        // Products recreated after a stale-mapping NOT_FOUND are absent from the core
-        // result file (null product id); resolve their GID from the freshly-synced
-        // mapping so their product-level translations are still registered.
         $unresolvedSkus = array_diff_key($unresolvedSkus, $productIdBySku);
 
-        if (! empty($unresolvedSkus)) {
+        if ($unresolvedSkus !== []) {
             $productIdBySku += $this->resolveProductGidsBySku(array_keys($unresolvedSkus), $credentialId);
         }
 
@@ -273,7 +259,7 @@ class TranslationsBulkPayloadBuilder
      */
     protected function resolveTranslatableMetafields(array $definitions, array $gidByKey, array $defaultFields, array $attributes): array
     {
-        if (empty($definitions) || empty($gidByKey)) {
+        if ($definitions === [] || $gidByKey === []) {
             return [];
         }
 

@@ -6,14 +6,6 @@ use Webkul\Shopify\Contracts\ShopifyClient;
 use Webkul\Shopify\Http\Client\ManualShopifyClient;
 use Webkul\Shopify\Http\Client\SaasProxyClient;
 
-/**
- * Resolves the correct ShopifyClient implementation for a credential.
- *
- * This is the single place in the connector that knows about the
- * manual-vs-SaaS split. Every other layer depends only on the ShopifyClient
- * contract, so the two transports never reference each other and a new
- * transport can be added here without touching existing code.
- */
 class ShopifyClientFactory
 {
     public function __construct(
