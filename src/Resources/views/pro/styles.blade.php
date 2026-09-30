@@ -384,7 +384,7 @@
         const upgradeRoute = @json(route('shopify.upgrade'));
         const storeUrl = @json(config('shopify.pro.url'));
 
-        document.querySelectorAll(`a[href="${upgradeRoute}"], a[href="${storeUrl}"]`).forEach((link) => {
+        document.querySelectorAll(`#unopim-sidebar a[href="${upgradeRoute}"], #unopim-sidebar a[href="${storeUrl}"]`).forEach((link) => {
             link.href = storeUrl;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';

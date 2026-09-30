@@ -367,7 +367,7 @@ class OptionController extends Controller
         } elseif (isset($queryParams['mediaType'])) {
             $attributeRepository = $this->attributeRepository->whereIn('type', [$queryParams['mediaType'], 'asset']);
         } else {
-            $attributeRepository = $this->attributeRepository;
+            $attributeRepository = $this->attributeRepository->whereIn('type', ['image', 'gallery', 'asset']);
         }
         $currentLocaleCode = core()->getRequestedLocaleCode();
 

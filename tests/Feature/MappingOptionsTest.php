@@ -91,6 +91,18 @@ it('should return a list of image attributes', function () {
     );
 });
 
+it('lists only media attributes when no media type is sent', function () {
+    $this->loginAsAdmin();
+
+    $imageAttribute = Attribute::factory()->create(['code' => 'image_only_tst', 'type' => 'image']);
+    $textAttribute = Attribute::factory()->create(['code' => 'text_only_tst', 'type' => 'text']);
+
+    $codes = collect(get(route('admin.shopify.get-image-attribute'))->assertOk()->json('options'))->pluck('code');
+
+    expect($codes)->toContain($imageAttribute->code)
+        ->not->toContain($textAttribute->code);
+});
+
 it('should return the list of active Shopify credentials', function () {
     $this->loginAsAdmin();
 
