@@ -292,6 +292,33 @@ it('refuses a pro metafield type while the package is absent', function () {
         ->toContain('area');
 });
 
+it('accepts the core measurement types while the package is absent', function (string $type) {
+    withoutShopifyPro();
+
+    $this->loginAsAdmin();
+
+    $this->post(route('shopify.metafield.store'), [
+        'ownerType' => 'PRODUCT',
+        'code'      => 'core_'.$type.'_'.uniqid(),
+        'type'      => $type,
+    ])->assertSessionDoesntHaveErrors('type');
+
+    expect(resolve(ProFeatures::class)->lockedMetafieldTypes())
+        ->not->toContain($type)
+        ->toContain('temperature');
+})->with(['dimension', 'volume', 'weight']);
+
+it('keeps the core measurement types selectable while the package is absent', function () {
+    withoutShopifyPro();
+
+    $measurement = collect(resolve(ShoifyMetaFieldType::class)->getMetaFieldType()['measurement'])->keyBy('id');
+
+    expect($measurement['weight'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['volume'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['dimension'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['temperature'])->toHaveKey('$isDisabled');
+});
+
 it('marks the pro types unselectable while the package is absent', function () {
     withoutShopifyPro();
 

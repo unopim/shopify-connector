@@ -131,7 +131,11 @@ class ShopifyGraphQLDataFormatter
 
                 switch ($type) {
                     case 'multi_line_text_field':
-                        $metafieldValue = $rawData[$unoAttribute] ?? '';
+                        $metafieldValue = $this->stripTagMetafield(
+                            $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? ''),
+                            $locale,
+                            $attribute
+                        );
                         break;
 
                     case 'color':
@@ -217,13 +221,21 @@ class ShopifyGraphQLDataFormatter
                     default:
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
-                            : $this->stripTagMetafield((string) ($rawData[$unoAttribute] ?? ''), $locale, $attribute);
+                            : $this->stripTagMetafield(
+                                $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? ''),
+                                $locale,
+                                $attribute
+                            );
                         break;
                 }
 
                 if (! empty($field['listvalue'])) {
                     if ($type !== 'file_reference' && $type !== 'link') {
-                        $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                        $metafieldValue = $this->formatMetafieldValue(
+                            $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? null),
+                            $attribute,
+                            $locale
+                        );
                     }
                     $type = 'list.'.$type;
                 }
@@ -397,6 +409,23 @@ class ShopifyGraphQLDataFormatter
         }
 
         return json_encode([$metafieldValue], true);
+    }
+
+    /**
+     * Shopify metafield values are always sent as strings, including list
+     * values encoded as JSON strings. UnoPim multiselect attributes can arrive
+     * as arrays, so normalize them before scalar metafield formatting.
+     */
+    protected function scalarizeMetafieldValue(mixed $value): string
+    {
+        if (! is_array($value)) {
+            return (string) $value;
+        }
+
+        return implode(',', array_map(
+            static fn (mixed $item): string => is_scalar($item) ? (string) $item : (json_encode($item) ?: ''),
+            $value
+        ));
     }
 
     public function isValidHexColor($color): int|false

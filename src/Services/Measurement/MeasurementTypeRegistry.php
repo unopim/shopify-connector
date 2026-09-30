@@ -43,6 +43,13 @@ class MeasurementTypeRegistry
     ];
 
     /**
+     * The measurement types core exports on its own, so they stay open without Pro.
+     *
+     * @var array<int, string>
+     */
+    private const array CORE_TYPES = ['dimension', 'volume', 'weight'];
+
+    /**
      * @return array<string, array<int, string>>
      */
     public function types(): array
@@ -55,13 +62,13 @@ class MeasurementTypeRegistry
      */
     public function metafieldOptions(): array
     {
-        $locked = ! resolve(ProFeatures::class)->isInstalled();
+        $proInstalled = resolve(ProFeatures::class)->isInstalled();
 
         return array_map(
             fn (string $type): array => array_filter([
                 'id'          => $type,
-                'name'        => $this->optionLabel($type),
-                '$isDisabled' => $locked ?: null,
+                'name'        => $this->isCoreType($type) ? $this->label($type) : $this->optionLabel($type),
+                '$isDisabled' => ($proInstalled || $this->isCoreType($type)) ? null : true,
             ], static fn (string|true|null $value): bool => $value !== null),
             array_keys(self::TYPES)
         );
@@ -132,7 +139,16 @@ class MeasurementTypeRegistry
      */
     public function lockedTypes(): array
     {
-        return resolve(ProFeatures::class)->isInstalled() ? [] : array_keys(self::TYPES);
+        if (resolve(ProFeatures::class)->isInstalled()) {
+            return [];
+        }
+
+        return array_values(array_diff(array_keys(self::TYPES), self::CORE_TYPES));
+    }
+
+    public function isCoreType(string $type): bool
+    {
+        return in_array($type, self::CORE_TYPES, true);
     }
 
     public function has(string $type): bool
