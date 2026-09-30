@@ -11,6 +11,7 @@ use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
 use Webkul\DataTransfer\Jobs\Export\File\FlatItemBuffer as FileExportFileBuffer;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
+use Webkul\Shopify\Contracts\ReportsUpdatedCount;
 use Webkul\Shopify\Exceptions\InvalidCredential;
 use Webkul\Shopify\Exceptions\InvalidLocale;
 use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
@@ -22,7 +23,7 @@ use Webkul\Shopify\Traits\ShopifyGraphqlRequest;
 use Webkul\Shopify\Traits\StagesShopifyAsset;
 use Webkul\Shopify\Traits\TranslationTrait;
 
-class Exporter extends AbstractExporter
+class Exporter extends AbstractExporter implements ReportsUpdatedCount
 {
     use DataMappingTrait;
     use ResolvesDamAssetRepository;
@@ -168,6 +169,28 @@ class Exporter extends AbstractExporter
     }
 
     /**
+     * Record how many collections Shopify created and how many it updated.
+     *
+     * The core summary counts every successful row as created, which would
+     * report a re-export as all new collections, so the batch carries its own
+     * `updated` count as well. A mapped collection deleted in Shopify is made
+     * again on export, so it counts as created.
+     */
+    public function updateBatchState(int $id, string $state): void
+    {
+        parent::updateBatchState($id, $state);
+
+        $this->exportBatchRepository->update([
+            'summary' => [
+                'processed' => max(0, $this->createdItemsCount + $this->updatedItemsCount),
+                'created'   => $this->createdItemsCount,
+                'updated'   => $this->updatedItemsCount,
+                'skipped'   => $this->skippedItemsCount,
+            ],
+        ], $id);
+    }
+
+    /**
      * {@inheritdoc}
      */
     protected function getResults()
@@ -210,6 +233,7 @@ class Exporter extends AbstractExporter
                 $category['id'] = $mapping[0]['externalId'];
                 $responseData = $this->apiRequestShopify($category, $category['id']);
                 $resultCollection = $responseData['body']['data']['collectionUpdate'] ?? [];
+                $recreated = false;
                 if (! empty($resultCollection['userErrors'])) {
                     $resultCollection = $this->handleAfterApiRequest($rawData, $responseData, $mapping, $this->export->id, $category);
 
@@ -219,9 +243,15 @@ class Exporter extends AbstractExporter
 
                         continue;
                     }
+
+                    $recreated = true;
                 }
 
-                $this->createdItemsCount++;
+                if ($recreated) {
+                    $this->createdItemsCount++;
+                } else {
+                    $this->updatedItemsCount++;
+                }
             }
 
             if (empty($resultCollection['userErrors']) && ! empty($this->publicationId)) {

@@ -65,6 +65,7 @@ class BulkResultFinalizer
         $clearedStaleSkus = [];
         $recreatedSkus = [];
         $pendingMedia = [];
+        $skippedMetafields = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -72,8 +73,10 @@ class BulkResultFinalizer
             $payload = $decoded['data']['productSet'] ?? [];
             $userErrors = $payload['userErrors'] ?? [];
             $product = $payload['product'] ?? [];
+            $skippableMetafieldErrors = $this->skippableMetafieldErrors($userErrors);
+            $hasBlockingErrors = count($skippableMetafieldErrors) !== count($userErrors);
 
-            if (! empty($userErrors) || empty($product['id'])) {
+            if ($hasBlockingErrors || empty($product['id'])) {
                 $sku = $manifestLine['product_sku'] ?? null;
 
                 if ($sku && $shopUrl && $this->isStaleProductMappingError($userErrors)) {
@@ -109,6 +112,14 @@ class BulkResultFinalizer
                 ];
 
                 continue;
+            }
+
+            if ($skippableMetafieldErrors !== []) {
+                $skippedMetafields[] = [
+                    'line'   => $index,
+                    'sku'    => $manifestLine['product_sku'] ?? null,
+                    'errors' => $this->annotateMetafieldErrors($skippableMetafieldErrors, $inputLines[$index] ?? null),
+                ];
             }
 
             $this->syncProductMapping(
@@ -151,6 +162,7 @@ class BulkResultFinalizer
             'success'                       => $success,
             'failed'                        => count($failed),
             'errors'                        => $failed,
+            'skipped_metafields'            => $skippedMetafields,
             'cleared_stale_mappings'        => $clearedStaleSkus,
             'recreated_after_stale_mapping' => $recreatedSkus,
         ];
@@ -167,6 +179,25 @@ class BulkResultFinalizer
 
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    /**
+     * Shopify can return a product together with an INVALID_METAFIELD error.
+     * Those errors affect only the rejected metafield; valid product fields have
+     * already been applied and should not make the whole export line fail.
+     *
+     * @param  array<int, array<string, mixed>>  $userErrors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function skippableMetafieldErrors(array $userErrors): array
+    {
+        return array_values(array_filter($userErrors, function (array $error): bool {
+            if (strtoupper((string) ($error['code'] ?? '')) !== 'INVALID_METAFIELD') {
+                return false;
+            }
+
+            return in_array('metafields', array_map(strval(...), (array) ($error['field'] ?? [])), true);
+        }));
     }
 
     /**

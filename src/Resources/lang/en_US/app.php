@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'This is a SaaS Shopify connection. Connection details are read-only — you can only configure the Publishing (Sales channels), Location and Locale mapping below.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Category Selection',
+                'with-children'      => 'With Children',
+                'with-children-info' => 'Also sends every child category of the selected categories.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify Filters',
             ],

@@ -19,6 +19,7 @@ use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
 use Webkul\Shopify\Listeners\DeferJobTrackCompletion;
+use Webkul\Shopify\Listeners\ExportUpdatedSummary;
 use Webkul\Shopify\Listeners\RevokeShopifyOnApiKeyDelete;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
@@ -138,9 +139,24 @@ class ShopifyServiceProvider extends ServiceProvider
             });
         }
 
+        /**
+         * The right-hand column of a Shopify export: the credentials open the
+         * Output card, in core's when the export has one and in the connector's
+         * own when it has none, and the schedule follows below it.
+         *
+         * @var array<string, array{before: string, output: string, after: string}>
+         */
         $exportCards = [
-            'create' => ['shopify::data-transfer.export-credentials', 'shopify::data-transfer.export-create-schedule'],
-            'edit'   => ['shopify::data-transfer.export-credentials-edit', 'shopify::data-transfer.export-schedule'],
+            'create' => [
+                'before' => 'shopify::data-transfer.export-credentials',
+                'output' => 'shopify::data-transfer.export-credentials-output',
+                'after'  => 'shopify::data-transfer.export-create-schedule',
+            ],
+            'edit' => [
+                'before' => 'shopify::data-transfer.export-credentials-edit',
+                'output' => 'shopify::data-transfer.export-credentials-output-edit',
+                'after'  => 'shopify::data-transfer.export-schedule',
+            ],
         ];
 
         View::composer('shopify::association-mappings.section', function ($view): void {
@@ -202,9 +218,27 @@ class ShopifyServiceProvider extends ServiceProvider
 
         foreach ($exportCards as $screen => $templates) {
             Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.befor", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
-                foreach ($templates as $template) {
-                    $viewRenderEventManager->addTemplate($template);
-                }
+                $viewRenderEventManager->addTemplate($templates['before']);
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.output.before", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
+                $viewRenderEventManager->addTemplate($templates['output']);
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.after", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
+                $viewRenderEventManager->addTemplate($templates['after']);
+            });
+
+            /**
+             * The category export's Pro filters have no core card: the selection
+             * sits under the scope card, the children toggle among the output fields.
+             */
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.scope.after", static function (ViewRenderEventManager $viewRenderEventManager): void {
+                $viewRenderEventManager->addTemplate('shopify::data-transfer.category-selection');
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.output.after", static function (ViewRenderEventManager $viewRenderEventManager): void {
+                $viewRenderEventManager->addTemplate('shopify::data-transfer.category-output');
             });
         }
 
@@ -280,6 +314,7 @@ class ShopifyServiceProvider extends ServiceProvider
             }
         });
 
+        Event::listen('data_transfer.export.completed', [ExportUpdatedSummary::class, 'completed']);
         Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
 
         $shopifyImportPlaceholder = static function (): string {

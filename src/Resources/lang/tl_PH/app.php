@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Ito ay koneksyon sa SaaS Shopify. Ang mga detalye ng koneksyon ay read-only — maaari mo lamang i-configure ang Pag-publish (Sales channels), Lokasyon at pag-mapa ng Locale sa ibaba.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Pagpili ng kategorya',
+                'with-children'      => 'Kasama ang mga subkategorya',
+                'with-children-info' => 'Ipinapadala rin ang lahat ng subkategorya ng mga napiling kategorya.',
+            ],
+
             'filters' => [
                 'shopify' => 'Mga Filter ng Shopify',
             ],

@@ -187,7 +187,26 @@ class CoreProductBulkPayloadBuilder
             $jobTrackId,
         );
 
+        // Product media and file_reference metafields can point to the same DAM
+        // asset. Reuse an already-created MediaImage when the Files API cache has
+        // no entry yet; otherwise the metafield is silently omitted because the
+        // formatter cannot resolve the asset id to a Shopify GID.
+        $mediaMappings = $this->shopifyMappingRepository
+            ->where('entityType', 'productImage')
+            ->where('apiUrl', $this->credential?->shopUrl)
+            ->get(['code', 'externalId']);
+
+        $mediaGidsByPath = $mediaMappings->mapWithKeys(function ($mapping): array {
+            $parts = explode('|', (string) $mapping->code, 2);
+
+            return [($parts[1] ?? $parts[0]) => $mapping->externalId];
+        })->all();
+
         foreach ($fileReference['aliases'] as $assetId => $path) {
+            if (! isset($fileReferenceMap[$path]) && isset($mediaGidsByPath[$path])) {
+                $fileReferenceMap[$path] = $mediaGidsByPath[$path];
+            }
+
             if (isset($fileReferenceMap[$path])) {
                 $fileReferenceMap[(string) $assetId] = $fileReferenceMap[$path];
             }

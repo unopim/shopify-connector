@@ -438,6 +438,12 @@ return [
             'saas-readonly-note'    => 'यह एक SaaS Shopify कनेक्शन है। कनेक्शन विवरण केवल पढ़ने के लिए हैं — आप नीचे केवल Publishing (Sales Channels), Location और Locale मैपिंग कॉन्फ़िगर कर सकते हैं।',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'श्रेणी चयन',
+                'with-children'      => 'चाइल्ड श्रेणियों के साथ',
+                'with-children-info' => 'चुनी गई श्रेणियों की सभी चाइल्ड श्रेणियाँ भी भेजता है।',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify फ़िल्टर',
             ],

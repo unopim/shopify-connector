@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Esta é uma conexão SaaS do Shopify. Os detalhes da conexão são somente leitura — você só pode configurar a Publicação (Canais de venda), o Local e o mapeamento de idiomas abaixo.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Seleção de categorias',
+                'with-children'      => 'Com subcategorias',
+                'with-children-info' => 'Também envia todas as subcategorias das categorias selecionadas.',
+            ],
+
             'filters' => [
                 'shopify' => 'Filtros do Shopify',
             ],

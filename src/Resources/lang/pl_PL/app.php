@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'To jest połączenie SaaS Shopify. Szczegóły połączenia są tylko do odczytu — poniżej możesz skonfigurować jedynie publikowanie (kanały sprzedaży), lokalizację i mapowanie ustawień regionalnych.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Wybór kategorii',
+                'with-children'      => 'Z podkategoriami',
+                'with-children-info' => 'Wysyła również wszystkie podkategorie wybranych kategorii.',
+            ],
+
             'filters' => [
                 'shopify' => 'Filtry Shopify',
             ],

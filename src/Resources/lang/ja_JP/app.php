@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'これは SaaS Shopify 接続です。接続の詳細は読み取り専用です。以下の公開 (販売チャネル)、ロケーション、ロケールマッピングのみ設定できます。',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'カテゴリの選択',
+                'with-children'      => '子カテゴリを含める',
+                'with-children-info' => '選択したカテゴリのすべての子カテゴリも送信します。',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify フィルター',
             ],

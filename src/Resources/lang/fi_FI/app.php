@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Tämä on SaaS-Shopify-yhteys. Yhteystiedot ovat vain luku -tilassa — voit määrittää vain alla olevan julkaisun (myyntikanavat), sijainnin ja kielialueen määrityksen.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Luokkien valinta',
+                'with-children'      => 'Alaluokkien kanssa',
+                'with-children-info' => 'Lähettää myös valittujen luokkien kaikki alaluokat.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify-suodattimet',
             ],

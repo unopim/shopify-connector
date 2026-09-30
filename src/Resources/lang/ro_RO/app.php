@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Aceasta este o conexiune Shopify SaaS. Detaliile conexiunii sunt doar pentru citire — puteți configura doar Publicarea (canale de vânzare), Locația și maparea localizării de mai jos.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Selectarea categoriilor',
+                'with-children'      => 'Cu subcategorii',
+                'with-children-info' => 'Trimite și toate subcategoriile categoriilor selectate.',
+            ],
+
             'filters' => [
                 'shopify' => 'Filtre Shopify',
             ],
