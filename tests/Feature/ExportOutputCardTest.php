@@ -10,6 +10,18 @@ use function Pest\Laravel\get;
 const CORE_OUTPUT_FIELDS = 'only="file_format,with_media,with_associations,header_row,use_labels,date_format,file_path"';
 
 /**
+ * Whether core's export screens offer the hook into their output card, which
+ * older cores do not.
+ */
+function coreExportScreenHasOutputHook(): bool
+{
+    return str_contains(
+        file_get_contents(view()->getFinder()->find('admin::settings.data-transfer.exports.edit')),
+        'filters.output.before',
+    );
+}
+
+/**
  * The edit screen of a saved Shopify export.
  */
 function shopifyExportEditScreen(string $entityType): string
@@ -38,7 +50,21 @@ it('puts the credentials at the top of the output card, with the schedule below 
         ->and($credentials)->toBeLessThan($output)
         ->and($schedule)->toBeGreaterThan($output)
         ->and($html)->not->toContain(trans('shopify::app.shopify.export.filters.shopify'));
-})->with(['shopifyProduct', 'shopifyCategories']);
+})->with(['shopifyProduct', 'shopifyCategories'])->skip(fn () => ! coreExportScreenHasOutputHook(), 'core offers no output card hook');
+
+it('gives the credentials a card of their own below core output where core offers no hook into it', function (string $entityType) {
+    $this->loginAsAdmin();
+
+    $html = shopifyExportEditScreen($entityType);
+
+    $credentials = strpos($html, 'only="credentials"');
+    $schedule = strpos($html, 'only="schedule_');
+
+    expect(substr_count($html, 'only="credentials"'))->toBe(1)
+        ->and($credentials)->toBeGreaterThan(strpos($html, CORE_OUTPUT_FIELDS))
+        ->and($schedule)->toBeGreaterThan($credentials)
+        ->and($html)->toContain(trans('shopify::app.shopify.export.filters.shopify'));
+})->with(['shopifyProduct', 'shopifyCategories'])->skip(fn () => coreExportScreenHasOutputHook(), 'core offers the output card hook');
 
 it('gives the credentials an output card of their own where core has none', function (string $entityType) {
     $this->loginAsAdmin();
@@ -61,6 +87,6 @@ it('picks the credentials placement on the create screen by the fields of the pi
     $html = get(route('admin.settings.data_transfer.exports.create'))->assertOk()->getContent();
 
     expect(substr_count($html, 'only="credentials"'))->toBe(2)
-        ->and($html)->not->toContain(trans('shopify::app.shopify.export.filters.shopify'))
+        ->and(str_contains($html, trans('shopify::app.shopify.export.filters.shopify')))->toBe(! coreExportScreenHasOutputHook())
         ->and(strpos($html, 'only="schedule_'))->toBeGreaterThan(strpos($html, CORE_OUTPUT_FIELDS));
 });

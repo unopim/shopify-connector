@@ -4,13 +4,16 @@
     Sits at the top of core's Output card when the picked export has one, and in
     an Output card of its own when core renders none, so it is never left out.
     The entity type is still being picked here, so both follow the live pick.
+    As the fallback it stands in for a core that offers no output card hook,
+    in a card of its own carrying the connector's output fields.
 --}}
 @php
     $insideOutput ??= false;
+    $fallback ??= false;
 
     $coreOutputFields = "['file_format', 'with_media', 'with_associations', 'header_row', 'use_labels', 'date_format', 'file_path']";
 
-    $outputCheck = $insideOutput ? '' : '! ';
+    $outputCheck = $insideOutput || $fallback ? '' : '! ';
 @endphp
 
 <div
@@ -19,7 +22,7 @@
 >
     @unless ($insideOutput)
         <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
-            @lang('admin::app.settings.data-transfer.exports.create.output')
+            {{ $fallback ? trans('shopify::app.shopify.export.filters.shopify') : trans('admin::app.settings.data-transfer.exports.create.output') }}
         </p>
     @endunless
 
@@ -28,4 +31,8 @@
         :exporter-config="config('exporters')"
         only="credentials"
     />
+
+    @if ($fallback)
+        @include('shopify::data-transfer.category-output')
+    @endif
 </div>

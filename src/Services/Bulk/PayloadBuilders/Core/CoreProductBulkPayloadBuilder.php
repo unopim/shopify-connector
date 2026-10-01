@@ -311,10 +311,10 @@ class CoreProductBulkPayloadBuilder
             throw new InvalidLocale;
         }
 
-        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
+        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2])->keyBy('id');
 
-        $this->exportMapping = $mappings->first();
-        $this->settingMapping = $mappings->last();
+        $this->exportMapping = $mappings->get(1);
+        $this->settingMapping = $mappings->get(2);
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code')->all();

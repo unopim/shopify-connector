@@ -3,9 +3,12 @@
 
     Sits at the top of core's Output card when the export has one, and in an
     Output card of its own when core renders none, so it is never left out.
+    As the fallback it stands in for a core that offers no output card hook,
+    in a card of its own carrying the connector's output fields.
 --}}
 @php
     $insideOutput ??= false;
+    $fallback ??= false;
 
     $shopifyExport = app(\Webkul\DataTransfer\Repositories\JobInstancesRepository::class)->find(request()->route('id'));
     $shopifyEntityType = $shopifyExport?->entity_type;
@@ -17,14 +20,14 @@
     $rendersHere = $shopifyEntityType
         && str_starts_with($shopifyEntityType, 'shopify')
         && $shopifyFilterNames->contains('credentials')
-        && $hasCoreOutput === $insideOutput;
+        && $hasCoreOutput === ($insideOutput || $fallback);
 @endphp
 
 @if ($rendersHere)
     <div class="{{ $insideOutput ? 'shopify-export-credentials' : 'shopify-export-output p-4 bg-white dark:bg-cherry-900 rounded box-shadow' }}">
         @unless ($insideOutput)
             <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
-                @lang('admin::app.settings.data-transfer.exports.create.output')
+                {{ $fallback ? trans('shopify::app.shopify.export.filters.shopify') : trans('admin::app.settings.data-transfer.exports.create.output') }}
             </p>
         @endunless
 
@@ -34,5 +37,9 @@
             :exporter-config="config('exporters')"
             only="credentials"
         />
+
+        @if ($fallback)
+            @include('shopify::data-transfer.category-output')
+        @endif
     </div>
 @endif

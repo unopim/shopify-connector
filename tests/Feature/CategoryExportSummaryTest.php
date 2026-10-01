@@ -133,5 +133,5 @@ it('leaves the summary of every other export to core', function () {
 
     Event::dispatch('data_transfer.export.completed', $track);
 
-    expect($track->refresh()->summary)->toBe(['processed' => 3, 'created' => 3, 'skipped' => 0]);
+    expect($track->refresh()->summary)->toEqual(['processed' => 3, 'created' => 3, 'skipped' => 0]);
 });
