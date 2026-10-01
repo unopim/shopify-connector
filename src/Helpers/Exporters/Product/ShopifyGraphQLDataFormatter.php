@@ -219,6 +219,17 @@ class ShopifyGraphQLDataFormatter
                         break;
 
                     default:
+                        if (($attribute?->type ?? null) === 'measurement'
+                            && in_array($type, ['number_decimal', 'number_integer'], true)
+                        ) {
+                            $metafieldValue = $this->formatMeasurementAsNumber(
+                                $rawData[$unoAttribute] ?? null,
+                                $type
+                            );
+
+                            break;
+                        }
+
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
                             : $this->stripTagMetafield(
@@ -426,6 +437,34 @@ class ShopifyGraphQLDataFormatter
             static fn (mixed $item): string => is_scalar($item) ? (string) $item : (json_encode($item) ?: ''),
             $value
         ));
+    }
+
+    /**
+     * Convert a UnoPim measurement value to a Shopify numeric metafield value.
+     * Shopify number fields do not accept the measurement's unit metadata.
+     * Fractional values cannot be represented by number_integer and are skipped.
+     */
+    protected function formatMeasurementAsNumber(mixed $value, string $type): ?string
+    {
+        if (is_array($value)) {
+            $value = $value['amount'] ?? $value['value'] ?? $value['base_data'] ?? null;
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $number = (float) $value;
+
+        if ($type === 'number_integer') {
+            if ($number !== (float) (int) $number) {
+                return null;
+            }
+
+            return (string) (int) $number;
+        }
+
+        return (string) $value;
     }
 
     public function isValidHexColor($color): int|false
