@@ -22,6 +22,7 @@ function collectionAssetField(string $code = 'collection_asset'): CategoryField
         'status'     => 1,
         'is_unique'  => 0,
         'is_required'=> 0,
+        'section'    => 'left',
         'position'   => 99,
     ]);
 }
@@ -161,6 +162,7 @@ it('leaves an image field on the path it already used', function () {
         'status'      => 1,
         'is_unique'   => 0,
         'is_required' => 0,
+        'section'     => 'left',
         'position'    => 98,
     ]);
 

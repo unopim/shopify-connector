@@ -63,10 +63,11 @@ class DamAssetImporter
             dispatch(new ProcessAssetUpload($asset->id));
 
             $this->mappingRepository->create([
-                'entityType' => 'shopifyFileAsset',
-                'code'       => $dedupKey,
-                'externalId' => (string) $asset->id,
-                'apiUrl'     => $shopUrl,
+                'entityType'    => 'shopifyFileAsset',
+                'code'          => $dedupKey,
+                'externalId'    => (string) $asset->id,
+                'jobInstanceId' => 0,
+                'apiUrl'        => $shopUrl,
             ]);
 
             return $asset->id;
