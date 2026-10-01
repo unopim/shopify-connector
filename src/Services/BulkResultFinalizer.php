@@ -64,6 +64,7 @@ class BulkResultFinalizer
         $failed = [];
         $clearedStaleSkus = [];
         $recreatedSkus = [];
+        $recoveredStaleSkus = [];
         $pendingMedia = [];
         $skippedMetafields = [];
 
@@ -91,10 +92,15 @@ class BulkResultFinalizer
                         $credential,
                         $jobTrackId,
                         $shopUrl,
+                        $userErrors,
                     );
 
                     if ($retry['success']) {
                         $recreatedSkus[] = $sku;
+                        $recoveredStaleSkus = array_values(array_unique(array_merge(
+                            $recoveredStaleSkus,
+                            $cleared,
+                        )));
                         $success++;
 
                         continue;
@@ -172,7 +178,11 @@ class BulkResultFinalizer
         $bulkOperation->save();
 
         if ($clearedStaleSkus !== [] || $recreatedSkus !== []) {
-            $this->logStaleMappingCleanup((int) ($jobTrackId ?? 0), $clearedStaleSkus, $recreatedSkus);
+            $this->logStaleMappingCleanup(
+                (int) ($jobTrackId ?? 0),
+                $clearedStaleSkus,
+                $recoveredStaleSkus,
+            );
         }
 
         $this->markBatchProcessed($bulkOperation, $success, count($failed));
@@ -295,6 +305,7 @@ class BulkResultFinalizer
         array $credential,
         ?int $jobTrackId,
         ?string $shopUrl,
+        array $userErrors = [],
     ): array {
         $handle = $manifestLine['product_handle'] ?? null;
 
@@ -303,6 +314,11 @@ class BulkResultFinalizer
         }
 
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
+
+        $this->removeInvalidMetafields($variables, $userErrors);
+
+        // A deleted Shopify product also invalidates its MediaImage/GID values.
+        // The media phase will attach fresh media after recreation succeeds.
         unset($variables['input']['files']);
 
         $this->injectRecreateInventory($variables, $manifestLine);
@@ -398,6 +414,46 @@ class BulkResultFinalizer
     }
 
     /**
+     * Remove only metafields Shopify rejected while recreating a stale product.
+     *
+     * A deleted related product can make productSet reject the entire input even
+     * though the product itself is otherwise valid. The product must still be
+     * recreated; the invalid reference can be sent on a later export after its
+     * related product receives a fresh Shopify mapping.
+     *
+     * @param  array<string, mixed>  $variables
+     * @param  array<int, array<string, mixed>>  $userErrors
+     */
+    protected function removeInvalidMetafields(array &$variables, array $userErrors): void
+    {
+        $invalidKeys = [];
+
+        foreach ($userErrors as $error) {
+            if (strtoupper((string) ($error['code'] ?? '')) !== 'INVALID_METAFIELD') {
+                continue;
+            }
+
+            $field = array_values(array_map(strval(...), (array) ($error['field'] ?? [])));
+            $metafieldIndex = array_search('metafields', $field, true);
+
+            if ($metafieldIndex === false || ! isset($field[$metafieldIndex + 1])) {
+                continue;
+            }
+
+            $invalidKeys[] = $field[$metafieldIndex + 1];
+        }
+
+        if ($invalidKeys === [] || empty($variables['input']['metafields'])) {
+            return;
+        }
+
+        $variables['input']['metafields'] = array_values(array_filter(
+            $variables['input']['metafields'],
+            fn (array $metafield): bool => ! in_array($metafield['key'] ?? null, $invalidKeys, true)
+        ));
+    }
+
+    /**
      * Whether the userErrors contain a handle-uniqueness conflict.
      */
     protected function hasHandleConflict(array $errors): bool
@@ -486,8 +542,11 @@ class BulkResultFinalizer
     /**
      * Log the stale mapping cleanup, swallowing logging failures so they never break finalization.
      */
-    protected function logStaleMappingCleanup(int $jobTrackId, array $clearedSkus, array $recreatedSkus): void
-    {
+    protected function logStaleMappingCleanup(
+        int $jobTrackId,
+        array $clearedSkus,
+        array $recoveredStaleSkus,
+    ): void {
         if ($jobTrackId <= 0) {
             return;
         }
@@ -495,14 +554,7 @@ class BulkResultFinalizer
         try {
             $logger = JobLogger::make($jobTrackId);
 
-            if ($recreatedSkus !== []) {
-                $logger->info(sprintf(
-                    'Recreated Shopify product(s) for SKU(s) after detecting stale local mapping: %s',
-                    implode(', ', $recreatedSkus)
-                ));
-            }
-
-            $unrecoveredCleared = array_values(array_diff($clearedSkus, $recreatedSkus));
+            $unrecoveredCleared = array_values(array_diff($clearedSkus, $recoveredStaleSkus));
 
             if ($unrecoveredCleared !== []) {
                 $logger->warning(sprintf(

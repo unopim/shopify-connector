@@ -45,14 +45,14 @@ class ProductPhaseDataService
 
         $defaultLanguage = array_values(array_filter($credential->storeLocales ?? [], fn (array $language): bool => isset($language['defaultlocale']) && $language['defaultlocale'] === true))[0] ?? null;
 
-        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
+        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2])->keyBy('id');
 
         return $this->sharedContextCache[$credentialId] = [
             'credential'             => $credential,
             'credential_array'       => $credential->toApiArray(),
             'shopify_default_locale' => $credential->storelocaleMapping[$defaultLanguage['locale'] ?? ''] ?? null,
-            'export_mapping'         => $mappings->first(),
-            'setting_mapping'        => $mappings->last(),
+            'export_mapping'         => $mappings->get(1),
+            'setting_mapping'        => $mappings->get(2),
             'attributes'             => $this->attributeRepository->all()->keyBy('code'),
             'product_metafields'     => $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray(),
         ];

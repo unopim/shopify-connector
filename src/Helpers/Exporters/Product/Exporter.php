@@ -178,12 +178,12 @@ class Exporter extends AbstractExporter
         $this->credential = $this->shopifyRepository->find($filters['credentials']);
         $this->definitionMapping = $this->credential?->extras;
 
-        $mappings = $this->shopifyExportmapping->findMany([1, 2]);
-        $this->exportMapping = $mappings->first();
+        $mappings = $this->shopifyExportmapping->findMany([1, 2])->keyBy('id');
+        $this->exportMapping = $mappings->get(1);
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
 
-        $this->settingMapping = $mappings->last();
+        $this->settingMapping = $mappings->get(2);
 
         if (! $this->credential?->active) {
             $this->jobLogger->warning(trans('shopify::app.shopify.export.errors.invalid-credential'));
