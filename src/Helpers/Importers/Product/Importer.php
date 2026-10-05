@@ -21,6 +21,7 @@ use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
 use Webkul\Product\Contracts\VariantStructurePlanner as VariantStructurePlannerContract;
+use Webkul\Product\Enums\VariantLevel;
 use Webkul\Product\Models\VariantStructure;
 use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Product\Repositories\ProductRepository;
@@ -485,7 +486,7 @@ class Importer extends AbstractImporter
         $imageMediaids,
         $common,
         $localeSpecific,
-        $channelSpecific,
+        array $channelSpecific,
         $channelAndLocaleSpecific,
         $mediaMapping,
         array $extractVariantAttr,
@@ -586,6 +587,8 @@ class Importer extends AbstractImporter
             $allMediaIdVariants,
             $configurableAttributes,
         );
+
+        $this->promoteCommonVariantCost($variantProductData, $channelSpecific, $variantStructureId);
 
         $mappedImageAttr = null;
 
@@ -1049,6 +1052,64 @@ class Importer extends AbstractImporter
     }
 
     /**
+     * Move an equal variant cost to the configurable when the structure owns
+     * cost at the common level, matching the standard product inheritance flow.
+     * Different costs remain on their variants so no data is silently lost.
+     *
+     * @param  array<int|string, array<string, mixed>>  $variantProductData
+     * @param  array<string, mixed>  $channelSpecific
+     */
+    private function promoteCommonVariantCost(array &$variantProductData, array &$channelSpecific, ?int $variantStructureId): void
+    {
+        $costAttribute = $this->attributes['cost'] ?? null;
+
+        if (! is_object($costAttribute) || $variantStructureId === null) {
+            return;
+        }
+
+        $structure = VariantStructure::with('placements')->find($variantStructureId);
+        $costPlacement = $structure?->placements->first(
+            fn ($placement): bool => (int) $placement->attribute_id === (int) $costAttribute->id
+        );
+
+        if ($costPlacement && $costPlacement->level !== VariantLevel::Common->value) {
+            return;
+        }
+
+        $costs = [];
+
+        foreach ($variantProductData as $variantData) {
+            $cost = $variantData['values']['channel_specific'][$this->channel]['cost'] ?? null;
+
+            if ($cost !== null) {
+                $costs[] = $cost;
+            }
+        }
+
+        if ($costs === []) {
+            return;
+        }
+
+        $commonCost = $costs[0];
+
+        foreach ($costs as $cost) {
+            if ($cost !== $commonCost) {
+                $this->jobLogger->warning('Cost was kept on variants because the imported variant costs differ.');
+
+                return;
+            }
+        }
+
+        $channelSpecific['cost'] = $commonCost;
+
+        foreach ($variantProductData as &$variantData) {
+            unset($variantData['values']['channel_specific'][$this->channel]['cost']);
+        }
+
+        unset($variantData);
+    }
+
+    /**
      * The configurable a variant belongs to. A two-level structure puts a
      * variant_group between the leaf and the root, and only the root may carry
      * the product level values, so the walk continues to the top.
@@ -1085,6 +1146,8 @@ class Importer extends AbstractImporter
             ->first();
 
         if ($structure) {
+            $this->copyVariantStructurePlacements($structure, $familyId, $axisCodes, $levels);
+
             return $structure->id;
         }
 
@@ -1116,7 +1179,53 @@ class Importer extends AbstractImporter
             ]);
         }
 
+        $this->copyVariantStructurePlacements($structure, $familyId, $axisCodes, $levels);
+
         return $structure->id;
+    }
+
+    /**
+     * Copy placements from the family's matching standard structure so imported
+     * products follow the same common, sub-parent, and variant ownership rules.
+     * Existing non-empty structures are deliberately left unchanged.
+     *
+     * @param  array<int, string>  $axisCodes
+     */
+    private function copyVariantStructurePlacements(VariantStructure $structure, int $familyId, array $axisCodes, int $levels): void
+    {
+        if ($structure->placements()->exists()) {
+            return;
+        }
+
+        $axisCodes = array_values($axisCodes);
+
+        $template = VariantStructure::query()
+            ->where('attribute_family_id', $familyId)
+            ->where('levels', $levels)
+            ->with(['axes.attribute', 'placements'])
+            ->get()
+            ->first(function (VariantStructure $candidate) use ($axisCodes, $levels, $structure): bool {
+                if ($candidate->id === $structure->id || $candidate->placements->isEmpty()) {
+                    return false;
+                }
+
+                $candidateAxes = $candidate->axes
+                    ->sortBy('position')
+                    ->map(fn ($axis): ?string => $axis->attribute?->code)
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                return $candidateAxes === $axisCodes
+                    && (int) $candidate->levels === $levels;
+            });
+
+        foreach ($template?->placements ?? [] as $placement) {
+            $structure->placements()->create([
+                'attribute_id' => $placement->attribute_id,
+                'level'        => $placement->level,
+            ]);
+        }
     }
 
     /**

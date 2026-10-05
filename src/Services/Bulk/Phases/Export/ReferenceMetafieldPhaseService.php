@@ -177,12 +177,10 @@ class ReferenceMetafieldPhaseService extends BasePhaseService
             ->where('apiUrl', $this->credential->shopUrl)
             ->whereIn('code', $skus)
             ->get(['code', 'externalId', 'relatedId'])
-            ->mapWithKeys(function (object $mapping): array {
-                return [$mapping->code => [
-                    'product' => $mapping->relatedId ?: (str_contains((string) $mapping->externalId, '/Product/') ? $mapping->externalId : null),
-                    'variant' => str_contains((string) $mapping->externalId, '/ProductVariant/') ? $mapping->externalId : null,
-                ]];
-            });
+            ->mapWithKeys(fn (object $mapping): array => [$mapping->code => [
+                'product' => $mapping->relatedId ?: (str_contains((string) $mapping->externalId, '/Product/') ? $mapping->externalId : null),
+                'variant' => str_contains((string) $mapping->externalId, '/ProductVariant/') ? $mapping->externalId : null,
+            ]]);
     }
 
     protected function scopedValues(object $product): array

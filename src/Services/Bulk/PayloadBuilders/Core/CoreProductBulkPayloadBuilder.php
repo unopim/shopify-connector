@@ -658,6 +658,8 @@ class CoreProductBulkPayloadBuilder
         $metafields = [];
 
         foreach ($defs as $def) {
+            $gids = [];
+
             if ($def['type'] === 'collection_reference') {
                 $gids = $this->resolveCollectionIds($values['categories'] ?? []);
             }
