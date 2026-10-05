@@ -316,6 +316,7 @@ class BulkResultFinalizer
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
 
         $this->removeInvalidMetafields($variables, $userErrors);
+        $this->removeStaleVariantIdentifiers($variables, $userErrors);
 
         // A deleted Shopify product also invalidates its MediaImage/GID values.
         // The media phase will attach fresh media after recreation succeeds.
@@ -411,6 +412,31 @@ class BulkResultFinalizer
         }
 
         return ['success' => true, 'product' => $product];
+    }
+
+    /**
+     * A deleted Shopify variant cannot be updated during product recreation.
+     * Removing its id makes productSet match/create the variant by its SKU and
+     * option values instead.
+     *
+     * @param  array<string, mixed>  $variables
+     * @param  array<int, array<string, mixed>>  $userErrors
+     */
+    protected function removeStaleVariantIdentifiers(array &$variables, array $userErrors): void
+    {
+        $hasMissingVariant = array_any(
+            $userErrors,
+            fn (array $error): bool => strtoupper((string) ($error['code'] ?? '')) === 'PRODUCT_VARIANT_DOES_NOT_EXIST'
+        );
+
+        if (! $hasMissingVariant || empty($variables['input']['variants'])) {
+            return;
+        }
+
+        foreach ($variables['input']['variants'] as &$variant) {
+            unset($variant['id']);
+        }
+        unset($variant);
     }
 
     /**

@@ -8,7 +8,6 @@ use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Models\Product;
-use Webkul\Product\Repositories\ProductAssociationRepository;
 use Webkul\Product\Repositories\ProductRepository;
 use Webkul\Product\Services\ProductValueMapper;
 use Webkul\Product\Services\VariantValueResolver;
@@ -54,9 +53,6 @@ class CoreProductBulkPayloadBuilder
 
     protected array $variantMetaFieldMapping = [];
 
-    /** @var array<int, array<string, array<int, string>>> */
-    protected array $associationSkuMap = [];
-
     protected ?string $shopifyDefaultLocale = null;
 
     protected ?string $currency = null;
@@ -79,7 +75,6 @@ class CoreProductBulkPayloadBuilder
         protected ShopifyClientFactory $clientFactory,
         protected ProductRepository $productRepository,
         protected VariantValueResolver $variantValueResolver,
-        protected ProductAssociationRepository $productAssociationRepository,
     ) {}
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -247,9 +242,21 @@ class CoreProductBulkPayloadBuilder
                 'media'           => true,
                 'translations'    => count($this->credential?->storelocaleMapping ?? []) > 1,
                 'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
+                'references'      => $this->hasDeferredReferenceMetafields(),
             ],
             'lines' => $manifestLines,
         ];
+    }
+
+    protected function hasDeferredReferenceMetafields(): bool
+    {
+        return collect($this->productMetaFieldMapping)->contains(
+            fn (array $definition): bool => in_array(
+                $definition['type'] ?? null,
+                ['product_reference', 'variant_reference'],
+                true,
+            )
+        );
     }
 
     /**
@@ -640,7 +647,7 @@ class CoreProductBulkPayloadBuilder
     {
         $defs = array_filter(
             $metaFieldMapping,
-            fn (array $d): bool => in_array($d['type'] ?? '', ['product_reference', 'variant_reference', 'collection_reference'], true)
+            fn (array $d): bool => ($d['type'] ?? '') === 'collection_reference'
         );
 
         if ($defs === []) {
@@ -651,38 +658,8 @@ class CoreProductBulkPayloadBuilder
         $metafields = [];
 
         foreach ($defs as $def) {
-            $cfg = json_decode($def['validations'] ?? '[]', true) ?: [];
-
             if ($def['type'] === 'collection_reference') {
                 $gids = $this->resolveCollectionIds($values['categories'] ?? []);
-            } else {
-                $assocType = $cfg['association_type'] ?? 'related_products';
-                $skus = array_merge(
-                    (array) ($values['associations'][$assocType] ?? []),
-                    $this->associationSkusForProduct($productRow, $assocType),
-                );
-                $referenceAsVariant = ($cfg['reference_as'] ?? 'product') === 'variant';
-                $field = $referenceAsVariant ? 'externalId' : 'relatedId';
-
-                $gids = [];
-                foreach ($skus as $sku) {
-                    $row = ($this->findMapping($sku) ?? [])[0] ?? null;
-                    $gid = $row[$field] ?? null;
-
-                    if (! $referenceAsVariant && empty($gid) && str_contains((string) ($row['externalId'] ?? ''), '/Product/')) {
-                        $gid = $row['externalId'];
-                    }
-
-                    if ($def['type'] === 'variant_reference' && ! $this->resolveVariantGid($gid)) {
-                        logger()->warning('Shopify: variant_reference skipped — no variant GID', ['sku' => $sku]);
-
-                        continue;
-                    }
-
-                    if ($gid) {
-                        $gids[] = $gid;
-                    }
-                }
             }
 
             $gids = array_values(array_unique(array_filter($gids)));
@@ -701,63 +678,6 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $metafields;
-    }
-
-    /**
-     * Resolve association links directly from the product-association tables.
-     * Product values do not always carry associations, although the export
-     * mapping can still define product-reference metafields for them.
-     *
-     * @return array<int, string>
-     */
-    protected function associationSkus(int $productId, string $associationType): array
-    {
-        if ($productId <= 0) {
-            return [];
-        }
-
-        if (! isset($this->associationSkuMap[$productId])) {
-            $this->associationSkuMap[$productId] = [];
-
-            foreach ($this->productAssociationRepository->getLinksForProduct($productId) as $link) {
-                $typeCode = $link->associationType?->code;
-                $sku = $link->relatedProduct?->sku;
-
-                if ($typeCode && $sku) {
-                    $this->associationSkuMap[$productId][$typeCode][] = $sku;
-                }
-            }
-
-            foreach ($this->associationSkuMap[$productId] as $typeCode => $skus) {
-                $this->associationSkuMap[$productId][$typeCode] = array_values(array_unique($skus));
-            }
-        }
-
-        return $this->associationSkuMap[$productId][$associationType] ?? [];
-    }
-
-    /**
-     * Resolve associations using the row id and fall back to its SKU.
-     *
-     * Parent rows can be normalised differently by the export iterator, so
-     * their numeric id is not always reliable even though the SKU is present.
-     *
-     * @param  array<string, mixed>  $productRow
-     * @return array<int, string>
-     */
-    protected function associationSkusForProduct(array $productRow, string $associationType): array
-    {
-        $skus = $this->associationSkus((int) ($productRow['id'] ?? 0), $associationType);
-
-        if ($skus !== [] || empty($productRow['sku'])) {
-            return $skus;
-        }
-
-        $product = $this->productRepository->findOneByField('sku', $productRow['sku']);
-
-        return $product
-            ? $this->associationSkus((int) $product->id, $associationType)
-            : [];
     }
 
     /**
