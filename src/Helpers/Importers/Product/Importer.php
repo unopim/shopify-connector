@@ -511,6 +511,22 @@ class Importer extends AbstractImporter
             return null;
         }
 
+        $existingVariant = $this->findProductBySkuCached($rowData['node']['variants']['edges'][0]['node']['sku'] ?? null);
+        $existingProduct = $this->rootProductOf($existingVariant)
+            ?? $this->findProductBySkuCached($rowData['node']['handle'] ?? null);
+
+        if ($existingProduct?->attribute_family_id && (int) $existingProduct->attribute_family_id !== (int) $familyModel->id) {
+            $familyModel = $this->batchCache instanceof BatchImportCache
+                ? $this->batchCache->getFamilyById((int) $existingProduct->attribute_family_id)
+                : $this->attributeFamilyRepository->where('id', $existingProduct->attribute_family_id)->first();
+        }
+
+        if (! $familyModel) {
+            $this->jobLogger->warning('existing product family not found for the title:- ['.$rowData['node']['title'].']');
+
+            return null;
+        }
+
         $configurableAttributes = [];
 
         foreach ($familyModel?->getConfigurableAttributes() ?? [] as $attribute) {
@@ -587,6 +603,8 @@ class Importer extends AbstractImporter
             $allMediaIdVariants,
             $configurableAttributes,
         );
+
+        $variantProductData = $this->filterVariantPayloadsByOwnership($variantProductData);
 
         $this->promoteCommonVariantCost($variantProductData, $channelSpecific, $variantStructureId);
 
@@ -2674,6 +2692,24 @@ class Importer extends AbstractImporter
         }
 
         return $data;
+    }
+
+    /**
+     * Strip inherited common values before core processes existing variants.
+     *
+     * @param  array<int|string, array<string, mixed>>  $variantProductData
+     * @return array<int|string, array<string, mixed>>
+     */
+    protected function filterVariantPayloadsByOwnership(array $variantProductData): array
+    {
+        foreach ($variantProductData as $key => $variantData) {
+            $variantProductData[$key] = $this->keepOwnedCommonValues(
+                $variantData,
+                $this->findProductBySkuCached($variantData['sku'] ?? null)
+            );
+        }
+
+        return $variantProductData;
     }
 
     protected function findProductBySkuCached(?string $sku): mixed
