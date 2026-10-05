@@ -19,7 +19,7 @@ class DownloadShopifyImage implements ShouldQueue
     public function __construct(
         protected string $imageUrl,
         protected string $storagePath,
-        protected string $disk = 'public',
+        protected ?string $disk = null,
     ) {}
 
     /**
@@ -37,7 +37,9 @@ class DownloadShopifyImage implements ShouldQueue
 
     public function handle(): void
     {
-        if (Storage::disk($this->disk)->exists($this->storagePath)) {
+        $disk = $this->disk ?? config('filesystems.default', 'public');
+
+        if (Storage::disk($disk)->exists($this->storagePath)) {
             return;
         }
 
@@ -60,7 +62,7 @@ class DownloadShopifyImage implements ShouldQueue
                 return;
             }
 
-            Storage::disk($this->disk)->put($this->storagePath, $response->body());
+            Storage::disk($disk)->put($this->storagePath, $response->body());
         } catch (\Throwable $e) {
             Log::warning('Shopify image download exception', [
                 'url'     => $this->imageUrl,

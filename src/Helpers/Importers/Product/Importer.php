@@ -2758,9 +2758,10 @@ class Importer extends AbstractImporter
             }
 
             $storagePath = $imagePath.$fileName;
+            $disk = config('filesystems.default', 'public');
 
-            if (! StorageFacade::disk('public')->exists($storagePath)) {
-                dispatch(new DownloadShopifyImage($imageUrl, $storagePath, 'public'))->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
+            if (! StorageFacade::disk($disk)->exists($storagePath)) {
+                dispatch(new DownloadShopifyImage($imageUrl, $storagePath, $disk))->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
             }
 
             return $storagePath;
