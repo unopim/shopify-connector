@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Ini adalah koneksi Shopify SaaS. Detail koneksi bersifat hanya-baca — Anda hanya dapat mengonfigurasi pemetaan Penerbitan (Saluran penjualan), Lokasi, dan Lokal di bawah ini.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Pemilihan kategori',
+                'with-children'      => 'Dengan subkategori',
+                'with-children-info' => 'Juga mengirim semua subkategori dari kategori yang dipilih.',
+            ],
+
             'filters' => [
                 'shopify' => 'Filter Shopify',
             ],

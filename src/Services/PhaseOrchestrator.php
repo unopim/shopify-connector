@@ -4,6 +4,7 @@ namespace Webkul\Shopify\Services;
 
 use Webkul\Shopify\Jobs\RunMediaPhase;
 use Webkul\Shopify\Jobs\RunPublishingPhase;
+use Webkul\Shopify\Jobs\RunReferencePhase;
 use Webkul\Shopify\Jobs\RunTranslationPhase;
 use Webkul\Shopify\Models\ShopifyBulkOperation;
 
@@ -38,6 +39,7 @@ class PhaseOrchestrator
             'publishing'   => ! empty($phaseContext['publishing']),
             'translations' => ! empty($phaseContext['translations']),
             'media'        => ! empty($phaseContext['media']),
+            'references'   => ! empty($phaseContext['references']),
         ];
 
         $pendingPhaseCount = count(array_filter($pendingPhases));
@@ -68,6 +70,10 @@ class PhaseOrchestrator
 
         if ($pendingPhases['media']) {
             dispatch(new RunMediaPhase($bulkOperation->id));
+        }
+
+        if ($pendingPhases['references']) {
+            dispatch(new RunReferencePhase($bulkOperation->id));
         }
     }
 

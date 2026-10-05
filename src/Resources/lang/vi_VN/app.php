@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Đây là kết nối SaaS Shopify. Chi tiết kết nối chỉ đọc — bạn chỉ có thể cấu hình Đăng bán (Kênh bán hàng), Địa điểm và ánh xạ ngôn ngữ bên dưới.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Chọn danh mục',
+                'with-children'      => 'Kèm danh mục con',
+                'with-children-info' => 'Gửi cả tất cả danh mục con của các danh mục đã chọn.',
+            ],
+
             'filters' => [
                 'shopify' => 'Bộ lọc Shopify',
             ],

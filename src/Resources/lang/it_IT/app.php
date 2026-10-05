@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Questa è una connessione Shopify SaaS. I dettagli della connessione sono di sola lettura: puoi configurare solo le mappature di Pubblicazione (Canali di vendita), Sede e Locale qui sotto.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Selezione categorie',
+                'with-children'      => 'Con sottocategorie',
+                'with-children-info' => 'Invia anche tutte le sottocategorie delle categorie selezionate.',
+            ],
+
             'filters' => [
                 'shopify' => 'Filtri Shopify',
             ],

@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Ovo je SaaS Shopify veza. Detalji veze su samo za čitanje — možete konfigurirati samo objavu (prodajne kanale), lokaciju i mapiranje lokalizacije u nastavku.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Odabir kategorija',
+                'with-children'      => 'S podkategorijama',
+                'with-children-info' => 'Šalje i sve podkategorije odabranih kategorija.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify filtri',
             ],

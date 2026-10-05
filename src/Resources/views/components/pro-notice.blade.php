@@ -43,9 +43,7 @@
             <div class="shopify-pro-notice__actions">
                 @if ($isPage)
                     <a
-                        href="{{ $proFeatures->upgradeUrl() }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="{{ route('shopify.upgrade') }}"
                         class="shopify-pro-link"
                     >
                         {{ trans('shopify::app.shopify.pro.compare') }}

@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => '這是 SaaS Shopify 連線。連線詳細資料為唯讀 — 您只能設定下方的發佈（銷售管道）、地點與語系對應。',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => '分類選擇',
+                'with-children'      => '包含子分類',
+                'with-children-info' => '同時傳送所選分類的所有子分類。',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify 篩選條件',
             ],

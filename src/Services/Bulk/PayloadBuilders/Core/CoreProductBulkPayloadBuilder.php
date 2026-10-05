@@ -187,7 +187,26 @@ class CoreProductBulkPayloadBuilder
             $jobTrackId,
         );
 
+        // Product media and file_reference metafields can point to the same DAM
+        // asset. Reuse an already-created MediaImage when the Files API cache has
+        // no entry yet; otherwise the metafield is silently omitted because the
+        // formatter cannot resolve the asset id to a Shopify GID.
+        $mediaMappings = $this->shopifyMappingRepository
+            ->where('entityType', 'productImage')
+            ->where('apiUrl', $this->credential?->shopUrl)
+            ->get(['code', 'externalId']);
+
+        $mediaGidsByPath = $mediaMappings->mapWithKeys(function ($mapping): array {
+            $parts = explode('|', (string) $mapping->code, 2);
+
+            return [($parts[1] ?? $parts[0]) => $mapping->externalId];
+        })->all();
+
         foreach ($fileReference['aliases'] as $assetId => $path) {
+            if (! isset($fileReferenceMap[$path]) && isset($mediaGidsByPath[$path])) {
+                $fileReferenceMap[$path] = $mediaGidsByPath[$path];
+            }
+
             if (isset($fileReferenceMap[$path])) {
                 $fileReferenceMap[(string) $assetId] = $fileReferenceMap[$path];
             }
@@ -223,9 +242,21 @@ class CoreProductBulkPayloadBuilder
                 'media'           => true,
                 'translations'    => count($this->credential?->storelocaleMapping ?? []) > 1,
                 'publication_ids' => $this->credential?->extras['salesChannel'] ?? '',
+                'references'      => $this->hasDeferredReferenceMetafields(),
             ],
             'lines' => $manifestLines,
         ];
+    }
+
+    protected function hasDeferredReferenceMetafields(): bool
+    {
+        return collect($this->productMetaFieldMapping)->contains(
+            fn (array $definition): bool => in_array(
+                $definition['type'] ?? null,
+                ['product_reference', 'variant_reference'],
+                true,
+            )
+        );
     }
 
     /**
@@ -292,10 +323,10 @@ class CoreProductBulkPayloadBuilder
             throw new InvalidLocale;
         }
 
-        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2]);
+        $mappings = $this->shopifyExportMappingRepository->findMany([1, 2])->keyBy('id');
 
-        $this->exportMapping = $mappings->first();
-        $this->settingMapping = $mappings->last();
+        $this->exportMapping = $mappings->get(1);
+        $this->settingMapping = $mappings->get(2);
         $this->productMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCT')->get()->toArray();
         $this->variantMetaFieldMapping = $this->shopifyMetaFieldRepository->where('ownerType', 'PRODUCTVARIANT')->get()->toArray();
         $this->attributesAll = $this->attributeRepository->all()->keyBy('code')->all();
@@ -616,7 +647,7 @@ class CoreProductBulkPayloadBuilder
     {
         $defs = array_filter(
             $metaFieldMapping,
-            fn (array $d): bool => in_array($d['type'] ?? '', ['product_reference', 'variant_reference', 'collection_reference'], true)
+            fn (array $d): bool => ($d['type'] ?? '') === 'collection_reference'
         );
 
         if ($defs === []) {
@@ -627,30 +658,10 @@ class CoreProductBulkPayloadBuilder
         $metafields = [];
 
         foreach ($defs as $def) {
-            $cfg = json_decode($def['validations'] ?? '[]', true) ?: [];
+            $gids = [];
 
             if ($def['type'] === 'collection_reference') {
                 $gids = $this->resolveCollectionIds($values['categories'] ?? []);
-            } else {
-                $assocType = $cfg['association_type'] ?? 'related_products';
-                $skus = $values['associations'][$assocType] ?? [];
-                $field = ($cfg['reference_as'] ?? 'product') === 'variant' ? 'externalId' : 'relatedId';
-
-                $gids = [];
-                foreach ($skus as $sku) {
-                    $row = ($this->findMapping($sku) ?? [])[0] ?? null;
-                    $gid = $row[$field] ?? null;
-
-                    if ($def['type'] === 'variant_reference' && ! $this->resolveVariantGid($gid)) {
-                        logger()->warning('Shopify: variant_reference skipped — no variant GID', ['sku' => $sku]);
-
-                        continue;
-                    }
-
-                    if ($gid) {
-                        $gids[] = $gid;
-                    }
-                }
             }
 
             $gids = array_values(array_unique(array_filter($gids)));
@@ -669,6 +680,25 @@ class CoreProductBulkPayloadBuilder
         }
 
         return $metafields;
+    }
+
+    /**
+     * Reference metafields are built with Shopify GIDs by dedicated builders.
+     * Keep them out of the generic formatter to avoid duplicate or malformed values.
+     *
+     * @param  array<int, array<string, mixed>>  $mapping
+     * @return array<int, array<string, mixed>>
+     */
+    protected function genericMetafieldMapping(array $mapping): array
+    {
+        return array_values(array_filter(
+            $mapping,
+            fn (array $definition): bool => ! in_array(
+                $definition['type'] ?? null,
+                ['product_reference', 'variant_reference', 'collection_reference', 'metaobject_reference'],
+                true
+            )
+        ));
     }
 
     /**
@@ -777,22 +807,30 @@ class CoreProductBulkPayloadBuilder
             $this->exportMapping->mapping ?? [],
             $this->shopifyDefaultLocale ?? 'en',
             $parentMergedFields,
-            $this->productMetaFieldMapping,
-            $this->variantMetaFieldMapping
+            $this->genericMetafieldMapping($this->productMetaFieldMapping),
+            $this->genericMetafieldMapping($this->variantMetaFieldMapping)
         );
 
         $referenceMetafields = $this->buildReferenceMetafields($parentData ?? $firstVariant, $this->productMetaFieldMapping);
         if ($referenceMetafields !== []) {
-            $formattedProduct['metafields'] = array_merge(
-                $formattedProduct['metafields'] ?? [],
+            $metafieldBucket = array_key_exists('parentMetaFields', $formattedProduct)
+                ? 'parentMetaFields'
+                : 'metafields';
+
+            $formattedProduct[$metafieldBucket] = array_merge(
+                $formattedProduct[$metafieldBucket] ?? [],
                 $referenceMetafields
             );
         }
 
         $metaobjectMetafields = $this->buildMetaobjectMetafields($parentData ?? $firstVariant);
         if ($metaobjectMetafields !== []) {
-            $formattedProduct['metafields'] = array_merge(
-                $formattedProduct['metafields'] ?? [],
+            $metafieldBucket = array_key_exists('parentMetaFields', $formattedProduct)
+                ? 'parentMetaFields'
+                : 'metafields';
+
+            $formattedProduct[$metafieldBucket] = array_merge(
+                $formattedProduct[$metafieldBucket] ?? [],
                 $metaobjectMetafields
             );
         }
@@ -827,8 +865,8 @@ class CoreProductBulkPayloadBuilder
                 $this->exportMapping->mapping ?? [],
                 $this->shopifyDefaultLocale ?? 'en',
                 $parentMergedFields,
-                $this->productMetaFieldMapping,
-                $this->variantMetaFieldMapping,
+                $this->genericMetafieldMapping($this->productMetaFieldMapping),
+                $this->genericMetafieldMapping($this->variantMetaFieldMapping),
                 $variantGid !== null
             );
 

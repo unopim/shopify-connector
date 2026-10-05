@@ -69,7 +69,7 @@ trait ShopifyGraphqlRequest
 
             $path = $imagePath.$fileName;
 
-            StorageFacade::disk('public')->put($path, $imageContents);
+            StorageFacade::disk(config('filesystems.default', 'public'))->put($path, $imageContents);
 
             return $path;
         } catch (\Exception) {

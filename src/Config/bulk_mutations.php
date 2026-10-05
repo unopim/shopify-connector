@@ -2,6 +2,15 @@
 
 return [
 
+    'metafieldsSetReferenceBulk' => <<<'GRAPHQL'
+mutation metafieldsSetReferenceBulk($metafields: [MetafieldsSetInput!]!) {
+  metafieldsSet(metafields: $metafields) {
+    metafields { namespace key value }
+    userErrors { code field message }
+  }
+}
+GRAPHQL,
+
     'productImportBulkQueryCore' => <<<'GRAPHQL'
 {
   products%PRODUCT_FILTER% {

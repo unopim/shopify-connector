@@ -61,6 +61,16 @@
                             
                             $defaultMapping = $shopifyDefaultMapping;
                             $currentLocal = core()->getRequestedLocaleCode();
+
+                            $initialAttributeValues = [];
+                            $initialFixedValues = [];
+
+                            foreach ($mappingFields as $mappingField) {
+                                $mappingFieldName = $mappingField['name'];
+
+                                $initialAttributeValues[$mappingFieldName] = old($mappingFieldName, $exportMapping[$mappingFieldName] ?? null);
+                                $initialFixedValues[$mappingFieldName] = old('default_'.$mappingFieldName, $defaultMapping[$mappingFieldName] ?? null);
+                            }
                             
                         @endphp
                         @foreach ($mappingFields as $field)
@@ -96,6 +106,7 @@
                                         async=true
                                         :list-route="route('admin.shopify.get-attribute')"
                                         @input="handleSelectChange($event, '{{ $field['name'] }}')"
+                                        ::disabled="hasFixedValue('{{ $field['name'] }}')"
                                     />
                                     <x-admin::form.control-group.error control-name="{{ $field['name'] }}" />
                                 </x-admin::form.control-group>
@@ -106,9 +117,8 @@
                                         :id="'default_' . $field['name']"
                                         :value="old('default_' . $field['name']) ?? $defaultValue"
                                         :placeholder="trans($field['label'])"
-                                        ::asc="isFieldDisabled('{{ $value }}', 'default_' + '{{ $field['name'] }}')"
-                                        ::disabled="disabledFields['default_' + '{{ $field['name'] }}']"
-                                                
+                                        v-model="fixedValues['{{ $field['name'] }}']"
+                                        ::disabled="hasAttributeValue('{{ $field['name'] }}')"
                                     />
                                     
                                     <x-admin::form.control-group.error :control-name="'default_' . $field['name']" />
@@ -394,8 +404,8 @@
             template: '#v-create-attributes-mapping-template',
             data() {
                 return {
-                    disabledFields: {},
-                    onchange: {},
+                    attributeValues: @json($initialAttributeValues),
+                    fixedValues: @json($initialFixedValues),
                     selectedAttributeType: @json($mediaType ?? null),
                     unitPriceValueIsMeasurement: @json($unitPriceValueIsMeasurement ?? false),
                 };
@@ -428,33 +438,27 @@
                 },
                 
                 handleSelectChange(event, fieldName) {
-                    var defaultFieldName = 'default_' + fieldName;
+                    this.attributeValues[fieldName] = event;
+                },
 
-                    if (!event) {
-                        this.onchange[defaultFieldName] = false;
-                    } else {
-                        this.onchange[defaultFieldName] = true;
-                    }
+                hasFixedValue(fieldName) {
+                    return this.hasValue(this.fixedValues[fieldName]);
+                },
+
+                hasAttributeValue(fieldName) {
+                    return this.hasValue(this.attributeValues[fieldName]);
+                },
+
+                hasValue(value) {
+                    return value !== null
+                        && value !== undefined
+                        && String(value).trim() !== '';
                 },
 
                 onUnitPriceValueChange(event) {
                     let parsed = event ? (typeof event === 'string' ? JSON.parse(event) : event) : null;
 
                     this.unitPriceValueIsMeasurement = parsed?.type === 'measurement';
-                },
-
-                isFieldDisabled(value, defaultFieldName) {
-                    this.disabledFields[defaultFieldName] = true;
-
-                    if (value == 'null' || value == '' || !value) {
-                        this.disabledFields[defaultFieldName] = false;  
-                    }
-
-                    if (Object.keys(this.onchange).length != 0) {
-                        Object.keys(this.onchange).forEach(key => {
-                            this.disabledFields[key] = this.onchange[key];
-                        });
-                    }    
                 }
             }
         });

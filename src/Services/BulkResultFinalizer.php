@@ -64,7 +64,9 @@ class BulkResultFinalizer
         $failed = [];
         $clearedStaleSkus = [];
         $recreatedSkus = [];
+        $recoveredStaleSkus = [];
         $pendingMedia = [];
+        $skippedMetafields = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -72,8 +74,10 @@ class BulkResultFinalizer
             $payload = $decoded['data']['productSet'] ?? [];
             $userErrors = $payload['userErrors'] ?? [];
             $product = $payload['product'] ?? [];
+            $skippableMetafieldErrors = $this->skippableMetafieldErrors($userErrors);
+            $hasBlockingErrors = count($skippableMetafieldErrors) !== count($userErrors);
 
-            if (! empty($userErrors) || empty($product['id'])) {
+            if ($hasBlockingErrors || empty($product['id'])) {
                 $sku = $manifestLine['product_sku'] ?? null;
 
                 if ($sku && $shopUrl && $this->isStaleProductMappingError($userErrors)) {
@@ -88,10 +92,15 @@ class BulkResultFinalizer
                         $credential,
                         $jobTrackId,
                         $shopUrl,
+                        $userErrors,
                     );
 
                     if ($retry['success']) {
                         $recreatedSkus[] = $sku;
+                        $recoveredStaleSkus = array_values(array_unique(array_merge(
+                            $recoveredStaleSkus,
+                            $cleared,
+                        )));
                         $success++;
 
                         continue;
@@ -109,6 +118,14 @@ class BulkResultFinalizer
                 ];
 
                 continue;
+            }
+
+            if ($skippableMetafieldErrors !== []) {
+                $skippedMetafields[] = [
+                    'line'   => $index,
+                    'sku'    => $manifestLine['product_sku'] ?? null,
+                    'errors' => $this->annotateMetafieldErrors($skippableMetafieldErrors, $inputLines[$index] ?? null),
+                ];
             }
 
             $this->syncProductMapping(
@@ -151,6 +168,7 @@ class BulkResultFinalizer
             'success'                       => $success,
             'failed'                        => count($failed),
             'errors'                        => $failed,
+            'skipped_metafields'            => $skippedMetafields,
             'cleared_stale_mappings'        => $clearedStaleSkus,
             'recreated_after_stale_mapping' => $recreatedSkus,
         ];
@@ -160,13 +178,36 @@ class BulkResultFinalizer
         $bulkOperation->save();
 
         if ($clearedStaleSkus !== [] || $recreatedSkus !== []) {
-            $this->logStaleMappingCleanup((int) ($jobTrackId ?? 0), $clearedStaleSkus, $recreatedSkus);
+            $this->logStaleMappingCleanup(
+                (int) ($jobTrackId ?? 0),
+                $clearedStaleSkus,
+                $recoveredStaleSkus,
+            );
         }
 
         $this->markBatchProcessed($bulkOperation, $success, count($failed));
 
         $this->phaseOrchestrator->registerPendingPhases($bulkOperation, $manifest['follow_up_context'] ?? []);
         $this->phaseOrchestrator->dispatchPendingPhases($bulkOperation);
+    }
+
+    /**
+     * Shopify can return a product together with an INVALID_METAFIELD error.
+     * Those errors affect only the rejected metafield; valid product fields have
+     * already been applied and should not make the whole export line fail.
+     *
+     * @param  array<int, array<string, mixed>>  $userErrors
+     * @return array<int, array<string, mixed>>
+     */
+    protected function skippableMetafieldErrors(array $userErrors): array
+    {
+        return array_values(array_filter($userErrors, function (array $error): bool {
+            if (strtoupper((string) ($error['code'] ?? '')) !== 'INVALID_METAFIELD') {
+                return false;
+            }
+
+            return in_array('metafields', array_map(strval(...), (array) ($error['field'] ?? [])), true);
+        }));
     }
 
     /**
@@ -264,6 +305,7 @@ class BulkResultFinalizer
         array $credential,
         ?int $jobTrackId,
         ?string $shopUrl,
+        array $userErrors = [],
     ): array {
         $handle = $manifestLine['product_handle'] ?? null;
 
@@ -272,6 +314,12 @@ class BulkResultFinalizer
         }
 
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
+
+        $this->removeInvalidMetafields($variables, $userErrors);
+        $this->removeStaleVariantIdentifiers($variables, $userErrors);
+
+        // A deleted Shopify product also invalidates its MediaImage/GID values.
+        // The media phase will attach fresh media after recreation succeeds.
         unset($variables['input']['files']);
 
         $this->injectRecreateInventory($variables, $manifestLine);
@@ -367,6 +415,71 @@ class BulkResultFinalizer
     }
 
     /**
+     * A deleted Shopify variant cannot be updated during product recreation.
+     * Removing its id makes productSet match/create the variant by its SKU and
+     * option values instead.
+     *
+     * @param  array<string, mixed>  $variables
+     * @param  array<int, array<string, mixed>>  $userErrors
+     */
+    protected function removeStaleVariantIdentifiers(array &$variables, array $userErrors): void
+    {
+        $hasMissingVariant = array_any(
+            $userErrors,
+            fn (array $error): bool => strtoupper((string) ($error['code'] ?? '')) === 'PRODUCT_VARIANT_DOES_NOT_EXIST'
+        );
+
+        if (! $hasMissingVariant || empty($variables['input']['variants'])) {
+            return;
+        }
+
+        foreach ($variables['input']['variants'] as &$variant) {
+            unset($variant['id']);
+        }
+        unset($variant);
+    }
+
+    /**
+     * Remove only metafields Shopify rejected while recreating a stale product.
+     *
+     * A deleted related product can make productSet reject the entire input even
+     * though the product itself is otherwise valid. The product must still be
+     * recreated; the invalid reference can be sent on a later export after its
+     * related product receives a fresh Shopify mapping.
+     *
+     * @param  array<string, mixed>  $variables
+     * @param  array<int, array<string, mixed>>  $userErrors
+     */
+    protected function removeInvalidMetafields(array &$variables, array $userErrors): void
+    {
+        $invalidKeys = [];
+
+        foreach ($userErrors as $error) {
+            if (strtoupper((string) ($error['code'] ?? '')) !== 'INVALID_METAFIELD') {
+                continue;
+            }
+
+            $field = array_values(array_map(strval(...), (array) ($error['field'] ?? [])));
+            $metafieldIndex = array_search('metafields', $field, true);
+
+            if ($metafieldIndex === false || ! isset($field[$metafieldIndex + 1])) {
+                continue;
+            }
+
+            $invalidKeys[] = $field[$metafieldIndex + 1];
+        }
+
+        if ($invalidKeys === [] || empty($variables['input']['metafields'])) {
+            return;
+        }
+
+        $variables['input']['metafields'] = array_values(array_filter(
+            $variables['input']['metafields'],
+            fn (array $metafield): bool => ! in_array($metafield['key'] ?? null, $invalidKeys, true)
+        ));
+    }
+
+    /**
      * Whether the userErrors contain a handle-uniqueness conflict.
      */
     protected function hasHandleConflict(array $errors): bool
@@ -455,8 +568,11 @@ class BulkResultFinalizer
     /**
      * Log the stale mapping cleanup, swallowing logging failures so they never break finalization.
      */
-    protected function logStaleMappingCleanup(int $jobTrackId, array $clearedSkus, array $recreatedSkus): void
-    {
+    protected function logStaleMappingCleanup(
+        int $jobTrackId,
+        array $clearedSkus,
+        array $recoveredStaleSkus,
+    ): void {
         if ($jobTrackId <= 0) {
             return;
         }
@@ -464,14 +580,7 @@ class BulkResultFinalizer
         try {
             $logger = JobLogger::make($jobTrackId);
 
-            if ($recreatedSkus !== []) {
-                $logger->info(sprintf(
-                    'Recreated Shopify product(s) for SKU(s) after detecting stale local mapping: %s',
-                    implode(', ', $recreatedSkus)
-                ));
-            }
-
-            $unrecoveredCleared = array_values(array_diff($clearedSkus, $recreatedSkus));
+            $unrecoveredCleared = array_values(array_diff($clearedSkus, $recoveredStaleSkus));
 
             if ($unrecoveredCleared !== []) {
                 $logger->warning(sprintf(

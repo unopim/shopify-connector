@@ -1,5 +1,9 @@
 {
     "preset": "laravel",
+    "notPath": [
+        "Pest.php",
+        "Pest copy.php"
+    ],
     "rules": {
         "binary_operator_spaces": {
             "operators": {

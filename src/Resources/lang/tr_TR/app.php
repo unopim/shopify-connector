@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Bu bir SaaS Shopify bağlantısıdır. Bağlantı ayrıntıları salt okunurdur — aşağıda yalnızca Yayınlama (Satış kanalları), Konum ve Yerel Ayar eşlemesini yapılandırabilirsiniz.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Kategori seçimi',
+                'with-children'      => 'Alt kategorilerle',
+                'with-children-info' => 'Seçilen kategorilerin tüm alt kategorilerini de gönderir.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify Filtreleri',
             ],

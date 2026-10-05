@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Dette er en SaaS-Shopify-forbindelse. Forbindelsesoplysningerne er skrivebeskyttede – du kan kun konfigurere udgivelsen (salgskanaler), lokation og landestandardmapning nedenfor.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Kategorivalg',
+                'with-children'      => 'Med underkategorier',
+                'with-children-info' => 'Sender også alle underkategorier til de valgte kategorier.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify-filtre',
             ],

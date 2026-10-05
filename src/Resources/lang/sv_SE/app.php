@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Detta är en Shopify SaaS-anslutning. Anslutningsuppgifterna är skrivskyddade — du kan endast konfigurera Publicering (försäljningskanaler), Plats och språkmappning nedan.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Kategoriurval',
+                'with-children'      => 'Med underkategorier',
+                'with-children-info' => 'Skickar även alla underkategorier till de valda kategorierna.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify-filter',
             ],

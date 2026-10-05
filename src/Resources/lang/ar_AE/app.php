@@ -438,6 +438,12 @@ return [
             'saas-readonly-note'    => 'هذا اتصال Shopify بنظام SaaS. تفاصيل الاتصال للقراءة فقط — يمكنك فقط تكوين النشر (قنوات البيع) والموقع واللغة أدناه.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'اختيار الفئات',
+                'with-children'      => 'مع الفئات الفرعية',
+                'with-children-info' => 'يرسل كل فئة فرعية للفئات المحددة أيضًا.',
+            ],
+
             'filters' => [
                 'shopify' => 'فلاتر Shopify',
             ],

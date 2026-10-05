@@ -438,6 +438,12 @@ return [
             'saas-readonly-note'    => '这是一个 Shopify SaaS 连接。连接详情为只读 — 您只能在下方配置发布（销售渠道）、位置和语言。',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => '分类选择',
+                'with-children'      => '包含子分类',
+                'with-children-info' => '同时发送所选分类的所有子分类。',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify 筛选条件',
             ],

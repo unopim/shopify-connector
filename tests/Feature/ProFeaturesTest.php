@@ -180,19 +180,19 @@ it('serves the shopify screens while the pro package is absent', function () {
 
     get(route('admin.shopify.export-mappings', 1))
         ->assertOk()
-        ->assertSeeText(trans('shopify::app.shopify.pro.summary'));
+        ->assertSee(trans('shopify::app.shopify.pro.summary'));
 
     get(route('admin.shopify.import-mappings', 3))
         ->assertOk()
-        ->assertSeeText(trans('shopify::app.shopify.pro.summary'));
+        ->assertSee(trans('shopify::app.shopify.pro.summary'));
 
     get(route('shopify.metafield.index'))
         ->assertOk()
-        ->assertSeeText(trans('shopify::app.shopify.pro.types-note'));
+        ->assertSee(trans('shopify::app.shopify.pro.types-note'));
 
     get(route('shopify.metaobject.index'))
         ->assertOk()
-        ->assertSeeText(trans('shopify::app.shopify.pro.types-note'));
+        ->assertSee(trans('shopify::app.shopify.pro.types-note'));
 
     get(route('admin.settings.data_transfer.exports.create'))
         ->assertOk()
@@ -256,7 +256,7 @@ it('offers the mapping sections and the schedule read only while the pro package
         ->assertOk()
         ->assertSee(trans('shopify::app.shopify.association-mapping.title'))
         ->assertSee(trans('shopify::app.shopify.external-media.title'))
-        ->assertSeeText(trans('shopify::app.shopify.pro.summary'));
+        ->assertSee(trans('shopify::app.shopify.pro.summary'));
 
     get(route('admin.settings.data_transfer.exports.create'))
         ->assertOk()
@@ -290,6 +290,33 @@ it('refuses a pro metafield type while the package is absent', function () {
     expect(resolve(ProFeatures::class)->lockedMetafieldTypes())
         ->toContain('money')
         ->toContain('area');
+});
+
+it('accepts the core measurement types while the package is absent', function (string $type) {
+    withoutShopifyPro();
+
+    $this->loginAsAdmin();
+
+    $this->post(route('shopify.metafield.store'), [
+        'ownerType' => 'PRODUCT',
+        'code'      => 'core_'.$type.'_'.uniqid(),
+        'type'      => $type,
+    ])->assertSessionDoesntHaveErrors('type');
+
+    expect(resolve(ProFeatures::class)->lockedMetafieldTypes())
+        ->not->toContain($type)
+        ->toContain('temperature');
+})->with(['dimension', 'volume', 'weight']);
+
+it('keeps the core measurement types selectable while the package is absent', function () {
+    withoutShopifyPro();
+
+    $measurement = collect(resolve(ShoifyMetaFieldType::class)->getMetaFieldType()['measurement'])->keyBy('id');
+
+    expect($measurement['weight'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['volume'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['dimension'])->not->toHaveKey('$isDisabled')
+        ->and($measurement['temperature'])->toHaveKey('$isDisabled');
 });
 
 it('marks the pro types unselectable while the package is absent', function () {

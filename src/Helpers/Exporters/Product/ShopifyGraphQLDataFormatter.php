@@ -3,6 +3,8 @@
 namespace Webkul\Shopify\Helpers\Exporters\Product;
 
 use Illuminate\Support\Facades\Date;
+use Webkul\Measurement\Helpers\MeasurementHelper;
+use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
 use Webkul\Shopify\Helpers\MeasurementUnitMapper;
 use Webkul\Shopify\Helpers\ShopifyFields;
 
@@ -131,7 +133,11 @@ class ShopifyGraphQLDataFormatter
 
                 switch ($type) {
                     case 'multi_line_text_field':
-                        $metafieldValue = $rawData[$unoAttribute] ?? '';
+                        $metafieldValue = $this->stripTagMetafield(
+                            $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? ''),
+                            $locale,
+                            $attribute
+                        );
                         break;
 
                     case 'color':
@@ -215,15 +221,35 @@ class ShopifyGraphQLDataFormatter
                         break;
 
                     default:
+                        if (($attribute?->type ?? null) === 'measurement'
+                            && in_array($type, ['number_decimal', 'number_integer'], true)
+                        ) {
+                            $metafieldValue = $this->formatMeasurementAsNumber(
+                                $rawData[$unoAttribute] ?? null,
+                                $type,
+                                $attribute,
+                            );
+
+                            break;
+                        }
+
                         $metafieldValue = ($attribute?->type === 'price')
                             ? ($rawData[$unoAttribute][$this->currency] ?? 0)
-                            : $this->stripTagMetafield((string) ($rawData[$unoAttribute] ?? ''), $locale, $attribute);
+                            : $this->stripTagMetafield(
+                                $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? ''),
+                                $locale,
+                                $attribute
+                            );
                         break;
                 }
 
                 if (! empty($field['listvalue'])) {
                     if ($type !== 'file_reference' && $type !== 'link') {
-                        $metafieldValue = $this->formatMetafieldValue($rawData[$unoAttribute] ?? null, $attribute, $locale);
+                        $metafieldValue = $this->formatMetafieldValue(
+                            $this->scalarizeMetafieldValue($rawData[$unoAttribute] ?? null),
+                            $attribute,
+                            $locale
+                        );
                     }
                     $type = 'list.'.$type;
                 }
@@ -397,6 +423,100 @@ class ShopifyGraphQLDataFormatter
         }
 
         return json_encode([$metafieldValue], true);
+    }
+
+    /**
+     * Shopify metafield values are always sent as strings, including list
+     * values encoded as JSON strings. UnoPim multiselect attributes can arrive
+     * as arrays, so normalize them before scalar metafield formatting.
+     */
+    protected function scalarizeMetafieldValue(mixed $value): string
+    {
+        if (! is_array($value)) {
+            return (string) $value;
+        }
+
+        return implode(',', array_map(
+            static fn (mixed $item): string => is_scalar($item) ? (string) $item : (json_encode($item) ?: ''),
+            $value
+        ));
+    }
+
+    /**
+     * Convert a UnoPim measurement value to a Shopify numeric metafield value.
+     * Shopify number fields do not accept the measurement's unit metadata.
+     * Fractional values cannot be represented by number_integer and are skipped.
+     */
+    protected function formatMeasurementAsNumber(mixed $value, string $type, ?object $attribute = null): ?string
+    {
+        $sourceUnit = is_array($value) ? ($value['unit'] ?? null) : null;
+
+        if (is_array($value)) {
+            $value = $value['amount'] ?? $value['value'] ?? $value['base_data'] ?? null;
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        $number = $this->normalizeMeasurementNumber(
+            (float) $value,
+            $sourceUnit,
+            $attribute,
+        );
+
+        if ($type === 'number_integer') {
+            if ($number !== (float) (int) $number) {
+                return null;
+            }
+
+            return (string) (int) $number;
+        }
+
+        return (string) $number;
+    }
+
+    /**
+     * Convert a measurement to the unit configured for the mapped decimal
+     * metafield. Shopify number fields do not carry unit metadata, so the
+     * configured UnoPim unit is the unit implied by the exported number.
+     */
+    protected function normalizeMeasurementNumber(float $value, ?string $sourceUnit, ?object $attribute): float
+    {
+        if (! $attribute?->id || ! $sourceUnit) {
+            return $value;
+        }
+
+        $measurement = resolve(AttributeMeasurementRepository::class)
+            ->getByAttributeId($attribute->id);
+        $family = $measurement?->family;
+        $targetUnit = $measurement?->unit_code;
+
+        if (! $family || ! $targetUnit || $sourceUnit === $targetUnit) {
+            return $value;
+        }
+
+        $baseValue = resolve(MeasurementHelper::class)
+            ->calculateBaseValue($value, $sourceUnit, $family);
+        $target = collect($family->units ?? [])->firstWhere('code', $targetUnit);
+
+        foreach ($target['convert_from_standard'] ?? [] as $conversion) {
+            $conversionValue = (float) ($conversion['value'] ?? 0);
+
+            if ($conversionValue === 0.0) {
+                continue;
+            }
+
+            $baseValue = match ($conversion['operator'] ?? null) {
+                'mul'   => $baseValue * $conversionValue,
+                'div'   => $baseValue / $conversionValue,
+                'add'   => $baseValue + $conversionValue,
+                'sub'   => $baseValue - $conversionValue,
+                default => $baseValue,
+            };
+        }
+
+        return (float) $baseValue;
     }
 
     public function isValidHexColor($color): int|false

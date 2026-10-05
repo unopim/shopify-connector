@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => 'Dit is een SaaS Shopify-verbinding. De verbindingsgegevens zijn alleen-lezen — u kunt hieronder alleen de Publiceren (Verkoopkanalen), Locatie- en Taalregiotoewijzing configureren.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Categorieselectie',
+                'with-children'      => 'Met subcategorieën',
+                'with-children-info' => 'Verstuurt ook alle subcategorieën van de geselecteerde categorieën.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify-filters',
             ],

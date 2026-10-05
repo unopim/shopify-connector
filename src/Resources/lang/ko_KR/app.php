@@ -441,6 +441,12 @@ return [
             'saas-readonly-note'    => '이것은 SaaS Shopify 연결입니다. 연결 세부 정보는 읽기 전용이며, 아래의 게시(판매 채널), 위치 및 로케일 매핑만 구성할 수 있습니다.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => '카테고리 선택',
+                'with-children'      => '하위 카테고리 포함',
+                'with-children-info' => '선택한 카테고리의 모든 하위 카테고리도 전송합니다.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify 필터',
             ],

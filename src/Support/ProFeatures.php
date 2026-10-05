@@ -106,6 +106,7 @@ class ProFeatures
     /**
      * The metafield types Shopify Pro exports. Without it they are shown but
      * cannot be picked, so a definition never outlives the package that reads it.
+     * Dimension, volume and weight stay open since core exports them.
      *
      * @return array<int, string>
      */
@@ -115,10 +116,7 @@ class ProFeatures
             return [];
         }
 
-        return array_merge(
-            [ShoifyMetaFieldType::MONEY],
-            array_keys((new MeasurementTypeRegistry)->types()),
-        );
+        return [ShoifyMetaFieldType::MONEY, ...(new MeasurementTypeRegistry)->lockedTypes()];
     }
 
     /**

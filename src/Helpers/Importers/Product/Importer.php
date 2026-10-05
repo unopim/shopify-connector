@@ -21,6 +21,7 @@ use Webkul\DataTransfer\Helpers\Importers\Product\SKUStorage;
 use Webkul\DataTransfer\Repositories\JobTrackBatchRepository;
 use Webkul\Measurement\Repositories\AttributeMeasurementRepository;
 use Webkul\Product\Contracts\VariantStructurePlanner as VariantStructurePlannerContract;
+use Webkul\Product\Enums\VariantLevel;
 use Webkul\Product\Models\VariantStructure;
 use Webkul\Product\Repositories\AssociationTypeRepository;
 use Webkul\Product\Repositories\ProductRepository;
@@ -485,7 +486,7 @@ class Importer extends AbstractImporter
         $imageMediaids,
         $common,
         $localeSpecific,
-        $channelSpecific,
+        array $channelSpecific,
         $channelAndLocaleSpecific,
         $mediaMapping,
         array $extractVariantAttr,
@@ -510,6 +511,22 @@ class Importer extends AbstractImporter
             return null;
         }
 
+        $existingVariant = $this->findProductBySkuCached($rowData['node']['variants']['edges'][0]['node']['sku'] ?? null);
+        $existingProduct = $this->rootProductOf($existingVariant)
+            ?? $this->findProductBySkuCached($rowData['node']['handle'] ?? null);
+
+        if ($existingProduct?->attribute_family_id && (int) $existingProduct->attribute_family_id !== (int) $familyModel->id) {
+            $familyModel = $this->batchCache instanceof BatchImportCache
+                ? $this->batchCache->getFamilyById((int) $existingProduct->attribute_family_id)
+                : $this->attributeFamilyRepository->where('id', $existingProduct->attribute_family_id)->first();
+        }
+
+        if (! $familyModel) {
+            $this->jobLogger->warning('existing product family not found for the title:- ['.$rowData['node']['title'].']');
+
+            return null;
+        }
+
         $configurableAttributes = [];
 
         foreach ($familyModel?->getConfigurableAttributes() ?? [] as $attribute) {
@@ -527,9 +544,15 @@ class Importer extends AbstractImporter
         $shopifyProductId = $rowData['node']['id'];
         $configProductMapping = $this->checkMappingInDb(['code' => $rowData['node']['handle']]);
         $parentSkuFromUnopim = null;
-        $isNested = count($attributes) === 2;
-        $variantStructureId = $isNested
-            ? $this->resolveNestedVariantStructure((int) $familyModel->id, $rowData['node']['handle'], array_keys($attributes))
+        $attributeCount = count($attributes);
+        $isNested = $attributeCount === 2;
+        $variantStructureId = in_array($attributeCount, [1, 2], true)
+            ? $this->resolveVariantStructure(
+                (int) $familyModel->id,
+                $rowData['node']['handle'],
+                array_keys($attributes),
+                $attributeCount,
+            )
             : null;
 
         if ($isNested && ! $variantStructureId) {
@@ -581,6 +604,10 @@ class Importer extends AbstractImporter
             $configurableAttributes,
         );
 
+        $variantProductData = $this->filterVariantPayloadsByOwnership($variantProductData);
+
+        $this->promoteCommonVariantCost($variantProductData, $channelSpecific, $variantStructureId);
+
         $mappedImageAttr = null;
 
         if (! empty($mediaMapping)) {
@@ -626,6 +653,10 @@ class Importer extends AbstractImporter
             ],
             'categories' => $unopimCategory,
         ];
+
+        if ($variantStructureId !== null) {
+            $dataToUpdate['variant_structure_id'] = $variantStructureId;
+        }
 
         if ($isNested) {
             $dataToUpdate['variant_groups'] = $this->buildVariantGroups($variantProductData, (string) array_key_first($attributes), $rowData['node']['handle'], $existingIdBySku);
@@ -1039,6 +1070,64 @@ class Importer extends AbstractImporter
     }
 
     /**
+     * Move an equal variant cost to the configurable when the structure owns
+     * cost at the common level, matching the standard product inheritance flow.
+     * Different costs remain on their variants so no data is silently lost.
+     *
+     * @param  array<int|string, array<string, mixed>>  $variantProductData
+     * @param  array<string, mixed>  $channelSpecific
+     */
+    private function promoteCommonVariantCost(array &$variantProductData, array &$channelSpecific, ?int $variantStructureId): void
+    {
+        $costAttribute = $this->attributes['cost'] ?? null;
+
+        if (! is_object($costAttribute) || $variantStructureId === null) {
+            return;
+        }
+
+        $structure = VariantStructure::with('placements')->find($variantStructureId);
+        $costPlacement = $structure?->placements->first(
+            fn ($placement): bool => (int) $placement->attribute_id === (int) $costAttribute->id
+        );
+
+        if ($costPlacement && $costPlacement->level !== VariantLevel::Common->value) {
+            return;
+        }
+
+        $costs = [];
+
+        foreach ($variantProductData as $variantData) {
+            $cost = $variantData['values']['channel_specific'][$this->channel]['cost'] ?? null;
+
+            if ($cost !== null) {
+                $costs[] = $cost;
+            }
+        }
+
+        if ($costs === []) {
+            return;
+        }
+
+        $commonCost = $costs[0];
+
+        foreach ($costs as $cost) {
+            if ($cost !== $commonCost) {
+                $this->jobLogger->warning('Cost was kept on variants because the imported variant costs differ.');
+
+                return;
+            }
+        }
+
+        $channelSpecific['cost'] = $commonCost;
+
+        foreach ($variantProductData as &$variantData) {
+            unset($variantData['values']['channel_specific'][$this->channel]['cost']);
+        }
+
+        unset($variantData);
+    }
+
+    /**
      * The configurable a variant belongs to. A two-level structure puts a
      * variant_group between the leaf and the root, and only the root may carry
      * the product level values, so the walk continues to the top.
@@ -1055,15 +1144,19 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Create or reuse a 2-level variant structure for a nested configurable import.
-     * The first Shopify option becomes level_1 (the variant_group / sub_parent axis,
-     * e.g. colour); the second becomes level_2 (the leaf axis, e.g. size). Returns
-     * null when an axis attribute cannot be resolved, so the caller falls back to flat.
+     * Create or reuse the variant structure matching the Shopify option count.
      *
-     * @param  array<int, string>  $axisCodes  ordered [level_1_code, level_2_code]
+     * A one-option product uses a direct configurable-to-simple tree, while a
+     * two-option product uses the configurable-to-group-to-simple tree.
+     *
+     * @param  array<int, string>  $axisCodes
      */
-    private function resolveNestedVariantStructure(int $familyId, string $handle, array $axisCodes): ?int
+    private function resolveVariantStructure(int $familyId, string $handle, array $axisCodes, int $levels): ?int
     {
+        if (! in_array($levels, [1, 2], true) || count($axisCodes) !== $levels) {
+            return null;
+        }
+
         $code = $handle.'-structure';
 
         $structure = VariantStructure::where('attribute_family_id', $familyId)
@@ -1071,6 +1164,8 @@ class Importer extends AbstractImporter
             ->first();
 
         if ($structure) {
+            $this->copyVariantStructurePlacements($structure, $familyId, $axisCodes, $levels);
+
             return $structure->id;
         }
 
@@ -1091,18 +1186,64 @@ class Importer extends AbstractImporter
             'attribute_family_id' => $familyId,
             'code'                => $code,
             'name'                => $handle,
-            'levels'              => 2,
+            'levels'              => $levels,
         ]);
 
         foreach ($attributeIds as $index => $attributeId) {
             $structure->axes()->create([
                 'attribute_id' => $attributeId,
-                'level'        => $index === 0 ? 'level_1' : 'level_2',
+                'level'        => $levels === 2 && $index === 1 ? 'level_2' : 'level_1',
                 'position'     => $index + 1,
             ]);
         }
 
+        $this->copyVariantStructurePlacements($structure, $familyId, $axisCodes, $levels);
+
         return $structure->id;
+    }
+
+    /**
+     * Copy placements from the family's matching standard structure so imported
+     * products follow the same common, sub-parent, and variant ownership rules.
+     * Existing non-empty structures are deliberately left unchanged.
+     *
+     * @param  array<int, string>  $axisCodes
+     */
+    private function copyVariantStructurePlacements(VariantStructure $structure, int $familyId, array $axisCodes, int $levels): void
+    {
+        if ($structure->placements()->exists()) {
+            return;
+        }
+
+        $axisCodes = array_values($axisCodes);
+
+        $template = VariantStructure::query()
+            ->where('attribute_family_id', $familyId)
+            ->where('levels', $levels)
+            ->with(['axes.attribute', 'placements'])
+            ->get()
+            ->first(function (VariantStructure $candidate) use ($axisCodes, $levels, $structure): bool {
+                if ($candidate->id === $structure->id || $candidate->placements->isEmpty()) {
+                    return false;
+                }
+
+                $candidateAxes = $candidate->axes
+                    ->sortBy('position')
+                    ->map(fn ($axis): ?string => $axis->attribute?->code)
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                return $candidateAxes === $axisCodes
+                    && (int) $candidate->levels === $levels;
+            });
+
+        foreach ($template?->placements ?? [] as $placement) {
+            $structure->placements()->create([
+                'attribute_id' => $placement->attribute_id,
+                'level'        => $placement->level,
+            ]);
+        }
     }
 
     /**
@@ -1510,6 +1651,22 @@ class Importer extends AbstractImporter
                     && in_array($metaData['node']['type'], ['weight', 'volume', 'dimension'], true)
                     ? $this->resolveMeasurementMetafield($attribute, $metaData['node']['type'], is_array($unitValue) ? $unitValue : [])
                     : ($unitValue['value'] ?? 0);
+            }
+
+            if (
+                $attribute->type === 'measurement'
+                && in_array($metaData['node']['type'], ['number_decimal', 'number_integer'], true)
+                && is_numeric($source)
+            ) {
+                $measurement = resolve(AttributeMeasurementRepository::class)
+                    ->getByAttributeId($attribute->id);
+
+                if ($measurement?->unit_code) {
+                    $source = [
+                        'value' => (string) $source,
+                        'unit'  => $measurement->unit_code,
+                    ];
+                }
             }
 
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
@@ -2162,8 +2319,25 @@ class Importer extends AbstractImporter
             }
             $variantCreationAttr[] = $name;
             $attribute = $this->attributes[$name];
-            $optionvalue = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']), '-');
-            $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
+            $normalizedOptionValue = trim(
+                preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']),
+                '-'
+            );
+
+            $optionValues = array_values(array_unique([
+                $normalizedOptionValue,
+                str_replace('-', '_', $normalizedOptionValue),
+            ]));
+
+            $optionForShopify = null;
+
+            foreach ($optionValues as $optionValue) {
+                $optionForShopify = $this->findAttributeOptionCached($attribute, $optionValue);
+
+                if ($optionForShopify) {
+                    break;
+                }
+            }
 
             if (! $optionForShopify) {
                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
@@ -2520,6 +2694,24 @@ class Importer extends AbstractImporter
         return $data;
     }
 
+    /**
+     * Strip inherited common values before core processes existing variants.
+     *
+     * @param  array<int|string, array<string, mixed>>  $variantProductData
+     * @return array<int|string, array<string, mixed>>
+     */
+    protected function filterVariantPayloadsByOwnership(array $variantProductData): array
+    {
+        foreach ($variantProductData as $key => $variantData) {
+            $variantProductData[$key] = $this->keepOwnedCommonValues(
+                $variantData,
+                $this->findProductBySkuCached($variantData['sku'] ?? null)
+            );
+        }
+
+        return $variantProductData;
+    }
+
     protected function findProductBySkuCached(?string $sku): mixed
     {
         if ($sku === null || $sku === '') {
@@ -2602,9 +2794,10 @@ class Importer extends AbstractImporter
             }
 
             $storagePath = $imagePath.$fileName;
+            $disk = config('filesystems.default', 'public');
 
-            if (! StorageFacade::disk('public')->exists($storagePath)) {
-                dispatch(new DownloadShopifyImage($imageUrl, $storagePath, 'public'))->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
+            if (! StorageFacade::disk($disk)->exists($storagePath)) {
+                dispatch(new DownloadShopifyImage($imageUrl, $storagePath, $disk))->onQueue(config('shopify-bulk-operations.import_image_queue', 'default'));
             }
 
             return $storagePath;

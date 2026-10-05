@@ -438,6 +438,12 @@ return [
             'saas-readonly-note'    => 'Dies ist eine SaaS-Shopify-Verbindung. Verbindungsdetails sind schreibgeschützt — Sie können nur die Veröffentlichung (Vertriebskanäle), Standort- und Sprachzuordnung unten konfigurieren.',
         ],
         'export' => [
+            'category-filters' => [
+                'title'              => 'Kategorieauswahl',
+                'with-children'      => 'Mit Unterkategorien',
+                'with-children-info' => 'Sendet auch alle Unterkategorien der ausgewählten Kategorien.',
+            ],
+
             'filters' => [
                 'shopify' => 'Shopify-Filter',
             ],

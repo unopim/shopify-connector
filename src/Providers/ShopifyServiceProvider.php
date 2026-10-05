@@ -19,6 +19,7 @@ use Webkul\Shopify\Console\Commands\ShopifyInstaller;
 use Webkul\Shopify\Console\Commands\ShopifyMappingProduct;
 use Webkul\Shopify\Console\Commands\ShopifyPollBulkOperations;
 use Webkul\Shopify\Listeners\DeferJobTrackCompletion;
+use Webkul\Shopify\Listeners\ExportUpdatedSummary;
 use Webkul\Shopify\Listeners\RevokeShopifyOnApiKeyDelete;
 use Webkul\Shopify\Repositories\ShopifyExportMappingRepository;
 use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
@@ -29,6 +30,12 @@ use Webkul\Theme\ViewRenderEventManager;
 
 class ShopifyServiceProvider extends ServiceProvider
 {
+    /**
+     * Request attribute set once core's output card offered its hook while
+     * the export screen rendered.
+     */
+    protected const EXPORT_OUTPUT_HOOKED = 'shopify.export_output_hooked';
+
     /**
      * Bootstrap services.
      */
@@ -138,9 +145,27 @@ class ShopifyServiceProvider extends ServiceProvider
             });
         }
 
+        /**
+         * The right-hand column of a Shopify export: the credentials open the
+         * Output card, in core's when the export has one and in the connector's
+         * own when it has none, and the schedule follows below it. A core that
+         * predates the output card events gets the credentials in a card of their
+         * own below the filters instead, so they are never left out.
+         *
+         * One credentials view serves all three places, told which by the data
+         * it renders with, since a template added by name renders with none.
+         *
+         * @var array<string, array{credentials: string, after: string}>
+         */
         $exportCards = [
-            'create' => ['shopify::data-transfer.export-credentials', 'shopify::data-transfer.export-create-schedule'],
-            'edit'   => ['shopify::data-transfer.export-credentials-edit', 'shopify::data-transfer.export-schedule'],
+            'create' => [
+                'credentials' => 'shopify::data-transfer.export-credentials',
+                'after'       => 'shopify::data-transfer.export-create-schedule',
+            ],
+            'edit' => [
+                'credentials' => 'shopify::data-transfer.export-credentials-edit',
+                'after'       => 'shopify::data-transfer.export-schedule',
+            ],
         ];
 
         View::composer('shopify::association-mappings.section', function ($view): void {
@@ -202,9 +227,35 @@ class ShopifyServiceProvider extends ServiceProvider
 
         foreach ($exportCards as $screen => $templates) {
             Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.befor", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
-                foreach ($templates as $template) {
-                    $viewRenderEventManager->addTemplate($template);
+                request()->attributes->set(self::EXPORT_OUTPUT_HOOKED, false);
+
+                $viewRenderEventManager->addTemplate($templates['credentials']);
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.output.before", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
+                request()->attributes->set(self::EXPORT_OUTPUT_HOOKED, true);
+
+                $viewRenderEventManager->addTemplate(view($templates['credentials'], ['insideOutput' => true])->render());
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.after", static function (ViewRenderEventManager $viewRenderEventManager) use ($templates): void {
+                if (! request()->attributes->get(self::EXPORT_OUTPUT_HOOKED)) {
+                    $viewRenderEventManager->addTemplate(view($templates['credentials'], ['fallback' => true])->render());
                 }
+
+                $viewRenderEventManager->addTemplate($templates['after']);
+            });
+
+            /**
+             * The category export's Pro filters have no core card: the selection
+             * sits under the scope card, the children toggle among the output fields.
+             */
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.scope.after", static function (ViewRenderEventManager $viewRenderEventManager): void {
+                $viewRenderEventManager->addTemplate('shopify::data-transfer.category-selection');
+            });
+
+            Event::listen("unopim.admin.settings.data_transfer.exports.{$screen}.card.accordion.filters.output.after", static function (ViewRenderEventManager $viewRenderEventManager): void {
+                $viewRenderEventManager->addTemplate('shopify::data-transfer.category-output');
             });
         }
 
@@ -280,6 +331,7 @@ class ShopifyServiceProvider extends ServiceProvider
             }
         });
 
+        Event::listen('data_transfer.export.completed', [ExportUpdatedSummary::class, 'completed']);
         Event::listen('data_transfer.export.completed', [DeferJobTrackCompletion::class, 'handle']);
 
         $shopifyImportPlaceholder = static function (): string {

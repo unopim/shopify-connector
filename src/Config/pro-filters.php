@@ -127,4 +127,45 @@ return [
             ],
         ],
     ],
+
+    /**
+     * The category selection and the children toggle have no core card, so the
+     * connector renders them itself; the rest land where core places them.
+     */
+    'shopifyCategories' => [
+        'filters' => [
+            'fields' => [
+                [
+                    'name'       => 'locales',
+                    'title'      => 'data_transfer::app.exporters.products.filters.locales',
+                    'info'       => 'data_transfer::app.exporters.products.filters.locales-info',
+                    'required'   => false,
+                    'type'       => 'multiselect',
+                    'full_width' => true,
+                    'async'      => true,
+                    'list_route' => 'admin.settings.data_transfer.exports.filters.locales',
+                    'track_by'   => 'code',
+                    'label_by'   => 'label',
+                ], [
+                    'name'     => 'export_categories',
+                    'title'    => 'data_transfer::app.exporters.products.filters.categories',
+                    'required' => false,
+                    'type'     => 'category-tree',
+                ], [
+                    'name'     => 'with_media',
+                    'title'    => 'data_transfer::app.exporters.fields.with-media',
+                    'required' => false,
+                    'type'     => 'boolean',
+                    'default'  => '1',
+                ], [
+                    'name'     => 'with_children',
+                    'title'    => 'shopify::app.shopify.export.category-filters.with-children',
+                    'info'     => 'shopify::app.shopify.export.category-filters.with-children-info',
+                    'required' => false,
+                    'type'     => 'boolean',
+                    'default'  => '0',
+                ],
+            ],
+        ],
+    ],
 ];

@@ -28,6 +28,7 @@ function importAssetField(string $code, bool $perLocale = false): CategoryField
         'is_unique'        => 0,
         'is_required'      => 0,
         'value_per_locale' => $perLocale,
+        'section'          => 'left',
         'position'         => 98,
     ]);
 }
