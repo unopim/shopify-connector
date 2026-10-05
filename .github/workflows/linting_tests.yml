@@ -16,7 +16,8 @@ jobs:
     steps:
         - uses: actions/checkout@v1
         - name: Running Pint Test
-          uses: aglipanci/laravel-pint-action@2.0.0
+          uses: aglipanci/laravel-pint-action@2.6.0
           with:
             testMode: true
             verboseMode: true
+            onlyDirty: true
