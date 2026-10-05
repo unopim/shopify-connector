@@ -1526,6 +1526,22 @@ class Importer extends AbstractImporter
                     : ($unitValue['value'] ?? 0);
             }
 
+            if (
+                $attribute->type === 'measurement'
+                && in_array($metaData['node']['type'], ['number_decimal', 'number_integer'], true)
+                && is_numeric($source)
+            ) {
+                $measurement = resolve(AttributeMeasurementRepository::class)
+                    ->getByAttributeId($attribute->id);
+
+                if ($measurement?->unit_code) {
+                    $source = [
+                        'value' => (string) $source,
+                        'unit'  => $measurement->unit_code,
+                    ];
+                }
+            }
+
             if (str_contains((string) $metaData['node']['type'], 'file_reference')) {
                 if ($attribute->type === 'asset') {
                     $ids = $this->resolveFileReferenceAssetIds($metaData['node']);
