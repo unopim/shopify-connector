@@ -527,9 +527,15 @@ class Importer extends AbstractImporter
         $shopifyProductId = $rowData['node']['id'];
         $configProductMapping = $this->checkMappingInDb(['code' => $rowData['node']['handle']]);
         $parentSkuFromUnopim = null;
-        $isNested = count($attributes) === 2;
-        $variantStructureId = $isNested
-            ? $this->resolveNestedVariantStructure((int) $familyModel->id, $rowData['node']['handle'], array_keys($attributes))
+        $attributeCount = count($attributes);
+        $isNested = $attributeCount === 2;
+        $variantStructureId = in_array($attributeCount, [1, 2], true)
+            ? $this->resolveVariantStructure(
+                (int) $familyModel->id,
+                $rowData['node']['handle'],
+                array_keys($attributes),
+                $attributeCount,
+            )
             : null;
 
         if ($isNested && ! $variantStructureId) {
@@ -626,6 +632,10 @@ class Importer extends AbstractImporter
             ],
             'categories' => $unopimCategory,
         ];
+
+        if ($variantStructureId !== null) {
+            $dataToUpdate['variant_structure_id'] = $variantStructureId;
+        }
 
         if ($isNested) {
             $dataToUpdate['variant_groups'] = $this->buildVariantGroups($variantProductData, (string) array_key_first($attributes), $rowData['node']['handle'], $existingIdBySku);
@@ -1055,15 +1065,19 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Create or reuse a 2-level variant structure for a nested configurable import.
-     * The first Shopify option becomes level_1 (the variant_group / sub_parent axis,
-     * e.g. colour); the second becomes level_2 (the leaf axis, e.g. size). Returns
-     * null when an axis attribute cannot be resolved, so the caller falls back to flat.
+     * Create or reuse the variant structure matching the Shopify option count.
      *
-     * @param  array<int, string>  $axisCodes  ordered [level_1_code, level_2_code]
+     * A one-option product uses a direct configurable-to-simple tree, while a
+     * two-option product uses the configurable-to-group-to-simple tree.
+     *
+     * @param  array<int, string>  $axisCodes
      */
-    private function resolveNestedVariantStructure(int $familyId, string $handle, array $axisCodes): ?int
+    private function resolveVariantStructure(int $familyId, string $handle, array $axisCodes, int $levels): ?int
     {
+        if (! in_array($levels, [1, 2], true) || count($axisCodes) !== $levels) {
+            return null;
+        }
+
         $code = $handle.'-structure';
 
         $structure = VariantStructure::where('attribute_family_id', $familyId)
@@ -1091,13 +1105,13 @@ class Importer extends AbstractImporter
             'attribute_family_id' => $familyId,
             'code'                => $code,
             'name'                => $handle,
-            'levels'              => 2,
+            'levels'              => $levels,
         ]);
 
         foreach ($attributeIds as $index => $attributeId) {
             $structure->axes()->create([
                 'attribute_id' => $attributeId,
-                'level'        => $index === 0 ? 'level_1' : 'level_2',
+                'level'        => $levels === 2 && $index === 1 ? 'level_2' : 'level_1',
                 'position'     => $index + 1,
             ]);
         }
@@ -2162,8 +2176,25 @@ class Importer extends AbstractImporter
             }
             $variantCreationAttr[] = $name;
             $attribute = $this->attributes[$name];
-            $optionvalue = trim(preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']), '-');
-            $optionForShopify = $this->findAttributeOptionCached($attribute, $optionvalue);
+            $normalizedOptionValue = trim(
+                preg_replace('/[^A-Za-z0-9]+/', '-', $option['value']),
+                '-'
+            );
+
+            $optionValues = array_values(array_unique([
+                $normalizedOptionValue,
+                str_replace('-', '_', $normalizedOptionValue),
+            ]));
+
+            $optionForShopify = null;
+
+            foreach ($optionValues as $optionValue) {
+                $optionForShopify = $this->findAttributeOptionCached($attribute, $optionValue);
+
+                if ($optionForShopify) {
+                    break;
+                }
+            }
 
             if (! $optionForShopify) {
                 $this->jobLogger->warning("{$option['name']} - {$option['value']}:- Option is not found in the unopim sku:- {$variantData['node']['sku']}");
