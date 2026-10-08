@@ -14,7 +14,6 @@ use Webkul\Attribute\Repositories\AttributeFamilyGroupMappingRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Core\Repositories\ChannelRepository;
-use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Enums\ProductFilter;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
@@ -143,9 +142,21 @@ class Exporter extends AbstractExporter
         protected ShopifyBulkOperationRepository $shopifyBulkOperationRepository,
         protected BulkOperationService $bulkOperationService,
         protected CoreProductBulkPayloadBuilder $coreProductBulkPayloadBuilder,
-        protected ?AssetRepository $assetRepository = null,
+        protected mixed $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
+
+        if ($this->assetRepository === null) {
+            $assetRepositoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Repositories', 'AssetRepository');
+
+            if (class_exists($assetRepositoryClass)) {
+                try {
+                    $this->assetRepository = resolve($assetRepositoryClass);
+                } catch (\Throwable) {
+                    $this->assetRepository = null;
+                }
+            }
+        }
     }
 
     /**
