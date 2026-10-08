@@ -260,6 +260,22 @@
         background-color: rgba(109, 40, 217, 0.2);
     }
 
+    .shopify-pro-comparison .icon-done {
+        color: #16a34a;
+    }
+
+    .shopify-pro-comparison .icon-cancel {
+        color: #dc2626;
+    }
+
+    .dark .shopify-pro-comparison .icon-done {
+        color: #4ade80;
+    }
+
+    .dark .shopify-pro-comparison .icon-cancel {
+        color: #f87171;
+    }
+
     /** A locked section is out of reach as a whole. */
     .shopify-pro-notice--locked:not(.shopify-pro-notice--page) ~ *,
     [data-shopify-pro-locked] {

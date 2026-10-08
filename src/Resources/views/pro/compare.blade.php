@@ -18,7 +18,7 @@
         one scan down the page; the narrow screens scroll it sideways instead of
         stacking every row into its own card.
     --}}
-    <div class="mt-5 overflow-x-auto rounded-lg box-shadow bg-white dark:bg-cherry-900">
+    <div class="shopify-pro-comparison mt-5 overflow-x-auto rounded-lg box-shadow bg-white dark:bg-cherry-900">
         <x-admin::table class="min-w-[36rem]">
             <x-admin::table.thead>
                 <x-admin::table.thead.tr>
@@ -58,11 +58,11 @@
                                 @endisset
                             </x-admin::table.td>
 
-                            <x-admin::table.td class="text-center">
+                            <x-admin::table.td class="w-32 !text-center">
                                 @include('shopify::pro._availability', ['available' => $feature['ce']])
                             </x-admin::table.td>
 
-                            <x-admin::table.td class="text-center">
+                            <x-admin::table.td class="w-32 !text-center">
                                 @include('shopify::pro._availability', ['available' => true])
                             </x-admin::table.td>
                         </x-admin::table.tbody.tr>
