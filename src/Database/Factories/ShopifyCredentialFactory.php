@@ -22,7 +22,7 @@ class ShopifyCredentialFactory extends Factory
     {
         return [
             'shopUrl'      => 'https://demotest.myshopify.com',
-            'apiVersion'   => '2026-07',
+            'apiVersion'   => '2026-10',
             'accessToken'  => '$2y$10$92IXUNpkjO0rOQ5byMi',
             'clientId'     => 'test_client_id',
             'clientSecret' => 'test_client_secret',

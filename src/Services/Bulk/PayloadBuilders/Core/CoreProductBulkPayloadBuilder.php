@@ -4,7 +4,6 @@ namespace Webkul\Shopify\Services\Bulk\PayloadBuilders\Core;
 
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
-use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrack as JobTrackContract;
 use Webkul\DataTransfer\Helpers\Export;
 use Webkul\Product\Models\Product;
@@ -448,7 +447,7 @@ class CoreProductBulkPayloadBuilder
     {
         $assetRepository = $this->assetRepository();
 
-        if (! $assetRepository instanceof AssetRepository) {
+        if (! is_object($assetRepository)) {
             return [];
         }
 

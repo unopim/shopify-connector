@@ -123,6 +123,6 @@ class SaasCredentialController extends Controller
     {
         $versions = (new ShoifyApiVersion)->getApiVersion();
 
-        return reset($versions)['id'] ?? '2026-07';
+        return reset($versions)['id'] ?? '2026-10';
     }
 }

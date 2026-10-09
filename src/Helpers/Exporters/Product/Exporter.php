@@ -14,7 +14,6 @@ use Webkul\Attribute\Repositories\AttributeFamilyGroupMappingRepository;
 use Webkul\Attribute\Repositories\AttributeGroupRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Core\Repositories\ChannelRepository;
-use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Enums\ProductFilter;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
@@ -78,6 +77,8 @@ class Exporter extends AbstractExporter
     protected $variantMetafieldAttrCode = [];
 
     protected bool $exportsFile = false;
+
+    protected mixed $assetRepository = null;
 
     protected $currencies = [];
 
@@ -143,9 +144,25 @@ class Exporter extends AbstractExporter
         protected ShopifyBulkOperationRepository $shopifyBulkOperationRepository,
         protected BulkOperationService $bulkOperationService,
         protected CoreProductBulkPayloadBuilder $coreProductBulkPayloadBuilder,
-        protected ?AssetRepository $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
+    }
+
+    protected function assetRepository(): mixed
+    {
+        if ($this->assetRepository === null) {
+            $assetRepositoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Repositories', 'AssetRepository');
+
+            if (class_exists($assetRepositoryClass)) {
+                try {
+                    $this->assetRepository = resolve($assetRepositoryClass);
+                } catch (\Throwable) {
+                    $this->assetRepository = null;
+                }
+            }
+        }
+
+        return $this->assetRepository;
     }
 
     /**
@@ -1958,7 +1975,7 @@ class Exporter extends AbstractExporter
         $attrType = $this->attributesAll[$imageAttr]->type ?? null;
         if ($attrType === 'asset') {
             $ids = explode(',', $data[$imageAttr]);
-            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            $assets = $this->assetRepository()?->whereIn('id', $ids)?->get()?->toArray();
             foreach ($assets ?? [] as $asset) {
                 $imageKey = $imageAttr.'_'.$asset['id'];
                 $assetAttrCode[] = $imageKey;
@@ -2118,7 +2135,7 @@ class Exporter extends AbstractExporter
 
         if ($attrType === 'asset') {
             $ids = explode(',', $data[$imageAttr]);
-            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            $assets = $this->assetRepository()?->whereIn('id', $ids)?->get()?->toArray();
             foreach ($assets ?? [] as $asset) {
                 $imageAttrKey = $imageAttr.'_'.$asset['id'];
                 if ($asset['mime_type'] == 'video/mp4') {

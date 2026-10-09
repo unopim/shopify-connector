@@ -5,7 +5,6 @@ namespace Webkul\Shopify\Helpers\Exporters\Category;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Webkul\Category\Repositories\CategoryFieldRepository;
-use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
 use Webkul\DataTransfer\Helpers\Exporters\AbstractExporter;
@@ -496,7 +495,7 @@ class Exporter extends AbstractExporter implements ReportsUpdatedCount
             explode(',', is_array($value) ? implode(',', $value) : (string) $value),
         )));
 
-        if ($ids === [] || ! $this->assetRepository() instanceof AssetRepository) {
+        if ($ids === [] || ! is_object($this->assetRepository())) {
             return null;
         }
 

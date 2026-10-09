@@ -190,24 +190,6 @@
 
                         <x-admin::form.control-group.error control-name="salesChannel" />
                     </x-admin::form.control-group>
-                        <!-- Enable/Disable -->
-                        <x-admin::form.control-group>
-                            <x-admin::form.control-group.label>
-                                @lang('admin::app.catalog.category_fields.edit.status')
-                            </x-admin::form.control-group.label>
-                            <input 
-                                type="hidden"
-                                name="active"
-                                value="0"
-                            />
-
-                            <x-admin::form.control-group.control
-                                type="switch"
-                                name="active"
-                                value="1"
-                                :checked="(boolean) $credential->active"
-                            />
-                    </x-admin::form.control-group>
                 </div>
 
                 <!-- Location-wise Inventory mapping -->
@@ -308,6 +290,34 @@
                                 </x-admin::form.control-group>
                            </div>
                         @endforeach
+                </div>
+            </div>
+
+            <!-- Credential status -->
+            <div class="w-full max-w-xs shrink-0 max-xl:max-w-none">
+                <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
+                    <p class="text-base text-gray-800 dark:text-white font-semibold mb-4">
+                        @lang('admin::app.catalog.category_fields.edit.status')
+                    </p>
+
+                    <div class="flex items-center justify-between gap-4">
+                        <x-admin::form.control-group.label>
+                            @lang('admin::app.catalog.category_fields.edit.status')
+                        </x-admin::form.control-group.label>
+
+                        <input
+                            type="hidden"
+                            name="active"
+                            value="0"
+                        />
+
+                        <x-admin::form.control-group.control
+                            type="switch"
+                            name="active"
+                            value="1"
+                            :checked="(boolean) $credential->active"
+                        />
+                    </div>
                 </div>
             </div>
         </div>

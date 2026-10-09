@@ -50,7 +50,7 @@
                 
                 <div class="flex flex-col gap-2 flex-1 max-xl:flex-auto">
 
-                    <div class="p-4 bg-white dark:bg-cherry-900 rounded box-shadow">
+                    <div class="bg-white dark:bg-cherry-900 rounded box-shadow">
                         <div class="shopify-map-row grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                             <p class="break-words font-bold">@lang('shopify::app.shopify.export.mapping.filed-shopify')</p>
                             <p class="break-words font-bold">@lang('shopify::app.shopify.export.mapping.attribute')</p>
@@ -85,7 +85,7 @@
 
                             <div class="shopify-map-row grid grid-cols-3 gap-2.5 items-center px-4 py-4 border-b dark:border-cherry-800 text-gray-600 dark:text-gray-300 transition-all hover:bg-violet-50 hover:bg-opacity-30 dark:hover:bg-cherry-800">
                                 <div>
-                                    <p class="break-words"><span @class(['required' => $field['name'] === 'title'])>@lang($field['label']) {{ ' ['.$field['name'].']' }}</span>
+                                    <p class="break-words"><span @class(['font-bold', 'required' => $field['name'] === 'title'])>@lang($field['label']) {{ ' ['.$field['name'].']' }}</span>
                                     @if(isset($field['tooltip']))
                                     <div class="flex gap-1 items-center mt-1"> <span class="icon-information text-lg"></span> <p class="break-words text-xs text-gray-500 dark:text-gray-400"> @lang($field['tooltip'])</p> </div>
                                      </p>

@@ -2,7 +2,6 @@
 
 namespace Webkul\Shopify\Services\Bulk\PayloadBuilders;
 
-use Webkul\DAM\Repositories\AssetRepository;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 use Webkul\Shopify\Services\Bulk\Media\AssetUrlResolver;
 use Webkul\Shopify\Services\ProductPhaseDataService;
@@ -654,7 +653,7 @@ class MediaBulkPayloadBuilder
     {
         $assetRepository = $this->assetRepository();
 
-        if (! $assetRepository instanceof AssetRepository) {
+        if (! is_object($assetRepository)) {
             return [];
         }
 
