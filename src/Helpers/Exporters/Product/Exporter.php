@@ -78,6 +78,8 @@ class Exporter extends AbstractExporter
 
     protected bool $exportsFile = false;
 
+    protected mixed $assetRepository = null;
+
     protected $currencies = [];
 
     protected $attributes = [];
@@ -142,10 +144,12 @@ class Exporter extends AbstractExporter
         protected ShopifyBulkOperationRepository $shopifyBulkOperationRepository,
         protected BulkOperationService $bulkOperationService,
         protected CoreProductBulkPayloadBuilder $coreProductBulkPayloadBuilder,
-        protected mixed $assetRepository = null,
     ) {
         parent::__construct($exportBatchRepository, $exportFileBuffer);
+    }
 
+    protected function assetRepository(): mixed
+    {
         if ($this->assetRepository === null) {
             $assetRepositoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Repositories', 'AssetRepository');
 
@@ -157,6 +161,8 @@ class Exporter extends AbstractExporter
                 }
             }
         }
+
+        return $this->assetRepository;
     }
 
     /**
@@ -1969,7 +1975,7 @@ class Exporter extends AbstractExporter
         $attrType = $this->attributesAll[$imageAttr]->type ?? null;
         if ($attrType === 'asset') {
             $ids = explode(',', $data[$imageAttr]);
-            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            $assets = $this->assetRepository()?->whereIn('id', $ids)?->get()?->toArray();
             foreach ($assets ?? [] as $asset) {
                 $imageKey = $imageAttr.'_'.$asset['id'];
                 $assetAttrCode[] = $imageKey;
@@ -2129,7 +2135,7 @@ class Exporter extends AbstractExporter
 
         if ($attrType === 'asset') {
             $ids = explode(',', $data[$imageAttr]);
-            $assets = $this->assetRepository?->whereIn('id', $ids)?->get()?->toArray();
+            $assets = $this->assetRepository()?->whereIn('id', $ids)?->get()?->toArray();
             foreach ($assets ?? [] as $asset) {
                 $imageAttrKey = $imageAttr.'_'.$asset['id'];
                 if ($asset['mime_type'] == 'video/mp4') {
