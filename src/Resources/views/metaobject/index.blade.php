@@ -42,6 +42,7 @@
                                 v-if="createOpen"
                                 mode="create"
                                 :is-nested="true"
+                                :navigates-on-save="true"
                                 :field-types='@json($fieldTypes)'
                                 @saved="onSaved"
                                 @cancel="closeCreate"

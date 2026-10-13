@@ -74,6 +74,7 @@
 
         props: {
             isNested: { type: Boolean, default: false },
+            navigatesOnSave: { type: Boolean, default: false },
             fieldTypes: { type: Object, default: () => ({}) },
         },
 
@@ -88,6 +89,12 @@
                 nestedOpen: false,
                 nestedIndex: null,
             };
+        },
+
+        computed: {
+            flashesLocally() {
+                return this.isNested && ! this.navigatesOnSave;
+            },
         },
 
         mounted() {
@@ -183,9 +190,13 @@
 
                 this.saving = true;
 
-                this.$axios.post("{{ route('shopify.metaobject.store') }}", { name: this.name, fields: this.fields })
+                this.$axios.post("{{ route('shopify.metaobject.store') }}", { name: this.name, fields: this.fields, nested: this.flashesLocally })
                     .then(res => {
                         if (this.isNested) {
+                            if (this.flashesLocally) {
+                                this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.saved')" });
+                            }
+
                             this.$emit('saved', res.data);
                             this.saving = false;
 

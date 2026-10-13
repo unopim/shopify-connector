@@ -102,7 +102,9 @@ class MetaobjectController extends Controller
             ? route('shopify.metaobject.edit', $definition->id)
             : route('shopify.metaobject.index');
 
-        session()->flash('success', trans('shopify::app.shopify.metaobject.saved'));
+        if (! request()->boolean('nested')) {
+            session()->flash('success', trans('shopify::app.shopify.metaobject.saved'));
+        }
 
         return new JsonResponse([
             'id'           => $definition->id,
@@ -285,6 +287,10 @@ class MetaobjectController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
+        if (! $this->canDeleteDefinitions([$id])) {
+            return $this->attributeDeleteForbiddenResponse();
+        }
+
         $this->deleteDefinition($id);
 
         return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.deleted')]);
@@ -292,11 +298,41 @@ class MetaobjectController extends Controller
 
     public function massDestroy(): JsonResponse
     {
-        foreach ((array) request()->input('indices', []) as $id) {
-            $this->deleteDefinition((int) $id);
+        $ids = array_map(intval(...), (array) request()->input('indices', []));
+
+        if (! $this->canDeleteDefinitions($ids)) {
+            return $this->attributeDeleteForbiddenResponse();
+        }
+
+        foreach ($ids as $id) {
+            $this->deleteDefinition($id);
         }
 
         return new JsonResponse(['message' => trans('shopify::app.shopify.metaobject.deleted')]);
+    }
+
+    /**
+     * Deleting a definition also deletes its bound catalog attributes, so that
+     * requires the catalog attribute delete permission as well.
+     *
+     * @param  array<int, int>  $ids
+     */
+    protected function canDeleteDefinitions(array $ids): bool
+    {
+        if (bouncer()->hasPermission('catalog.attributes.delete')) {
+            return true;
+        }
+
+        return ! collect($ids)->contains(
+            fn (int $id): bool => $this->attributeBindingRepository->bindingsForDefinition($id)->isNotEmpty()
+        );
+    }
+
+    protected function attributeDeleteForbiddenResponse(): JsonResponse
+    {
+        return new JsonResponse([
+            'message' => trans('shopify::app.shopify.metaobject.attr-delete-denied'),
+        ], JsonResponse::HTTP_FORBIDDEN);
     }
 
     /**

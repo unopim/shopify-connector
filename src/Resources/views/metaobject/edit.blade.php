@@ -1052,7 +1052,16 @@
                                 this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.entry-saved')" });
                                 this.closeModal();
                                 this.$refs.datagrid.get();
-                            }).finally(() => { this.saving = false; });
+                            })
+                            .catch(error => {
+                                const errors = error.response?.data?.errors ?? {};
+                                const message = Object.values(errors)[0]?.[0] ?? error.response?.data?.message;
+
+                                if (message) {
+                                    this.$emitter.emit('add-flash', { type: 'warning', message });
+                                }
+                            })
+                            .finally(() => { this.saving = false; });
                     },
                 },
             });

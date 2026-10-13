@@ -8,7 +8,13 @@ use Webkul\Shopify\Repositories\ShopifyCredentialRepository;
 
 class ShopifyAccessTokenManager
 {
-    protected static array $credentialCache = [];
+    /**
+     * Credentials resolved during this instance's lifetime, keyed by credential id.
+     * Kept per instance (never static) so long-running workers do not reuse stale tokens.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $credentialCache = [];
 
     public function __construct(
         protected ShopifyCredentialRepository $shopifyCredentialRepository
@@ -89,7 +95,7 @@ class ShopifyAccessTokenManager
         }
 
         if (! empty($credential['credentialId'])) {
-            self::$credentialCache[(int) $credential['credentialId']] = $credential;
+            $this->credentialCache[(int) $credential['credentialId']] = $credential;
         }
 
         return $credential;
@@ -103,8 +109,8 @@ class ShopifyAccessTokenManager
             return $credential;
         }
 
-        if (isset(self::$credentialCache[$credentialId])) {
-            return array_merge($credential, self::$credentialCache[$credentialId]);
+        if (isset($this->credentialCache[$credentialId])) {
+            return array_merge($credential, $this->credentialCache[$credentialId]);
         }
 
         $credentialModel = $this->shopifyCredentialRepository->find($credentialId);
@@ -123,7 +129,7 @@ class ShopifyAccessTokenManager
             'accessTokenExpiresAt' => optional($credentialModel->accessTokenExpiresAt)?->toDateTimeString(),
         ]);
 
-        self::$credentialCache[$credentialId] = $resolved;
+        $this->credentialCache[$credentialId] = $resolved;
 
         return $resolved;
     }
@@ -139,7 +145,7 @@ class ShopifyAccessTokenManager
 
     protected function tokenEndpoint(string $shopUrl): string
     {
-        $shopUrl = rtrim($shopUrl, '/');
+        $shopUrl = preg_replace('#^http://#i', 'https://', rtrim($shopUrl, '/'));
 
         return $shopUrl.'/admin/oauth/access_token';
     }
