@@ -192,7 +192,7 @@
                             return;
                         }
 
-                        window.location.href = "{{ route('shopify.metaobject.edit', ':id') }}".replace(':id', res.data.id);
+                        window.location.href = res.data.redirect_url || "{{ route('shopify.metaobject.index') }}";
                     })
                     .catch(error => this.showError(error));
             },

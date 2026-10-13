@@ -85,21 +85,25 @@ class CredentialDataGrid extends DataGrid
             ]);
         }
 
-        $this->addAction([
-            'index'  => 'sync',
-            'icon'   => 'icon-data-transfer',
-            'title'  => trans('shopify::app.shopify.credential.datagrid.sync'),
-            'method' => 'POST',
-            'url'    => fn ($row): string => route('shopify.credentials.sync', $row->id),
-        ]);
+        if (bouncer()->hasPermission('shopify.credentials.edit')) {
+            $this->addAction([
+                'index'  => 'sync',
+                'icon'   => 'icon-data-transfer',
+                'title'  => trans('shopify::app.shopify.credential.datagrid.sync'),
+                'method' => 'POST',
+                'url'    => fn ($row): string => route('shopify.credentials.sync', $row->id),
+            ]);
+        }
 
-        $this->addAction([
-            'index'  => 'revoke',
-            'icon'   => 'icon-cancel',
-            'title'  => trans('shopify::app.shopify.credential.datagrid.revoke'),
-            'method' => 'POST',
-            'url'    => fn ($row): string => route('shopify.credentials.revoke', $row->id),
-        ]);
+        if (bouncer()->hasPermission('shopify.credentials.delete')) {
+            $this->addAction([
+                'index'  => 'revoke',
+                'icon'   => 'icon-cancel',
+                'title'  => trans('shopify::app.shopify.credential.datagrid.revoke'),
+                'method' => 'POST',
+                'url'    => fn ($row): string => route('shopify.credentials.revoke', $row->id),
+            ]);
+        }
 
         if (bouncer()->hasPermission('shopify.credentials.delete')) {
             $this->addAction([

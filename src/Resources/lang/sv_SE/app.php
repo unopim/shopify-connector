@@ -355,6 +355,8 @@ return [
                 'delete' => 'Ta bort metaobjekt',
             ],
             'metaobject-entry' => [
+                'create' => 'Skapa metaobjektspost',
+                'edit'   => 'Redigera metaobjektspost',
                 'save'   => 'Spara metaobjektspost',
                 'delete' => 'Ta bort metaobjektspost',
             ],

@@ -138,8 +138,12 @@ class CredentialController extends Controller
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $redirectUrl = bouncer()->hasPermission('shopify.credentials.edit')
+            ? route('shopify.credentials.edit', $credentialCreate->id)
+            : route('shopify.credentials.index');
+
         return new JsonResponse([
-            'redirect_url' => route('shopify.credentials.edit', $credentialCreate->id),
+            'redirect_url' => $redirectUrl,
         ]);
     }
 

@@ -355,8 +355,10 @@ return [
                 'delete' => 'Delete Metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Create Entry',
+                'edit'   => 'Edit Entry',
+                'delete' => 'Delete Entry',
                 'save'   => 'Save Metaobject Entry',
-                'delete' => 'Delete Metaobject Entry',
             ],
         ],
 

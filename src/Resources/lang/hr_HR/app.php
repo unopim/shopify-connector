@@ -355,6 +355,8 @@ return [
                 'delete' => 'Izbriši metaobjekt',
             ],
             'metaobject-entry' => [
+                'create' => 'Kreiraj unos metaobjekta',
+                'edit'   => 'Uredi unos metaobjekta',
                 'save'   => 'Spremi unos metaobjekta',
                 'delete' => 'Izbriši unos metaobjekta',
             ],

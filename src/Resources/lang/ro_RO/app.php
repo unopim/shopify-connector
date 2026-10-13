@@ -355,6 +355,8 @@ return [
                 'delete' => 'Ștergere metaobiect',
             ],
             'metaobject-entry' => [
+                'create' => 'Creare intrare metaobiect',
+                'edit'   => 'Editare intrare metaobiect',
                 'save'   => 'Salvare intrare metaobiect',
                 'delete' => 'Ștergere intrare metaobiect',
             ],

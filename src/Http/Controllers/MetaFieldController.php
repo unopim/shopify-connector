@@ -300,8 +300,12 @@ class MetaFieldController extends Controller
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $redirectUrl = bouncer()->hasPermission('shopify.meta-fields.edit')
+            ? route('shopify.metafield.edit', $metaFieldCreate->id)
+            : route('shopify.metafield.index');
+
         return new JsonResponse([
-            'redirect_url' => route('shopify.metafield.edit', $metaFieldCreate->id),
+            'redirect_url' => $redirectUrl,
         ]);
     }
 

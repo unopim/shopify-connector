@@ -355,6 +355,8 @@ return [
                 'delete' => '刪除中繼物件',
             ],
             'metaobject-entry' => [
+                'create' => '建立中繼物件項目',
+                'edit'   => '編輯中繼物件項目',
                 'save'   => '儲存中繼物件項目',
                 'delete' => '刪除中繼物件項目',
             ],

@@ -355,6 +355,8 @@ return [
                 'delete' => 'Excluir Metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Criar entrada de Metaobject',
+                'edit'   => 'Editar entrada de Metaobject',
                 'save'   => 'Salvar entrada de Metaobject',
                 'delete' => 'Excluir entrada de Metaobject',
             ],

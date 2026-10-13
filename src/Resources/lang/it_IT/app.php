@@ -355,6 +355,8 @@ return [
                 'delete' => 'Elimina metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Crea voce metaobject',
+                'edit'   => 'Modifica voce metaobject',
                 'save'   => 'Salva voce metaobject',
                 'delete' => 'Elimina voce metaobject',
             ],

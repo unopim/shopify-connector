@@ -355,6 +355,8 @@ return [
                 'delete' => 'Slett metaobjekt',
             ],
             'metaobject-entry' => [
+                'create' => 'Opprett metaobjekt-oppføring',
+                'edit'   => 'Rediger metaobjekt-oppføring',
                 'save'   => 'Lagre metaobjekt-oppføring',
                 'delete' => 'Slett metaobjekt-oppføring',
             ],

@@ -355,6 +355,8 @@ return [
                 'delete' => 'Poista metaobjekti',
             ],
             'metaobject-entry' => [
+                'create' => 'Luo metaobjektin merkintä',
+                'edit'   => 'Muokkaa metaobjektin merkintää',
                 'save'   => 'Tallenna metaobjektin merkintä',
                 'delete' => 'Poista metaobjektin merkintä',
             ],

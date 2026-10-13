@@ -128,7 +128,7 @@ class MetaobjectEntryDataGrid extends DataGrid
      */
     public function prepareActions(): void
     {
-        if (bouncer()->hasPermission('shopify.metaobjects.entry-save')) {
+        if (bouncer()->hasPermission('shopify.metaobjects.edit.edit')) {
             $this->addAction([
                 'index'  => 'edit',
                 'icon'   => 'icon-edit',
@@ -138,7 +138,7 @@ class MetaobjectEntryDataGrid extends DataGrid
             ]);
         }
 
-        if (bouncer()->hasPermission('shopify.metaobjects.entry-delete')) {
+        if (bouncer()->hasPermission('shopify.metaobjects.edit.delete')) {
             $this->addAction([
                 'index'  => 'delete',
                 'icon'   => 'icon-delete',

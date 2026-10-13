@@ -354,6 +354,8 @@ return [
                 'delete' => '删除元对象',
             ],
             'metaobject-entry' => [
+                'create' => '创建元对象条目',
+                'edit'   => '编辑元对象条目',
                 'save'   => '保存元对象条目',
                 'delete' => '删除元对象条目',
             ],

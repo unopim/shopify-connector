@@ -355,6 +355,8 @@ return [
                 'delete' => 'Metaobject Sil',
             ],
             'metaobject-entry' => [
+                'create' => 'Metaobject Girişi Oluştur',
+                'edit'   => 'Metaobject Girişi Düzenle',
                 'save'   => 'Metaobject Girişi Kaydet',
                 'delete' => 'Metaobject Girişi Sil',
             ],

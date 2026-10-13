@@ -355,6 +355,8 @@ return [
                 'delete' => 'Slet metaobjekt',
             ],
             'metaobject-entry' => [
+                'create' => 'Opret metaobjektpost',
+                'edit'   => 'Rediger metaobjektpost',
                 'save'   => 'Gem metaobjektpost',
                 'delete' => 'Slet metaobjektpost',
             ],

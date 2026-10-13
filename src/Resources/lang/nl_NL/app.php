@@ -355,6 +355,8 @@ return [
                 'delete' => 'Metaobject verwijderen',
             ],
             'metaobject-entry' => [
+                'create' => 'Metaobject-item aanmaken',
+                'edit'   => 'Metaobject-item bewerken',
                 'save'   => 'Metaobject-item opslaan',
                 'delete' => 'Metaobject-item verwijderen',
             ],

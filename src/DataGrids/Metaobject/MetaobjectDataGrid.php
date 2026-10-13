@@ -75,7 +75,7 @@ class MetaobjectDataGrid extends DataGrid
 
     public function prepareMassActions(): void
     {
-        if (bouncer()->hasPermission('shopify.metaobjects.delete')) {
+        if (bouncer()->hasPermission('shopify.metaobjects.mass_delete')) {
             $this->addMassAction([
                 'title'   => trans('admin::app.catalog.attributes.index.datagrid.delete'),
                 'url'     => route('shopify.metaobject.mass_delete'),

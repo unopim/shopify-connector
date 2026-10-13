@@ -355,6 +355,8 @@ return [
                 'delete' => 'Hapus Metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Buat Entri Metaobject',
+                'edit'   => 'Edit Entri Metaobject',
                 'save'   => 'Simpan Entri Metaobject',
                 'delete' => 'Hapus Entri Metaobject',
             ],

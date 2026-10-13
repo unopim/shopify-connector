@@ -355,6 +355,8 @@ return [
                 'delete' => 'Tanggalin ang Metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Lumikha ng Metaobject Entry',
+                'edit'   => 'I-edit ang Metaobject Entry',
                 'save'   => 'I-save ang Metaobject Entry',
                 'delete' => 'Tanggalin ang Metaobject Entry',
             ],

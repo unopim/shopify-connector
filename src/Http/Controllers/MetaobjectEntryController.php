@@ -72,6 +72,8 @@ class MetaobjectEntryController extends Controller
 
     public function get(int $id): JsonResponse
     {
+        abort_unless(bouncer()->hasPermission('shopify.metaobjects.edit.edit'), 403);
+
         $entry = $this->entryRepository->find($id);
 
         abort_unless($entry, 404);
@@ -81,14 +83,18 @@ class MetaobjectEntryController extends Controller
 
     public function store(): JsonResponse
     {
-        abort_unless(bouncer()->hasPermission('shopify.metaobjects.entry-save'), 403);
-
         $data = request()->validate([
             'id'     => ['nullable', 'integer'],
             'type'   => ['required', 'string'],
             'code'   => ['required', 'string'],
             'values' => ['nullable', 'string'],
         ]);
+
+        if (! empty($data['id'])) {
+            abort_unless(bouncer()->hasPermission('shopify.metaobjects.edit.edit'), 403);
+        } else {
+            abort_unless(bouncer()->hasPermission('shopify.metaobjects.edit.create'), 403);
+        }
 
         $values = json_decode($data['values'] ?? '[]', true);
         $values = is_array($values) ? $values : [];
@@ -118,7 +124,7 @@ class MetaobjectEntryController extends Controller
 
     public function delete(int $id): JsonResponse
     {
-        abort_unless(bouncer()->hasPermission('shopify.metaobjects.entry-delete'), 403);
+        abort_unless(bouncer()->hasPermission('shopify.metaobjects.edit.delete'), 403);
 
         $this->entryRepository->delete($id);
 

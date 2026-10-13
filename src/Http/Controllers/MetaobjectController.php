@@ -98,10 +98,17 @@ class MetaobjectController extends Controller
             'fields' => $fields,
         ]);
 
+        $redirectUrl = bouncer()->hasPermission('shopify.metaobjects.edit')
+            ? route('shopify.metaobject.edit', $definition->id)
+            : route('shopify.metaobject.index');
+
+        session()->flash('success', trans('shopify::app.shopify.metaobject.saved'));
+
         return new JsonResponse([
-            'id'   => $definition->id,
-            'code' => $definition->code,
-            'name' => $definition->name,
+            'id'           => $definition->id,
+            'code'         => $definition->code,
+            'name'         => $definition->name,
+            'redirect_url' => $redirectUrl,
         ]);
     }
 

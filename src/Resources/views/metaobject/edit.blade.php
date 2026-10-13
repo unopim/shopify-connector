@@ -351,7 +351,7 @@
                 <div class="mb-4 flex items-center justify-between gap-4 max-sm:flex-wrap">
                     <p class="text-xl font-bold text-gray-800 dark:text-slate-50">@lang('shopify::app.shopify.metaobject.entries')</p>
 
-                    @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                    @if (bouncer()->hasPermission('shopify.metaobjects.edit.create'))
                         <button type="button" class="primary-button" @click="openCreate">@lang('shopify::app.shopify.metaobject.add-entry')</button>
                     @endif
                 </div>
@@ -378,7 +378,7 @@
                             </template>
 
                             <div class="flex justify-end gap-1">
-                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                                @if (bouncer()->hasPermission('shopify.metaobjects.edit.edit'))
                                     <a
                                         v-if="record.actions.find(a => a.index === 'edit' && a.url)"
                                         @click="editModal(record.actions.find(a => a.index === 'edit').url)"
@@ -387,7 +387,7 @@
                                     </a>
                                 @endif
 
-                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-delete'))
+                                @if (bouncer()->hasPermission('shopify.metaobjects.edit.delete'))
                                     <a
                                         v-if="record.actions.find(a => a.index === 'delete' && a.url)"
                                         @click="performAction(record.actions.find(a => a.index === 'delete'))"

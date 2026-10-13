@@ -355,6 +355,8 @@ return [
                 'delete' => 'Xóa Metaobject',
             ],
             'metaobject-entry' => [
+                'create' => 'Tạo mục Metaobject',
+                'edit'   => 'Chỉnh sửa mục Metaobject',
                 'save'   => 'Lưu mục Metaobject',
                 'delete' => 'Xóa mục Metaobject',
             ],
