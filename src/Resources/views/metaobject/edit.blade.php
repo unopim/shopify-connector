@@ -374,7 +374,7 @@
                                     class="h-14 max-h-14 min-h-14 w-14 min-w-14 max-w-14 rounded-lg border border-gray-200 object-cover dark:border-cherry-800"
                                 />
 
-                                <p v-else class="truncate" :title="record[column.index]" v-html="record[column.index]"></p>
+                                <p v-else class="truncate" :title="record[column.index]" v-text="record[column.index]"></p>
                             </template>
 
                             <div class="flex justify-end gap-1">

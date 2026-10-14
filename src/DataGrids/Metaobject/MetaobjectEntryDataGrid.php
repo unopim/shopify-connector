@@ -178,7 +178,7 @@ class MetaobjectEntryDataGrid extends DataGrid
     }
 
     /**
-     * Build a short, escaped display string for a non-image field value.
+     * Build a short plain-text display string for a non-image field value; the view escapes it via v-text.
      */
     protected function formatValue(mixed $value): string
     {
@@ -192,16 +192,16 @@ class MetaobjectEntryDataGrid extends DataGrid
 
         if (is_array($value)) {
             if (isset($value['text']) || isset($value['url'])) {
-                return e(Str::limit((string) ($value['text'] ?? $value['url']), 60));
+                return Str::limit((string) ($value['text'] ?? $value['url']), 60);
             }
 
             $scalars = array_filter($value, is_scalar(...));
 
             return $scalars === []
                 ? trans('shopify::app.shopify.metaobject.datagrid.complex')
-                : e(Str::limit(implode(', ', $scalars), 60));
+                : Str::limit(implode(', ', $scalars), 60);
         }
 
-        return e(Str::limit((string) $value, 60));
+        return Str::limit((string) $value, 60);
     }
 }

@@ -180,3 +180,17 @@ it('reports a concurrent duplicate code as a validation error', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['code' => trans('shopify::app.shopify.metaobject.entry-code-taken')]);
 });
+
+it('lists entry values as plain text for the text-rendered datagrid', function () {
+    $this->entryRepository->create([
+        'type'   => $this->definition->code,
+        'code'   => 'tom_and_jerry',
+        'values' => ['brand_name' => 'Tom & Jerry'],
+    ]);
+
+    $records = $this->getJson(route('shopify.metaobject.entry.datagrid', $this->definition->code), ['X-Requested-With' => 'XMLHttpRequest'])
+        ->assertOk()
+        ->json('records');
+
+    expect($records[0]['field_brand_name'])->toBe('Tom & Jerry');
+});

@@ -1,6 +1,7 @@
 <?php
 
 use Webkul\Shopify\Models\ShopifyMetaFieldsConfig;
+use Webkul\Shopify\Repositories\ShopifyMetaFieldRepository;
 
 use function Pest\Laravel\get;
 use function Pest\Laravel\post;
@@ -60,4 +61,34 @@ it('should update the shopify Metafield Definitions with valid input', function 
     $response->assertRedirect(route('shopify.metafield.edit', ['id' => $metaField->id]));
 
     $response->assertSessionHas('success', trans('shopify::app.shopify.metafield.update-success'));
+});
+
+it('hides the raw database error when saving a new metafield definition fails', function () {
+    $this->loginAsAdmin();
+
+    ShopifyMetaFieldsConfig::creating(fn () => throw new RuntimeException('SQLSTATE[23000]: internal detail'));
+
+    $this->postJson(route('shopify.metafield.store'), [
+        'ownerType'      => 'test_ownerType',
+        'code'           => 'test_code',
+        'type'           => 'test_type',
+        'name_space_key' => 'test_name.space_key',
+        'pin'            => '1',
+        'attribute'      => 'test_attribute',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['shopUrl' => trans('shopify::app.shopify.metafield.save-failed')])
+        ->assertDontSee('SQLSTATE');
+});
+
+it('hides the raw database error when mass deleting metafield definitions fails', function () {
+    $this->loginAsAdmin();
+
+    $this->mock(ShopifyMetaFieldRepository::class)
+        ->shouldReceive('whereIN')
+        ->andThrow(new RuntimeException('SQLSTATE[23000]: internal detail'));
+
+    $this->postJson(route('shopify.metafield.mass_delete'), ['indices' => [1]])
+        ->assertJson(['message' => trans('shopify::app.shopify.metafield.mass-delete-failed')])
+        ->assertDontSee('SQLSTATE');
 });

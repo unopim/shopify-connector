@@ -7,7 +7,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
@@ -93,8 +92,8 @@ class CredentialController extends Controller
 
         try {
             $data = $this->prepareCredentialToken($data);
-        } catch (\RuntimeException $exception) {
-            $message = $this->tokenFailureMessage($exception);
+        } catch (\RuntimeException) {
+            $message = trans('shopify::app.shopify.credential.token_refresh_failed');
 
             return new JsonResponse([
                 'errors' => [
@@ -135,9 +134,11 @@ class CredentialController extends Controller
                 ], 422);
             }
 
+            report($e);
+
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl' => [$e->getMessage()],
+                    'shopUrl' => [trans('shopify::app.shopify.credential.save-failed')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -383,8 +384,8 @@ class CredentialController extends Controller
 
         try {
             $requestData = $this->prepareCredentialToken($requestData, $shopUrlChanged ? null : $credential);
-        } catch (\RuntimeException $exception) {
-            $message = $this->tokenFailureMessage($exception);
+        } catch (\RuntimeException) {
+            $message = trans('shopify::app.shopify.credential.token_refresh_failed');
 
             if (request()->expectsJson()) {
                 return response()->json(['errors' => ['accessToken' => [$message]]], 422);
@@ -472,17 +473,6 @@ class CredentialController extends Controller
         session()->flash('success', trans('shopify::app.shopify.credential.update-success'));
 
         return to_route('shopify.credentials.edit', $id);
-    }
-
-    /**
-     * Turn a failed token exchange into a message the admin can act on, keeping
-     * Shopify's own reason (e.g. app not installed on the store) when it gave one.
-     */
-    protected function tokenFailureMessage(\RuntimeException $exception): string
-    {
-        $reason = Str::limit(trim(strip_tags($exception->getMessage())), 300);
-
-        return $reason !== '' ? $reason : trans('shopify::app.shopify.credential.token_refresh_failed');
     }
 
     protected function prepareCredentialToken(array $requestData, ?ShopifyCredentialsConfig $credential = null): array

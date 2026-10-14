@@ -120,7 +120,7 @@ it('does not accept a myshopify shop url followed by a trailing newline', functi
         ->and(preg_match(CredentialForm::SHOP_URL_PATTERN, 'https://store.myshopify.com/'))->toBe(1);
 });
 
-it('shows the reason shopify gives when the client credentials are rejected on create', function () {
+it('shows a translated message instead of shopify raw reason when the client credentials are rejected on create', function () {
     ShopifyCredentialsConfig::query()->delete();
 
     Http::fake([
@@ -137,5 +137,6 @@ it('shows the reason shopify gives when the client credentials are rejected on c
         'shopUrl'      => 'https://new-store.myshopify.com',
     ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['clientId' => 'Client credentials cannot be performed on this shop.']);
+        ->assertJsonValidationErrors(['clientId' => trans('shopify::app.shopify.credential.token_refresh_failed')])
+        ->assertDontSee('Client credentials cannot be performed on this shop.');
 });
