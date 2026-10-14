@@ -4,8 +4,10 @@ namespace Webkul\Shopify\Http\Controllers;
 
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Webkul\Admin\Http\Controllers\Controller;
 use Webkul\Shopify\DataGrids\Catalog\CredentialDataGrid;
@@ -66,8 +68,7 @@ class CredentialController extends Controller
 
         $data = $request->all();
         $data['storelocaleMapping'] = $this->normalizeStoreLocaleMapping($data['storelocaleMapping'] ?? []);
-        $url = $data['shopUrl'];
-        $url = $data['shopUrl'] = rtrim($url, '/');
+        $url = $data['shopUrl'] = $this->normalizeShopUrl($data['shopUrl']);
 
         if (! str_starts_with($url, 'http')) {
             return new JsonResponse([
@@ -92,10 +93,12 @@ class CredentialController extends Controller
         try {
             $data = $this->prepareCredentialToken($data);
         } catch (\RuntimeException) {
+            $message = trans('shopify::app.shopify.credential.token_refresh_failed');
+
             return new JsonResponse([
                 'errors' => [
-                    'clientId'     => [trans('shopify::app.shopify.credential.token_refresh_failed')],
-                    'clientSecret' => [trans('shopify::app.shopify.credential.token_refresh_failed')],
+                    'clientId'     => [$message],
+                    'clientSecret' => [$message],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -131,15 +134,21 @@ class CredentialController extends Controller
                 ], 422);
             }
 
+            report($e);
+
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl' => [$e->getMessage()],
+                    'shopUrl' => [trans('shopify::app.shopify.credential.save-failed')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $redirectUrl = bouncer()->hasPermission('shopify.credentials.edit')
+            ? route('shopify.credentials.edit', $credentialCreate->id)
+            : route('shopify.credentials.index');
+
         return new JsonResponse([
-            'redirect_url' => route('shopify.credentials.edit', $credentialCreate->id),
+            'redirect_url' => $redirectUrl,
         ]);
     }
 
@@ -366,16 +375,25 @@ class CredentialController extends Controller
             $requestData['apiVersion'] = $credential->apiVersion;
         }
 
+        $shopUrlChanged = ! $isSaas
+            && rtrim((string) $requestData['shopUrl'], '/') !== rtrim((string) $credential->shopUrl, '/');
+
+        if ($shopUrlChanged) {
+            $requestData = $this->prepareShopUrlChange($requestData, $credential);
+        }
+
         try {
-            $requestData = $this->prepareCredentialToken($requestData, $credential);
+            $requestData = $this->prepareCredentialToken($requestData, $shopUrlChanged ? null : $credential);
         } catch (\RuntimeException) {
+            $message = trans('shopify::app.shopify.credential.token_refresh_failed');
+
             if (request()->expectsJson()) {
-                return response()->json(['errors' => ['accessToken' => [trans('shopify::app.shopify.credential.token_refresh_failed')]]], 422);
+                return response()->json(['errors' => ['accessToken' => [$message]]], 422);
             }
 
             return to_route('shopify.credentials.edit', $id)
                 ->withErrors([
-                    'accessToken' => trans('shopify::app.shopify.credential.token_refresh_failed'),
+                    'accessToken' => $message,
                 ])
                 ->withInput();
         }
@@ -400,7 +418,7 @@ class CredentialController extends Controller
             );
             $connectionOk = $proxy->ping();
         } else {
-            $response = $this->requestGraphQlApiAction('getOneProduct', $requestData);
+            $response = $this->requestGraphQlApiAction('getOneProduct', Arr::except($requestData, ['credentialId']));
             $connectionOk = ($response['code'] ?? null) == 200;
         }
 
@@ -498,16 +516,52 @@ class CredentialController extends Controller
 
     protected function resolveMaskedValue(string $incomingValue, ?string $existingValue): string
     {
-        if (empty($existingValue)) {
-            return $incomingValue;
+        return $this->isMaskedValue($incomingValue, $existingValue) ? (string) $existingValue : $incomingValue;
+    }
+
+    protected function isMaskedValue(string $incomingValue, ?string $existingValue): bool
+    {
+        return ! empty($existingValue) && $incomingValue === str_repeat('*', strlen($existingValue));
+    }
+
+    /**
+     * Moving a credential to another store must not carry the stored secrets along,
+     * otherwise they would be sent to whatever host the editor entered.
+     *
+     * @param  array<string, mixed>  $requestData
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    protected function prepareShopUrlChange(array $requestData, ShopifyCredentialsConfig $credential): array
+    {
+        $this->validate(request(), [
+            'shopUrl' => ['regex:'.CredentialForm::SHOP_URL_PATTERN],
+        ], [
+            'shopUrl.regex' => trans('shopify::app.shopify.credential.shop-url-myshopify'),
+        ]);
+
+        $requestData['shopUrl'] = $this->normalizeShopUrl((string) $requestData['shopUrl']);
+
+        foreach (['accessToken', 'clientSecret'] as $secretField) {
+            if ($this->isMaskedValue((string) ($requestData[$secretField] ?? ''), $credential->{$secretField})) {
+                $requestData[$secretField] = '';
+            }
         }
 
-        $maskedValue = str_repeat('*', strlen($existingValue));
+        $hasClientCredentials = ! empty($requestData['clientId']) && ! empty($requestData['clientSecret']);
 
-        if ($incomingValue === $maskedValue) {
-            return $existingValue;
+        if (empty($requestData['accessToken']) && ! $hasClientCredentials) {
+            throw ValidationException::withMessages([
+                'accessToken' => trans('shopify::app.shopify.credential.secret-required-on-url-change'),
+            ]);
         }
 
-        return $incomingValue;
+        return $requestData;
+    }
+
+    protected function normalizeShopUrl(string $shopUrl): string
+    {
+        return (string) preg_replace('#^http://#i', 'https://', rtrim($shopUrl, '/'));
     }
 }

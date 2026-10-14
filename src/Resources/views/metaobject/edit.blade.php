@@ -351,7 +351,7 @@
                 <div class="mb-4 flex items-center justify-between gap-4 max-sm:flex-wrap">
                     <p class="text-xl font-bold text-gray-800 dark:text-slate-50">@lang('shopify::app.shopify.metaobject.entries')</p>
 
-                    @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                    @if (bouncer()->hasPermission('shopify.metaobjects.edit.create'))
                         <button type="button" class="primary-button" @click="openCreate">@lang('shopify::app.shopify.metaobject.add-entry')</button>
                     @endif
                 </div>
@@ -374,11 +374,11 @@
                                     class="h-14 max-h-14 min-h-14 w-14 min-w-14 max-w-14 rounded-lg border border-gray-200 object-cover dark:border-cherry-800"
                                 />
 
-                                <p v-else class="truncate" :title="record[column.index]" v-html="record[column.index]"></p>
+                                <p v-else class="truncate" :title="record[column.index]" v-text="record[column.index]"></p>
                             </template>
 
                             <div class="flex justify-end gap-1">
-                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-save'))
+                                @if (bouncer()->hasPermission('shopify.metaobjects.edit.edit'))
                                     <a
                                         v-if="record.actions.find(a => a.index === 'edit' && a.url)"
                                         @click="editModal(record.actions.find(a => a.index === 'edit').url)"
@@ -387,7 +387,7 @@
                                     </a>
                                 @endif
 
-                                @if (bouncer()->hasPermission('shopify.metaobjects.entry-delete'))
+                                @if (bouncer()->hasPermission('shopify.metaobjects.edit.delete'))
                                     <a
                                         v-if="record.actions.find(a => a.index === 'delete' && a.url)"
                                         @click="performAction(record.actions.find(a => a.index === 'delete'))"
@@ -1052,7 +1052,16 @@
                                 this.$emitter.emit('add-flash', { type: 'success', message: "@lang('shopify::app.shopify.metaobject.entry-saved')" });
                                 this.closeModal();
                                 this.$refs.datagrid.get();
-                            }).finally(() => { this.saving = false; });
+                            })
+                            .catch(error => {
+                                const errors = error.response?.data?.errors ?? {};
+                                const message = Object.values(errors)[0]?.[0] ?? error.response?.data?.message;
+
+                                if (message) {
+                                    this.$emitter.emit('add-flash', { type: 'warning', message });
+                                }
+                            })
+                            .finally(() => { this.saving = false; });
                     },
                 },
             });

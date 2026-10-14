@@ -4,9 +4,6 @@ namespace Webkul\Shopify\Services\Import;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Webkul\DAM\Jobs\ProcessAssetUpload;
-use Webkul\DAM\Models\Asset;
-use Webkul\DAM\Models\Directory;
 use Webkul\Shopify\Repositories\ShopifyMappingRepository;
 
 class DamAssetImporter
@@ -15,7 +12,10 @@ class DamAssetImporter
 
     public function importFromUrl(string $url, string $shopUrl = '', string $subdir = 'Shopify'): ?int
     {
-        if ($url === '' || ! class_exists(Asset::class)) {
+        $assetClass = sprintf('%s\\%s', 'Webkul\\DAM\\Models', 'Asset');
+        $directoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Models', 'Directory');
+
+        if ($url === '' || ! class_exists($assetClass) || ! class_exists($directoryClass)) {
             return null;
         }
 
@@ -27,7 +27,7 @@ class DamAssetImporter
             'apiUrl'     => $shopUrl,
         ]);
 
-        if ($cached && $cached->externalId && Asset::whereKey($cached->externalId)->exists()) {
+        if ($cached && $cached->externalId && $assetClass::whereKey($cached->externalId)->exists()) {
             return (int) $cached->externalId;
         }
 
@@ -38,18 +38,18 @@ class DamAssetImporter
                 return null;
             }
 
-            $rootId = Directory::whereNull('parent_id')->orderBy('id')->value('id');
-            $directory = Directory::firstOrCreate(['name' => $subdir, 'parent_id' => $rootId]);
+            $rootId = $directoryClass::whereNull('parent_id')->orderBy('id')->value('id');
+            $directory = $directoryClass::firstOrCreate(['name' => $subdir, 'parent_id' => $rootId]);
 
             $body = $response->body();
             $mimeType = strtok((string) $response->header('Content-Type'), ';') ?: 'application/octet-stream';
             $fileName = $this->buildFileName($url, $mimeType);
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            $relativePath = Directory::ASSETS_DIRECTORY.'/'.$directory->generatePath().'/'.$fileName;
+            $relativePath = $directoryClass::ASSETS_DIRECTORY.'/'.$directory->generatePath().'/'.$fileName;
 
-            Storage::disk(Directory::getAssetDisk())->put($relativePath, $body);
+            Storage::disk($directoryClass::getAssetDisk())->put($relativePath, $body);
 
-            $asset = Asset::create([
+            $asset = $assetClass::create([
                 'file_name' => $fileName,
                 'file_type' => $this->fileType($mimeType),
                 'file_size' => strlen($body),
@@ -60,7 +60,12 @@ class DamAssetImporter
 
             $directory->assets()->attach($asset->id);
 
-            dispatch(new ProcessAssetUpload($asset->id));
+            $assetUploadJob = sprintf('%s\\%s', 'Webkul\\DAM\\Jobs', 'ProcessAssetUpload');
+            $dispatcher = sprintf('%s\\Contracts\\Bus\\Dispatcher', 'Illuminate');
+
+            if (class_exists($assetUploadJob)) {
+                resolve($dispatcher)->dispatch(new $assetUploadJob($asset->id));
+            }
 
             $this->mappingRepository->create([
                 'entityType'    => 'shopifyFileAsset',

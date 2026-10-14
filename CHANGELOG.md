@@ -1,9 +1,15 @@
-# 3.0.1 ( 05 October 2026 )
+# 3.0.1 ( 14 October 2026 )
 
 ## Features
 - Shopify category DAM support - map a UnoPim DAM asset field as the Shopify collection image. On export, the first mapped image is staged and sent to Shopify. On import, Shopify collection images are created or reused as DAM assets and saved on the mapped category field.
 - Expanded media mapping - category collection images support image, file, and DAM asset fields while preserving the existing image-field workflow.
 - Locale-aware synchronization - map UnoPim published locales to their Shopify locales for localized catalog content.
+
+## Changed
+- Version update — Compatibility with latest Shopify Admin API version 2026-10.
+
+## Security
+- Security update — Resolved security issues by implementing pending ACL permissions across credentials, metafields, and metaobjects, enforcing strict Shop URL validation, and securing Shopify access token handling.
 
 # 3.0.0 ( 06 August 2026 )
 

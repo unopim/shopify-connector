@@ -165,3 +165,47 @@ it('should delete the shopify credential', function () {
         'id' => $shopifyCredential->id,
     ]);
 });
+
+it('hides the raw database error when saving a new credential fails', function () {
+    $this->loginAsAdmin();
+
+    ShopifyCredentialsConfig::query()->delete();
+
+    Http::fake([
+        'https://test.myshopify.com/admin/oauth/access_token' => Http::response([
+            'access_token' => 'generated_access_token',
+            'expires_in'   => 3600,
+        ], 200),
+        'https://test.myshopify.com/admin/api/2023-04/graphql.json' => Http::response(['code' => 200], 200),
+    ]);
+
+    ShopifyCredentialsConfig::creating(fn () => throw new RuntimeException('SQLSTATE[23000]: internal detail'));
+
+    $this->postJson(route('shopify.credentials.store'), [
+        'clientId'     => 'test_client_id',
+        'clientSecret' => 'test_client_secret',
+        'apiVersion'   => '2023-04',
+        'shopUrl'      => 'https://test.myshopify.com',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['shopUrl' => trans('shopify::app.shopify.credential.save-failed')])
+        ->assertDontSee('SQLSTATE');
+});
+
+it('keeps vue from compiling shopify location and locale names on the credential edit page', function () {
+    $this->loginAsAdmin();
+
+    $credential = ShopifyCredentialsConfig::factory()->create(['extras' => []]);
+
+    Http::fake([
+        'demotest.myshopify.com/*' => Http::response(['data' => [
+            'locations'   => ['edges' => [['node' => ['id' => 'gid://shopify/Location/1', 'name' => '{{ 7*7 }}']]]],
+            'shopLocales' => [['locale' => 'en', 'name' => '{{ 8*8 }}', 'primary' => true, 'published' => true]],
+        ]], 200),
+    ]);
+
+    get(route('shopify.credentials.edit', ['id' => $credential->id]))
+        ->assertOk()
+        ->assertSee('<p class="break-words" v-pre>{{ 7*7 }}</p>', false)
+        ->assertSee('<p class="break-words" v-pre>{{ 8*8 }} en (Default)</p>', false);
+});

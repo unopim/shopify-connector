@@ -131,7 +131,7 @@ class MetaFieldDataGrid extends DataGrid
      */
     public function prepareMassActions(): void
     {
-        if (bouncer()->hasPermission('shopify.meta-fields.delete')) {
+        if (bouncer()->hasPermission('shopify.meta-fields.mass_delete')) {
             $this->addMassAction([
                 'title'   => trans('admin::app.catalog.products.index.datagrid.delete'),
                 'url'     => route('shopify.metafield.mass_delete'),

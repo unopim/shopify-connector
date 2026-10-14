@@ -144,7 +144,7 @@
                                     :label="trans('shopify::app.shopify.credential.index.apiVersion')"
                                     :placeholder="trans('shopify::app.shopify.credential.index.apiVersion')"
                                     :options="$apiVersion"
-                                    value="2026-07"
+                                    value="2026-10"
                                     track-by="id"
                                     label-by="name"
                                 >

@@ -2,11 +2,9 @@
 
 namespace Webkul\Shopify\Traits;
 
-use Webkul\DAM\Repositories\AssetRepository;
-
 trait ResolvesDamAssetRepository
 {
-    protected ?AssetRepository $resolvedAssetRepository = null;
+    protected mixed $resolvedAssetRepository = null;
 
     protected bool $assetRepositoryResolved = false;
 
@@ -19,14 +17,16 @@ trait ResolvesDamAssetRepository
      * params for *bound* classes, and the concrete AssetRepository is not bound.
      * A direct container make() builds it correctly.
      */
-    protected function assetRepository(): ?AssetRepository
+    protected function assetRepository(): mixed
     {
         if (! $this->assetRepositoryResolved) {
             $this->assetRepositoryResolved = true;
 
-            if (class_exists(AssetRepository::class)) {
+            $repositoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Repositories', 'AssetRepository');
+
+            if (class_exists($repositoryClass)) {
                 try {
-                    $this->resolvedAssetRepository = resolve(AssetRepository::class);
+                    $this->resolvedAssetRepository = resolve($repositoryClass);
                 } catch (\Throwable) {
                     $this->resolvedAssetRepository = null;
                 }

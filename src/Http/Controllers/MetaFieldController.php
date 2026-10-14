@@ -293,15 +293,21 @@ class MetaFieldController extends Controller
 
             session()->flash('success', trans('shopify::app.shopify.metafield.created'));
         } catch (\Exception $e) {
+            report($e);
+
             return new JsonResponse([
                 'errors' => [
-                    'shopUrl' => [$e->getMessage()],
+                    'shopUrl' => [trans('shopify::app.shopify.metafield.save-failed')],
                 ],
             ], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $redirectUrl = bouncer()->hasPermission('shopify.meta-fields.edit')
+            ? route('shopify.metafield.edit', $metaFieldCreate->id)
+            : route('shopify.metafield.index');
+
         return new JsonResponse([
-            'redirect_url' => route('shopify.metafield.edit', $metaFieldCreate->id),
+            'redirect_url' => $redirectUrl,
         ]);
     }
 
@@ -623,7 +629,9 @@ class MetaFieldController extends Controller
         try {
             $this->shopifyMetaFieldRepository->whereIN('id', $metaFieldsId)->delete();
         } catch (\Exception $e) {
-            $message = $e->getMessage();
+            report($e);
+
+            $message = trans('shopify::app.shopify.metafield.mass-delete-failed');
         }
 
         return new JsonResponse([

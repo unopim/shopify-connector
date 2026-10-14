@@ -18,7 +18,7 @@
                 <div class="flex items-center justify-between">
                     <p class="text-xl font-bold text-gray-800 dark:text-white">@lang('shopify::app.shopify.metaobject.title')</p>
 
-                    @if (bouncer()->hasPermission('shopify.metaobjects.store'))
+                    @if (bouncer()->hasPermission('shopify.metaobjects.create'))
                         <button
                             type="button"
                             class="primary-button"
@@ -42,6 +42,7 @@
                                 v-if="createOpen"
                                 mode="create"
                                 :is-nested="true"
+                                :navigates-on-save="true"
                                 :field-types='@json($fieldTypes)'
                                 @saved="onSaved"
                                 @cancel="closeCreate"
@@ -76,7 +77,7 @@
                     },
 
                     onSaved(data) {
-                        this.$navigate("{{ route('shopify.metaobject.edit', ':id') }}".replace(':id', data.id));
+                        this.$navigate(data.redirect_url || "{{ route('shopify.metaobject.index') }}");
                     },
                 },
             });

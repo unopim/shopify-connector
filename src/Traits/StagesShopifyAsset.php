@@ -4,13 +4,14 @@ namespace Webkul\Shopify\Traits;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Webkul\DAM\Models\Directory;
 
 trait StagesShopifyAsset
 {
     protected function stageAssetUpload(array $asset, array $credential): ?string
     {
-        if ($asset === [] || $credential === [] || ! class_exists(Directory::class)) {
+        $directoryClass = sprintf('%s\\%s', 'Webkul\\DAM\\Models', 'Directory');
+
+        if ($asset === [] || $credential === [] || ! class_exists($directoryClass)) {
             return null;
         }
 
@@ -42,7 +43,7 @@ trait StagesShopifyAsset
                 return null;
             }
 
-            $disk = Directory::getAssetDisk();
+            $disk = $directoryClass::getAssetDisk();
 
             if (! Storage::disk($disk)->exists($path)) {
                 return null;
