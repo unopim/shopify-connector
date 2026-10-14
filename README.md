@@ -2,6 +2,11 @@
 
 Effortlessly integrate your Shopify store with UnoPim for seamless product data management and synchronization. You can currently export catalogs, including categories and both simple and variant products, from UnoPim to Shopify.
 
+> [!TIP]
+> **Need more? Try [UnoPim Shopify Connector Pro](https://store.webkul.com/unopim-shopify-connector-pro.html).**
+> Pro adds real-time product sync, scheduled exports, Shopify catalogs and catalog prices, advanced export filters with attribute conditions, association mapping, external image and video URL mapping, and money and measurement metafield types.
+> This free connector already lists the Pro features inside UnoPim as locked, with an **Upgrade to Pro** link. Install the Pro package to unlock them.
+
 ## Requiremenets:
 * **Unopim**: v3.1.x
   
