@@ -62,7 +62,7 @@ class PollBulkShopifyOperation implements ShouldQueue
         $shopifyStatus = strtoupper((string) ($operationState['status'] ?? ''));
 
         if (in_array($shopifyStatus, ['CREATED', 'RUNNING', 'CANCELING'])) {
-            dispatch_sync(new self($bulkOperation->id))->delay(
+            dispatch(new self($bulkOperation->id))->delay(
                 now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
             );
 
