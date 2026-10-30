@@ -1,3 +1,8 @@
+# 3.0.2 ( 30 October 2026 )
+
+## Bug fixes
+- Fixed fatal error `Call to a member function delay() on int` during Shopify bulk operation polling by using `dispatch()` instead of `dispatch_sync()`.
+
 # 3.0.1 ( 14 October 2026 )
 
 ## Features
