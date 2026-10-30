@@ -110,7 +110,7 @@ test.describe.serial('Shopify Create credential Page', () => {
     await expect(page.getByText('The Client Secret field is required')).toBeVisible();
 
     // Invalid URL should trigger URL validation
-    await page.getByRole('textbox', { name: 'http://demo.myshopify.com' }).fill('not-a-url');
+    await page.locator('input[name="shopUrl"]').fill('not-a-url');
     await page.getByRole('textbox', { name: 'Client ID' }).fill('dummy-client-id');
     await page.getByRole('textbox', { name: 'Client Secret' }).fill('dummy-client-secret');
     await page.getByRole('button', { name: 'Save' }).click();
