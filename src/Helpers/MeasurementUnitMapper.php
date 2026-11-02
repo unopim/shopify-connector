@@ -25,17 +25,21 @@ class MeasurementUnitMapper
     {
         $map = $this->targetMap($target);
         $family = (string) ($value['family'] ?? '');
+        $amount = $value['amount'] ?? $value['value'] ?? null;
 
         $symbol = $value['symbol'] ?? $this->symbolFor($family, (string) ($value['unit'] ?? ''));
         $enum = $map[$this->normalize((string) $symbol)] ?? null;
-        if ($enum !== null && isset($value['amount'])) {
-            return [(float) $value['amount'], $enum];
+
+        if ($enum !== null && is_numeric($amount)) {
+            return [(float) $amount, $enum];
         }
 
         $baseSymbol = $this->symbolFor($family, (string) ($value['base_unit'] ?? ''));
         $enum = $map[$this->normalize($baseSymbol)] ?? null;
-        if ($enum !== null && isset($value['base_data'])) {
-            return [(float) $value['base_data'], $enum];
+        $baseData = $value['base_data'] ?? null;
+
+        if ($enum !== null && is_numeric($baseData)) {
+            return [(float) $baseData, $enum];
         }
 
         return null;
@@ -47,13 +51,15 @@ class MeasurementUnitMapper
     public function toUnopim(string $target, string $familyCode, string $enum): ?string
     {
         $symbolNorm = array_search($enum, $this->targetMap($target), true);
+
         if ($symbolNorm === false) {
             return null;
         }
 
         foreach ($this->symbolMap() as $key => $symbol) {
             [$family, $code] = explode('|', $key, 2);
-            if ($family === $familyCode && $this->normalize($symbol) === $symbolNorm) {
+
+            if (strcasecmp($family, $familyCode) === 0 && $this->normalize($symbol) === $symbolNorm) {
                 return $code;
             }
         }
@@ -99,7 +105,27 @@ class MeasurementUnitMapper
 
     protected function symbolFor(string $family, string $code): string
     {
-        return $this->symbolMap()[$family.'|'.$code] ?? '';
+        $symbolMap = $this->symbolMap();
+
+        if ($family !== '') {
+            foreach ($symbolMap as $key => $symbol) {
+                [$f, $c] = explode('|', $key, 2);
+
+                if (strcasecmp($f, $family) === 0 && strcasecmp($c, $code) === 0) {
+                    return $symbol;
+                }
+            }
+        }
+
+        foreach ($symbolMap as $key => $symbol) {
+            [, $c] = explode('|', $key, 2);
+
+            if (strcasecmp($c, $code) === 0) {
+                return $symbol;
+            }
+        }
+
+        return '';
     }
 
     protected function normalize(string $unit): string
