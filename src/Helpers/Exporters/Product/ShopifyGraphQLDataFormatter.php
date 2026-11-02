@@ -172,9 +172,15 @@ class ShopifyGraphQLDataFormatter
                             break;
                         }
 
+                        if ($rawMeasure === null || $rawMeasure === '' || ! is_numeric($rawMeasure)) {
+                            $metafieldValue = null;
+
+                            break;
+                        }
+
                         $fallbackUnit = ['weight' => 'GRAMS', 'volume' => 'MILLILITERS', 'dimension' => 'MILLIMETERS'][$type];
                         $metafieldValue = json_encode([
-                            'value' => $rawMeasure,
+                            'value' => (float) $rawMeasure,
                             'unit'  => $units[$type] ?? $fallbackUnit,
                         ]);
 
@@ -750,7 +756,7 @@ class ShopifyGraphQLDataFormatter
 
                 break;
             case 'compareAtPrice':
-                $formatted['variant']['compareAtPrice'] = (int) ($rawData[$unopimField][$this->currency] ?? 0);
+                $formatted['variant']['compareAtPrice'] = (float) ($rawData[$unopimField][$this->currency] ?? 0);
 
                 break;
             case 'sku':
@@ -986,7 +992,7 @@ class ShopifyGraphQLDataFormatter
                 $formatted['variant']['inventoryItem']['tracked'] = $defaultValue && strtolower($defaultValue) === 'true';
                 break;
             case 'compareAtPrice':
-                $formatted['variant']['compareAtPrice'] = (int) $defaultValue;
+                $formatted['variant']['compareAtPrice'] = (float) $defaultValue;
                 break;
             case 'inventoryQuantity':
                 if ($this->locationId && empty($this->locationAttributeMappings)) {
