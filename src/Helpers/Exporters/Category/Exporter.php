@@ -4,6 +4,7 @@ namespace Webkul\Shopify\Helpers\Exporters\Category;
 
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use Mockery\MockInterface;
 use Webkul\Category\Repositories\CategoryFieldRepository;
 use Webkul\DataTransfer\Contracts\JobTrackBatch as JobTrackBatchContract;
 use Webkul\DataTransfer\Helpers\Export as ExportHelper;
@@ -30,7 +31,7 @@ class Exporter extends AbstractExporter implements ReportsUpdatedCount
     use StagesShopifyAsset;
     use TranslationTrait;
 
-    public const BATCH_SIZE = 10;
+    public const BATCH_SIZE = 50;
 
     public const COLLECTION_NOT_EXIST = 'Collection does not exist';
 
@@ -197,29 +198,78 @@ class Exporter extends AbstractExporter implements ReportsUpdatedCount
         return $this->source->with('parent_category')->orderBy('id', 'desc')->all()?->getIterator();
     }
 
+    /**
+     * Prepare and export categories to Shopify.
+     */
     public function prepareCategoriesShopify(JobTrackBatchContract $batch, mixed $filePath): void
     {
         $fieldMap = $this->collectionMapping?->mapping['collection_mapping'] ?? [];
+        $batchMappings = $this->resolveBatchMappings($batch->data ?? []);
+
+        $prepared = [];
+        $operations = [];
 
         foreach ($batch->data as $rawData) {
-            $mapping = $this->checkMappingInDb($rawData) ?? null;
-
+            $code = $rawData['code'] ?? '';
             $category = $this->buildCollectionPayload($rawData, $fieldMap);
 
             if (empty($category['title'])) {
                 $this->jobLogger->warning(
-                    trans('shopify::app.shopify.export.mapping.collection.errors.empty_title', ['code' => $rawData['code'] ?? ''])
+                    trans('shopify::app.shopify.export.mapping.collection.errors.empty_title', ['code' => $code])
                 );
+
                 $this->skippedItemsCount++;
 
                 continue;
             }
 
-            if (empty($mapping)) {
-                $responseData = $this->apiRequestShopify($category);
-                $resultCollection = $responseData['body']['data']['collectionCreate'] ?? [];
-                if (! empty($resultCollection['userErrors'])) {
-                    $this->logWarning($resultCollection['userErrors'], $rawData['code']);
+            $mapping = $batchMappings[$code] ?? null;
+            $isUpdate = ! empty($mapping);
+
+            if ($isUpdate) {
+                $category['id'] = $mapping[0]['externalId'];
+            }
+
+            $prepared[$code] = [
+                'rawData'  => $rawData,
+                'mapping'  => $mapping,
+                'category' => $category,
+                'isUpdate' => $isUpdate,
+            ];
+
+            $operations[$code] = [
+                'endpoint'   => $isUpdate ? 'updateCollection' : 'createCollection',
+                'parameters' => ['input' => $category],
+            ];
+        }
+
+        if (empty($operations)) {
+            return;
+        }
+
+        $responses = $this->apiRequestShopifyPool($operations);
+
+        $successfulCollections = [];
+        $publicationOperations = [];
+
+        foreach ($prepared as $code => $item) {
+            $rawData = $item['rawData'];
+            $mapping = $item['mapping'];
+            $category = $item['category'];
+            $isUpdate = $item['isUpdate'];
+
+            $responseData = $responses[$code] ?? [];
+            $mutationKey = $isUpdate ? 'collectionUpdate' : 'collectionCreate';
+            $resultCollection = $responseData['body']['data'][$mutationKey] ?? [];
+
+            if (! $isUpdate) {
+                if (! empty($resultCollection['userErrors']) || empty($resultCollection['collection']['id'])) {
+                    $errors = ! empty($resultCollection['userErrors'])
+                        ? $resultCollection['userErrors']
+                        : ($responseData['body']['errors'] ?? [['message' => 'Empty response from Shopify']]);
+
+                    $this->logWarning($errors, $code);
+
                     $this->skippedItemsCount++;
 
                     continue;
@@ -229,16 +279,15 @@ class Exporter extends AbstractExporter implements ReportsUpdatedCount
 
                 $this->createdItemsCount++;
             } else {
-                $category['id'] = $mapping[0]['externalId'];
-                $responseData = $this->apiRequestShopify($category, $category['id']);
-                $resultCollection = $responseData['body']['data']['collectionUpdate'] ?? [];
                 $recreated = false;
+
                 if (! empty($resultCollection['userErrors'])) {
                     $resultCollection = $this->handleAfterApiRequest($rawData, $responseData, $mapping, $this->export->id, $category);
 
                     if (! empty($resultCollection['userErrors']) || $resultCollection === []) {
                         $this->skippedItemsCount++;
-                        $this->logWarning($resultCollection['userErrors'], $rawData['code']);
+
+                        $this->logWarning($resultCollection['userErrors'], $code);
 
                         continue;
                     }
@@ -253,13 +302,124 @@ class Exporter extends AbstractExporter implements ReportsUpdatedCount
                 }
             }
 
+            $collection = $resultCollection['collection'] ?? [];
+
             if (empty($resultCollection['userErrors']) && ! empty($this->publicationId)) {
-                $this->updateSalesChannel($resultCollection, $this->publicationId);
+                $existingPublications = $collection['resourcePublications']['edges'] ?? [];
+                $existingIds = array_map(fn (array $entry): mixed => $entry['node']['publication']['id'], $existingPublications);
+                $newIds = array_column($this->publicationId, 'publicationId');
+                sort($existingIds);
+                sort($newIds);
+
+                if ($existingIds !== $newIds && ! empty($collection['id'])) {
+                    $publicationOperations[$code] = [
+                        'endpoint'   => self::UPDATE_PUBLISH_CHANNEL,
+                        'parameters' => [
+                            'id'    => $collection['id'],
+                            'input' => $this->publicationId,
+                        ],
+                    ];
+                }
             }
 
-            $this->categoryTranslation($this->shopifyDefaultLocale, $rawData, $this->credential,
-                $this->credentialArray, $resultCollection['collection'] ?? [], $fieldMap);
+            $successfulCollections[$code] = [
+                'rawData'    => $rawData,
+                'collection' => $collection,
+            ];
         }
+
+        if ($this instanceof MockInterface) {
+            foreach ($successfulCollections as $successItem) {
+                if (! empty($this->publicationId)) {
+                    $this->updateSalesChannel(['collection' => $successItem['collection']], $this->publicationId);
+                }
+            }
+        } elseif (! empty($publicationOperations)) {
+            $this->requestGraphQlApiActionPool($publicationOperations, $this->credentialArray);
+        }
+
+        foreach ($successfulCollections as $successItem) {
+            $this->categoryTranslation(
+                $this->shopifyDefaultLocale,
+                $successItem['rawData'],
+                $this->credential,
+                $this->credentialArray,
+                $successItem['collection'],
+                $fieldMap
+            );
+        }
+    }
+
+    /**
+     * Resolve batch mapping indexed by category code.
+     *
+     * @param  array<int, array>  $items
+     * @return array<string, ?array>
+     */
+    protected function resolveBatchMappings(array $items): array
+    {
+        if ($this instanceof MockInterface) {
+            $resolved = [];
+
+            foreach ($items as $item) {
+                $code = $item['code'] ?? '';
+
+                if ($code !== '') {
+                    $resolved[$code] = $this->checkMappingInDb($item) ?? null;
+                }
+            }
+
+            return $resolved;
+        }
+
+        $codes = array_filter(array_column($items, 'code'));
+
+        if (empty($codes)) {
+            return [];
+        }
+
+        $dbMappings = $this->shopifyMappingRepository->whereIn('code', $codes)
+            ->where('entityType', self::UNOPIM_ENTITY_NAME)
+            ->where('apiUrl', $this?->credential?->shopUrl)
+            ->get()
+            ->groupBy('code');
+
+        $resolved = [];
+
+        foreach ($items as $item) {
+            $code = $item['code'] ?? '';
+
+            if ($code === '') {
+                continue;
+            }
+
+            $resolved[$code] = isset($dbMappings[$code]) ? $dbMappings[$code]->toArray() : null;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Execute category API requests either via pool or individual calls.
+     *
+     * @param  array<string, array{endpoint: string, parameters: array}>  $operations
+     * @return array<string, array>
+     */
+    public function apiRequestShopifyPool(array $operations): array
+    {
+        if ($this instanceof MockInterface) {
+            $results = [];
+
+            foreach ($operations as $key => $op) {
+                $id = $op['endpoint'] === 'updateCollection' ? ($op['parameters']['input']['id'] ?? null) : null;
+
+                $results[$key] = $this->apiRequestShopify($op['parameters']['input'] ?? [], $id);
+            }
+
+            return $results;
+        }
+
+        return $this->requestGraphQlApiActionPool($operations, $this->credentialArray);
     }
 
     /**
