@@ -40,6 +40,8 @@ class Exporter extends AbstractExporter
 
     protected ?array $currentConstraintsMap = null;
 
+    protected array $batchAttributes = [];
+
     /**
      * Create a new instance of the exporter.
      */
@@ -65,7 +67,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Initialize credentials data from filters
+     * Initialize credentials data from filters.
      */
     protected function initCredential(): void
     {
@@ -87,7 +89,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Initialize default locale from credentials data
+     * Initialize default locale from credentials data.
      */
     protected function initDefaultLocale(): void
     {
@@ -109,7 +111,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Start the export process
+     * Start the export process.
      */
     public function exportBatch(JobTrackBatchContract $batch, $filePath): bool
     {
@@ -136,42 +138,184 @@ class Exporter extends AbstractExporter
         return $this->source->orderBy('id', 'desc')->all()?->getIterator();
     }
 
+    /**
+     * Prepare and export metafield definitions to Shopify concurrently.
+     */
     public function prepareMetafieldShopify(JobTrackBatchContract $batch, mixed $filePath): void
     {
+        $this->loadBatchAttributes($batch->data ?? []);
+
+        $shopUrl = $this->credentialArray['shopUrl'];
+        $prepared = [];
+        $operations = [];
+
         foreach ($batch->data as $rawData) {
-            $shopUrl = $this->credentialArray['shopUrl'];
+            $key = (string) $rawData['id'];
             $id = $this->extractId($rawData['apiUrl'] ?? null, $shopUrl);
             $formattedData = $this->prepareMetaFieldDefinition($rawData, $id);
-            $responseData = $this->apiRequestShopify($formattedData, $id);
+
+            $prepared[$key] = [
+                'rawData'       => $rawData,
+                'id'            => $id,
+                'formattedData' => $formattedData,
+            ];
+
+            $operations[$key] = [
+                'endpoint'   => $id ? 'metafieldDefinitionUpdate' : 'metafieldDefinitionCreate',
+                'parameters' => ['input' => $formattedData],
+            ];
+        }
+
+        if (empty($operations)) {
+            return;
+        }
+
+        $responses = $this->requestGraphQlApiActionPool($operations, $this->credentialArray);
+        $adoptOperations = [];
+        $adoptData = [];
+
+        foreach ($prepared as $key => $item) {
+            $rawData = $item['rawData'];
+            $id = $item['id'];
+            $formattedData = $item['formattedData'];
+            $responseData = $responses[$key] ?? [];
 
             if (! empty($responseData['body']['errors'])) {
                 $this->handleErrors($responseData['body']['errors'], $rawData['code']);
 
                 continue;
             }
+
             if ($id) {
-                $resultCollection = $responseData['body']['data']['metafieldDefinitionUpdate'] ?? [];
-                if (! empty($resultCollection['userErrors'])) {
-                    $errorsMessage = array_column($resultCollection['userErrors'], 'message');
-                    if (in_array(self::NOT_FOUND_DEFINITION, $errorsMessage)) {
+                $result = $responseData['body']['data']['metafieldDefinitionUpdate'] ?? [];
+                $userErrors = $result['userErrors'] ?? [];
+
+                if ($this->hasPinnedLimitError($userErrors)) {
+                    $responseData = $this->retryUnpinned('metafieldDefinitionUpdate', $formattedData, $rawData['code']);
+                    $result = $responseData['body']['data']['metafieldDefinitionUpdate'] ?? [];
+                    $userErrors = $result['userErrors'] ?? [];
+                }
+
+                if (! empty($userErrors)) {
+                    $errorsMessage = array_column($userErrors, 'message');
+
+                    if (in_array(self::NOT_FOUND_DEFINITION, $errorsMessage, true)) {
                         $this->processCreateFlow($rawData, $shopUrl);
 
                         continue;
                     }
-                    $this->handleErrors($resultCollection['userErrors'], $rawData['code']);
+
+                    $this->handleErrors($userErrors, $rawData['code']);
 
                     continue;
                 }
+
                 $this->createdItemsCount++;
             } else {
-                $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl);
+                $result = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
+                $userErrors = $result['userErrors'] ?? [];
+
+                if ($this->hasPinnedLimitError($userErrors)) {
+                    $responseData = $this->retryUnpinned('metafieldDefinitionCreate', $formattedData, $rawData['code']);
+                    $result = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
+                    $userErrors = $result['userErrors'] ?? [];
+                }
+
+                if (($userErrors[0]['code'] ?? null) === 'TAKEN') {
+                    $updateData = $this->prepareMetaFieldDefinition($rawData, true);
+                    $updateData['pin'] = $formattedData['pin'];
+
+                    $adoptOperations[$key] = [
+                        'endpoint'   => 'metafieldDefinitionUpdate',
+                        'parameters' => ['input' => $updateData],
+                    ];
+
+                    $adoptData[$key] = [
+                        'rawData'    => $rawData,
+                        'updateData' => $updateData,
+                    ];
+                } elseif (! empty($userErrors)) {
+                    $this->handleErrors($userErrors, $rawData['code']);
+                } else {
+                    $metaId = $result['createdDefinition']['id'] ?? null;
+
+                    if ($metaId) {
+                        $this->shopifyMetaFieldRepository->update(
+                            ['apiUrl' => json_encode([$shopUrl => $metaId], JSON_UNESCAPED_SLASHES)],
+                            $rawData['id']
+                        );
+
+                        $this->createdItemsCount++;
+                    }
+                }
+            }
+        }
+
+        if (! empty($adoptOperations)) {
+            $adoptResponses = $this->requestGraphQlApiActionPool($adoptOperations, $this->credentialArray);
+
+            foreach ($adoptData as $key => $adopt) {
+                $rawData = $adopt['rawData'];
+                $updateData = $adopt['updateData'];
+                $response = $adoptResponses[$key] ?? [];
+                $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+
+                if ($this->hasPinnedLimitError($updateErrors)) {
+                    $response = $this->retryUnpinned('metafieldDefinitionUpdate', $updateData, $rawData['code']);
+                    $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+                }
+
+                if (! empty($updateErrors)) {
+                    $this->handleErrors($updateErrors, $rawData['code']);
+
+                    continue;
+                }
+
+                $metaId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
+
+                if ($metaId) {
+                    $this->shopifyMetaFieldRepository->update(
+                        ['apiUrl' => json_encode([$shopUrl => $metaId], JSON_UNESCAPED_SLASHES)],
+                        $rawData['id']
+                    );
+
+                    $this->createdItemsCount++;
+                }
             }
         }
     }
 
     /**
-     * Register exported definition codes in the credential's metafield extras so
-     * the product importer's whitelist picks them up without a metafield re-import.
+     * Preload attributes for all rows in the current batch.
+     */
+    protected function loadBatchAttributes(array $rows): void
+    {
+        $codes = array_values(array_filter(array_column($rows, 'code')));
+
+        if (empty($codes)) {
+            $this->batchAttributes = [];
+
+            return;
+        }
+
+        $this->batchAttributes = resolve(AttributeRepository::class)
+            ->with(['options.translations'])
+            ->findWhereIn('code', $codes)
+            ->keyBy('code')
+            ->all();
+    }
+
+    /**
+     * Resolve an attribute from preloaded batch attributes or repository.
+     */
+    protected function findAttribute(string $code): mixed
+    {
+        return $this->batchAttributes[$code]
+            ?? resolve(AttributeRepository::class)->findOneByField('code', $code);
+    }
+
+    /**
+     * Register exported definition codes in the credential's metafield extras.
      */
     private function syncMetafieldExtras(array $rows): void
     {
@@ -180,6 +324,7 @@ class Exporter extends AbstractExporter
 
         foreach ($rows as $row) {
             $code = $row['code'] ?? null;
+
             if (empty($code)) {
                 continue;
             }
@@ -204,59 +349,84 @@ class Exporter extends AbstractExporter
         $this->shopifyRepository->update(['extras' => $extras], $this->credential->id);
     }
 
+    /**
+     * Extract the Shopify definition GID for the given shop URL.
+     */
     private function extractId(?string $apiUrl, string $shopUrl): ?string
     {
         if (! $apiUrl) {
             return null;
         }
+
         $metaFieldInApi = json_decode($apiUrl, true);
 
         return $metaFieldInApi[$shopUrl] ?? null;
     }
 
+    /**
+     * Process create flow for a metafield definition.
+     */
     private function processCreateFlow(array $rawData, string $shopUrl, $id = null): void
     {
         $formattedData = $this->prepareMetaFieldDefinition($rawData, $id);
         $responseData = $this->apiRequestShopify($formattedData, $id);
-        $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl);
+
+        $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl, $formattedData);
     }
 
-    public function createMetafieldDefinitionMapping(array $responseData, array $rawData, string $shopUrl): void
+    /**
+     * Create mapping for a metafield definition response with fallback on pinned limit.
+     */
+    public function createMetafieldDefinitionMapping(array $responseData, array $rawData, string $shopUrl, ?array $formattedData = null): void
     {
-        $resultCollection = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
-        $userErrors = $resultCollection['userErrors'] ?? [];
-
         if (! empty($responseData['body']['errors'])) {
             $this->handleErrors($responseData['body']['errors'], $rawData['code']);
 
             return;
         }
 
-        if (! empty($userErrors)) {
-            if ($userErrors[0]['code'] === 'TAKEN') {
-                $formattedData = $this->prepareMetaFieldDefinition($rawData, true);
-                $response = $this->requestGraphQlApiAction('metafieldDefinitionUpdate', $this->credentialArray, ['input' => $formattedData]);
-                $metaDataResponse = $response['body']['data']['metafieldDefinitionUpdate'] ?? [];
-                if (! empty($metaDataResponse['userErrors'])) {
-                    $this->handleErrors($metaDataResponse['userErrors'], $rawData['code']);
+        $formattedData ??= $this->prepareMetaFieldDefinition($rawData);
+        $result = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
+        $userErrors = $result['userErrors'] ?? [];
 
-                    return;
-                }
-                $metaId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
-            } else {
-                $this->handleErrors($userErrors, $rawData['code']);
+        if ($this->hasPinnedLimitError($userErrors)) {
+            $responseData = $this->retryUnpinned('metafieldDefinitionCreate', $formattedData, $rawData['code']);
+            $result = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
+            $userErrors = $result['userErrors'] ?? [];
+        }
+
+        if (($userErrors[0]['code'] ?? null) === 'TAKEN') {
+            $updateData = $this->prepareMetaFieldDefinition($rawData, true);
+            $updateData['pin'] = $formattedData['pin'];
+
+            $response = $this->requestGraphQlApiAction('metafieldDefinitionUpdate', $this->credentialArray, ['input' => $updateData]);
+            $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+
+            if ($this->hasPinnedLimitError($updateErrors)) {
+                $response = $this->retryUnpinned('metafieldDefinitionUpdate', $updateData, $rawData['code']);
+                $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+            }
+
+            if (! empty($updateErrors)) {
+                $this->handleErrors($updateErrors, $rawData['code']);
 
                 return;
             }
+
+            $metaId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
+        } elseif (! empty($userErrors)) {
+            $this->handleErrors($userErrors, $rawData['code']);
+
+            return;
         } else {
-            $metaId = $resultCollection['createdDefinition']['id'] ?? null;
+            $metaId = $result['createdDefinition']['id'] ?? null;
         }
 
         if ($metaId) {
             $apiUrlData = [$shopUrl => $metaId];
 
             $this->shopifyMetaFieldRepository->update(
-                ['apiUrl' => json_encode($apiUrlData, true)],
+                ['apiUrl' => json_encode($apiUrlData, JSON_UNESCAPED_SLASHES)],
                 $rawData['id']
             );
 
@@ -264,14 +434,43 @@ class Exporter extends AbstractExporter
         }
     }
 
+    /**
+     * Retry a metafield operation with pin set to false.
+     */
+    protected function retryUnpinned(string $mutation, array $formattedData, string $code): array
+    {
+        $formattedData['pin'] = false;
+
+        $response = $this->requestGraphQlApiAction($mutation, $this->credentialArray, ['input' => $formattedData]);
+        $userErrors = $response['body']['data'][$mutation]['userErrors'] ?? [];
+
+        if (empty($userErrors)) {
+            $this->jobLogger->warning("Shopify pinned limit reached for attribute: {$code}. Exported as unpinned.");
+        }
+
+        return $response;
+    }
+
+    /**
+     * Check if user errors contain PINNED_LIMIT_REACHED.
+     */
+    protected function hasPinnedLimitError(array $userErrors): bool
+    {
+        return in_array('PINNED_LIMIT_REACHED', array_column($userErrors, 'code'), true);
+    }
+
+    /**
+     * Handle and record export errors for an attribute code.
+     */
     private function handleErrors(array $errors, string $code): void
     {
         $this->logWarning($errors, $code);
+
         $this->skippedItemsCount++;
     }
 
     /**
-     * Prepare meta field definition
+     * Determine whether the metafield definition represents an email attribute.
      */
     protected function isEmailMetafield(array $rowData): bool
     {
@@ -285,11 +484,14 @@ class Exporter extends AbstractExporter
             return true;
         }
 
-        $attribute = resolve(AttributeRepository::class)->findOneByField('code', $rowData['code'] ?? '');
+        $attribute = $this->findAttribute($rowData['code'] ?? '');
 
         return $attribute?->type === 'text' && $attribute?->validation === 'email';
     }
 
+    /**
+     * Prepare the metafield definition payload for Shopify.
+     */
     public function prepareMetaFieldDefinition($rowData, $id = null): array
     {
         $formattedData = [
@@ -304,7 +506,9 @@ class Exporter extends AbstractExporter
             $formattedData['namespace'] = $nameSapceAndKey[0];
             $formattedData['key'] = $nameSapceAndKey[1];
         }
+
         $type = $rowData['type'] ?? null;
+
         if ($type && isset($rowData['listvalue'])) {
             $type = $rowData['listvalue'] ? 'list.'.$type : $type;
         }
@@ -319,13 +523,16 @@ class Exporter extends AbstractExporter
             $maxunit = $validationDatas['maxunit'] ?? null;
             $minunit = $validationDatas['minunit'] ?? null;
             unset($validationDatas['maxunit'], $validationDatas['minunit']);
+
             foreach ($validationDatas as $key => $validationData) {
                 if (in_array($key, ['content_type', 'file_types', 'reference_source', 'association_type', 'reference_as', 'link_text_attribute', 'metaobject_type', 'metaobject_definition_id'], true)) {
                     continue;
                 }
+
                 if ($validationData == null) {
                     continue;
                 }
+
                 if ($maxunit && $key == 'max') {
                     $validationData = json_encode([
                         'value' => $validationData,
@@ -337,6 +544,7 @@ class Exporter extends AbstractExporter
                         'unit'  => $minunit,
                     ], true);
                 }
+
                 $key = in_array($type, ['list.rating', 'rating']) ? 'scale_'.$key : $key;
 
                 $validations[] = [
@@ -347,6 +555,7 @@ class Exporter extends AbstractExporter
 
             if (($validationDatas['content_type'] ?? null) === 'choice_list') {
                 $choices = $this->resolveChoiceListValues($rowData['code'] ?? '');
+
                 if ($choices !== []) {
                     $validations[] = [
                         'name'  => 'choices',
@@ -359,6 +568,7 @@ class Exporter extends AbstractExporter
                 $validationDatas['content_type'] ?? null,
                 $validationDatas['file_types'] ?? []
             );
+
             if ($fileTypeOptions !== []) {
                 $validations[] = [
                     'name'  => 'file_type_options',
@@ -394,7 +604,9 @@ class Exporter extends AbstractExporter
                 $formattedData['validations'] ?? [],
                 fn (array $validation): bool => ($validation['name'] ?? '') !== 'regex'
             ));
+
             $emailValidations[] = ['name' => 'regex', 'value' => MetaobjectFieldType::EMAIL_REGEX];
+
             $formattedData['validations'] = $emailValidations;
         }
 
@@ -406,6 +618,7 @@ class Exporter extends AbstractExporter
 
         if (! empty($rowData['options'])) {
             $options = json_decode($rowData['options'], true);
+
             foreach ($options as $key => $option) {
                 if (isset($this->shoifyMetaFieldTypeData[$rowData['type']][$key])) {
                     $capabilities[$key] = [
@@ -449,9 +662,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Map a file_reference metafield's content type + accepted-file-types into the
-     * Shopify `file_type_options` values. Image/Video presets restrict to that kind;
-     * the generic File preset uses the stored file_types (media) or none (any).
+     * Map a file_reference metafield's content type into Shopify file_type_options.
      *
      * @param  array<int, string>  $fileTypes
      * @return array<int, string>
@@ -467,8 +678,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Resolve a select/multiselect attribute's option labels for the Shopify default
-     * locale, matching the exported metafield value so the `choices` validation accepts it.
+     * Resolve choices list options for select or multiselect attributes.
      *
      * @return array<int, string>
      */
@@ -478,7 +688,7 @@ class Exporter extends AbstractExporter
             return [];
         }
 
-        $attribute = resolve(AttributeRepository::class)->findOneByField('code', $code);
+        $attribute = $this->findAttribute($code);
 
         if (! $attribute || ! in_array($attribute->type, ['select', 'multiselect'], true)) {
             return [];
@@ -486,20 +696,20 @@ class Exporter extends AbstractExporter
 
         $choices = [];
 
-        foreach ($attribute->options()->get() as $option) {
-            $option = $option->toArray();
-            $label = array_column(
-                array_filter($option['translations'] ?? [], fn (array $t): bool => $t['locale'] === $this->shopifyDefaultLocale),
-                'label'
-            )[0] ?? null;
+        foreach ($attribute->options as $option) {
+            $translations = $option->translations ?? collect();
+            $translation = $translations->firstWhere('locale', $this->shopifyDefaultLocale);
+            $label = $translation?->label;
 
-            $choices[] = ! empty($label) ? $label : $option['code'];
+            $choices[] = ! empty($label) ? $label : $option->code;
         }
 
         return $choices;
     }
 
     /**
+     * Fetch current category constraints for the metafield definition.
+     *
      * @return array<int, string>
      */
     private function fetchCurrentCategoryConstraint(array $rowData): array
@@ -508,6 +718,8 @@ class Exporter extends AbstractExporter
     }
 
     /**
+     * Fetch all category constraints across metafield definitions.
+     *
      * @return array<string, array<int, string>>
      */
     private function currentCategoryConstraints(): array
@@ -549,7 +761,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * Make an API request to Shopify to create or update a category.
+     * Make an API request to Shopify to create or update a metafield definition.
      */
     public function apiRequestShopify($metaFieldFormattedData, $id = null): array
     {
@@ -559,7 +771,7 @@ class Exporter extends AbstractExporter
     }
 
     /**
-     * log Warning generate
+     * Log a warning for an attribute code.
      */
     public function logWarning(array $data, string $code): void
     {
