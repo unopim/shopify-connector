@@ -67,7 +67,7 @@ jobs:
 
       - name: Install UnoPim
         working-directory: core
-        run: php artisan unopim:install --skip-env-check --skip-admin-creation
+        run: php artisan unopim:install --skip-env-check --skip-admin-creation --force
 
       - name: Bind Shopify Tests to Pest
         working-directory: core
@@ -174,7 +174,7 @@ jobs:
 
       - name: Install UnoPim
         working-directory: core
-        run: php artisan unopim:install --skip-env-check --skip-admin-creation
+        run: php artisan unopim:install --skip-env-check --skip-admin-creation --force
 
       - name: Bind Shopify Tests to Pest
         working-directory: core
