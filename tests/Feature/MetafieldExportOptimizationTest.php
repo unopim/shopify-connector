@@ -48,12 +48,17 @@ function metafieldExportRun(array $rows): array
 beforeEach(fn () => test()->loginAsAdmin());
 
 it('falls back to unpinned creation when shopify returns PINNED_LIMIT_REACHED', function () {
-    $metafield = ShopifyMetaFieldsConfig::create([
+    $metafield = ShopifyMetaFieldsConfig::factory()->create([
         'code'            => 'brand_tag_'.uniqid(),
         'attribute'       => 'Brand Tag',
+        'attributeLabel'  => 'Brand Tag',
         'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.brand_tag',
+        'description'     => '',
         'pin'             => 1,
         'storefronts'     => 1,
     ]);
@@ -136,12 +141,17 @@ it('falls back to unpinned creation when shopify returns PINNED_LIMIT_REACHED', 
 });
 
 it('falls back to unpinned update when shopify returns PINNED_LIMIT_REACHED on update', function () {
-    $metafield = ShopifyMetaFieldsConfig::create([
+    $metafield = ShopifyMetaFieldsConfig::factory()->create([
         'code'            => 'brand_tag_update_'.uniqid(),
         'attribute'       => 'Brand Tag Update',
+        'attributeLabel'  => 'Brand Tag Update',
         'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.brand_tag_update',
+        'description'     => '',
         'pin'             => 1,
         'storefronts'     => 1,
         'apiUrl'          => json_encode(['test-store.myshopify.com' => 'gid://shopify/MetafieldDefinition/888']),
@@ -221,22 +231,32 @@ it('falls back to unpinned update when shopify returns PINNED_LIMIT_REACHED on u
 });
 
 it('processes a batch in pool and handles pinned limit fallback concurrently', function () {
-    $metafield1 = ShopifyMetaFieldsConfig::create([
+    $metafield1 = ShopifyMetaFieldsConfig::factory()->create([
         'code'            => 'batch_meta_1_'.uniqid(),
         'attribute'       => 'Batch Meta 1',
+        'attributeLabel'  => 'Batch Meta 1',
         'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.batch_meta_1',
+        'description'     => '',
         'pin'             => 1,
         'storefronts'     => 1,
     ]);
 
-    $metafield2 = ShopifyMetaFieldsConfig::create([
+    $metafield2 = ShopifyMetaFieldsConfig::factory()->create([
         'code'            => 'batch_meta_2_'.uniqid(),
         'attribute'       => 'Batch Meta 2',
+        'attributeLabel'  => 'Batch Meta 2',
         'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.batch_meta_2',
+        'description'     => '',
         'pin'             => 1,
         'storefronts'     => 1,
     ]);
@@ -332,12 +352,17 @@ it('processes a batch in pool and handles pinned limit fallback concurrently', f
 });
 
 it('processes a batch in pool and adopts TAKEN definitions concurrently', function () {
-    $metafield = ShopifyMetaFieldsConfig::create([
+    $metafield = ShopifyMetaFieldsConfig::factory()->create([
         'code'            => 'taken_meta_'.uniqid(),
         'attribute'       => 'Taken Meta',
+        'attributeLabel'  => 'Taken Meta',
         'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.taken_meta',
+        'description'     => '',
         'pin'             => 1,
         'storefronts'     => 1,
     ]);
