@@ -67,6 +67,7 @@ class BulkResultFinalizer
         $recoveredStaleSkus = [];
         $pendingMedia = [];
         $skippedMetafields = [];
+        $staleRecreateQueue = [];
 
         foreach ($results as $index => $line) {
             $decoded = json_decode($line, true);
@@ -86,29 +87,16 @@ class BulkResultFinalizer
                         $clearedStaleSkus = array_values(array_unique(array_merge($clearedStaleSkus, $cleared)));
                     }
 
-                    $retry = $this->recreateWithHandleIdentifier(
-                        $inputLines[$index] ?? null,
-                        $manifestLine,
-                        $credential,
-                        $jobTrackId,
-                        $shopUrl,
-                        $userErrors,
-                    );
+                    $staleRecreateQueue[$index] = [
+                        'index'        => $index,
+                        'sku'          => $sku,
+                        'manifestLine' => $manifestLine,
+                        'inputLine'    => $inputLines[$index] ?? null,
+                        'userErrors'   => $userErrors,
+                        'cleared'      => $cleared,
+                    ];
 
-                    if ($retry['success']) {
-                        $recreatedSkus[] = $sku;
-                        $recoveredStaleSkus = array_values(array_unique(array_merge(
-                            $recoveredStaleSkus,
-                            $cleared,
-                        )));
-                        $success++;
-
-                        continue;
-                    }
-
-                    if (! empty($retry['errors'])) {
-                        $userErrors = array_merge($userErrors, $retry['errors']);
-                    }
+                    continue;
                 }
 
                 $failed[] = [
@@ -159,6 +147,32 @@ class BulkResultFinalizer
             }
 
             $success++;
+        }
+
+        if ($staleRecreateQueue !== []) {
+            $poolResults = $this->recreateStaleProductsPool(
+                $staleRecreateQueue,
+                $credential,
+                $jobTrackId,
+                $shopUrl,
+            );
+
+            foreach ($poolResults['recreated'] as $item) {
+                $recreatedSkus[] = $item['sku'];
+                $recoveredStaleSkus = array_values(array_unique(array_merge(
+                    $recoveredStaleSkus,
+                    $item['cleared'],
+                )));
+                $success++;
+            }
+
+            foreach ($poolResults['failed'] as $item) {
+                $failed[] = [
+                    'line'   => $item['line'],
+                    'sku'    => $item['sku'],
+                    'errors' => $this->annotateMetafieldErrors($item['userErrors'], $inputLines[$item['line']] ?? null),
+                ];
+            }
         }
 
         $this->persistBulkMediaMappings($pendingMedia, $credential, $jobTrackId, $shopUrl);
@@ -292,25 +306,260 @@ class BulkResultFinalizer
     }
 
     /**
-     * Recreate a product on Shopify by re-running productSet with a handle-based identifier.
+     * Recreate products on Shopify concurrently via pooled requests for items
+     * that failed due to stale local mappings.
      *
-     * Used when the original bulk attempt failed because the local mapping pointed to a
-     * deleted Shopify product. Sync the new parent + variant mappings on success.
-     *
-     * @return array{success: bool, errors?: array}
+     * @param  array<int, array{index: int, sku: string, manifestLine: array, inputLine: ?array, userErrors: array, cleared: array}>  $queue
+     * @return array{recreated: array<int, array{line: int, sku: string, cleared: array}>, failed: array<int, array{line: int, sku: string, userErrors: array}>}
      */
-    protected function recreateWithHandleIdentifier(
-        ?array $variables,
-        array $manifestLine,
+    protected function recreateStaleProductsPool(
+        array $queue,
         array $credential,
         ?int $jobTrackId,
         ?string $shopUrl,
-        array $userErrors = [],
     ): array {
+        if ($queue === [] || $credential === []) {
+            return ['recreated' => [], 'failed' => []];
+        }
+
+        $preparedVariables = [];
+        $operations = [];
+        $failed = [];
+        $recreated = [];
+
+        foreach ($queue as $index => $item) {
+            $variables = $this->buildRecreateVariables(
+                $item['inputLine'],
+                $item['manifestLine'],
+                $item['userErrors'],
+            );
+
+            if (! $variables) {
+                $failed[$index] = [
+                    'line'       => $item['index'],
+                    'sku'        => $item['sku'],
+                    'userErrors' => $item['userErrors'],
+                ];
+
+                continue;
+            }
+
+            $preparedVariables[$index] = $variables;
+            $operations[$index] = [
+                'endpoint'   => 'productSet',
+                'parameters' => $variables,
+            ];
+        }
+
+        if ($operations === []) {
+            return ['recreated' => array_values($recreated), 'failed' => array_values($failed)];
+        }
+
+        $retryOperations = [];
+
+        foreach (array_chunk($operations, 8, true) as $chunk) {
+            $responses = $this->executeProductSetPool($chunk, $credential);
+
+            $throttled = [];
+            foreach ($chunk as $index => $op) {
+                if ($this->isThrottledResponse($responses[$index] ?? [])) {
+                    $throttled[$index] = $op;
+                }
+            }
+
+            if ($throttled !== []) {
+                sleep(2);
+                $retryThrottledResponses = $this->executeProductSetPool($throttled, $credential);
+                foreach ($retryThrottledResponses as $idx => $resp) {
+                    $responses[$idx] = $resp;
+                }
+            }
+
+            foreach ($chunk as $index => $op) {
+                $response = $responses[$index] ?? null;
+                $payload = $response['body']['data']['productSet'] ?? [];
+                $userErrors = $payload['userErrors'] ?? [];
+                $product = $payload['product'] ?? [];
+
+                if (empty($userErrors) && ! empty($product['id'])) {
+                    $this->applyRecreatedProduct(
+                        $queue[$index]['manifestLine'],
+                        $product,
+                        $jobTrackId,
+                        $shopUrl,
+                    );
+
+                    $recreated[$index] = [
+                        'line'    => $queue[$index]['index'],
+                        'sku'     => $queue[$index]['sku'],
+                        'cleared' => $queue[$index]['cleared'],
+                    ];
+
+                    continue;
+                }
+
+                if ($this->hasHandleConflict($userErrors)) {
+                    $retryVars = $preparedVariables[$index];
+                    $retryVars['identifier'] = null;
+                    unset($retryVars['input']['handle']);
+
+                    $retryOperations[$index] = [
+                        'endpoint'   => 'productSet',
+                        'parameters' => $retryVars,
+                    ];
+
+                    continue;
+                }
+
+                $combinedErrors = ! empty($userErrors)
+                    ? array_merge($queue[$index]['userErrors'], $userErrors)
+                    : $queue[$index]['userErrors'];
+
+                $failed[$index] = [
+                    'line'       => $queue[$index]['index'],
+                    'sku'        => $queue[$index]['sku'],
+                    'userErrors' => $combinedErrors,
+                ];
+            }
+
+            $availablePoints = $this->extractAvailablePoints($responses);
+            if ($availablePoints !== null && $availablePoints < 400) {
+                sleep(2);
+            }
+        }
+
+        if ($retryOperations !== []) {
+            foreach (array_chunk($retryOperations, 8, true) as $retryChunk) {
+                $retryResponses = $this->executeProductSetPool($retryChunk, $credential);
+
+                foreach ($retryChunk as $index => $op) {
+                    $response = $retryResponses[$index] ?? null;
+                    $payload = $response['body']['data']['productSet'] ?? [];
+                    $userErrors = $payload['userErrors'] ?? [];
+                    $product = $payload['product'] ?? [];
+
+                    if (empty($userErrors) && ! empty($product['id'])) {
+                        $this->applyRecreatedProduct(
+                            $queue[$index]['manifestLine'],
+                            $product,
+                            $jobTrackId,
+                            $shopUrl,
+                        );
+
+                        $recreated[$index] = [
+                            'line'    => $queue[$index]['index'],
+                            'sku'     => $queue[$index]['sku'],
+                            'cleared' => $queue[$index]['cleared'],
+                        ];
+                    } else {
+                        $combinedErrors = ! empty($userErrors)
+                            ? array_merge($queue[$index]['userErrors'], $userErrors)
+                            : $queue[$index]['userErrors'];
+
+                        $failed[$index] = [
+                            'line'       => $queue[$index]['index'],
+                            'sku'        => $queue[$index]['sku'],
+                            'userErrors' => $combinedErrors,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return [
+            'recreated' => array_values($recreated),
+            'failed'    => array_values($failed),
+        ];
+    }
+
+    /**
+     * Execute operations using pooled requests, falling back to individual calls if pooling fails.
+     *
+     * @param  array<string|int, array{endpoint: string, parameters?: array}>  $operations
+     * @return array<string|int, array{code: int|null, body: array}>
+     */
+    protected function executeProductSetPool(array $operations, array $credential): array
+    {
+        if (method_exists($this, 'requestGraphQlApiActionPool')) {
+            try {
+                return $this->requestGraphQlApiActionPool($operations, $credential);
+            } catch (\Throwable) {
+                // Fall back to serial requests below
+            }
+        }
+
+        $responses = [];
+
+        foreach ($operations as $key => $op) {
+            try {
+                $responses[$key] = $this->requestGraphQlApiAction($op['endpoint'], $credential, $op['parameters'] ?? []);
+            } catch (\Throwable $e) {
+                $responses[$key] = [
+                    'code' => null,
+                    'body' => [
+                        'data' => [
+                            'productSet' => [
+                                'userErrors' => [['message' => $e->getMessage()]],
+                            ],
+                        ],
+                    ],
+                ];
+            }
+        }
+
+        return $responses;
+    }
+
+    /**
+     * Check if a Shopify API response indicates rate limiting or throttle.
+     *
+     * @param  array<string, mixed>  $response
+     */
+    protected function isThrottledResponse(array $response): bool
+    {
+        if (($response['code'] ?? null) === 429) {
+            return true;
+        }
+
+        foreach ($response['body']['errors'] ?? [] as $error) {
+            $code = strtoupper((string) ($error['extensions']['code'] ?? ''));
+            $msg = strtolower((string) ($error['message'] ?? ''));
+
+            if ($code === 'THROTTLED' || str_contains($msg, 'throttled')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract currently available GraphQL rate limit points from responses.
+     *
+     * @param  array<string|int, array<string, mixed>>  $responses
+     */
+    protected function extractAvailablePoints(array $responses): ?int
+    {
+        foreach ($responses as $response) {
+            $cost = $response['body']['extensions']['cost']['throttleStatus'] ?? null;
+
+            if (isset($cost['currentlyAvailable'])) {
+                return (int) $cost['currentlyAvailable'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Prepare variables for productSet recreation with handle identifier.
+     */
+    protected function buildRecreateVariables(?array $variables, array $manifestLine, array $userErrors): ?array
+    {
         $handle = $manifestLine['product_handle'] ?? null;
 
-        if (empty($variables) || empty($variables['input']) || $credential === []) {
-            return ['success' => false];
+        if (empty($variables) || empty($variables['input'])) {
+            return null;
         }
 
         $variables['identifier'] = ! empty($handle) ? ['handle' => $handle] : null;
@@ -318,26 +567,22 @@ class BulkResultFinalizer
         $this->removeInvalidMetafields($variables, $userErrors);
         $this->removeStaleVariantIdentifiers($variables, $userErrors);
 
-        // A deleted Shopify product also invalidates its MediaImage/GID values.
-        // The media phase will attach fresh media after recreation succeeds.
         unset($variables['input']['files']);
 
         $this->injectRecreateInventory($variables, $manifestLine);
 
-        $result = $this->runRecreateProductSet($credential, $variables);
+        return $variables;
+    }
 
-        if (! $result['success'] && $this->hasHandleConflict($result['errors'] ?? [])) {
-            $variables['identifier'] = null;
-            unset($variables['input']['handle']);
-            $result = $this->runRecreateProductSet($credential, $variables);
-        }
-
-        if (! $result['success']) {
-            return ['success' => false, 'errors' => $result['errors'] ?? []];
-        }
-
-        $product = $result['product'];
-
+    /**
+     * Apply mappings and core media mappings for a successfully recreated product.
+     */
+    protected function applyRecreatedProduct(
+        array $manifestLine,
+        array $product,
+        ?int $jobTrackId,
+        ?string $shopUrl,
+    ): void {
         $this->syncProductMapping(
             $manifestLine['product_sku'] ?? null,
             $product['id'],
@@ -362,6 +607,43 @@ class BulkResultFinalizer
         }
 
         $this->persistCoreMediaMappings($manifestLine, $product, $jobTrackId, $shopUrl);
+    }
+
+    /**
+     * Recreate a product on Shopify by re-running productSet with a handle-based identifier.
+     *
+     * Used when the original bulk attempt failed because the local mapping pointed to a
+     * deleted Shopify product. Sync the new parent + variant mappings on success.
+     *
+     * @return array{success: bool, errors?: array}
+     */
+    protected function recreateWithHandleIdentifier(
+        ?array $variables,
+        array $manifestLine,
+        array $credential,
+        ?int $jobTrackId,
+        ?string $shopUrl,
+        array $userErrors = [],
+    ): array {
+        $variables = $this->buildRecreateVariables($variables, $manifestLine, $userErrors);
+
+        if (! $variables || $credential === []) {
+            return ['success' => false];
+        }
+
+        $result = $this->runRecreateProductSet($credential, $variables);
+
+        if (! $result['success'] && $this->hasHandleConflict($result['errors'] ?? [])) {
+            $variables['identifier'] = null;
+            unset($variables['input']['handle']);
+            $result = $this->runRecreateProductSet($credential, $variables);
+        }
+
+        if (! $result['success']) {
+            return ['success' => false, 'errors' => $result['errors'] ?? []];
+        }
+
+        $this->applyRecreatedProduct($manifestLine, $result['product'], $jobTrackId, $shopUrl);
 
         return ['success' => true];
     }

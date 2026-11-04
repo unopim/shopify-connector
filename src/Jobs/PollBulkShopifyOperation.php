@@ -110,7 +110,23 @@ class PollBulkShopifyOperation implements ShouldQueue
         $bulkOperation = $bulkOperationRepository->find($bulkOperation->id);
 
         $manifest = $bulkOperationService->readManifest($bulkOperation->input_file_path);
-        $bulkResultFinalizer->finalize($bulkOperation, $manifest);
+
+        try {
+            $bulkResultFinalizer->finalize($bulkOperation, $manifest);
+        } catch (\Throwable $e) {
+            $this->safeWarn(sprintf(
+                'Shopify bulk finalizer failed for operation %s: %s',
+                $bulkOperation->shopify_bulk_operation_id,
+                $e->getMessage()
+            ));
+
+            $bulkOperationRepository->update([
+                'status'     => 'failed',
+                'error_code' => 'FINALIZER_ERROR: '.$e->getMessage(),
+            ], $bulkOperation->id);
+
+            return;
+        }
 
         $this->logUserErrors($bulkOperationRepository->find($bulkOperation->id));
     }

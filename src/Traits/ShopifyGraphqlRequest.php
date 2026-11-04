@@ -46,6 +46,33 @@ trait ShopifyGraphqlRequest
     }
 
     /**
+     * Sends a pool of Shopify API requests concurrently.
+     *
+     * @param  array<string, array{endpoint: string, parameters?: array}>  $operations
+     * @return array<string, array{code: int|null, body: array}>
+     */
+    protected function requestGraphQlApiActionPool(array $operations, ?array $credential = []): array
+    {
+        $client = resolve(ShopifyClientFactory::class)->make($credential ?? []);
+
+        if (property_exists($client, 'client') && ! method_exists($client, 'requestPool')) {
+            $client = (fn () => $this->client)->call($client);
+        }
+
+        if (method_exists($client, 'requestPool')) {
+            return $client->requestPool($operations);
+        }
+
+        $results = [];
+
+        foreach ($operations as $key => $op) {
+            $results[$key] = $client->request($op['endpoint'], $op['parameters'] ?? []);
+        }
+
+        return $results;
+    }
+
+    /**
      * Attempts to download the image from the provided URL.
      */
     public function handleUrlField(mixed $imageUrl, string $imagePath): string|bool
