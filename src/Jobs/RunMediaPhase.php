@@ -37,7 +37,7 @@ class RunMediaPhase implements ShouldQueue
         try {
             $result = $phaseService->handle($bulkOperation, $operationData);
         } catch (BulkMutationInProgressException) {
-            $this->release(random_int(20, 60));
+            $this->release(random_int(10, 15));
 
             return;
         }

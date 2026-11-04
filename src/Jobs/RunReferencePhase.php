@@ -3,6 +3,7 @@
 namespace Webkul\Shopify\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Webkul\Shopify\Exceptions\BulkMutationInProgressException;
 use Webkul\Shopify\Repositories\ShopifyBulkOperationRepository;
 use Webkul\Shopify\Services\Bulk\Phases\Export\ReferenceMetafieldPhaseService;
 use Webkul\Shopify\Services\BulkOperationResultReader;
@@ -30,7 +31,14 @@ class RunReferencePhase implements ShouldQueue
         }
 
         $tracker->markStarted($bulkOperation->job_track_id, self::PHASE);
-        $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
+
+        try {
+            $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
+        } catch (BulkMutationInProgressException) {
+            $this->release(random_int(10, 15));
+
+            return;
+        }
 
         $this->storePhaseResultOnCore((int) $bulkOperation->id, self::PHASE, $result);
 

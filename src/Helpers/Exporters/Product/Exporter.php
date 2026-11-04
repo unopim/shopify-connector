@@ -441,7 +441,7 @@ class Exporter extends AbstractExporter
         ]);
 
         dispatch(new PollBulkShopifyOperation($bulkOperation->id))->delay(
-            now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 20))
+            now()->addSeconds((int) config('shopify-bulk-operations.poll_delay_seconds', 3))
         );
 
         $this->markBatchAsNoOp($batch->id);
