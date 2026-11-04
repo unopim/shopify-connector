@@ -19,46 +19,22 @@ class MediaBulkPayloadBuilder
 
     protected const CODE_SEPARATOR = '|';
 
-    /**
-     * Per-line media plan recorded during build().
-     *
-     * MediaPhaseService persists this in the phase manifest so BulkResultFinalizer
-     * can map the Shopify media IDs returned by productCreateMedia back to their
-     * mapping `code` (attribute + path) and store the mapping.
-     *
-     * Shape: [ lineIndex => ['productId' => string, 'items' => [['sku','code','alt'], ...]] ]
-     *
-     * @var array<int, array>
-     */
+    /** @var array<int, array> */
     protected array $mediaPlan = [];
 
-    /**
-     * Code-refresh plan recorded during build().
-     *
-     * Maps each updated Shopify media GID to the mapping row whose `code` (attribute
-     * + path) must be rewritten once the bulk productUpdateMedia completes, so a later
-     * export sees the new path and does not re-update. Persisted in the phase manifest
-     * for BulkResultFinalizer.
-     *
-     * Shape: [ "gid://shopify/MediaImage/123" => ['rowId' => int, 'code' => string] ]
-     *
-     * @var array<string, array{rowId: int, code: string}>
-     */
+    /** @var array<string, array{rowId: int, code: string}> */
     protected array $updatePlan = [];
 
-    /**
-     * Update JSONL lines recorded during build().
-     *
-     * One productUpdateMedia line per product whose attribute-mapped image path
-     * changed — computed in the SAME pass as the create lines (no second diff /
-     * getProductContext pass). The media phase persists these so the media_update
-     * phase can run them via bulk without recomputing.
-     *
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $updateLines = [];
 
     protected array $imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+
+    /** @var array<string, array<int, array{row: object, attribute: string, path: string}>> */
+    protected array $mediaMappingsBySkuCache = [];
+
+    /** @var array<string, bool> */
+    protected array $verifiedGidStatusCache = [];
 
     public function __construct(
         protected ProductPhaseDataService $productPhaseDataService,
@@ -67,25 +43,128 @@ class MediaBulkPayloadBuilder
     ) {}
 
     /**
+     * Reset in-memory caches between export batches.
+     */
+    public function resetCaches(): void
+    {
+        $this->mediaMappingsBySkuCache = [];
+        $this->verifiedGidStatusCache = [];
+    }
+
+    /**
+     * Prewarm media mappings in bulk for a list of SKUs.
+     *
+     * @param  array<int, string>  $skus
+     */
+    public function prewarmMediaMappings(array $skus, ?string $shopUrl): void
+    {
+        if (empty($shopUrl) || $skus === []) {
+            return;
+        }
+
+        $skusToFetch = array_values(array_filter($skus, fn (string $sku): bool => ! isset($this->mediaMappingsBySkuCache[$sku])));
+
+        if ($skusToFetch === []) {
+            return;
+        }
+
+        foreach (array_chunk($skusToFetch, 500) as $chunk) {
+            $rows = $this->shopifyMappingRepository
+                ->where('entityType', self::MEDIA_ENTITY_TYPE)
+                ->whereIn('relatedSource', $chunk)
+                ->where('apiUrl', $shopUrl)
+                ->get();
+
+            $grouped = [];
+
+            foreach ($rows as $row) {
+                [$attribute, $path] = $this->parseCode($row->code);
+
+                $grouped[$row->relatedSource][] = [
+                    'row'       => $row,
+                    'attribute' => $attribute,
+                    'path'      => $path,
+                ];
+            }
+
+            foreach ($chunk as $sku) {
+                $this->mediaMappingsBySkuCache[$sku] = $grouped[$sku] ?? [];
+            }
+        }
+    }
+
+    /**
+     * Get candidate media GIDs across prewarmed SKUs.
+     *
+     * @param  array<int, string>  $skus
+     * @return array<int, string>
+     */
+    public function getPrewarmedGids(array $skus): array
+    {
+        $gids = [];
+
+        foreach ($skus as $sku) {
+            foreach ($this->mediaMappingsBySkuCache[$sku] ?? [] as $mapping) {
+                $gid = $mapping['row']->externalId ?? null;
+                if (! empty($gid)) {
+                    $gids[] = $gid;
+                }
+            }
+        }
+
+        return array_values(array_unique($gids));
+    }
+
+    /**
+     * Prewarm and batch-verify media GID health on Shopify in chunks of 250.
+     *
+     * @param  array<int, string>  $gids
+     */
+    public function prewarmMediaGids(array $gids, array $credential): void
+    {
+        $unique = array_values(array_unique(array_filter($gids)));
+        $needed = array_values(array_filter($unique, fn (string $gid): bool => ! isset($this->verifiedGidStatusCache[$gid])));
+
+        if ($needed === [] || $credential === []) {
+            return;
+        }
+
+        foreach (array_chunk($needed, 250) as $chunk) {
+            try {
+                $response = $this->requestGraphQlApiAction('getFileById', $credential, ['ids' => $chunk]);
+            } catch (\Throwable) {
+                foreach ($chunk as $gid) {
+                    $this->verifiedGidStatusCache[$gid] = true;
+                }
+
+                continue;
+            }
+
+            $nodes = $response['body']['data']['nodes'] ?? null;
+
+            if (! is_array($nodes)) {
+                foreach ($chunk as $gid) {
+                    $this->verifiedGidStatusCache[$gid] = true;
+                }
+
+                continue;
+            }
+
+            $healthy = [];
+            foreach ($nodes as $node) {
+                if (! empty($node['id']) && ($node['fileStatus'] ?? 'READY') !== 'FAILED') {
+                    $healthy[$node['id']] = true;
+                }
+            }
+
+            foreach ($chunk as $gid) {
+                $this->verifiedGidStatusCache[$gid] = isset($healthy[$gid]);
+            }
+        }
+    }
+
+    /**
      * Build JSONL payload lines for productCreateMedia.
-     *
-     * One product per line:
-     * {
-     *   "productId": "gid://shopify/Product/123",
-     *   "media": [
-     *     { "originalSource": "https://...", "mediaContentType": "IMAGE", "alt": "..." }
-     *   ]
-     * }
-     *
-     * For each media the (attribute, image path) pair is matched against the
-     * stored mappings, in a SINGLE pass:
-     *   - same attribute + same path  => skip entirely (no unnecessary update)
-     *   - same attribute, path changed => record an update line (media_update phase)
-     *   - attribute not mapped yet     => create the media (bulk line returned here)
-     *
-     * Both the create lines (returned) and the update lines + plan (recorded for
-     * getUpdateLines()/getUpdatePlan()) come from this one pass, so the expensive
-     * product-context diff is computed only once per export.
      *
      * @param  array  $entries  productSet entries from core bulk result
      * @param  array  $credential  credential array used for staged video uploads
@@ -213,14 +292,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Build a product's complete productSet `files` list: existing media referenced
-     * by id (preserved, since productSet deletes media absent from the list), new
-     * media by source. Returns the files plus plan items to persist new mappings.
-     *
-     * Cached media ids are first checked against Shopify: any the platform has moved
-     * to FAILED (an unreachable originalSource — e.g. a localhost app URL — leaves the
-     * id stuck there) are purged and re-uploaded, otherwise the whole productSet is
-     * rejected with "File ... is in the FAILED state and cannot be associated".
+     * Build productSet files list and plan items.
      *
      * @return array{files: array<int, array>, planItems: array<int, array{sku: string, code: string, alt: string}>}
      */
@@ -294,10 +366,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Of the given media GIDs, return those that can no longer be associated with a
-     * product: FAILED on Shopify, or absent from the response. Fail-safe — any API
-     * error or unexpected shape yields an empty list, preserving the reuse path and
-     * SaaS proxies that do not expose getFileById.
+     * Filter out unusable media GIDs (failed or deleted on Shopify).
      *
      * @param  array<int, string>  $gids
      * @return array<int, string>
@@ -310,32 +379,23 @@ class MediaBulkPayloadBuilder
             return [];
         }
 
-        try {
-            $response = $this->requestGraphQlApiAction('getFileById', $credential, ['ids' => $gids]);
-        } catch (\Throwable) {
-            return [];
+        $uncached = array_values(array_filter($gids, fn (string $gid): bool => ! isset($this->verifiedGidStatusCache[$gid])));
+        if ($uncached !== []) {
+            $this->prewarmMediaGids($uncached, $credential);
         }
 
-        $nodes = $response['body']['data']['nodes'] ?? null;
-
-        if (! is_array($nodes)) {
-            return [];
-        }
-
-        $healthy = [];
-
-        foreach ($nodes as $node) {
-            if (! empty($node['id']) && ($node['fileStatus'] ?? 'READY') !== 'FAILED') {
-                $healthy[$node['id']] = true;
+        $unusable = [];
+        foreach ($gids as $gid) {
+            if (isset($this->verifiedGidStatusCache[$gid]) && ! $this->verifiedGidStatusCache[$gid]) {
+                $unusable[] = $gid;
             }
         }
 
-        return array_values(array_filter($gids, static fn (string $gid): bool => ! isset($healthy[$gid])));
+        return $unusable;
     }
 
     /**
-     * Delete stored media mappings for the given GIDs so the next productSet
-     * re-uploads the image instead of reusing a dead id.
+     * Purge stored media mappings for unusable GIDs.
      *
      * @param  array<int, string>  $gids
      */
@@ -358,10 +418,9 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Resolve a productSet entry to its Shopify product GID and the desired media
-     * matched against stored mappings. Used by build()'s single create+update pass.
+     * Resolve entry to Shopify product GID and desired media matches.
      *
-     * @param  array<string, array>  $mappingsBySku  per-SKU mapping cache (by ref)
+     * @param  array<string, array>  $mappingsBySku
      * @return array{productId: string, matches: array<int, array{item: array, exact: ?array, byAttribute: ?array}>}|null
      */
     protected function resolveEntryMatches(array $entry, int $credentialId, ?string $shopUrl, string $channel, string $currency, array &$mappingsBySku): ?array
@@ -419,12 +478,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Look up a Shopify productId from the local mapping table.
-     *
-     * For a simple product the SKU's mapping row holds the variant GID in
-     * externalId and the product GID in relatedId (the variant sync overwrites the
-     * product sync), so relatedId is preferred and externalId is the parent-row
-     * fallback.
+     * Look up Shopify product GID from local mapping.
      */
     protected function resolveProductIdFromMapping(string $sku, ?string $shopUrl): ?string
     {
@@ -452,6 +506,10 @@ class MediaBulkPayloadBuilder
             return [];
         }
 
+        if (isset($this->mediaMappingsBySkuCache[$sku])) {
+            return $this->mediaMappingsBySkuCache[$sku];
+        }
+
         $rows = $this->shopifyMappingRepository
             ->where('entityType', self::MEDIA_ENTITY_TYPE)
             ->where('relatedSource', $sku)
@@ -470,13 +528,13 @@ class MediaBulkPayloadBuilder
             ];
         }
 
-        return $mappings;
+        return $this->mediaMappingsBySkuCache[$sku] = $mappings;
     }
 
     /**
-     * Match a desired media against stored mappings.
+     * Match desired media against stored mappings.
      *
-     * @return array{0: ?array, 1: ?array} [exact (attribute + path), byAttribute (attribute only)]
+     * @return array{0: ?array, 1: ?array}
      */
     protected function matchMapping(array $mappings, string $attribute, string $path): array
     {
@@ -509,9 +567,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Split a stored `code` back into [attribute, path].
-     *
-     * Legacy rows without a path keep the whole value as the attribute.
+     * Split a stored code into attribute and path.
      *
      * @return array{0: string, 1: string}
      */
@@ -631,8 +687,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Whether a stored media value is already an absolute http(s) URL rather than
-     * a storage path that needs resolving through a disk.
+     * Check if stored media value is already an absolute URL.
      */
     protected function isAbsoluteUrl(string $value): bool
     {
@@ -640,12 +695,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Expand a DAM asset attribute value (comma-separated asset IDs) into media
-     * items — one per asset. Images resolve to a publicly fetchable DAM URL;
-     * videos carry their asset record so build() can push them through Shopify's
-     * staged upload flow. Mirrors Exporter::handleImageAttribute (non-bulk path).
-     *
-     * Returns an empty array when DAM is not installed.
+     * Expand DAM asset attribute value into media items.
      *
      * @return array<int, array{sku: string, code: string, path: string, url: string, mediaContentType: string, asset?: array}>
      */
@@ -715,11 +765,7 @@ class MediaBulkPayloadBuilder
     }
 
     /**
-     * Build a publicly fetchable URL for a DAM asset image.
-     *
-     * Uses the public DAM fetch route (registered without the admin/dam
-     * middleware) so Shopify can pull the file — the same source the non-bulk
-     * export path uses. Returns '' when the route is unavailable.
+     * Build publicly fetchable URL for a DAM asset image.
      */
     protected function resolveAssetUrl(string $path): string
     {
