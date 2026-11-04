@@ -55,7 +55,7 @@ jobs:
           sed -i "s|^DB_DATABASE=.*|DB_DATABASE=unopim|" .env
           sed -i "s|^DB_USERNAME=.*|DB_USERNAME=root|" .env
           sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=root|" .env
-          php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
+          php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data --force
           php artisan key:generate
           php artisan migrate --force
 

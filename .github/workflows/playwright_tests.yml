@@ -165,7 +165,7 @@ jobs:
       - name: Install UnoPim and start services
         working-directory: unopim
         run: |
-          php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data
+          php artisan unopim:install --skip-env-check --skip-admin-creation --with-demo-data --force
           php artisan db:seed --class="Webkul\\Shopify\\Database\\Seeders\\ShopifySettingConfigurationValuesSeeder"
           php artisan unopim:passport:install-preset
           php artisan db:seed --class=DiscardQaFixtureSeeder
