@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'poll_delay_seconds'       => 5,
+    'poll_delay_seconds'       => env('SHOPIFY_BULK_POLL_DELAY', 3),
     'dispatch_followup_phases' => true,
 
     /*

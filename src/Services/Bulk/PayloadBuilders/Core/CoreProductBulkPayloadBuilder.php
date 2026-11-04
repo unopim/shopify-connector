@@ -82,6 +82,20 @@ class CoreProductBulkPayloadBuilder
     protected ?array $metaobjectEntryGidMap = null;
 
     /**
+     * In-memory cache for product mappings keyed by SKU.
+     *
+     * @var array<string, array|null>
+     */
+    protected array $productMappingsBySkuCache = [];
+
+    /**
+     * In-memory cache for category GIDs keyed by category code.
+     *
+     * @var array<string, string|null>
+     */
+    protected array $categoryMappingCache = [];
+
+    /**
      * Build JSONL lines and manifest payload for a batch.
      */
     public function build(array $filters, array $batchRows, JobTrackContract $jobTrack): array
@@ -90,6 +104,27 @@ class CoreProductBulkPayloadBuilder
         $jobTrackId = $jobTrack->id;
         $products = $this->fetchProducts($batchRows);
         $groupedProducts = $this->groupProducts($products);
+
+        $allBatchSkus = [];
+        foreach ($groupedProducts as $group) {
+            if (! empty($group['product_sku'])) {
+                $allBatchSkus[] = $group['product_sku'];
+            }
+            foreach ($group['variants'] ?? [] as $v) {
+                if (! empty($v['sku'])) {
+                    $allBatchSkus[] = $v['sku'];
+                }
+            }
+        }
+        $allBatchSkus = array_values(array_unique(array_filter($allBatchSkus)));
+
+        $this->prewarmProductMappings($allBatchSkus);
+        $this->mediaBulkPayloadBuilder->prewarmMediaMappings($allBatchSkus, $this->credential?->shopUrl);
+
+        $candidateMediaGids = $this->mediaBulkPayloadBuilder->getPrewarmedGids($allBatchSkus);
+        if ($candidateMediaGids !== []) {
+            $this->mediaBulkPayloadBuilder->prewarmMediaGids($candidateMediaGids, $this->credentialAsArray);
+        }
 
         $fileReferenceMap = $this->fileReferenceGidMap($products, $jobTrackId);
 
@@ -136,11 +171,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Collect the productSet media files and media-phase plan items for a product.
-     *
-     * Extracted from buildPayloadForGroup() so extending packages can suppress
-     * media without reimplementing the payload build. SaaS stores get no inline
-     * files: the proxy handles media through its own phase.
+     * Collect productSet media files and plan items for a product.
      *
      * @param  array<int, string>  $variantSkus
      * @return array{files: array<int, mixed>, planItems: array<int, mixed>}
@@ -168,10 +199,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Pre-upload every file_reference value and return the assetPath => Shopify
-     * File GID map the formatter resolves those metafields through.
-     *
-     * Extracted from build() so extending packages can suppress the upload.
+     * Pre-upload file_reference values and return assetPath => File GID map.
      *
      * @param  array<int, mixed>  $products
      * @return array<string, string>
@@ -186,10 +214,6 @@ class CoreProductBulkPayloadBuilder
             $jobTrackId,
         );
 
-        // Product media and file_reference metafields can point to the same DAM
-        // asset. Reuse an already-created MediaImage when the Files API cache has
-        // no entry yet; otherwise the metafield is silently omitted because the
-        // formatter cannot resolve the asset id to a Shopify GID.
         $mediaMappings = $this->shopifyMappingRepository
             ->where('entityType', 'productImage')
             ->where('apiUrl', $this->credential?->shopUrl)
@@ -215,10 +239,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Manifest stored alongside the core bulk operation.
-     *
-     * Extracted from build() so extending packages can contribute manifest keys
-     * without reimplementing the payload build.
+     * Build manifest line stored alongside core bulk operation.
      *
      * @param  array{selection: string, aliases: array<string, string>}  $metafieldSelection
      * @param  array<int, mixed>  $manifestLines
@@ -259,10 +280,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Aliased singular `metafield(namespace, key){ id }` selections injected into the
-     * productSetBulk mutation so each product's translatable metafield instance GIDs
-     * return inline in the core result — no separate (SaaS-unsupported) read needed.
-     * Only emitted when multiple locales are configured (translations are needed).
+     * Selections for translatable metafield instance GIDs in productSet.
      *
      * @return array{selection: string, aliases: array<string, string>}
      */
@@ -342,6 +360,10 @@ class CoreProductBulkPayloadBuilder
             $this->attributesAll,
             $this->credential?->extras['locationAttributeMappings'] ?? []
         );
+
+        $this->productMappingsBySkuCache = [];
+        $this->categoryMappingCache = [];
+        $this->mediaBulkPayloadBuilder->resetCaches();
     }
 
     /**
@@ -428,10 +450,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * When one asset is shared by several definitions (e.g. a PRODUCT Image field
-     * and a PRODUCTVARIANT File field), it is uploaded once, so it must take the
-     * most specific type: a MediaImage satisfies both an Image-restricted and an
-     * "any file" definition, while a GenericFile is rejected by the former.
+     * Pick most compatible content type when asset is shared across definitions.
      */
     protected function preferContentType(?string $current, ?string $incoming): ?string
     {
@@ -496,9 +515,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Map a gallery file path to a Shopify file content type by extension.
-     * Shopify hosts jpg/png/gif/webp/bmp as IMAGE and mp4 as VIDEO; svg, webm
-     * and mkv are not media there, so they upload as generic FILE.
+     * Map file path to Shopify file content type by extension.
      */
     protected function pathFileContentType(string $path): string
     {
@@ -512,14 +529,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Fetch the batch's products as flat leaf-variant rows.
-     *
-     * Handles UnoPim's 1- and 2-level variant structures uniformly: a configurable
-     * root's sellable leaves are its direct `simple` children (flat) or the `simple`
-     * grandchildren under each `variant_group` node (nested). Intermediate
-     * `variant_group` nodes are never emitted. Each leaf's values are resolved up the
-     * ancestor chain so a nested leaf carries both the sub_parent axis (e.g. colour,
-     * stored on the group) and its own variant axis.
+     * Fetch batch products as flat leaf-variant rows.
      */
     protected function fetchProducts(array $batchRows): array
     {
@@ -556,9 +566,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Flatten a configurable root to its sellable leaf variants, descending through
-     * `variant_group` nodes for 2-level structures. Parent relations are primed so
-     * the value resolver walks the already-loaded chain instead of re-querying.
+     * Flatten configurable product to sellable leaf variants.
      *
      * @return array<int, Product>
      */
@@ -682,8 +690,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Reference metafields are built with Shopify GIDs by dedicated builders.
-     * Keep them out of the generic formatter to avoid duplicate or malformed values.
+     * Strip reference metafields handled by dedicated builders.
      *
      * @param  array<int, array<string, mixed>>  $mapping
      * @return array<int, array<string, mixed>>
@@ -701,7 +708,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Preloaded "type::code" => entry GID map for the store.
+     * Preloaded type::code => entry GID map.
      *
      * @return array<string, string>
      */
@@ -1097,16 +1104,7 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Use a mapping's externalId as a variant id only when it is a real
-     * ProductVariant GID.
-     *
-     * For a simple product the variant SKU equals the product SKU, so
-     * findMapping() can return the product mapping whose externalId is a
-     * Product GID (this happens for products created by the sequential export
-     * path, which records a single product-level mapping). Sending a Product
-     * GID as a variant id makes Shopify reject the variant and the product
-     * silently fails to update. Returning null instead lets productSet match
-     * the existing variant by its option values.
+     * Validate and return variant GID from mapping.
      */
     protected function resolveVariantGid(?string $externalId): ?string
     {
@@ -1144,19 +1142,49 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
-     * Resolve collection ids for a grouped product.
+     * Resolve collection ids for grouped product.
+     *
+     * @param  array<int, string>  $categoryCodes
+     * @return array<int, string>
      */
     protected function resolveCollectionIds(array $categoryCodes): array
     {
-        return $this->shopifyMappingRepository
-            ->whereIn('code', $categoryCodes)
-            ->where('entityType', 'category')
-            ->where('apiUrl', $this->credential?->shopUrl)
-            ->pluck('externalId')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
+        $categoryCodes = array_values(array_unique(array_filter($categoryCodes)));
+        if ($categoryCodes === []) {
+            return [];
+        }
+
+        $needed = array_values(array_filter($categoryCodes, fn ($code): bool => ! array_key_exists($code, $this->categoryMappingCache)));
+
+        if ($needed !== [] && ! empty($this->credential?->shopUrl)) {
+            $rows = $this->shopifyMappingRepository
+                ->whereIn('code', $needed)
+                ->where('entityType', 'category')
+                ->where('apiUrl', $this->credential->shopUrl)
+                ->get(['code', 'externalId']);
+
+            $mappedCodes = [];
+            foreach ($rows as $row) {
+                $this->categoryMappingCache[$row->code] = $row->externalId;
+                $mappedCodes[$row->code] = true;
+            }
+
+            foreach ($needed as $code) {
+                if (! isset($mappedCodes[$code])) {
+                    $this->categoryMappingCache[$code] = null;
+                }
+            }
+        }
+
+        $gids = [];
+        foreach ($categoryCodes as $code) {
+            $gid = $this->categoryMappingCache[$code] ?? null;
+            if ($gid) {
+                $gids[] = $gid;
+            }
+        }
+
+        return array_values(array_unique($gids));
     }
 
     protected function taxonomyAttributeCode(): ?string
@@ -1225,10 +1253,49 @@ class CoreProductBulkPayloadBuilder
     }
 
     /**
+     * Prewarm product mappings for batch SKUs in bulk.
+     *
+     * @param  array<int, string>  $skus
+     */
+    protected function prewarmProductMappings(array $skus): void
+    {
+        if (empty($this->credential?->shopUrl) || $skus === []) {
+            return;
+        }
+
+        $skusToFetch = array_values(array_filter($skus, fn (string $sku): bool => ! array_key_exists($sku, $this->productMappingsBySkuCache)));
+
+        if ($skusToFetch === []) {
+            return;
+        }
+
+        foreach (array_chunk($skusToFetch, 500) as $chunk) {
+            $mappings = $this->shopifyMappingRepository
+                ->whereIn('code', $chunk)
+                ->where('entityType', 'product')
+                ->where('apiUrl', $this->credential->shopUrl)
+                ->get();
+
+            $grouped = [];
+            foreach ($mappings as $mapping) {
+                $grouped[$mapping->code][] = $mapping->toArray();
+            }
+
+            foreach ($chunk as $sku) {
+                $this->productMappingsBySkuCache[$sku] = $grouped[$sku] ?? null;
+            }
+        }
+    }
+
+    /**
      * Find a Shopify mapping by SKU.
      */
     protected function findMapping(string $sku): ?array
     {
+        if (array_key_exists($sku, $this->productMappingsBySkuCache)) {
+            return $this->productMappingsBySkuCache[$sku];
+        }
+
         $mapping = $this->shopifyMappingRepository->where('code', $sku)
             ->where('entityType', 'product')
             ->where('apiUrl', $this->credential?->shopUrl)

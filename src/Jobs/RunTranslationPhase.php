@@ -35,7 +35,7 @@ class RunTranslationPhase implements ShouldQueue
         try {
             $result = $phaseService->handle($bulkOperation, $resultReader->read($bulkOperation));
         } catch (BulkMutationInProgressException) {
-            $this->release(random_int(20, 60));
+            $this->release(random_int(10, 15));
 
             return;
         }
