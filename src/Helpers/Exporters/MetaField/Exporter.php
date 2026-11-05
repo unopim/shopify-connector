@@ -148,16 +148,22 @@ class Exporter extends AbstractExporter
         $shopUrl = $this->credentialArray['shopUrl'];
         $prepared = [];
         $operations = [];
+        $followUpPinOperations = [];
+        $followUpPinData = [];
 
         foreach ($batch->data as $rawData) {
             $key = (string) $rawData['id'];
             $id = $this->extractId($rawData['apiUrl'] ?? null, $shopUrl);
             $formattedData = $this->prepareMetaFieldDefinition($rawData, $id);
 
+            $needsFollowUpPin = ! empty($formattedData['_needs_follow_up_pin']);
+            unset($formattedData['_needs_follow_up_pin']);
+
             $prepared[$key] = [
-                'rawData'       => $rawData,
-                'id'            => $id,
-                'formattedData' => $formattedData,
+                'rawData'             => $rawData,
+                'id'                  => $id,
+                'formattedData'       => $formattedData,
+                'needs_follow_up_pin' => $needsFollowUpPin,
             ];
 
             $operations[$key] = [
@@ -194,6 +200,7 @@ class Exporter extends AbstractExporter
                     $responseData = $this->retryUnpinned('metafieldDefinitionUpdate', $formattedData, $rawData['code']);
                     $result = $responseData['body']['data']['metafieldDefinitionUpdate'] ?? [];
                     $userErrors = $result['userErrors'] ?? [];
+                    $item['needs_follow_up_pin'] = false;
                 }
 
                 if (! empty($userErrors)) {
@@ -210,6 +217,21 @@ class Exporter extends AbstractExporter
                     continue;
                 }
 
+                if (! empty($item['needs_follow_up_pin'])) {
+                    $followUpPinOperations[$key] = [
+                        'endpoint'   => 'metafieldDefinitionUpdate',
+                        'parameters' => [
+                            'input' => [
+                                'key'       => $formattedData['key'],
+                                'namespace' => $formattedData['namespace'] ?? 'custom',
+                                'ownerType' => $formattedData['ownerType'] ?? 'PRODUCT',
+                                'pin'       => true,
+                            ],
+                        ],
+                    ];
+                    $followUpPinData[$key] = $rawData;
+                }
+
                 $this->createdItemsCount++;
             } else {
                 $result = $responseData['body']['data']['metafieldDefinitionCreate'] ?? [];
@@ -223,7 +245,12 @@ class Exporter extends AbstractExporter
 
                 if (($userErrors[0]['code'] ?? null) === 'TAKEN') {
                     $updateData = $this->prepareMetaFieldDefinition($rawData, true);
-                    $updateData['pin'] = $formattedData['pin'];
+                    $needsPin = ! empty($updateData['_needs_follow_up_pin']);
+                    unset($updateData['_needs_follow_up_pin']);
+
+                    if (! $needsPin) {
+                        $updateData['pin'] = $formattedData['pin'];
+                    }
 
                     $adoptOperations[$key] = [
                         'endpoint'   => 'metafieldDefinitionUpdate',
@@ -231,8 +258,9 @@ class Exporter extends AbstractExporter
                     ];
 
                     $adoptData[$key] = [
-                        'rawData'    => $rawData,
-                        'updateData' => $updateData,
+                        'rawData'             => $rawData,
+                        'updateData'          => $updateData,
+                        'needs_follow_up_pin' => $needsPin,
                     ];
                 } elseif (! empty($userErrors)) {
                     $this->handleErrors($userErrors, $rawData['code']);
@@ -263,12 +291,28 @@ class Exporter extends AbstractExporter
                 if ($this->hasPinnedLimitError($updateErrors)) {
                     $response = $this->retryUnpinned('metafieldDefinitionUpdate', $updateData, $rawData['code']);
                     $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+                    $adopt['needs_follow_up_pin'] = false;
                 }
 
                 if (! empty($updateErrors)) {
                     $this->handleErrors($updateErrors, $rawData['code']);
 
                     continue;
+                }
+
+                if (! empty($adopt['needs_follow_up_pin'])) {
+                    $followUpPinOperations[$key] = [
+                        'endpoint'   => 'metafieldDefinitionUpdate',
+                        'parameters' => [
+                            'input' => [
+                                'key'       => $updateData['key'],
+                                'namespace' => $updateData['namespace'] ?? 'custom',
+                                'ownerType' => $updateData['ownerType'] ?? 'PRODUCT',
+                                'pin'       => true,
+                            ],
+                        ],
+                    ];
+                    $followUpPinData[$key] = $rawData;
                 }
 
                 $metaId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
@@ -280,6 +324,19 @@ class Exporter extends AbstractExporter
                     );
 
                     $this->createdItemsCount++;
+                }
+            }
+        }
+
+        if (! empty($followUpPinOperations)) {
+            $pinResponses = $this->requestGraphQlApiActionPool($followUpPinOperations, $this->credentialArray);
+
+            foreach ($pinResponses as $key => $pinResponse) {
+                $rawData = $followUpPinData[$key] ?? null;
+                $userErrors = $pinResponse['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+
+                if (! empty($userErrors) && ! $this->hasPinnedLimitError($userErrors)) {
+                    $this->logWarning($userErrors, $rawData['code'] ?? '');
                 }
             }
         }
@@ -369,6 +426,7 @@ class Exporter extends AbstractExporter
     private function processCreateFlow(array $rawData, string $shopUrl, $id = null): void
     {
         $formattedData = $this->prepareMetaFieldDefinition($rawData, $id);
+        unset($formattedData['_needs_follow_up_pin']);
         $responseData = $this->apiRequestShopify($formattedData, $id);
 
         $this->createMetafieldDefinitionMapping($responseData, $rawData, $shopUrl, $formattedData);
@@ -397,7 +455,12 @@ class Exporter extends AbstractExporter
 
         if (($userErrors[0]['code'] ?? null) === 'TAKEN') {
             $updateData = $this->prepareMetaFieldDefinition($rawData, true);
-            $updateData['pin'] = $formattedData['pin'];
+            $needsFollowUpPin = ! empty($updateData['_needs_follow_up_pin']);
+            unset($updateData['_needs_follow_up_pin']);
+
+            if (! $needsFollowUpPin) {
+                $updateData['pin'] = $formattedData['pin'];
+            }
 
             $response = $this->requestGraphQlApiAction('metafieldDefinitionUpdate', $this->credentialArray, ['input' => $updateData]);
             $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
@@ -405,12 +468,24 @@ class Exporter extends AbstractExporter
             if ($this->hasPinnedLimitError($updateErrors)) {
                 $response = $this->retryUnpinned('metafieldDefinitionUpdate', $updateData, $rawData['code']);
                 $updateErrors = $response['body']['data']['metafieldDefinitionUpdate']['userErrors'] ?? [];
+                $needsFollowUpPin = false;
             }
 
             if (! empty($updateErrors)) {
                 $this->handleErrors($updateErrors, $rawData['code']);
 
                 return;
+            }
+
+            if ($needsFollowUpPin) {
+                $this->requestGraphQlApiAction('metafieldDefinitionUpdate', $this->credentialArray, [
+                    'input' => [
+                        'key'       => $updateData['key'],
+                        'namespace' => $updateData['namespace'] ?? 'custom',
+                        'ownerType' => $updateData['ownerType'] ?? 'PRODUCT',
+                        'pin'       => true,
+                    ],
+                ]);
             }
 
             $metaId = $response['body']['data']['metafieldDefinitionUpdate']['updatedDefinition']['id'] ?? null;
@@ -440,23 +515,27 @@ class Exporter extends AbstractExporter
     protected function retryUnpinned(string $mutation, array $formattedData, string $code): array
     {
         $formattedData['pin'] = false;
+        unset($formattedData['_needs_follow_up_pin']);
 
         $response = $this->requestGraphQlApiAction($mutation, $this->credentialArray, ['input' => $formattedData]);
         $userErrors = $response['body']['data'][$mutation]['userErrors'] ?? [];
 
         if (empty($userErrors)) {
-            $this->jobLogger->warning("Shopify pinned limit reached for attribute: {$code}. Exported as unpinned.");
+            $this->jobLogger->warning("Shopify pinned limit reached or unsupported pinning for attribute: {$code}. Exported as unpinned.");
         }
 
         return $response;
     }
 
     /**
-     * Check if user errors contain PINNED_LIMIT_REACHED.
+     * Check if user errors contain PINNED_LIMIT_REACHED or UNSUPPORTED_PINNING.
      */
     protected function hasPinnedLimitError(array $userErrors): bool
     {
-        return in_array('PINNED_LIMIT_REACHED', array_column($userErrors, 'code'), true);
+        $codes = array_column($userErrors, 'code');
+
+        return in_array('PINNED_LIMIT_REACHED', $codes, true)
+            || in_array('UNSUPPORTED_PINNING', $codes, true);
     }
 
     /**
@@ -656,6 +735,11 @@ class Exporter extends AbstractExporter
 
                 $formattedData['constraintsUpdates'] = ['key' => 'category', 'values' => $values];
             }
+
+            if ($current !== [] && $desired === [] && ! empty($rowData['pin'])) {
+                $formattedData['pin'] = false;
+                $formattedData['_needs_follow_up_pin'] = true;
+            }
         }
 
         return $formattedData;
@@ -744,7 +828,29 @@ class Exporter extends AbstractExporter
                 $nsKey = ($node['namespace'] ?? '').'.'.($node['key'] ?? '');
 
                 if (($node['constraints']['key'] ?? null) === 'category') {
-                    $map[$nsKey] = array_map(fn (array $v) => $v['value'], $node['constraints']['values']['nodes'] ?? []);
+                    $valuesData = $node['constraints']['values'] ?? [];
+                    $values = array_map(fn (array $v) => $v['value'], $valuesData['nodes'] ?? []);
+
+                    $hasNextConstraint = $valuesData['pageInfo']['hasNextPage'] ?? false;
+                    $constraintCursor = $valuesData['pageInfo']['endCursor'] ?? null;
+                    $defId = $node['id'] ?? null;
+
+                    while ($hasNextConstraint && $defId) {
+                        $moreResponse = $this->requestGraphQlApiAction('metafieldDefinitionCategoryConstraints', $this->credentialArray, [
+                            'id'    => $defId,
+                            'after' => $constraintCursor,
+                        ]);
+
+                        $moreConstraints = $moreResponse['body']['data']['node']['constraints']['values'] ?? [];
+                        foreach ($moreConstraints['nodes'] ?? [] as $moreNode) {
+                            $values[] = $moreNode['value'];
+                        }
+
+                        $hasNextConstraint = $moreConstraints['pageInfo']['hasNextPage'] ?? false;
+                        $constraintCursor = $moreConstraints['pageInfo']['endCursor'] ?? null;
+                    }
+
+                    $map[$nsKey] = $values;
                 }
             }
 

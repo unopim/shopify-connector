@@ -441,3 +441,193 @@ it('processes a batch in pool and adopts TAKEN definitions concurrently', functi
     expect($batch->refresh()->summary)
         ->toMatchArray(['processed' => 1, 'created' => 1, 'skipped' => 0]);
 });
+
+it('unconstrains and then pins when updating an existing constrained metafield with no categories and pin enabled', function () {
+    $metafield = ShopifyMetaFieldsConfig::factory()->create([
+        'code'            => 'unconstrain_meta_'.uniqid(),
+        'attribute'       => 'Unconstrain Meta',
+        'attributeLabel'  => 'Unconstrain Meta',
+        'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
+        'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
+        'name_space_key'  => 'custom.unconstrain_meta',
+        'description'     => '',
+        'pin'             => 1,
+        'storefronts'     => 1,
+        'apiUrl'          => json_encode(['test-store.myshopify.com' => 'gid://shopify/MetafieldDefinition/555']),
+    ]);
+
+    $row = $metafield->toArray();
+    $row['taxonomy_category'] = [];
+
+    ['track' => $track, 'batch' => $batch] = metafieldExportRun([$row]);
+
+    $exporter = Mockery::mock(Exporter::class, [
+        app(JobTrackBatchRepository::class),
+        app(FlatItemBuffer::class),
+        app(ShopifyCredentialRepository::class),
+        app(ShoifyMetaFieldType::class),
+        app(ShopifyMetaFieldRepository::class),
+        app(ShopifyMetaobjectMappingRepository::class),
+    ])->makePartial()->shouldAllowMockingProtectedMethods();
+
+    $exporter->setExport($track)->setLogger(new NullLogger);
+
+    $credential = ShopifyCredentialsConfig::factory()->make([
+        'shopUrl' => 'test-store.myshopify.com',
+    ]);
+
+    (function () use ($credential): void {
+        $this->credential = $credential;
+        $this->credentialArray = [
+            'shopUrl'     => 'test-store.myshopify.com',
+            'apiVersion'  => '2025-01',
+            'accessToken' => 'fake-token',
+        ];
+        $this->shopifyDefaultLocale = 'en_US';
+        $this->currentConstraintsMap = [
+            'custom.unconstrain_meta' => ['c1', 'c2'],
+        ];
+    })->call($exporter);
+
+    $exporter->shouldReceive('requestGraphQlApiActionPool')
+        ->twice()
+        ->andReturnUsing(
+            function (array $operations) use ($metafield): array {
+                $op = $operations[(string) $metafield->id] ?? null;
+                expect($op['parameters']['input']['pin'])->toBeFalse();
+                expect($op['parameters']['input']['constraintsUpdates']['values'])->toHaveCount(2);
+
+                return [
+                    (string) $metafield->id => [
+                        'code' => 200,
+                        'body' => [
+                            'data' => [
+                                'metafieldDefinitionUpdate' => [
+                                    'updatedDefinition' => ['id' => 'gid://shopify/MetafieldDefinition/555'],
+                                    'userErrors'        => [],
+                                ],
+                            ],
+                        ],
+                    ],
+                ];
+            },
+            function (array $operations) use ($metafield): array {
+                $op = $operations[(string) $metafield->id] ?? null;
+                expect($op['parameters']['input']['pin'])->toBeTrue();
+
+                return [
+                    (string) $metafield->id => [
+                        'code' => 200,
+                        'body' => [
+                            'data' => [
+                                'metafieldDefinitionUpdate' => [
+                                    'updatedDefinition' => ['id' => 'gid://shopify/MetafieldDefinition/555', 'pinnedPosition' => 1],
+                                    'userErrors'        => [],
+                                ],
+                            ],
+                        ],
+                    ],
+                ];
+            }
+        );
+
+    $exporter->prepareMetafieldShopify($batch, null);
+
+    $exporter->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+
+    expect($batch->refresh()->summary)
+        ->toMatchArray(['processed' => 1, 'created' => 1, 'skipped' => 0]);
+});
+
+it('falls back to unpinned update when shopify returns UNSUPPORTED_PINNING', function () {
+    $metafield = ShopifyMetaFieldsConfig::factory()->create([
+        'code'            => 'unsupported_pin_'.uniqid(),
+        'attribute'       => 'Unsupported Pin',
+        'attributeLabel'  => 'Unsupported Pin',
+        'type'            => 'single_line_text_field',
+        'ContentTypeName' => 'single_line_text_field',
+        'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
+        'name_space'      => 'custom',
+        'name_space_key'  => 'custom.unsupported_pin',
+        'description'     => '',
+        'pin'             => 1,
+        'storefronts'     => 1,
+        'apiUrl'          => json_encode(['test-store.myshopify.com' => 'gid://shopify/MetafieldDefinition/333']),
+    ]);
+
+    ['track' => $track, 'batch' => $batch] = metafieldExportRun([$metafield->toArray()]);
+
+    $exporter = Mockery::mock(Exporter::class, [
+        app(JobTrackBatchRepository::class),
+        app(FlatItemBuffer::class),
+        app(ShopifyCredentialRepository::class),
+        app(ShoifyMetaFieldType::class),
+        app(ShopifyMetaFieldRepository::class),
+        app(ShopifyMetaobjectMappingRepository::class),
+    ])->makePartial()->shouldAllowMockingProtectedMethods();
+
+    $exporter->setExport($track)->setLogger(new NullLogger);
+
+    $credential = ShopifyCredentialsConfig::factory()->make([
+        'shopUrl' => 'test-store.myshopify.com',
+    ]);
+
+    (function () use ($credential): void {
+        $this->credential = $credential;
+        $this->credentialArray = [
+            'shopUrl'     => 'test-store.myshopify.com',
+            'apiVersion'  => '2025-01',
+            'accessToken' => 'fake-token',
+        ];
+        $this->shopifyDefaultLocale = 'en_US';
+        $this->currentConstraintsMap = [];
+    })->call($exporter);
+
+    $exporter->shouldReceive('requestGraphQlApiActionPool')->once()->andReturn([
+        (string) $metafield->id => [
+            'code' => 200,
+            'body' => [
+                'data' => [
+                    'metafieldDefinitionUpdate' => [
+                        'updatedDefinition' => null,
+                        'userErrors'        => [
+                            [
+                                'code'    => 'UNSUPPORTED_PINNING',
+                                'message' => 'Constrained metafield definitions do not support pinning.',
+                                'field'   => ['definition'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+
+    $exporter->shouldReceive('requestGraphQlApiAction')
+        ->with('metafieldDefinitionUpdate', Mockery::type('array'), Mockery::on(function ($params) {
+            return ($params['input']['pin'] ?? null) === false;
+        }))
+        ->once()
+        ->andReturn([
+            'code' => 200,
+            'body' => [
+                'data' => [
+                    'metafieldDefinitionUpdate' => [
+                        'updatedDefinition' => ['id' => 'gid://shopify/MetafieldDefinition/333'],
+                        'userErrors'        => [],
+                    ],
+                ],
+            ],
+        ]);
+
+    $exporter->prepareMetafieldShopify($batch, null);
+
+    $exporter->updateBatchState($batch->id, ExportHelper::STATE_PROCESSED);
+
+    expect($batch->refresh()->summary)
+        ->toMatchArray(['processed' => 1, 'created' => 1, 'skipped' => 0]);
+});
