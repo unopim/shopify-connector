@@ -452,241 +452,45 @@
                                 <input type="hidden" name="attribute" :value="attribute" />
                                 <input type="hidden" name="name_space_key" :value="name_space_key" />
                             </template>
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.index.description')
-                                </x-admin::form.control-group.label>
+                            <input type="hidden" name="description" value="" />
 
-                                <x-admin::form.control-group.control
-                                    type="text"
-                                    id="description"
-                                    name="description"
-                                    :label="trans('shopify::app.shopify.metafield.index.description')"
-                                    :placeholder="trans('shopify::app.shopify.metafield.index.description')"
-                                />
-
-                                <x-admin::form.control-group.error control-name="description"/>
-                            </x-admin::form.control-group>
-                            <div v-if="!referenceMode && typeofminmx == 'text'">
-                                <div :class="{ 'flex items-center gap-2':  width != null }">
-                                    <x-admin::form.control-group ::class="width">
-                                        <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
+                            {{-- Strictly required validations only: rating min/max --}}
+                            <div v-if="!referenceMode && key === 'rating'">
+                                <div class="flex items-center gap-2">
+                                    <x-admin::form.control-group>
+                                        <x-admin::form.control-group.label class="required">@{{ minvalueLabel }}</x-admin::form.control-group.label>
                                         <x-admin::form.control-group.control
                                             type="text"
                                             id="minvalue"
                                             name="minvalue"
+                                            rules="required"
                                             ::label="minvalueLabel"
                                             ::placeholder="minvalueLabel"
-                                            value=""
+                                            value="1"
                                         />
                                         <x-admin::form.control-group.error control-name="minvalue"/>
                                     </x-admin::form.control-group>
 
-                                    <x-admin::form.control-group v-if=" (width != null)" class="w-[170px] mt-5">
-                                        <x-admin::form.control-group.control
-                                            type="select"
-                                            id="minunit"
-                                            name="minunit"
-                                            track-by="id"
-                                            label-by="name"
-                                            ::options="unitTypeOptions"
-                                            label="min unit"
-                                            placeholder="min unit"
-                                            value=""
-                                            ref="minunitvalue"
-                                        />
-                                        <x-admin::form.control-group.error control-name="minunit"/>
-                                    </x-admin::form.control-group>
-                                </div>
-                                <div :class="{ 'flex items-center gap-2':  width != null }">
-                                    <x-admin::form.control-group ::class="width">
-                                        <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
+                                    <x-admin::form.control-group>
+                                        <x-admin::form.control-group.label class="required">@{{ maxvalueLabel }}</x-admin::form.control-group.label>
                                         <x-admin::form.control-group.control
                                             type="text"
                                             id="maxvalue"
                                             name="maxvalue"
+                                            rules="required"
                                             ::label="maxvalueLabel"
                                             ::placeholder="maxvalueLabel"
-                                            value=""
+                                            value="5"
                                         />
-
                                         <x-admin::form.control-group.error control-name="maxvalue"/>
-                                    </x-admin::form.control-group>
-
-                                    <x-admin::form.control-group v-if=" (width != null)" class="w-[170px] mt-5">
-                                        <x-admin::form.control-group.control
-                                            type="select"
-                                            id="maxunit"
-                                            name="maxunit"
-                                            track-by="id"
-                                            label-by="name"
-                                            ::options="unitTypeOptions"
-                                            label="max unit"
-                                            placeholder="max unit"
-                                            value=""
-                                            ref="maxunitvalue"
-                                        />
-                                        <x-admin::form.control-group.error control-name="maxunit"/>
                                     </x-admin::form.control-group>
                                 </div>
                             </div>
-                            <div v-if="!referenceMode && key === 'id'">
-                                @php
-                                    $regexPresetOptions = json_encode([
-                                        ['id' => '^[a-zA-Z]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphabetical')],
-                                        ['id' => '^[a-zA-Z0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-alphanumeric')],
-                                        ['id' => '^[0-9]+$', 'name' => trans('shopify::app.shopify.metafield.index.regex-numeric')],
-                                        ['id' => '^[a-zA-Z0-9_-]{3,20}$', 'name' => trans('shopify::app.shopify.metafield.index.regex-sku')],
-                                    ]);
-                                @endphp
-                                <x-admin::form.control-group>
-                                    <x-admin::form.control-group.label>
-                                        @lang('shopify::app.shopify.metafield.index.regex')
-                                    </x-admin::form.control-group.label>
-                                    <x-admin::form.control-group.control
-                                        type="select"
-                                        name="regex_preset"
-                                        :options="$regexPresetOptions"
-                                        track-by="id"
-                                        label-by="name"
-                                        :placeholder="trans('shopify::app.shopify.metafield.index.regex-preset')"
-                                        @input="handleRegexPreset($event)"
-                                    />
-                                    <x-admin::form.control-group.control
-                                        type="text"
-                                        id="regex"
-                                        name="regex"
-                                        v-model="regexValue"
-                                        class="mt-2"
-                                        :label="trans('shopify::app.shopify.metafield.index.regex')"
-                                        :placeholder="trans('shopify::app.shopify.metafield.index.regex-placeholder')"
-                                    />
-                                    <x-admin::form.control-group.error control-name="regex"/>
-                                </x-admin::form.control-group>
-                            </div>
-                            <div v-if="!referenceMode && typeofminmx == 'date'">
-                                <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
-                                    <x-admin::form.control-group.control
-                                        type="date"
-                                        id="minvalue"
-                                        name="minvalue"
-                                        ::label="minvalueLabel"
-                                        ::placeholder="minvalueLabel"
-                                        value=""
-                                    />
 
-                                    <x-admin::form.control-group.error control-name="minvalue"/>
-                                </x-admin::form.control-group>
-                                <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
-                                    <x-admin::form.control-group.control
-                                        type="date"
-                                        id="maxvalue"
-                                        name="maxvalue"
-                                        ::label="maxvalueLabel"
-                                        ::placeholder="maxvalueLabel"
-                                        ref="maxvalueref"
-                                        value=""
-                                    />
-
-                                    <x-admin::form.control-group.error control-name="maxvalue"/>
-                                </x-admin::form.control-group>
-                            </div>
-
-                            <div v-if="!referenceMode && typeofminmx == 'datetime'">
-                                <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>@{{ minvalueLabel }}</x-admin::form.control-group.label>
-                                    <x-admin::form.control-group.control
-                                        type="datetime"
-                                        id="minvalue"
-                                        name="minvalue"
-                                        ::label="minvalueLabel"
-                                        ::placeholder="minvalueLabel"
-                                        value=""
-                                    />
-
-                                    <x-admin::form.control-group.error control-name="minvalue"/>
-                                </x-admin::form.control-group>
-                                <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>@{{ maxvalueLabel }}</x-admin::form.control-group.label>
-                                    <x-admin::form.control-group.control
-                                        type="datetime"
-                                        id="maxvalue"
-                                        name="maxvalue"
-                                        ::label="maxvalueLabel"
-                                        ::placeholder="maxvalueLabel"
-                                        value=""
-                                    />
-
-                                    <x-admin::form.control-group.error control-name="maxvalue"/>
-                                </x-admin::form.control-group>
-                            </div>
-
-                            <input type="hidden" name="pin" value="0" />
-                            <x-admin::form.control-group v-if="taxonomyCount === 0">
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.datagrid.pin')
-                                </x-admin::form.control-group.label>
-                                <x-admin::form.control-group.control
-                                    type="switch"
-                                    name="pin"
-                                    value="1"
-                                    :checked="true"
-                                />
-                                <x-admin::form.control-group.error control-name="pin"/>
-                            </x-admin::form.control-group>
-
-                            <x-admin::form.control-group v-if="!referenceMode && adminFilterable == 1">
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.index.adminFilterable')
-                                </x-admin::form.control-group.label>
-                                <input 
-                                    type="hidden"
-                                    name="adminFilterable"
-                                    value="0"
-                                />
-                                <x-admin::form.control-group.control
-                                    type="switch"
-                                    name="adminFilterable"
-                                    value="1"
-                                />
-                            </x-admin::form.control-group>
-                            <x-admin::form.control-group v-if="!referenceMode && smartCollectionCondition == 1">
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.index.smartCollectionCondition')
-                                </x-admin::form.control-group.label>
-                                <input 
-                                    type="hidden"
-                                    name="smartCollectionCondition"
-                                    value="0"
-                                />
-                                <x-admin::form.control-group.control
-                                    type="switch"
-                                    name="smartCollectionCondition"
-                                    value="1"
-                                />
-                            </x-admin::form.control-group>
-
-                            <x-admin::form.control-group>
-                                <x-admin::form.control-group.label>
-                                    @lang('shopify::app.shopify.metafield.index.storefronts')
-                                </x-admin::form.control-group.label>
-                                <x-admin::form.control-group.label>@{{ storefronts }}</x-admin::form.control-group.label>
-                                <input 
-                                    type="hidden"
-                                    name="storefronts"
-                                    value="0"
-                                />
-                                <x-admin::form.control-group.control
-                                    type="switch"
-                                    name="storefronts"
-                                    value="1"
-                                    v-model="enableStorefronts"
-                                    @change="togglenableStorefronts"
-                                    :checked="true"
-                                />
-                            </x-admin::form.control-group>
+                            <input type="hidden" name="pin" value="1" />
+                            <input type="hidden" name="adminFilterable" value="0" />
+                            <input type="hidden" name="smartCollectionCondition" value="0" />
+                            <input type="hidden" name="storefronts" value="1" />
                         </x-slot>
 
                         <!-- Modal Footer -->

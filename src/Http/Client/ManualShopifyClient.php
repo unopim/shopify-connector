@@ -22,44 +22,61 @@ class ManualShopifyClient implements ShopifyClient
      */
     public function request(string $operation, array $variables = []): array
     {
-        $credential = $this->credential;
-
-        if (! $credential || ! isset($credential['shopUrl'], $credential['apiVersion'])) {
-            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
-        }
-
-        $credential = $this->accessTokenManager->ensureValidAccessToken($credential);
-
-        if (empty($credential['accessToken'])) {
-            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
-        }
-
-        $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
+        $apiClient = $this->resolveApiClient();
 
         $response = $apiClient->request($operation, $variables);
 
         if (
             isset($response['code'])
             && (int) $response['code'] === 401
-            && $this->accessTokenManager->canAutoGenerateAccessToken($credential)
+            && $this->accessTokenManager->canAutoGenerateAccessToken($this->credential)
         ) {
             try {
-                $credential = $this->accessTokenManager->regenerateAccessToken($credential);
+                $this->credential = $this->accessTokenManager->regenerateAccessToken($this->credential);
 
-                $apiClient = new GraphQLApiClient($credential['shopUrl'], $credential['accessToken'], $credential['apiVersion']);
+                $apiClient = new GraphQLApiClient($this->credential['shopUrl'], $this->credential['accessToken'], $this->credential['apiVersion']);
                 $response = $apiClient->request($operation, $variables);
             } catch (\Throwable $e) {
                 Log::error('Shopify token regeneration failed', [
                     'message'    => $e->getMessage(),
                     'credential' => [
-                        'credentialId' => $credential['credentialId'] ?? null,
-                        'shopUrl'      => $credential['shopUrl'] ?? null,
-                        'apiVersion'   => $credential['apiVersion'] ?? null,
+                        'credentialId' => $this->credential['credentialId'] ?? null,
+                        'shopUrl'      => $this->credential['shopUrl'] ?? null,
+                        'apiVersion'   => $this->credential['apiVersion'] ?? null,
                     ],
                 ]);
             }
         }
 
         return $response;
+    }
+
+    /**
+     * Execute a pool of Shopify operations concurrently.
+     *
+     * @param  array<string, array{endpoint: string, parameters?: array}>  $operations
+     * @return array<string, array{code: int|null, body: array}>
+     */
+    public function requestPool(array $operations): array
+    {
+        return $this->resolveApiClient()->requestPool($operations);
+    }
+
+    /**
+     * Resolve initialized GraphQL API client.
+     */
+    protected function resolveApiClient(): GraphQLApiClient
+    {
+        if (! $this->credential || ! isset($this->credential['shopUrl'], $this->credential['apiVersion'])) {
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
+        }
+
+        $this->credential = $this->accessTokenManager->ensureValidAccessToken($this->credential);
+
+        if (empty($this->credential['accessToken'])) {
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
+        }
+
+        return new GraphQLApiClient($this->credential['shopUrl'], $this->credential['accessToken'], $this->credential['apiVersion']);
     }
 }

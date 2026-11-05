@@ -92,6 +92,7 @@ class Importer extends AbstractImporter
         $filters = $this->import->jobInstance->filters;
 
         $this->credential = $this->shopifyRepository->find($filters['credentials'] ?? null);
+        $this->credentialArray = $this->credential?->toApiArray() ?? [];
 
         $this->locale = $filters['locale'] ?? null;
     }
@@ -213,7 +214,12 @@ class Importer extends AbstractImporter
             }
 
             if (in_array($baseType, ['product_reference', 'variant_reference', 'collection_reference'], true)) {
-                $this->persistDefinitionIfMissing($attribute);
+                $attributesArray[] = [
+                    'code'                 => $attribute['node']['key'],
+                    'namespace'            => $attribute['node']['namespace'],
+                    'reference_only'       => true,
+                    'metafield_definition' => $this->formatDataForMetafield($attribute),
+                ];
 
                 continue;
             }
@@ -223,12 +229,13 @@ class Importer extends AbstractImporter
             }
 
             $attributeFormate = [
-                'code'        => $attribute['node']['key'],
-                'type'        => $this->attributeType[$metafieldType],
-                'namespace'   => $attribute['node']['namespace'],
-                $this->locale => [
+                'code'                 => $attribute['node']['key'],
+                'type'                 => $this->attributeType[$metafieldType],
+                'namespace'            => $attribute['node']['namespace'],
+                $this->locale          => [
                     'name' => $attribute['node']['name'],
                 ],
+                'metafield_definition' => $this->formatDataForMetafield($attribute),
             ];
 
             if (in_array($metafieldType, $this->numberType)) {
@@ -246,8 +253,6 @@ class Importer extends AbstractImporter
                     ? 'gallery'
                     : (str_contains($fileTypes, 'Image') ? 'image' : 'file');
             }
-
-            $this->persistDefinitionIfMissing($attribute);
 
             $attributesArray[] = $attributeFormate;
         }
@@ -294,7 +299,7 @@ class Importer extends AbstractImporter
 
     /**
      * Create the shopify_metaobject attribute, its definition binding and the
-     * mapped metafield for a metaobject batch row, counting the attribute.
+     * mapped metafield for a metaobject batch row, counting the metafield definition.
      *
      * @param  array<string, mixed>  $rowData
      */
@@ -306,14 +311,12 @@ class Importer extends AbstractImporter
 
         if ($existing) {
             $attributeId = $existing->id;
-            $this->updatedItemsCount++;
         } else {
             $attributeId = $this->attributeRepository->create([
                 'code'        => $code,
                 'type'        => 'shopify_metaobject',
                 $this->locale => $rowData[$this->locale] ?? ['name' => $meta['name']],
             ])->id;
-            $this->createdItemsCount++;
         }
 
         if (! empty($meta['metaobject_type'])) {
@@ -330,22 +333,34 @@ class Importer extends AbstractImporter
         ]);
 
         if ($existingMeta) {
+            $this->shopifyMetaFieldRepository->update([
+                'apiUrl'      => $meta['api_url'],
+                'validations' => $meta['validations'],
+            ], $existingMeta->id);
+
+            $this->updatedItemsCount++;
+
             return;
         }
 
         $this->shopifyMetaFieldRepository->create([
             'ownerType'       => $meta['owner_type'],
+            'ownerTypeName'   => $meta['owner_type'],
             'type'            => 'metaobject_reference',
+            'name_space'      => explode('.', $meta['name_space_key'])[0] ?? 'custom',
             'name_space_key'  => $meta['name_space_key'],
             'code'            => $code,
             'attribute'       => $meta['name'],
             'attributeLabel'  => $meta['name'],
+            'description'     => '',
             'pin'             => $meta['pin'],
             'listvalue'       => $meta['is_list'],
             'ContentTypeName' => $meta['type_name'],
             'apiUrl'          => $meta['api_url'],
             'validations'     => $meta['validations'],
         ]);
+
+        $this->createdItemsCount++;
     }
 
     /**
@@ -365,24 +380,48 @@ class Importer extends AbstractImporter
         return $code;
     }
 
-    private function persistDefinitionIfMissing(array $attribute): void
+    /**
+     * Persist or update the Shopify metafield definition record and track counts.
+     */
+    public function persistMetafieldDefinition(array $data): void
     {
-        $data = $this->formatDataForMetafield($attribute);
-
         $existing = $this->shopifyMetaFieldRepository->findOneWhere([
             ['name_space_key', '=', $data['name_space_key']],
             ['ownerType', '=', $data['ownerType']],
         ]);
 
         if (! $existing) {
+            if (empty($data['name_space'])) {
+                $parts = explode('.', $data['name_space_key'] ?? '', 2);
+                $data['name_space'] = $parts[0] ?: 'custom';
+            }
+            $data['description'] = $data['description'] ?? '';
+            $data['attributeLabel'] = $data['attributeLabel'] ?? ($data['attribute'] ?? '');
+            $data['ownerTypeName'] = $data['ownerTypeName'] ?? ($data['ownerType'] ?? '');
+            $data['ContentTypeName'] = $data['ContentTypeName'] ?? ($data['type'] ?? '');
+
             $this->shopifyMetaFieldRepository->create($data);
+            $this->createdItemsCount++;
 
             return;
         }
 
+        $updates = [];
         if (array_key_exists('taxonomy_category', $data)) {
-            $this->shopifyMetaFieldRepository->update(['taxonomy_category' => $data['taxonomy_category']], $existing->id);
+            $updates['taxonomy_category'] = $data['taxonomy_category'];
         }
+        if (array_key_exists('apiUrl', $data)) {
+            $updates['apiUrl'] = $data['apiUrl'];
+        }
+        if (array_key_exists('validations', $data) && ! empty($data['validations'])) {
+            $updates['validations'] = $data['validations'];
+        }
+
+        if (! empty($updates)) {
+            $this->shopifyMetaFieldRepository->update($updates, $existing->id);
+        }
+
+        $this->updatedItemsCount++;
     }
 
     public function formatDataForMetafield(array $metafieldDefinition): array
@@ -393,10 +432,14 @@ class Importer extends AbstractImporter
 
         $data = [
             'ownerType'       => $node['ownerType'],
+            'ownerTypeName'   => $node['ownerType'],
             'type'            => $typeName,
+            'name_space'      => $node['namespace'] ?? 'custom',
             'name_space_key'  => $nameSpaceKey,
             'code'            => $node['key'],
             'attribute'       => $node['name'],
+            'attributeLabel'  => $node['name'],
+            'description'     => $node['description'] ?? '',
             'pin'             => ! empty($node['pinnedPosition']),
             'listvalue'       => str_contains($typeName, 'list'),
             'ContentTypeName' => $typeName,
@@ -586,7 +629,7 @@ class Importer extends AbstractImporter
     }
 
     /**
-     * Create or update attribute and attribute Options
+     * Create or update metafield definition and matching attribute
      */
     public function saveAttributeData(JobTrackBatchContract $batch): bool
     {
@@ -599,13 +642,17 @@ class Importer extends AbstractImporter
                 continue;
             }
 
-            $attributeModel = $this->attributeRepository->findOneByField('code', strtolower($rowData['code']));
-            if ($attributeModel) {
-                $this->updatedItemsCount++;
-            } else {
-                unset($rowData['namespace']);
-                $newlyAttrCreated = $this->attributeRepository->create($rowData);
-                $this->createdItemsCount++;
+            if (empty($rowData['reference_only'])) {
+                $attributeModel = $this->attributeRepository->findOneByField('code', strtolower($rowData['code']));
+                if (! $attributeModel) {
+                    $attrData = $rowData;
+                    unset($attrData['namespace'], $attrData['metafield_definition'], $attrData['reference_only']);
+                    $this->attributeRepository->create($attrData);
+                }
+            }
+
+            if (isset($rowData['metafield_definition'])) {
+                $this->persistMetafieldDefinition($rowData['metafield_definition']);
             }
         }
 
