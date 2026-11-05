@@ -30,10 +30,14 @@ it('counts metafield definition as created on first import and updated on re-imp
 
     $metafieldDefinition = [
         'ownerType'       => 'PRODUCT',
+        'ownerTypeName'   => 'PRODUCT',
         'type'            => 'single_line_text_field',
+        'name_space'      => 'custom',
         'name_space_key'  => 'custom.test_summary_key',
         'code'            => 'test_summary_key',
         'attribute'       => 'Test Summary Key',
+        'attributeLabel'  => 'Test Summary Key',
+        'description'     => '',
         'pin'             => true,
         'listvalue'       => false,
         'ContentTypeName' => 'single_line_text_field',

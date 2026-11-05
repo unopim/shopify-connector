@@ -345,11 +345,14 @@ class Importer extends AbstractImporter
 
         $this->shopifyMetaFieldRepository->create([
             'ownerType'       => $meta['owner_type'],
+            'ownerTypeName'   => $meta['owner_type'],
             'type'            => 'metaobject_reference',
+            'name_space'      => explode('.', $meta['name_space_key'])[0] ?? 'custom',
             'name_space_key'  => $meta['name_space_key'],
             'code'            => $code,
             'attribute'       => $meta['name'],
             'attributeLabel'  => $meta['name'],
+            'description'     => '',
             'pin'             => $meta['pin'],
             'listvalue'       => $meta['is_list'],
             'ContentTypeName' => $meta['type_name'],
@@ -388,6 +391,15 @@ class Importer extends AbstractImporter
         ]);
 
         if (! $existing) {
+            if (empty($data['name_space'])) {
+                $parts = explode('.', $data['name_space_key'] ?? '', 2);
+                $data['name_space'] = $parts[0] ?: 'custom';
+            }
+            $data['description'] = $data['description'] ?? '';
+            $data['attributeLabel'] = $data['attributeLabel'] ?? ($data['attribute'] ?? '');
+            $data['ownerTypeName'] = $data['ownerTypeName'] ?? ($data['ownerType'] ?? '');
+            $data['ContentTypeName'] = $data['ContentTypeName'] ?? ($data['type'] ?? '');
+
             $this->shopifyMetaFieldRepository->create($data);
             $this->createdItemsCount++;
 
@@ -420,10 +432,14 @@ class Importer extends AbstractImporter
 
         $data = [
             'ownerType'       => $node['ownerType'],
+            'ownerTypeName'   => $node['ownerType'],
             'type'            => $typeName,
+            'name_space'      => $node['namespace'] ?? 'custom',
             'name_space_key'  => $nameSpaceKey,
             'code'            => $node['key'],
             'attribute'       => $node['name'],
+            'attributeLabel'  => $node['name'],
+            'description'     => $node['description'] ?? '',
             'pin'             => ! empty($node['pinnedPosition']),
             'listvalue'       => str_contains($typeName, 'list'),
             'ContentTypeName' => $typeName,
