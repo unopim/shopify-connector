@@ -1,3 +1,23 @@
+# 3.0.3 ( 19 November 2026 )
+
+## Performance
+- Category export acceleration — optimized category/collection export by implementing concurrent HTTP request pooling and increasing the processing batch size.
+- Payload builder pre-warming — pre-warmed product and media mappings in memory and batch-verified Shopify GIDs in `CoreProductBulkPayloadBuilder` and `MediaBulkPayloadBuilder` to eliminate redundant database queries and API roundtrips during bulk payload generation.
+- Stale product recreation — accelerated stale product recreation during bulk export through concurrent HTTP request pooling with throttle safeguards.
+- Metafield definition export optimization — accelerated metafield definition export using concurrent HTTP request pooling with pinned limit fallbacks.
+- Polling and retry backoff tuning — optimized bulk operation polling delay and reduced concurrency retry backoff across media, reference, translation, and publishing phase jobs.
+- Streamlined metafield creation modal — optimized the metafield creation modal UI to load only minimal required fields, enhancing modal responsiveness and user experience.
+
+## Bug fixes
+- Compare-at price decimal preservation — fixed compare-at price formatting on product export to preserve decimal amounts accurately without rounding errors.
+- Category constraint pagination & transitions — handled transitions between constrained and unconstrained category definitions, and paginated category constraints during metafield definition export.
+- Metafield import metrics — accurately track and report created vs updated counts for metafield definitions during import jobs.
+- PostgreSQL compatibility — populated `name_space` and `required` columns on metafield definitions to satisfy PostgreSQL NOT NULL constraints.
+
+## Improvements
+- Measurement unit resolution — improved measurement resolution and unit mapping (`MeasurementUnitMapper`) to accurately convert and map product measurement attributes into Shopify's supported measurement units.
+- CI and test suite stability — updated GitHub Actions workflows and added `--force` flag to unattended `unopim:install` commands; updated model factories for PostgreSQL compatibility.
+
 # 3.0.2 ( 30 October 2026 )
 
 ## Bug fixes
