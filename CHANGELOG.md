@@ -1,4 +1,4 @@
-# 3.0.3 ( 19 November 2026 )
+# 3.0.3 ( 20 November 2026 )
 
 ## Performance
 - Category export acceleration — optimized category/collection export by implementing concurrent HTTP request pooling and increasing the processing batch size.
