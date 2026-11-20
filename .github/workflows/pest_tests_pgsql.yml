@@ -67,7 +67,7 @@ jobs:
 
       - name: Install UnoPim
         working-directory: core
-        run: php artisan unopim:install --skip-env-check --skip-admin-creation
+        run: php artisan unopim:install --skip-env-check --skip-admin-creation --force
 
       - name: Bind Shopify Tests to Pest
         working-directory: core
@@ -82,7 +82,7 @@ jobs:
 
       - name: Run Shopify Tests
         working-directory: core
-        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
+        run: vendor/bin/pest packages/Webkul/Shopify/tests --colors=always
 
   # =========================
   # PostgreSQL + Elasticsearch
@@ -174,7 +174,7 @@ jobs:
 
       - name: Install UnoPim
         working-directory: core
-        run: php artisan unopim:install --skip-env-check --skip-admin-creation
+        run: php artisan unopim:install --skip-env-check --skip-admin-creation --force
 
       - name: Bind Shopify Tests to Pest
         working-directory: core
@@ -189,4 +189,4 @@ jobs:
 
       - name: Run Shopify Tests
         working-directory: core
-        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
+        run: vendor/bin/pest packages/Webkul/Shopify/tests --colors=always

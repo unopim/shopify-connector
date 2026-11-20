@@ -2,6 +2,8 @@
 
 namespace Webkul\Shopify\Http\Client;
 
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Webkul\Shopify\Contracts\ShopifyClient;
@@ -146,8 +148,13 @@ class SaasProxyClient implements ShopifyClient
             'override'   => [
                 'first'     => 250,
                 'ownerType' => 'PRODUCT',
-                'fields'    => 'id namespace key name ownerType pinnedPosition type { name } validations { name type value } constraints { key values(first: 250) { nodes { value } } }',
+                'fields'    => 'id namespace key name ownerType pinnedPosition type { name } validations { name type value } constraints { key values(first: 250) { pageInfo { hasNextPage endCursor } nodes { value } } }',
             ],
+        ],
+        'metafieldDefinitionCategoryConstraints' => [
+            'path'       => '/graphql/api/node.json',
+            'method'     => 'GET',
+            'connection' => 'node',
         ],
         'metafieldDefinitionsProductVariantType' => [
             'path'       => '/graphql/api/metafieldDefinitions.json',
@@ -349,10 +356,6 @@ class SaasProxyClient implements ShopifyClient
 
     /**
      * {@inheritdoc}
-     *
-     * Routes a mapped operation to its proxy REST endpoint and reshapes the
-     * REST response back into the Shopify GraphQL envelope, so consumers read
-     * SaaS and manual responses identically.
      */
     public function request(string $operation, array $variables = []): array
     {
@@ -364,8 +367,116 @@ class SaasProxyClient implements ShopifyClient
             return $this->getFilesByIds((array) ($variables['ids'] ?? []));
         }
 
-        if (! isset($this->proxyEndpoints[$operation])) {
+        $prepared = $this->prepareProxyRequest($operation, $variables);
+
+        if (! $prepared) {
             return $this->proxyErrorResponse(null, "Shopify SaaS proxy does not support the '{$operation}' operation.");
+        }
+
+        try {
+            $request = Http::withHeaders($this->getProxyHeaders())
+                ->timeout($this->timeout)
+                ->retry(3, 100);
+
+            $response = $prepared['method'] === 'GET'
+                ? $request->get($prepared['url'], $prepared['options']['query'] ?? [])
+                : $request->send($prepared['method'], $prepared['url'], ['json' => $prepared['options']['json'] ?? []]);
+
+            return $this->formatProxyResponse($response, $prepared['definition'], $prepared['dataKey']);
+        } catch (\Throwable $e) {
+            Log::error('Shopify SaaS proxy GraphQL call failed', [
+                'endpoint' => $operation,
+                'url'      => $prepared['url'],
+                'message'  => $e->getMessage(),
+            ]);
+
+            return $this->proxyErrorResponse(null, $e->getMessage(), $prepared['dataKey']);
+        }
+    }
+
+    /**
+     * Execute operations concurrently through the SaaS proxy.
+     *
+     * @param  array<string, array{endpoint: string, parameters?: array}>  $operations
+     * @return array<string, array{code: int|null, body: array}>
+     */
+    public function requestPool(array $operations): array
+    {
+        if (empty($this->jwt)) {
+            throw new \InvalidArgumentException(trans('shopify::app.shopify.credential.errors.invalid-credentials-provided'));
+        }
+
+        $preparedRequests = [];
+
+        foreach ($operations as $key => $op) {
+            $prep = $this->prepareProxyRequest($op['endpoint'], $op['parameters'] ?? []);
+
+            if ($prep) {
+                $preparedRequests[$key] = $prep;
+            }
+        }
+
+        if (empty($preparedRequests)) {
+            return [];
+        }
+
+        $headers = $this->getProxyHeaders();
+
+        $responses = Http::pool(function (Pool $pool) use ($preparedRequests, $headers): array {
+            $requests = [];
+
+            foreach ($preparedRequests as $key => $prep) {
+                $client = $pool->as($key)
+                    ->withHeaders($headers)
+                    ->timeout($this->timeout)
+                    ->retry(3, 100);
+
+                $requests[$key] = $prep['method'] === 'GET'
+                    ? $client->get($prep['url'], $prep['options']['query'] ?? [])
+                    : $client->send($prep['method'], $prep['url'], ['json' => $prep['options']['json'] ?? []]);
+            }
+
+            return $requests;
+        });
+
+        $results = [];
+
+        foreach ($preparedRequests as $key => $prep) {
+            $response = $responses[$key] ?? null;
+
+            if ($response instanceof Response) {
+                $results[$key] = $this->formatProxyResponse($response, $prep['definition'], $prep['dataKey']);
+            } else {
+                $results[$key] = $this->proxyErrorResponse(null, 'No response received from proxy', $prep['dataKey']);
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get default headers for proxy requests.
+     *
+     * @return array<string, string>
+     */
+    protected function getProxyHeaders(): array
+    {
+        return [
+            'Accept'        => 'application/json',
+            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.$this->jwt,
+        ];
+    }
+
+    /**
+     * Prepare proxy request metadata for an operation.
+     *
+     * @return array{method: string, url: string, options: array, definition: array, dataKey: string}|null
+     */
+    protected function prepareProxyRequest(string $operation, array $variables = []): ?array
+    {
+        if (! isset($this->proxyEndpoints[$operation])) {
+            return null;
         }
 
         $definition = $this->proxyEndpoints[$operation];
@@ -378,66 +489,57 @@ class SaasProxyClient implements ShopifyClient
         }, $definition['path']);
 
         $url = rtrim($this->baseUrl, '/').$path;
-
         $dataKey = $definition['connection'] ?? $definition['field'] ?? $operation;
 
-        try {
-            $request = Http::withHeaders([
-                'Accept'        => 'application/json',
-                'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer '.$this->jwt,
-            ])
-                ->timeout($this->timeout)
-                ->retry(3, 100);
+        $options = $definition['method'] === 'GET'
+            ? ['query' => $this->buildProxyQuery($variables, $definition)]
+            : ['json' => $this->buildProxyRequestBody($variables, $definition)];
 
-            if ($definition['method'] === 'GET') {
-                $response = $request->get($url, $this->buildProxyQuery($variables, $definition));
-            } else {
-                $response = $request->send($definition['method'], $url, [
-                    'json' => $this->buildProxyRequestBody($variables, $definition),
-                ]);
-            }
+        return [
+            'method'     => $definition['method'],
+            'url'        => $url,
+            'options'    => $options,
+            'definition' => $definition,
+            'dataKey'    => $dataKey,
+        ];
+    }
 
-            $json = $response->json() ?? [];
+    /**
+     * Format a proxy response into the Shopify envelope shape.
+     */
+    protected function formatProxyResponse(Response $response, array $definition, string $dataKey): array
+    {
+        $json = $response->json() ?? [];
 
-            if (! $response->successful()) {
-                return $this->proxyErrorResponse(
-                    $response->status(),
-                    $json['message'] ?? "Shopify SaaS proxy returned HTTP {$response->status()}.",
-                    $dataKey
-                );
-            }
+        if (! $response->successful()) {
+            return $this->proxyErrorResponse(
+                $response->status(),
+                $json['message'] ?? "Shopify SaaS proxy returned HTTP {$response->status()}.",
+                $dataKey
+            );
+        }
 
-            if (isset($definition['connection'])) {
-                return [
-                    'code' => $response->status(),
-                    'body' => [
-                        'data' => [
-                            $definition['connection'] => $this->normalizeConnection($json, $definition),
-                        ],
-                    ],
-                ];
-            }
-
-            $respKey = $definition['respKey'] ?? $definition['field'];
-
+        if (isset($definition['connection'])) {
             return [
                 'code' => $response->status(),
                 'body' => [
                     'data' => [
-                        $definition['field'] => $json[$respKey] ?? $json[$definition['field']] ?? $json,
+                        $definition['connection'] => $this->normalizeConnection($json, $definition),
                     ],
                 ],
             ];
-        } catch (\Throwable $e) {
-            Log::error('Shopify SaaS proxy GraphQL call failed', [
-                'endpoint' => $operation,
-                'url'      => $url,
-                'message'  => $e->getMessage(),
-            ]);
-
-            return $this->proxyErrorResponse(null, $e->getMessage(), $dataKey);
         }
+
+        $respKey = $definition['respKey'] ?? $definition['field'];
+
+        return [
+            'code' => $response->status(),
+            'body' => [
+                'data' => [
+                    $definition['field'] => $json[$respKey] ?? $json[$definition['field']] ?? $json,
+                ],
+            ],
+        ];
     }
 
     /**

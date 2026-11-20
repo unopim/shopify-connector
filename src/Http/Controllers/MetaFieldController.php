@@ -164,7 +164,7 @@ class MetaFieldController extends Controller
         }
 
         $errors = [];
-        if ((bool) $data['pin']) {
+        if ((bool) ($data['pin'] ?? 0)) {
             $allPined = $this->shopifyMetaFieldRepository->where('pin', 1)->where('ownerType', $data['ownerType'])->get()->toArray();
             if (count($allPined) > 49) {
                 $errors['pin'] = [trans('Pin limit reached, You can only have 50 pined fields')];
@@ -378,7 +378,7 @@ class MetaFieldController extends Controller
             }
         }
 
-        if ($data['type'] == 'rating') {
+        if (($data['type'] ?? '') == 'rating') {
             if (! $minvalue || ! $maxvalue) {
                 $errors['minvalue'] = $errors['maxvalue'] = [trans('Rating field must have both min and max values')];
             }
@@ -460,7 +460,7 @@ class MetaFieldController extends Controller
         }
 
         $errors = [];
-        if ((bool) $requestData['pin']) {
+        if ((bool) ($requestData['pin'] ?? 0)) {
             $allPined = $this->shopifyMetaFieldRepository->where('pin', 1)->where('ownerType', $requestData['ownerType'])->get()->toArray();
             $attrCode = array_column($allPined, 'code');
             $countPin = count($allPined);

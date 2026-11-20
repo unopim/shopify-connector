@@ -2,7 +2,9 @@
 
 namespace Webkul\Shopify\Http\Client;
 
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class GraphQLApiClient
@@ -119,6 +121,58 @@ class GraphQLApiClient
         }
 
         return $response;
+    }
+
+    /**
+     * Execute multiple GraphQL requests concurrently via HTTP pool.
+     *
+     * @param  array<string, array{endpoint: string, parameters?: array}>  $operations
+     * @return array<string, array{code: int|null, body: array}>
+     */
+    public function requestPool(array $operations): array
+    {
+        $prepared = [];
+
+        foreach ($operations as $key => $op) {
+            $req = $this->createRequest($op['endpoint'], $op['parameters'] ?? []);
+
+            if ($req) {
+                $prepared[$key] = $req;
+            }
+        }
+
+        if (empty($prepared)) {
+            return [];
+        }
+
+        $results = [];
+
+        foreach (array_chunk($prepared, 20, true) as $chunk) {
+            $responses = Http::pool(function (Pool $pool) use ($chunk): array {
+                $requests = [];
+
+                foreach ($chunk as $key => $req) {
+                    $requests[$key] = $pool->as($key)
+                        ->withHeaders($this->getRequestHeaders())
+                        ->timeout($this->options['timeout'] ?? 120)
+                        ->retry(3, 100)
+                        ->send($req['method'], $req['url'], ['body' => $req['body']]);
+                }
+
+                return $requests;
+            });
+
+            foreach ($chunk as $key => $req) {
+                $response = $responses[$key] ?? null;
+
+                $results[$key] = [
+                    'code' => $response instanceof Response ? $response->status() : null,
+                    'body' => $response instanceof Response ? ($response->json() ?? []) : [],
+                ];
+            }
+        }
+
+        return $results;
     }
 
     protected $endpoints = [
@@ -409,7 +463,12 @@ class GraphQLApiClient
         ],
 
         'metafieldDefinitionsProductType' => [
-            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } constraints { key values(first: 250) { nodes { value } } } validations { name type value} type { name category }} } } }',
+            'query'  => 'query getMetafieldDefinitions($first: Int!, $after: String) { metafieldDefinitions(first: $first, after: $after, ownerType: PRODUCT) { edges { cursor node { namespace key name ownerType pinnedPosition id capabilities { adminFilterable { eligible enabled status } smartCollectionCondition { eligible enabled } } constraints { key values(first: 250) { pageInfo { hasNextPage endCursor } nodes { value } } } validations { name type value} type { name category }} } } }',
+            'method' => 'POST',
+        ],
+
+        'metafieldDefinitionCategoryConstraints' => [
+            'query'  => 'query getConstraints($id: ID!, $after: String) { node(id: $id) { ... on MetafieldDefinition { constraints { key values(first: 250, after: $after) { pageInfo { hasNextPage endCursor } nodes { value } } } } } }',
             'method' => 'POST',
         ],
 
