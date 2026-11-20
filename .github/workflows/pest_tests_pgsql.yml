@@ -72,7 +72,7 @@ jobs:
       - name: Bind Shopify Tests to Pest
         working-directory: core
         run: |
-          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in(['../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests']);" >> tests/Pest.php
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests');" >> tests/Pest.php
 
       - name: Install Shopify Package
         working-directory: core
@@ -179,7 +179,7 @@ jobs:
       - name: Bind Shopify Tests to Pest
         working-directory: core
         run: |
-          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in(['../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests']);" >> tests/Pest.php
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests');" >> tests/Pest.php
 
       - name: Install Shopify Package
         working-directory: core

@@ -14,9 +14,15 @@ jobs:
     name: PHP ${{ matrix.php-versions }} test on ${{ matrix.operating-systems }}
 
     steps:
-        - uses: actions/checkout@v4
-        - name: Running Pint Test
-          uses: aglipanci/laravel-pint-action@2.6
-          with:
-            testMode: true
-            verboseMode: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: mbstring
+          tools: pint
+
+      - name: Running Pint Test
+        run: pint --test -v
