@@ -72,7 +72,7 @@ jobs:
       - name: Bind Shopify Tests to Pest
         working-directory: core
         run: |
-          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in(['../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests']);" >> tests/Pest.php
 
       - name: Install Shopify Package
         working-directory: core
@@ -82,7 +82,7 @@ jobs:
 
       - name: Run Shopify Tests
         working-directory: core
-        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
+        run: vendor/bin/pest packages/Webkul/Shopify/tests --colors=always
 
   # =========================
   # PostgreSQL + Elasticsearch
@@ -179,7 +179,7 @@ jobs:
       - name: Bind Shopify Tests to Pest
         working-directory: core
         run: |
-          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in('../packages/Webkul/Shopify/tests');" >> tests/Pest.php
+          echo "uses(Webkul\Admin\Tests\AdminTestCase::class)->in(['../packages/Webkul/Shopify/tests', '../vendor/unopim/shopify-connector/tests']);" >> tests/Pest.php
 
       - name: Install Shopify Package
         working-directory: core
@@ -189,4 +189,4 @@ jobs:
 
       - name: Run Shopify Tests
         working-directory: core
-        run: vendor/bin/pest vendor/unopim/shopify-connector/tests --colors=always
+        run: vendor/bin/pest packages/Webkul/Shopify/tests --colors=always
