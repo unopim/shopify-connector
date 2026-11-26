@@ -24,7 +24,7 @@
 @endphp
 
 @if ($variant === 'badge')
-    <span {{ $attributes->merge(['class' => 'shopify-pro-badge shrink-0']) }}>
+    <span {{ $attributes->merge(['class' => 'shopify-pro-badge shrink-0', 'title' => trans('shopify::app.shopify.pro.filters-note')]) }}>
         {{ trans('shopify::app.shopify.pro.badge') }}
     </span>
 @elseif ($isStore || ! $installed)

@@ -100,6 +100,7 @@ return [
                     'title'    => 'data_transfer::app.exporters.fields.with-media',
                     'required' => false,
                     'type'     => 'boolean',
+                    'default'  => '1',
                 ], [
                     'name'     => 'with_associations',
                     'title'    => 'data_transfer::app.exporters.fields.with-associations',
