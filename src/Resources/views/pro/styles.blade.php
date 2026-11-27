@@ -299,6 +299,13 @@
         filter: none;
     }
 
+    [data-shopify-pro-locked] label,
+    [data-shopify-pro-locked] [data-shopify-pro-filter],
+    [data-shopify-pro-locked] .shopify-pro-badge,
+    [data-shopify-pro-locked] .icon-information {
+        pointer-events: auto !important;
+    }
+
     [data-shopify-pro-locked] button[data-shopify-pro-disabled] {
         cursor: not-allowed;
         border-style: solid;

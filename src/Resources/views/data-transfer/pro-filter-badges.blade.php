@@ -131,7 +131,7 @@
                  * the group swallows the pointer, so a click on a locked filter never
                  * reaches the core unsaved tracker as a change.
                  */
-                hold(container) {
+                hold(container, holder) {
                     if (! this.locked || ! container) {
                         return;
                     }
@@ -140,7 +140,11 @@
                     container.dataset.unsavedIgnore = '';
                     container.style.pointerEvents = 'none';
 
-                    container.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                    if (holder) {
+                        holder.style.pointerEvents = 'auto';
+                    }
+
+                    container.querySelectorAll('input, select, textarea').forEach((control) => {
                         control.tabIndex = -1;
                     });
 
@@ -148,15 +152,16 @@
                      * Buttons carry no value, so they can be disabled outright: a
                      * locked builder then says in the control itself that nothing
                      * can be added, not only in the badge above it.
+                     * Info tooltip buttons are excluded so hover tooltips remain readable.
                      */
-                    container.querySelectorAll('button:not([disabled])').forEach((button) => {
+                    container.querySelectorAll('button:not([disabled]):not(.icon-information)').forEach((button) => {
                         button.disabled = true;
                         button.dataset.shopifyProDisabled = '';
                     });
                 },
 
                 /** Core exports share these controls, so a lock has to be reversible. */
-                release(container) {
+                release(container, holder) {
                     if (! container || container.dataset.shopifyProLocked === undefined) {
                         return;
                     }
@@ -166,7 +171,11 @@
 
                     container.style.removeProperty('pointer-events');
 
-                    container.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                    if (holder) {
+                        holder.style.removeProperty('pointer-events');
+                    }
+
+                    container.querySelectorAll('input, select, textarea').forEach((control) => {
                         control.removeAttribute('tabindex');
                     });
 
@@ -190,7 +199,7 @@
                             delete holder.dataset.shopifyProFilter;
                         }
 
-                        this.release(container);
+                        this.release(container, holder);
 
                         return;
                     }
@@ -201,7 +210,7 @@
                         holder.dataset.shopifyProFilter = name;
                     }
 
-                    this.hold(container);
+                    this.hold(container, holder);
                 },
 
                 decorate() {

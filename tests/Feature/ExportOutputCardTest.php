@@ -8,6 +8,14 @@ use function Pest\Laravel\get;
  * The fields core renders in its own output card, which marks where that card is.
  */
 const CORE_OUTPUT_FIELDS = 'only="file_format,with_media,with_associations,header_row,use_labels,date_format,file_path"';
+const CORE_OUTPUT_FIELDS_WITH_TEMPLATES = 'only="file_format,with_media,with_associations,header_row,use_labels,render_templates,date_format,file_path"';
+
+function coreOutputFields(string $html): string
+{
+    return str_contains($html, CORE_OUTPUT_FIELDS_WITH_TEMPLATES)
+        ? CORE_OUTPUT_FIELDS_WITH_TEMPLATES
+        : CORE_OUTPUT_FIELDS;
+}
 
 /**
  * Whether core's export screens offer the hook into their output card, which
@@ -41,9 +49,10 @@ it('puts the credentials at the top of the output card, with the schedule below 
     $this->loginAsAdmin();
 
     $html = shopifyExportEditScreen($entityType);
+    $outputMarker = coreOutputFields($html);
 
     $credentials = strpos($html, 'only="credentials"');
-    $output = strpos($html, CORE_OUTPUT_FIELDS);
+    $output = strpos($html, $outputMarker);
     $schedule = strpos($html, 'only="schedule_');
 
     expect(substr_count($html, 'only="credentials"'))->toBe(1)
@@ -56,12 +65,13 @@ it('gives the credentials a card of their own below core output where core offer
     $this->loginAsAdmin();
 
     $html = shopifyExportEditScreen($entityType);
+    $outputMarker = coreOutputFields($html);
 
     $credentials = strpos($html, 'only="credentials"');
     $schedule = strpos($html, 'only="schedule_');
 
     expect(substr_count($html, 'only="credentials"'))->toBe(1)
-        ->and($credentials)->toBeGreaterThan(strpos($html, CORE_OUTPUT_FIELDS))
+        ->and($credentials)->toBeGreaterThan(strpos($html, $outputMarker))
         ->and($schedule)->toBeGreaterThan($credentials)
         ->and($html)->toContain(trans('shopify::app.shopify.export.filters.shopify'));
 })->with(['shopifyProduct', 'shopifyCategories'])->skip(fn () => coreExportScreenHasOutputHook(), 'core offers the output card hook');
@@ -75,6 +85,7 @@ it('gives the credentials an output card of their own where core has none', func
     $schedule = strpos($html, 'only="schedule_');
 
     expect($html)->not->toContain(CORE_OUTPUT_FIELDS)
+        ->and($html)->not->toContain(CORE_OUTPUT_FIELDS_WITH_TEMPLATES)
         ->and(substr_count($html, 'only="credentials"'))->toBe(1)
         ->and($credentials)->toBeGreaterThan(strpos($html, 'shopify-export-output'))
         ->and($schedule)->toBeGreaterThan($credentials)
@@ -85,8 +96,9 @@ it('picks the credentials placement on the create screen by the fields of the pi
     $this->loginAsAdmin();
 
     $html = get(route('admin.settings.data_transfer.exports.create'))->assertOk()->getContent();
+    $outputMarker = coreOutputFields($html);
 
     expect(substr_count($html, 'only="credentials"'))->toBe(2)
         ->and(str_contains($html, trans('shopify::app.shopify.export.filters.shopify')))->toBe(! coreExportScreenHasOutputHook())
-        ->and(strpos($html, 'only="schedule_'))->toBeGreaterThan(strpos($html, CORE_OUTPUT_FIELDS));
+        ->and(strpos($html, 'only="schedule_'))->toBeGreaterThan(strpos($html, $outputMarker));
 });
